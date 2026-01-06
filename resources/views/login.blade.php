@@ -32,10 +32,17 @@
         .btn{width:100%;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.25);color:#fff;font-weight:600;border:1px solid rgba(255,255,255,.3);cursor:pointer;font-size:16px}
         .btn:hover{background:rgba(255,255,255,.35)}
         .error{color:#ffe2e2;font-size:14px;margin-top:6px}
+        .alert-top{margin:0 auto 18px;max-width:480px;border-radius:12px;padding:12px 14px;font-weight:600;display:flex;gap:12px;align-items:center}
+        .alert-error{background:linear-gradient(90deg,#ffefef,#ffdede);color:#7f1d1d;border:1px solid rgba(239,68,68,.12)}
+        .alert-success{background:linear-gradient(90deg,#ecfdf5,#d1fae5);color:#065f46;border:1px solid rgba(16,185,129,.12)}
+        /* SweetAlert toast custom styling */
+        .swal-toast{border-radius:12px !important;box-shadow:0 12px 40px rgba(2,6,23,.18) !important;padding:10px 14px !important;font-weight:600 !important}
+        .swal2-icon{box-shadow:none !important}
     </style>
 </head>
 <body>
 <div class="card">
+    {{-- Flash banners removed to avoid duplicate messages; SweetAlert handles flashes --}}
     <h3>POS System</h3>
     <h1>Sign In</h1>
     <form method="POST" action="{{ route('login.post') }}">
@@ -60,18 +67,42 @@
         <button type="submit" class="btn">LOGIN</button>
     </form>
 </div>
+<!-- SweetAlert2 for nicer alerts -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// toggle password visibility
 (function(){
  var btn=document.getElementById('togglePassword');
  var input=document.getElementById('password');
  if(btn&&input){
-  btn.addEventListener('click',function(){
-   var isPw=input.getAttribute('type')==='password';
-   input.setAttribute('type',isPw?'text':'password');
-  });
+    btn.addEventListener('click',function(){
+     var isPw=input.getAttribute('type')==='password';
+     input.setAttribute('type',isPw?'text':'password');
+     btn.textContent = isPw ? '🙈' : '👁️';
+    });
  }
- 
 })();
+
+// Show flash messages using SweetAlert Toasts for a polished look
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2200,
+  timerProgressBar: true,
+  customClass: { popup: 'swal-toast' }
+});
+
+@if(session('error'))
+    Toast.fire({ icon: 'error', title: {!! json_encode(session('error')) !!}, background: 'linear-gradient(90deg,#fff1f0,#ffdce0)', color: '#7f1d1d', iconColor: '#ef4444' });
+@endif
+
+@if(session('success'))
+    Toast.fire({ icon: 'success', title: {!! json_encode(session('success')) !!}, background: 'linear-gradient(90deg,#ecfdf5,#d1fae5)', color: '#065f46', iconColor: '#10b981' });
+    // After showing a short success toast, redirect to dashboard and add a marker so the dashboard won't
+    // show the same success message again.
+    setTimeout(function(){ window.location.href = '{{ route('dashboard') }}?from=login'; }, 1400);
+@endif
 </script>
 </body>
 </html>
