@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +15,11 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
         'email' => 'required|email',
         'password' => 'required',
     ]);
-    return redirect('/')->with('status', 'Login request received.');
+    return redirect()->route('dashboard');
 })->name('login.post');
+
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->name('dashboard');
 
