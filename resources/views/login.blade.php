@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
@@ -70,6 +70,7 @@
    input.setAttribute('type',isPw?'text':'password');
   });
  }
+ 
 })();
 </script>
 </body>

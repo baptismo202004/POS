@@ -15,11 +15,15 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
         'email' => 'required|email',
         'password' => 'required',
     ]);
-    return redirect()->route('dashboard');
+        if ($request->input('email') !== 'admin@example.com' || $request->input('password') !== 'password') {
+        return redirect()->back()->withInput()->with('error', 'Incorrect email or password');
+    }
+    return redirect()->route('dashboard')->with('success', 'Login successful');
 })->name('login.post');
 
 
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->name('dashboard');
+
 
