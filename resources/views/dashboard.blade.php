@@ -87,9 +87,10 @@
             
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-@if(session('success'))
+@if(session('success') && request()->query('from') !== 'login')
 <script>
-  Swal.fire({ icon: 'success', title: 'Success', text: {!! json_encode(session('success')) !!} });
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, timerProgressBar: true, customClass: { popup: 'swal-toast' } });
+    Toast.fire({ icon: 'success', title: {!! json_encode(session('success')) !!}, background: 'linear-gradient(90deg,#ecfdf5,#d1fae5)', color: '#065f46', iconColor: '#10b981' });
 </script>
 @endif
 </body>
