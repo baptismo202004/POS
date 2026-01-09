@@ -14,6 +14,10 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- jQuery + Select2 for searchable creatable selects -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- Tailwind Play CDN (for utility classes) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -59,7 +63,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Brand</label>
-                                        <select name="brand_id" class="form-select">
+                                        <select name="brand_id" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Brand --</option>
                                             @foreach($brands ?? [] as $brand)
                                                 <option value="{{ $brand->id }}" {{ $isEdit && $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
@@ -69,7 +73,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Category</label>
-                                        <select name="category_id" class="form-select">
+                                        <select name="category_id" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Category --</option>
                                             @foreach($categories ?? [] as $cat)
                                                 <option value="{{ $cat->id }}" {{ $isEdit && $product->category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -79,7 +83,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Product Type</label>
-                                        <select name="product_type_id" id="productType" class="form-select">
+                                        <select name="product_type_id" id="productType" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Type --</option>
                                             @foreach($productTypes ?? [] as $pt)
                                                 {{-- mark data-electronic="1" when this type should trigger electronic fields --}}
@@ -90,7 +94,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Unit Type</label>
-                                        <select name="unit_type_id" class="form-select">
+                                        <select name="unit_type_id" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Unit --</option>
                                             @foreach($unitTypes ?? [] as $ut)
                                                 <option value="{{ $ut->id }}" {{ $isEdit && $product->unit_type_id == $ut->id ? 'selected' : '' }}>{{ $ut->name }}</option>
@@ -276,6 +280,16 @@
         }
 
         document.addEventListener('DOMContentLoaded', function(){
+            // init select2 on creatable selects
+            if (window.jQuery && $.fn.select2) {
+                $('.select2-tags').select2({
+                    tags: true,
+                    tokenSeparators: [','],
+                    placeholder: '-- Select --',
+                    allowClear: true,
+                    width: 'resolve'
+                });
+            }
             const productType = document.getElementById('productType');
             const electronicArea = document.getElementById('electronicArea');
             const addSerialBtn = document.getElementById('addSerialBtn');
