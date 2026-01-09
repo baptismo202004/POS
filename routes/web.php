@@ -4,11 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SuperAdmin\ProductController as SuperAdminProductController;
-use App\Http\Controllers\UnitTypeController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ProductTypeController;
-use App\Http\Controllers\BranchController;
-use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
@@ -74,3 +69,22 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
     })->name('password.email');
 });
+<<<<<<< Updated upstream
+=======
+// Password reset (simple request flow)
+Route::get('/password/reset', function () {
+    return view('auth.passwords.email');
+})->name('password.request');
+
+Route::post('/password/email', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+    // If user exists, we would normally send a reset link. For now, just show a generic message.
+    $user = \App\Models\User::where('email', $request->input('email'))->first();
+    if ($user) {
+        // dispatch reset email here if implemented
+    }
+    return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
+})->name('password.email');
+
+
+>>>>>>> Stashed changes
