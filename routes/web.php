@@ -3,7 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SuperAdmin\ProductController as SuperAdminProductController;
+use App\Http\Controllers\UnitTypeController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\BrandController;
 
 Route::get('/', function () {
     return view('login');
@@ -50,6 +55,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/avatar', [ProfileController::class, 'avatar'])->name('profile.avatar');
     Route::post('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
+
+
+//Product page route
+// Product Routes
+    Route::prefix('superadmin')->group(function () {
+        Route::get('/products', [SuperAdminProductController::class, 'index'])->name('superadmin.products.index'); // list all products
+        Route::get('/products/create', [SuperAdminProductController::class, 'create'])->name('superadmin.products.create'); // show add product form
+        Route::post('/products', [SuperAdminProductController::class, 'store'])->name('superadmin.products.store'); // store new product
+
+        Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->name('superadmin.products.edit'); // edit product
+        Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->name('superadmin.products.update'); // update product
+        Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy'); // delete product
+    });
 });
-
-

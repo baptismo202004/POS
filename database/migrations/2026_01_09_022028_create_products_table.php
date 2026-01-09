@@ -16,10 +16,11 @@ return new class extends Migration
             $table->string('product_name');
             $table->string('barcode')->unique();
 
-            $table->unsignedBigInteger('brand_id')->nullable();
-            $table->unsignedBigInteger('category_id')->nullable();
-            $table->unsignedBigInteger('product_type_id')->nullable();
-            $table->unsignedBigInteger('unit_type_id')->nullable();
+            $table->foreignId('brand_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('product_type_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('unit_type_id')->nullable()->constrained()->nullOnDelete();
+
 
             $table->string('model_number')->nullable();
             $table->string('image')->nullable();
