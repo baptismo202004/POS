@@ -1,15 +1,25 @@
 <aside class="sidebar bg-white shadow-sm p-4 d-none d-lg-flex flex-column justify-content-between">
+    <style>
+        /* Ensure sidebar SVG icons render correctly even if global CSS isn't loaded */
+        .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: #2563eb; }
+        .sidebar .sidebar-icon path,
+        .sidebar .sidebar-icon rect,
+        .sidebar .sidebar-icon circle { fill: currentColor !important; stroke: none !important; }
+        .icon-badge { padding: 0.45rem !important; }
+    </style>
     <div>
         <div class="d-flex align-items-center gap-3 mb-5">
             <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:200px;height:80px;object-fit:contain;border-radius:8px;max-width:100%;">
         </div>
 
         <nav class="d-flex flex-column gap-2">
-            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50">
+            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 9.5L12 3l9 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span class="fw-semibold">Home</span>
+            </a>
+            
             </a>
             <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
