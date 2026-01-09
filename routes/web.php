@@ -9,6 +9,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
     return view('login');
@@ -29,7 +30,7 @@ Route::post('/login', function (Request $request) {
         // Regenerate session to prevent fixation
         $request->session()->regenerate();
         
-        return redirect()->route('login')->with('success', 'Login successful');
+        return redirect()->route('dashboard')->with('success', 'Login successful');
     }
 
     // Invalid credentials - send a single flash message (handled by SweetAlert in the view)
@@ -55,7 +56,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
 
 
-<<<<<<< HEAD
 //Product page route
 // Product Routes
     Route::prefix('superadmin')->group(function () {
@@ -68,11 +68,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy'); // delete product
     });
 });
-=======
 // Password reset (simple request flow)
 Route::get('/password/reset', function () {
     return view('auth.passwords.email');
 })->name('password.request');
+Route::get('/__view_test', function () {
+    return view('auth.passwords.email');
+});
 
 Route::post('/password/email', function (Request $request) {
     $request->validate(['email' => 'required|email']);
@@ -85,4 +87,3 @@ Route::post('/password/email', function (Request $request) {
 })->name('password.email');
 
 
->>>>>>> 369c25118c1cddaf532d8184e56c6bdcfeb10aac
