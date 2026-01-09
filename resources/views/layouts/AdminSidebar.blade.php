@@ -1,11 +1,27 @@
 <aside class="sidebar bg-white shadow-sm p-4 d-none d-lg-flex flex-column justify-content-between">
     <style>
         /* Ensure sidebar SVG icons render correctly even if global CSS isn't loaded */
-        .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: #2563eb; }
+        :root { --sidebar-icon-color: #2563eb; --sidebar-icon-stroke: 1.6; }
+        .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: var(--sidebar-icon-color); }
+        .icon { width:20px; height:20px; color: var(--sidebar-icon-color); }
+
+        /* Make stroke and fill use currentColor so icons inherit the blue color */
         .sidebar .sidebar-icon path,
         .sidebar .sidebar-icon rect,
-        .sidebar .sidebar-icon circle { fill: currentColor !important; stroke: none !important; }
+        .sidebar .sidebar-icon circle,
+        .icon path,
+        .icon rect,
+        .icon circle { fill: currentColor !important; stroke: none !important; }
+
         .icon-badge { padding: 0.45rem !important; }
+
+        /* Match dashboard dropdown styles so sidebar dropdown isn't oversized */
+        .user-dropdown-menu { min-width:210px; border-radius:12px; box-shadow:0 10px 30px rgba(15,23,42,0.08); padding:6px; }
+        .dropdown-item svg { opacity:0.95; width:18px; height:18px; }
+        .dropdown-item { border-radius:8px; padding:8px 12px; }
+        .dropdown-item:hover { background:#f8fafc; }
+        .dropdown-toggle .username { font-weight:600; color:#111827; }
+        .dropdown-toggle .role { font-size:12px; color:#60a5fa; margin-left:2px; }
     </style>
     <div>
         <div class="d-flex align-items-center gap-3 mb-5">
@@ -21,7 +37,7 @@
             </a>
             
             </a>
-            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+            <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16V8a2 2 0 0 0-1-1.732L12 3 4 6.268A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.732L12 21l8-3.268A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
