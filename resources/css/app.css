@@ -17,3 +17,23 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+
+/* Dashboard styles */
+body.dashboard { background: repeating-radial-gradient(circle at 0 0, #e6eefb 0, #e6eefb 1px, transparent 1px, transparent 20px); }
+.sidebar { width:220px }
+.dash-header { font-size:28px; font-weight:700 }
+.search-input { border-radius:999px; padding-left:44px; padding-right:1rem }
+.search-icon { position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#9aa6b2 }
+.stat-card { border-radius:14px; padding:18px; display:flex; align-items:center; justify-content:space-between }
+.stat-icon { width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.6) }
+.card-soft { background:#eef5ff; border-radius:12px }
+.panel { background:#f1f5f9; border-radius:12px; padding:18px }
+.small-circle { width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3f2ff;color:#1e3a8a;font-weight:600 }
+.bottom-avatar { position:fixed; left:32px; bottom:24px; display:flex; flex-direction:column; align-items:center; gap:6px }
+.ring { width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#2b8af9 var(--pct), rgba(0,0,0,0.06) 0) }
+.ring-inner { width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center }
+
+/* Sidebar icon sizing */
+.icon-badge { padding: 0.6rem !important; }
+.icon { width: 28px; height: 28px; display: block; }
+.sidebar .icon { width: 28px; height: 28px; }

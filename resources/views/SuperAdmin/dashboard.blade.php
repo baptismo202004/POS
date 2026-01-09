@@ -4,97 +4,242 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Laravel') }} - Dashboard</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Tailwind CDN (dev only) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    @vite(['resources/css/app.css','resources/js/app.js'])
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #ffffff; }
+        .sidebar { width: 220px; }
+        .dash-header { font-size: 28px; font-weight:700; }
+        .search-input { border-radius: 999px; padding-left: 44px; padding-right: 1rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #9aa6b2; }
+        .stat-card { border-radius: 14px; padding: 18px; display:flex; align-items:center; justify-content:space-between; }
+        .stat-icon { width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.6); }
+        .card-soft { background:#eef5ff; border-radius:12px; }
+        .panel { background:#f1f5f9; border-radius:12px; padding:18px; }
+        .small-circle { width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3f2ff;color:#1e3a8a;font-weight:600 }
+        .bottom-avatar { position:fixed; left:32px; bottom:24px; display:flex; flex-direction:column; align-items:center; gap:6px }
+        .ring { width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#2b8af9 var(--pct), rgba(0,0,0,0.06) 0); }
+        .ring-inner { width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center }
+
+        /* User dropdown aesthetics */
+        :root { --icon-color: #2563eb; --icon-muted: #60a5fa; --icon-stroke: 1.6; }
+        .icon { width:20px; height:20px; color:var(--icon-color); opacity:0.98; }
+        .icon path, .icon rect { stroke:currentColor; fill:none; stroke-width:var(--icon-stroke); stroke-linecap:round; stroke-linejoin:round; }
+        .icon circle { fill: currentColor; }
+        .icon-badge { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,0.06); }
+        .user-avatar { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight:700;box-shadow:0 6px 14px rgba(59,130,246,0.12); }
+        .user-dropdown-menu { min-width:210px;border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,0.08);padding:6px; }
+        .dropdown-item svg { opacity:0.95; width:18px;height:18px; }
+        .dropdown-item { border-radius:8px; padding:8px 12px; }
+        .dropdown-item:hover { background:#f8fafc; }
+        .dropdown-toggle .username { font-weight:600;color:#111827; }
+        .dropdown-toggle .role { font-size:12px;color:var(--icon-muted);margin-left:2px; }
+        .caret-icon { opacity:0.75; color:var(--icon-muted); }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900">
-<div class="container-fluid">
-  <div class="row min-vh-100">
-    <aside class="col-12 col-md-3 col-lg-2 bg-white border-end p-4">
-      <div class="d-flex align-items-center mb-3">
-        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px">P</div>
-        <div class="ms-2 fw-bold">BGH POS</div>
-        <button class="btn btn-link ms-auto d-md-none">≡</button>
-      </div>
-      <nav class="nav flex-column">
-        <div class="nav-link text-muted small">Menu</div>
-        <a class="nav-link" href="#">Products</a>
-        <a class="nav-link active" href="#">Dashboard</a>
-      </nav>
-    </aside>
-    <main class="col p-4">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 class="h4 mb-0">Dashboard</h1>
-          <small class="text-muted">Welcome back</small>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <div class="badge rounded-pill text-white" style="background:linear-gradient(135deg,#7A5CF4,#5E60CE);">Overview</div>
-          <button class="btn btn-primary">New</button>
-        </div>
-      </div>
+<body class="bg-white">
 
-      <div class="row g-3">
-        <div class="col-6 col-md-3">
-          <div class="card p-3">
-            <div class="text-muted small">Sales</div>
-            <div class="h5 fw-bold">₱ 0.00</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card p-3">
-            <div class="text-muted small">Orders</div>
-            <div class="h5 fw-bold">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card p-3">
-            <div class="text-muted small">Products</div>
-            <div class="h5 fw-bold">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="card p-3">
-            <div class="text-muted small">Customers</div>
-            <div class="h5 fw-bold">0</div>
-          </div>
-        </div>
-      </div>
+<div class="d-flex min-vh-100">
 
-      <div class="mt-4 card p-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h2 class="h6 mb-0">Recent Orders</h2>
-          <div class="text-muted small">Last 30 days</div>
+    <!-- Sidebar -->
+    @include('layouts.AdminSidebar')
+
+    <!-- Main Content -->
+    <main class="flex-fill p-4">
+
+        <!-- Topbar -->
+        <div class="bg-white border rounded-3 p-3 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="position-relative d-flex align-items-center">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="#94a3b8" stroke-width="1.5"/></svg>
+                    <input class="form-control search-input" placeholder="Search..." />
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <select class="form-select form-select-sm" style="margin-right:0.50rem;">
+                    <option>Last 7 days</option>
+                    <option>Last 30 days</option>
+                </select>
+
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light dropdown-toggle d-flex align-items-center gap-2" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="user-avatar">AD</div>
+                        <div class="d-flex flex-column ms-1 me-1" style="line-height:1">
+                            <span class="username">Admin User</span>
+                            <small class="role">Super Admin</small>
+                        </div>
+                        <svg class="icon caret-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="var(--icon-stroke)" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <ul class="dropdown-menu user-dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url('/profile') }}">
+                                <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20v-1c0-2.21 3.58-4 8-4s8 1.79 8 4v1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>Profile</span>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                                @csrf
+                                <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
+                                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 19V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span>Logout</span>
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="table-responsive">
-          <table class="table table-borderless mb-0">
-            <thead class="small text-muted">
-              <tr>
-                <th>Customer</th><th>Items</th><th>Total</th><th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><a href="#" class="text-primary fw-semibold">No orders yet</a></td>
-                <td>—</td>
-                <td>—</td>
-                <td class="text-end">—</td>
-              </tr>
-            </tbody>
-          </table>
+
+        <div class="row gx-4 gy-4">
+            <div class="col-lg-8">
+                <div class="d-flex gap-3 mb-3">
+                    <div class="flex-fill stat-card" style="background:linear-gradient(135deg,#f5e5ff,#f9f0ff);">
+                        <div>
+                            <div class="text-muted small">Sales</div>
+                            <div class="fw-bold display-6">78</div>
+                        </div>
+                        <div class="stat-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="4" height="13" rx="1" fill="#5B21B6"/><rect x="9" y="4" width="4" height="17" rx="1" fill="#7C3AED"/><rect x="15" y="11" width="4" height="10" rx="1" fill="#C084FC"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex-fill stat-card" style="background:linear-gradient(135deg,#e6fff2,#e8ffef);">
+                        <div>
+                            <div class="text-muted small">Expenses</div>
+                            <div class="fw-bold display-6">78</div>
+                        </div>
+                        <div class="stat-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="9" width="4" height="12" rx="1" fill="#059669"/><rect x="9" y="5" width="4" height="16" rx="1" fill="#10B981"/><rect x="15" y="11" width="4" height="10" rx="1" fill="#34D399"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex-fill stat-card" style="background:linear-gradient(135deg,#f3f4f6,#ffffff);">
+                        <div>
+                            <div class="text-muted small">Revenue</div>
+                            <div class="fw-bold display-6">80%</div>
+                        </div>
+                        <div class="stat-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="13" width="4" height="8" rx="1" fill="#6B7280"/><rect x="9" y="9" width="4" height="12" rx="1" fill="#9CA3AF"/><rect x="15" y="5" width="4" height="16" rx="1" fill="#6B7280"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mb-3 p-3 panel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="fw-semibold">Branch Performance</div>
+                    </div>
+                    <div class="d-flex gap-4">
+                        <div class="text-center">
+                            <div class="ring" style="--pct:70deg"><div class="ring-inner">70%</div></div>
+                            <div class="small text-muted mt-2">MCS</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="ring" style="--pct:324deg"><div class="ring-inner">90%</div></div>
+                            <div class="small text-muted mt-2">RK</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="ring" style="--pct:180deg"><div class="ring-inner">50%</div></div>
+                            <div class="small text-muted mt-2">Branch 1</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="fw-semibold">Sales Overview</div>
+                        <div>
+                            <select id="sales-range-select" class="form-select form-select-sm" style="width:160px">
+                                <option>Last 7 days</option>
+                                <option>Last 30 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="height:240px;">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-lg-4">
+                <div class="card mb-3 p-3 panel">
+                    <div class="fw-semibold mb-2">Top Selling Products</div>
+                    <ul class="list-unstyled">
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>Mighty Red</div>
+                            <div class="text-success">99.99%</div>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>NVR</div>
+                            <div class="text-success">50%</div>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>Memory</div>
+                            <div class="text-success">32%</div>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2">
+                            <div>Database</div>
+                            <div class="text-success">10%</div>
+                        </li>
+                    </ul>
+                </div>
+
+
+                <div class="card p-3" style="min-height:220px">
+                    <div class="fw-semibold mb-3">Recent Sales</div>
+                    <div class="text-muted">No recent sales to show</div>
+                </div>
+            </div>
         </div>
-      </div>
 
     </main>
-  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('salesChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                datasets: [
+                    { label: 'Store A', data:[12,19,7,14,18,10,16], borderColor:'#ef4444', tension:0.4, fill:false },
+                    { label: 'Store B', data:[10,14,22,12,11,24,18], borderColor:'#3b82f6', tension:0.4, fill:false },
+                    { label: 'Store C', data:[8,6,5,18,9,12,10], borderColor:'#f59e0b', tension:0.4, fill:false },
+                ]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+        });
+    }
+</script>
+
+<!-- SweetAlert -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 @if(session('success') && request()->query('from') !== 'login')
 <script>
-    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, timerProgressBar: true, customClass: { popup: 'swal-toast' } });
-    Toast.fire({ icon: 'success', title: {!! json_encode(session('success')) !!}, background: 'linear-gradient(90deg,#ecfdf5,#d1fae5)', color: '#065f46', iconColor: '#10b981' });
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: @json(session('success')),
+        showConfirmButton: false,
+        timer: 2200
+    });
 </script>
 @endif
+
 </body>
 </html>

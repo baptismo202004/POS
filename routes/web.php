@@ -22,8 +22,7 @@ Route::post('/login', function (Request $request) {
     if (Auth::attempt($request->only('email', 'password')) ) {
         // Regenerate session to prevent fixation
         $request->session()->regenerate();
-        // Flash success and return to the login page so the client can show the alert first,
-        // then the client will redirect to the dashboard.
+        
         return redirect()->route('login')->with('success', 'Login successful');
     }
 
@@ -33,7 +32,15 @@ Route::post('/login', function (Request $request) {
 
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    return view('SuperAdmin.dashboard');
 })->name('dashboard');
+
+// Logout route used by the dashboard user dropdown (POST)
+Route::post('/logout', function (Request $request) {
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    return redirect()->route('login');
+})->name('logout');
 
 
