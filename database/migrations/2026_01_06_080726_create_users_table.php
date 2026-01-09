@@ -8,10 +8,18 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id(); // bigint unsigned auto_increment
+            $table->id();
             $table->string('email')->unique();
             $table->string('password');
-            $table->timestamps(); // created_at & updated_at
+
+            $table->string('profile_picture')->nullable();
+
+            $table->foreignId('user_type_id')
+                  ->constrained('user_types')
+                  ->cascadeOnUpdate()
+                  ->restrictOnDelete();
+
+            $table->timestamps();
         });
     }
 

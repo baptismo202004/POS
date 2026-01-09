@@ -9,7 +9,7 @@ Route::get('/', function () {
 });
 
 Route::get('/login', function () {
-    return view('/login');
+    return view('login');
 })->name('login');
 
 Route::post('/login', function (Request $request) {
@@ -33,7 +33,7 @@ Route::post('/login', function (Request $request) {
 
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    return view('SuperAdmin.dashboard');
 })->name('dashboard');
 
 
