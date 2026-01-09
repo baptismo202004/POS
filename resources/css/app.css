@@ -37,3 +37,12 @@ body.dashboard { background: repeating-radial-gradient(circle at 0 0, #e6eefb 0,
 .icon-badge { padding: 0.6rem !important; }
 .icon { width: 28px; height: 28px; display: block; }
 .sidebar .icon { width: 28px; height: 28px; }
+
+/* Make AdminSidebar SVGs filled blue */
+.sidebar .sidebar-icon { color: #2563eb; width: 28px; height: 28px; display:block }
+.sidebar .sidebar-icon path,
+.sidebar .sidebar-icon rect,
+.sidebar .sidebar-icon circle {
+  fill: currentColor !important;
+  stroke: none !important;
+}
