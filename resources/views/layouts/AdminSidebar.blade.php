@@ -2,6 +2,7 @@
     <style>
         /* Ensure sidebar SVG icons render correctly even if global CSS isn't loaded */
         :root { --sidebar-icon-color: #2563eb; --sidebar-icon-stroke: 1.6; }
+        .sidebar { width:220px; min-height:100vh; }
         .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: var(--sidebar-icon-color); }
         .icon { width:20px; height:20px; color: var(--sidebar-icon-color); }
 
@@ -13,7 +14,16 @@
         .icon rect,
         .icon circle { fill: currentColor !important; stroke: none !important; }
 
-        .icon-badge { padding: 0.45rem !important; }
+        /* Icon badge size and appearance (match dashboard) */
+        .icon-badge { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,0.06); padding:0.45rem !important; }
+
+        /* Ensure the user dropdown sits at the bottom with some spacing */
+        .sidebar .dropend { margin-top: auto; margin-bottom: 16px; }
+
+        /* Normalize sidebar nav text size and weight to match dashboard */
+        .sidebar nav a { font-size: 16px; font-weight:500; color: #374151; }
+        .sidebar nav a span { line-height: 1; }
+        .sidebar nav a .fw-semibold { font-weight:600; }
 
         /* Match dashboard dropdown styles so sidebar dropdown isn't oversized */
         .user-dropdown-menu { min-width:210px; border-radius:12px; box-shadow:0 10px 30px rgba(15,23,42,0.08); padding:6px; }

@@ -15,4 +15,10 @@ class Brand extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    // Provide `->name` to match views that expect a `name` attribute
+    public function getNameAttribute()
+    {
+        return $this->brand_name ?? $this->attributes['brand_name'] ?? null;
+    }
 }

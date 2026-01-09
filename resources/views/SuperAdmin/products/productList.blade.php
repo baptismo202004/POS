@@ -26,15 +26,13 @@
         .card-rounded{ border-radius: 12px; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="bg-white">
 
-    <div class="flex">
+    <div class="d-flex min-vh-100">
         {{-- Sidebar --}}
-        <aside class="w-64">
-            @include('layouts.AdminSidebar')
-        </aside>
+        @include('layouts.AdminSidebar')
 
-        <main class="flex-1 p-6">
+        <main class="flex-fill p-4">
             <div class="container-fluid">
                 <div class="row mb-6">
                     <div class="col-12">

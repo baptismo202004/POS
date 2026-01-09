@@ -15,4 +15,10 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    // Provide `->name` to match views that expect a `name` attribute
+    public function getNameAttribute()
+    {
+        return $this->category_name ?? $this->attributes['category_name'] ?? null;
+    }
 }
