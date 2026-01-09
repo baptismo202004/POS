@@ -11,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Keep this hook empty; middleware should be registered via providers.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

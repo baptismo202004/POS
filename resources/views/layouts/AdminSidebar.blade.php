@@ -48,11 +48,79 @@
         </nav>
     </div>
 
-    <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-blue-600 text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px">N</div>
-        <div>
-            <div class="fw-semibold">Nida</div>
-            <small class="text-muted">SuperAdmin</small>
-        </div>
+    @php
+        $sidebarUser = auth()->user();
+        $sidebarAvatarUrl = null;
+        if ($sidebarUser && !empty($sidebarUser->profile_picture)) {
+            $av = $sidebarUser->profile_picture;
+            if (\Illuminate\Support\Str::startsWith($av, ['http://', 'https://', '//'])) {
+                $sidebarAvatarUrl = $av;
+            } elseif (\Illuminate\Support\Str::startsWith($av, 'storage/')) {
+                $sidebarAvatarUrl = asset($av);
+            } else {
+                $candidate = ltrim($av, '/');
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($candidate)) {
+                    $sidebarAvatarUrl = asset('storage/' . $candidate);
+                } elseif (file_exists(public_path($candidate))) {
+                    $sidebarAvatarUrl = asset($candidate);
+                } else {
+                    $sidebarAvatarUrl = asset($candidate);
+                }
+            }
+        }
+    @endphp
+
+    <div class="dropend">
+        <button class="btn btn-sm btn-white d-flex align-items-center gap-2 p-0" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background:transparent;border:none">
+            @if(!empty($sidebarAvatarUrl))
+                <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:56px;height:56px;object-fit:cover">
+            @else
+                <div class="rounded-circle bg-blue-600 text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px">{{ $sidebarUser ? strtoupper(substr($sidebarUser->name,0,1)) : 'U' }}</div>
+            @endif
+            <div class="ms-2 text-start">
+                <div class="fw-semibold">{{ $sidebarUser->name ?? 'User' }}</div>
+            </div>
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" style="margin-left:6px"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <ul class="dropdown-menu user-dropdown-menu" aria-labelledby="sidebarUserDropdown">
+            <li class="px-3 py-2">
+                <div class="d-flex align-items-center gap-2">
+                    @if(!empty($sidebarAvatarUrl))
+                        <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover">
+                    @else
+                        <div class="rounded-circle bg-blue-600 text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px">{{ $sidebarUser ? strtoupper(substr($sidebarUser->name,0,1)) : 'U' }}</div>
+                    @endif
+                    <div class="ms-2">
+                        <div class="small text-muted">{{ $sidebarUser->userType->name ?? ($sidebarUser->role ?? 'User') }}</div>
+                        <div class="small text-muted">{{ $sidebarUser->email ?? '' }}</div>
+                    </div>
+                </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('profile.edit') }}">
+                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20v-1c0-2.21 3.58-4 8-4s8 1.79 8 4v1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#">
+                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                    @csrf
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
+                        <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 19V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </li>
+        </ul>
     </div>
 </aside>
+<!-- dark mode removed -->

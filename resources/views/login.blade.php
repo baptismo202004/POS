@@ -10,16 +10,15 @@
         *{box-sizing:border-box}
         html,body{height:100%}
         body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#fff;
-            background: radial-gradient(1200px 800px at 10% -10%, rgba(255,255,255,.08), transparent 50%),
-                        linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+            background: #7FAAFF;
             display:flex;align-items:center;justify-content:center;padding:24px}
         .card{width:100%;max-width:560px;padding:40px;border-radius:18px;background:var(--card);
             backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--card-border);
             box-shadow:0 20px 60px rgba(0,0,0,.25);min-height:460px}
         .logo{width:56px;height:56px;border-radius:9999px;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;
             font-size:14px;font-weight:600;margin:0 auto 12px}
-        h1{margin:0 0 24px;text-align:center;font-weight:600;font-size:32px;line-height:1.2}
-        h3{text-align:center}
+        h3{margin:0 0 24px;text-align:center;font-weight:600;font-size:32px;line-height:1.2}
+        h2{text-align:center}
         label{display:block;font-size:15px;margin-bottom:8px;color:var(--muted)}
         .input{width:100%;padding:16px 16px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;outline:none;font-size:16px}
         .input::placeholder{color:rgba(255,255,255,.7)}
@@ -43,8 +42,11 @@
 <body>
 <div class="card">
     {{-- Flash banners removed to avoid duplicate messages; SweetAlert handles flashes --}}
+    <div style="text-align:center;margin-bottom:12px">
+        <img src="/images/BGH LOGO.png" alt="Logo" style="width:120px;max-width:100%;height:auto;object-fit:contain;display:inline-block;border-radius:8px">
+    </div>
     <h3>POS System</h3>
-    <h1>Sign In</h1>
+    <h2>Sign In</h2>
     <form method="POST" action="{{ route('login.post') }}">
         @csrf
         <div>
@@ -54,9 +56,7 @@
         </div>
         <div class="actions">
             <label for="password" style="margin:0;color:var(--muted)">Password</label>
-            @if (Route::has('password.request'))
-                <a class="forgot" href="{{ route('password.request') }}">Forgot Password ?</a>
-            @endif
+            <a class="forgot" href="{{ Route::has('password.request') ? route('password.request') : url('/password/reset') }}">Forgot Password ?</a>
         </div>
         <div class="row">
             <input class="input" id="password" type="password" name="password" required placeholder="Enter Password">
@@ -67,7 +67,6 @@
         <button type="submit" class="btn">LOGIN</button>
     </form>
 </div>
-<!-- SweetAlert2 for nicer alerts -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // toggle password visibility
