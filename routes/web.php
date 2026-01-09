@@ -25,14 +25,11 @@ Route::post('/login', function (Request $request) {
         'password' => 'required',
     ]);
 
-    // Attempt authentication against the users table.
-    if (Auth::attempt($request->only('email', 'password')) ) {
-        // Regenerate session to prevent fixation
+    if (Auth::attempt($request->only('email', 'password'))) {
         $request->session()->regenerate();
         return redirect()->route('login')->with('success', 'Login successful');
     }
 
-    // Invalid credentials
     return back()->withInput()->with('error', 'Incorrect email or password');
 })->name('login.post');
 
@@ -40,7 +37,6 @@ Route::get('/dashboard', function () {
     return view('SuperAdmin.dashboard');
 })->middleware('auth')->name('dashboard');
 
-// Logout route
 Route::post('/logout', function (Request $request) {
     Auth::logout();
     $request->session()->invalidate();
@@ -49,11 +45,12 @@ Route::post('/logout', function (Request $request) {
 })->name('logout');
 
 Route::middleware('auth')->group(function () {
+    // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/avatar', [ProfileController::class, 'avatar'])->name('profile.avatar');
     Route::post('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
 
-    // Product page routes
+    // Product routes
     Route::prefix('superadmin')->group(function () {
         Route::get('/products', [SuperAdminProductController::class, 'index'])->name('superadmin.products.index');
         Route::get('/products/create', [SuperAdminProductController::class, 'create'])->name('superadmin.products.create');
@@ -62,18 +59,18 @@ Route::middleware('auth')->group(function () {
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy');
     });
+
+    // Password reset routes (remote)
+    Route::get('/password/reset', function () {
+        return view('auth.passwords.email');
+    })->name('password.request');
+
+    Route::post('/password/email', function (Request $request) {
+        $request->validate(['email' => 'required|email']);
+        $user = \App\Models\User::where('email', $request->input('email'))->first();
+        if ($user) {
+            // dispatch reset email here if implemented
+        }
+        return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
+    })->name('password.email');
 });
-
-// Password reset routes
-Route::get('/password/reset', function () {
-    return view('auth.passwords.email');
-})->name('password.request');
-
-Route::post('/password/email', function (Request $request) {
-    $request->validate(['email' => 'required|email']);
-    $user = \App\Models\User::where('email', $request->input('email'))->first();
-    if ($user) {
-        // dispatch reset email here if implemented
-    }
-    return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
-})->name('password.email');
