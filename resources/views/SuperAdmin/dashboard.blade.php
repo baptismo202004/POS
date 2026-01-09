@@ -43,15 +43,14 @@
         .dropdown-toggle .username { font-weight:600;color:#111827; }
         .dropdown-toggle .role { font-size:12px;color:var(--icon-muted);margin-left:2px; }
         .caret-icon { opacity:0.75; color:var(--icon-muted); }
+        /* (dark mode removed) */
     </style>
 </head>
 <body class="bg-white">
 
 <div class="d-flex min-vh-100">
-
     <!-- Sidebar -->
     @include('layouts.AdminSidebar')
-
     <!-- Main Content -->
     <main class="flex-fill p-4">
 
@@ -70,34 +69,7 @@
                     <option>Last 30 days</option>
                 </select>
 
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-light dropdown-toggle d-flex align-items-center gap-2" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="user-avatar">AD</div>
-                        <div class="d-flex flex-column ms-1 me-1" style="line-height:1">
-                            <span class="username">Admin User</span>
-                            <small class="role">Super Admin</small>
-                        </div>
-                        <svg class="icon caret-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="var(--icon-stroke)" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                    <ul class="dropdown-menu user-dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url('/profile') }}">
-                                <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20v-1c0-2.21 3.58-4 8-4s8 1.79 8 4v1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <span>Profile</span>
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form method="POST" action="{{ route('logout') }}" class="m-0">
-                                @csrf
-                                <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
-                                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 19V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <span>Logout</span>
-                                </button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
+                
             </div>
         </div>
 
@@ -224,9 +196,10 @@
         });
     }
 </script>
-
-<!-- SweetAlert -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// (dark mode removed)
+</script>
 
 @if(session('success') && request()->query('from') !== 'login')
 <script>
