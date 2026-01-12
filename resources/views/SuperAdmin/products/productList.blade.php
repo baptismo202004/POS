@@ -63,7 +63,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Brand</label>
-                                        <select name="brand_id" class="form-select select2-tags" style="width:100%">
+                                        <select name="brand_id" id="brandSelect" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Brand --</option>
                                             @foreach($brands ?? [] as $brand)
                                                 <option value="{{ $brand->id }}" {{ $isEdit && $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
@@ -73,7 +73,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Category</label>
-                                        <select name="category_id" class="form-select select2-tags" style="width:100%">
+                                        <select name="category_id" id="categorySelect" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Category --</option>
                                             @foreach($categories ?? [] as $cat)
                                                 <option value="{{ $cat->id }}" {{ $isEdit && $product->category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -92,7 +92,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Unit Type</label>
-                                        <select name="unit_type_id" class="form-select select2-tags" style="width:100%">
+                                        <select name="unit_type_id" id="unitTypeSelect" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Unit --</option>
                                             @foreach($unitTypes ?? [] as $ut)
                                                 <option value="{{ $ut->id }}" {{ $isEdit && $product->unit_type_id == $ut->id ? 'selected' : '' }}>{{ $ut->name }}</option>
@@ -279,11 +279,18 @@
         document.addEventListener('DOMContentLoaded', function(){
             // init select2 on non-creatable selects
             if (window.jQuery && $.fn.select2) {
-                $('.select2-tags').select2({
-                    tags: false, // Disable creatable tags
-                    placeholder: '-- Select --',
+                $('#brandSelect, #categorySelect').select2({
+                    tags: true,
+                    placeholder: '-- Select or create --',
                     allowClear: true,
                     width: 'resolve'
+                });
+
+                $('#productType, #unitTypeSelect').select2({
+                    placeholder: '-- Select --',
+                    allowClear: true,
+                    width: 'resolve',
+                    minimumResultsForSearch: Infinity // Hide search box for these
                 });
             }
 
@@ -325,34 +332,6 @@
                 }
             });
 
-            // Show input fields for adding new options
-            const toggleNewInputField = (selectElement, inputField) => {
-                selectElement.addEventListener('change', function() {
-                    if (this.value === 'new') {
-                        inputField.classList.remove('d-none');
-                        inputField.required = true;
-                    } else {
-                        inputField.classList.add('d-none');
-                        inputField.required = false;
-                    }
-                });
-            };
-
-            const brandSelect = document.querySelector('select[name="brand_id"]');
-            const brandInput = document.querySelector('input[name="new_brand"]');
-            toggleNewInputField(brandSelect, brandInput);
-
-            const categorySelect = document.querySelector('select[name="category_id"]');
-            const categoryInput = document.querySelector('input[name="new_category"]');
-            toggleNewInputField(categorySelect, categoryInput);
-
-            const productTypeSelect = document.querySelector('select[name="product_type_id"]');
-            const productTypeInput = document.querySelector('input[name="new_product_type"]');
-            toggleNewInputField(productTypeSelect, productTypeInput);
-
-            const unitTypeSelect = document.querySelector('select[name="unit_type_id"]');
-            const unitTypeInput = document.querySelector('input[name="new_unit_type"]');
-            toggleNewInputField(unitTypeSelect, unitTypeInput);
 
         });
     </script>

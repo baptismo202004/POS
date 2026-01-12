@@ -14,10 +14,12 @@
         :root{ --theme-color: #2563eb; }
         .theme-bg{ background-color: var(--theme-color) !important; }
         .theme-border{ border-color: var(--theme-color) !important; }
-        .theme-text{ color: var(--theme-color) !important; }
-        /* small helper to mix Bootstrap and tailwind spacing */
+        .theme-text{ color: var(--theme-or) !important; }
         .card-rounded{ border-radius: 12px; }
     </style>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-white">
 
@@ -32,6 +34,7 @@
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2 class="m-0">Purchases</h2>
+                                <a href="{{ route('superadmin.purchases.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Purchase</a>
                             </div>
 
                             <div class="table-responsive">
@@ -76,5 +79,18 @@
 
     <!-- Bootstrap JS bundle (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(session('success'))
+                Swal.fire({
+                    title: 'Success!',
+                    text: '{{ session('success') }}',
+                    icon: 'success',
+                    confirmButtonColor: 'var(--theme-color)',
+                });
+            @endif
+        });
+    </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 use App\Models\Product;
 use App\Models\ProductSerial;
@@ -54,26 +55,40 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->ajax()) {
+            $validator = Validator::make($request->all(), [
+                'product_name' => 'required|string|max:255',
+                'barcode' => 'required|string|unique:products,barcode',
+                'brand_id' => 'nullable|exists:brands,id',
+                'category_id' => 'nullable|exists:categories,id',
+                'tracking_type' => 'required|in:none,serial,imei',
+                'warranty_type' => 'required|in:none,shop,manufacturer',
+                'status' => 'required|in:active,inactive',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()]);
+            }
+
+            $product = Product::create($validator->validated());
+
+            return response()->json(['success' => true, 'product' => $product]);
+        }
+
         $validated = $request->validate([
             'product_name' => 'required|string|max:255',
             'barcode' => 'required|string|unique:products,barcode',
-
-            // allow ids OR free-text values (we'll resolve/create below)
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
             'product_type_id' => 'nullable',
             'unit_type_id' => 'nullable',
-
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
-
             'tracking_type' => 'required|in:none,serial,imei',
             'warranty_type' => 'required|in:none,shop,manufacturer',
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
-
-            // serials (only for electronic)
             'serials' => 'nullable|array',
             'serials.*.branch_id' => 'required_with:serials|exists:branches,id',
             'serials.*.serial_number' => 'required_with:serials|string|distinct',
@@ -81,75 +96,23 @@ class ProductController extends Controller
             'serials.*.warranty_expiry_date' => 'nullable|date',
         ]);
 
-        // Resolve possible string inputs (from select2 "tags") into actual IDs
-        // brand/category/product type/unit type may be either an existing id or a new string name
         if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
-            $b = new Brand();
-            $b->brand_name = $request->input('brand_id');
-            $b->status = 'active';
-            $b->save();
+            $b = Brand::create(['brand_name' => $request->input('brand_id'), 'status' => 'active']);
             $validated['brand_id'] = $b->id;
         }
 
         if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
-            $c = new Category();
-            $c->category_name = $request->input('category_id');
-            $c->status = 'active';
-            $c->save();
+            $c = Category::create(['category_name' => $request->input('category_id'), 'status' => 'active']);
             $validated['category_id'] = $c->id;
         }
 
-        if (!empty($request->input('product_type_id')) && !is_numeric($request->input('product_type_id'))) {
-            $pt = new ProductType();
-            $pt->type_name = $request->input('product_type_id');
-            $pt->is_electronic = false;
-            $pt->save();
-            $validated['product_type_id'] = $pt->id;
-        }
-
-        if (!empty($request->input('unit_type_id')) && !is_numeric($request->input('unit_type_id'))) {
-            $ut = new UnitType();
-            $ut->unit_name = $request->input('unit_type_id');
-            $ut->save();
-            $validated['unit_type_id'] = $ut->id;
-        }
-
-        // Handle new brand input
-        if ($request->filled('new_brand')) {
-            $brand = Brand::create(['name' => $request->input('new_brand'), 'status' => 'active']);
-            $validated['brand_id'] = $brand->id;
-        }
-
-        // Handle new category input
-        if ($request->filled('new_category')) {
-            $category = Category::create(['name' => $request->input('new_category'), 'status' => 'active']);
-            $validated['category_id'] = $category->id;
-        }
-
-        // Handle new product type input
-        if ($request->filled('new_product_type')) {
-            $productType = ProductType::create(['name' => $request->input('new_product_type')]);
-            $validated['product_type_id'] = $productType->id;
-        }
-
-        // Handle new unit type input
-        if ($request->filled('new_unit_type')) {
-            $unitType = UnitType::create(['name' => $request->input('new_unit_type')]);
-            $validated['unit_type_id'] = $unitType->id;
-        }
-
         DB::transaction(function () use ($request, $validated) {
-
-            // Upload image
             if ($request->hasFile('image')) {
-                $validated['image'] = $request->file('image')
-                    ->store('products', 'public');
+                $validated['image'] = $request->file('image')->store('products', 'public');
             }
 
-            // Create product
             $product = Product::create($validated);
 
-            // Save serials (if electronic)
             if ($request->filled('serials')) {
                 foreach ($request->serials as $serial) {
                     ProductSerial::create([
@@ -163,9 +126,7 @@ class ProductController extends Controller
             }
         });
 
-        return redirect()
-            ->route('superadmin.products.index')
-            ->with('success', 'Product created successfully.');
+        return redirect()->route('superadmin.products.index')->with('success', 'Product created successfully.');
     }
 
 
