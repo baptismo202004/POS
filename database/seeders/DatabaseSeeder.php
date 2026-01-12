@@ -10,12 +10,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(UserTypeSeeder::class);
+        $this->call(UserAndUserTypeSeeder::class);
 
-        User::create([
-            'email' => 'test@example.com',
-            'password' => Hash::make('password'),
-            'user_type_id' => 1, // Admin
-        ]);
     }
 }
