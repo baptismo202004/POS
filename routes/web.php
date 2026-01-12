@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -10,6 +10,7 @@ use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SuperAdmin\PurchaseController;
 
 Route::get('/', function () {
     return view('login');
@@ -58,6 +59,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->name('superadmin.products.edit');
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy');
+
+        // Purchase routes
+        Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
     });
 
     // Password reset routes (remote)
