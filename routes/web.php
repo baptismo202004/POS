@@ -69,8 +69,6 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
     })->name('password.email');
 });
-<<<<<<< Updated upstream
-=======
 // Password reset (simple request flow)
 Route::get('/password/reset', function () {
     return view('auth.passwords.email');
@@ -85,6 +83,3 @@ Route::post('/password/email', function (Request $request) {
     }
     return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
 })->name('password.email');
-
-
->>>>>>> Stashed changes

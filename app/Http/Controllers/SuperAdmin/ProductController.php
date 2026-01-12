@@ -58,10 +58,11 @@ class ProductController extends Controller
             'product_name' => 'required|string|max:255',
             'barcode' => 'required|string|unique:products,barcode',
 
-            'brand_id' => 'nullable|exists:brands,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'nullable|exists:product_types,id',
-            'unit_type_id' => 'nullable|exists:unit_types,id',
+            // allow ids OR free-text values (we'll resolve/create below)
+            'brand_id' => 'nullable',
+            'category_id' => 'nullable',
+            'product_type_id' => 'nullable',
+            'unit_type_id' => 'nullable',
 
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
@@ -79,6 +80,63 @@ class ProductController extends Controller
             'serials.*.status' => 'required_with:serials|in:in_stock,sold,returned,defective,lost',
             'serials.*.warranty_expiry_date' => 'nullable|date',
         ]);
+
+        // Resolve possible string inputs (from select2 "tags") into actual IDs
+        // brand/category/product type/unit type may be either an existing id or a new string name
+        if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
+            $b = new Brand();
+            $b->brand_name = $request->input('brand_id');
+            $b->status = 'active';
+            $b->save();
+            $validated['brand_id'] = $b->id;
+        }
+
+        if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
+            $c = new Category();
+            $c->category_name = $request->input('category_id');
+            $c->status = 'active';
+            $c->save();
+            $validated['category_id'] = $c->id;
+        }
+
+        if (!empty($request->input('product_type_id')) && !is_numeric($request->input('product_type_id'))) {
+            $pt = new ProductType();
+            $pt->type_name = $request->input('product_type_id');
+            $pt->is_electronic = false;
+            $pt->save();
+            $validated['product_type_id'] = $pt->id;
+        }
+
+        if (!empty($request->input('unit_type_id')) && !is_numeric($request->input('unit_type_id'))) {
+            $ut = new UnitType();
+            $ut->unit_name = $request->input('unit_type_id');
+            $ut->save();
+            $validated['unit_type_id'] = $ut->id;
+        }
+
+        // Handle new brand input
+        if ($request->filled('new_brand')) {
+            $brand = Brand::create(['name' => $request->input('new_brand'), 'status' => 'active']);
+            $validated['brand_id'] = $brand->id;
+        }
+
+        // Handle new category input
+        if ($request->filled('new_category')) {
+            $category = Category::create(['name' => $request->input('new_category'), 'status' => 'active']);
+            $validated['category_id'] = $category->id;
+        }
+
+        // Handle new product type input
+        if ($request->filled('new_product_type')) {
+            $productType = ProductType::create(['name' => $request->input('new_product_type')]);
+            $validated['product_type_id'] = $productType->id;
+        }
+
+        // Handle new unit type input
+        if ($request->filled('new_unit_type')) {
+            $unitType = UnitType::create(['name' => $request->input('new_unit_type')]);
+            $validated['unit_type_id'] = $unitType->id;
+        }
 
         DB::transaction(function () use ($request, $validated) {
 
@@ -110,10 +168,7 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully.');
     }
 
-    /**
-     * Show edit product form
-     * GET /products/{product}/edit
-     */
+
     public function edit(Product $product)
     {
         $product->load('serials');
@@ -138,10 +193,11 @@ class ProductController extends Controller
             'product_name' => 'required|string|max:255',
             'barcode' => 'required|string|unique:products,barcode,' . $product->id,
 
-            'brand_id' => 'nullable|exists:brands,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'nullable|exists:product_types,id',
-            'unit_type_id' => 'nullable|exists:unit_types,id',
+            // allow ids OR free-text values (we'll resolve/create below)
+            'brand_id' => 'nullable',
+            'category_id' => 'nullable',
+            'product_type_id' => 'nullable',
+            'unit_type_id' => 'nullable',
 
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
@@ -154,6 +210,38 @@ class ProductController extends Controller
 
             'serials' => 'nullable|array',
         ]);
+
+        // Resolve possible string inputs (from select2 "tags") into actual IDs for update
+        if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
+            $b = new Brand();
+            $b->brand_name = $request->input('brand_id');
+            $b->status = 'active';
+            $b->save();
+            $validated['brand_id'] = $b->id;
+        }
+
+        if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
+            $c = new Category();
+            $c->category_name = $request->input('category_id');
+            $c->status = 'active';
+            $c->save();
+            $validated['category_id'] = $c->id;
+        }
+
+        if (!empty($request->input('product_type_id')) && !is_numeric($request->input('product_type_id'))) {
+            $pt = new ProductType();
+            $pt->type_name = $request->input('product_type_id');
+            $pt->is_electronic = false;
+            $pt->save();
+            $validated['product_type_id'] = $pt->id;
+        }
+
+        if (!empty($request->input('unit_type_id')) && !is_numeric($request->input('unit_type_id'))) {
+            $ut = new UnitType();
+            $ut->unit_name = $request->input('unit_type_id');
+            $ut->save();
+            $validated['unit_type_id'] = $ut->id;
+        }
 
         DB::transaction(function () use ($request, $product, $validated) {
 
