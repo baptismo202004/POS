@@ -85,10 +85,8 @@
                                         <label class="form-label">Product Type</label>
                                         <select name="product_type_id" id="productType" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Type --</option>
-                                            @foreach($productTypes ?? [] as $pt)
-                                                {{-- mark data-electronic="1" when this type should trigger electronic fields --}}
-                                                <option value="{{ $pt->id }}" data-electronic="{{ strtolower($pt->name) === 'electronic' ? '1' : '0' }}" {{ $isEdit && $product->product_type_id == $pt->id ? 'selected' : '' }}>{{ $pt->name }}</option>
-                                            @endforeach
+                                            <option value="1" data-electronic="1" {{ $isEdit && $product->product_type_id == 1 ? 'selected' : '' }}>Electronic</option>
+                                            <option value="2" data-electronic="0" {{ $isEdit && $product->product_type_id == 2 ? 'selected' : '' }}>Non-Electronic</option>
                                         </select>
                                     </div>
 
@@ -223,7 +221,6 @@
                     </div>
                 </div>
 
-                {{-- Optional: product list / table can go here --}}
             </div>
         </main>
     </div>
@@ -280,24 +277,22 @@
         }
 
         document.addEventListener('DOMContentLoaded', function(){
-            // init select2 on creatable selects
+            // init select2 on non-creatable selects
             if (window.jQuery && $.fn.select2) {
                 $('.select2-tags').select2({
-                    tags: true,
-                    tokenSeparators: [','],
+                    tags: false, // Disable creatable tags
                     placeholder: '-- Select --',
                     allowClear: true,
                     width: 'resolve'
                 });
             }
+
             const productType = document.getElementById('productType');
             const electronicArea = document.getElementById('electronicArea');
-            const addSerialBtn = document.getElementById('addSerialBtn');
-            const serialsContainer = document.getElementById('serialsContainer');
-            const serialTemplate = document.getElementById('serialRowTemplate');
 
             function toggleElectronicArea(){
-                if(isSelectedTypeElectronic(productType)){
+                const selectedOption = productType.options[productType.selectedIndex];
+                if (selectedOption && selectedOption.text === 'Electronic') {
                     electronicArea.classList.remove('d-none');
                 } else {
                     electronicArea.classList.add('d-none');
@@ -305,7 +300,7 @@
             }
 
             productType.addEventListener('change', toggleElectronicArea);
-            toggleElectronicArea(); // initial
+            toggleElectronicArea(); // initial call to set visibility based on default selection
 
             addSerialBtn.addEventListener('click', function(){
                 const node = document.importNode(serialTemplate.content, true);
@@ -319,6 +314,45 @@
                     if(row) row.remove();
                 }
             });
+
+            // Show new entry field based on selection
+            $('.form-select').on('change', function(){
+                const selectedValue = $(this).val();
+                if(selectedValue === 'new'){
+                    $(this).next('input').removeClass('d-none').focus();
+                } else {
+                    $(this).next('input').addClass('d-none');
+                }
+            });
+
+            // Show input fields for adding new options
+            const toggleNewInputField = (selectElement, inputField) => {
+                selectElement.addEventListener('change', function() {
+                    if (this.value === 'new') {
+                        inputField.classList.remove('d-none');
+                        inputField.required = true;
+                    } else {
+                        inputField.classList.add('d-none');
+                        inputField.required = false;
+                    }
+                });
+            };
+
+            const brandSelect = document.querySelector('select[name="brand_id"]');
+            const brandInput = document.querySelector('input[name="new_brand"]');
+            toggleNewInputField(brandSelect, brandInput);
+
+            const categorySelect = document.querySelector('select[name="category_id"]');
+            const categoryInput = document.querySelector('input[name="new_category"]');
+            toggleNewInputField(categorySelect, categoryInput);
+
+            const productTypeSelect = document.querySelector('select[name="product_type_id"]');
+            const productTypeInput = document.querySelector('input[name="new_product_type"]');
+            toggleNewInputField(productTypeSelect, productTypeInput);
+
+            const unitTypeSelect = document.querySelector('select[name="unit_type_id"]');
+            const unitTypeInput = document.querySelector('input[name="new_unit_type"]');
+            toggleNewInputField(unitTypeSelect, unitTypeInput);
 
         });
     </script>

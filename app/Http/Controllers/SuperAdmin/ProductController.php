@@ -114,6 +114,30 @@ class ProductController extends Controller
             $validated['unit_type_id'] = $ut->id;
         }
 
+        // Handle new brand input
+        if ($request->filled('new_brand')) {
+            $brand = Brand::create(['name' => $request->input('new_brand'), 'status' => 'active']);
+            $validated['brand_id'] = $brand->id;
+        }
+
+        // Handle new category input
+        if ($request->filled('new_category')) {
+            $category = Category::create(['name' => $request->input('new_category'), 'status' => 'active']);
+            $validated['category_id'] = $category->id;
+        }
+
+        // Handle new product type input
+        if ($request->filled('new_product_type')) {
+            $productType = ProductType::create(['name' => $request->input('new_product_type')]);
+            $validated['product_type_id'] = $productType->id;
+        }
+
+        // Handle new unit type input
+        if ($request->filled('new_unit_type')) {
+            $unitType = UnitType::create(['name' => $request->input('new_unit_type')]);
+            $validated['unit_type_id'] = $unitType->id;
+        }
+
         DB::transaction(function () use ($request, $validated) {
 
             // Upload image
@@ -144,10 +168,7 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully.');
     }
 
-    /**
-     * Show edit product form
-     * GET /products/{product}/edit
-     */
+
     public function edit(Product $product)
     {
         $product->load('serials');
