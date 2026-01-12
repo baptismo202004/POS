@@ -55,8 +55,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy');
 
+<<<<<<< Updated upstream
         // Purchase routes
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
+=======
+        // Settings routes
+        Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class, ['as' => 'superadmin']);
+        Route::resource('categories', \App\Http\Controllers\SuperAdmin\CategoryController::class, ['as' => 'superadmin']);
+        Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class, ['as' => 'superadmin']);
+        Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class, ['as' => 'superadmin']);
+        Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class, ['as' => 'superadmin']);
+>>>>>>> Stashed changes
     });
 
     // Password reset routes (remote)
@@ -87,3 +96,8 @@ Route::post('/password/email', function (Request $request) {
     }
     return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
 })->name('password.email');
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes

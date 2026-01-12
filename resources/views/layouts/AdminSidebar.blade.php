@@ -32,6 +32,51 @@
         .dropdown-item:hover { background:#f8fafc; }
         .dropdown-toggle .username { font-weight:600; color:#111827; }
         .dropdown-toggle .role { font-size:12px; color:#60a5fa; margin-left:2px; }
+
+        /* Nested dropdown styles */
+        .dropdown-submenu {
+            position: relative;
+        }
+        .dropdown-submenu .dropdown-menu {
+            top: 0;
+            left: 100%;
+            margin-top: -6px;
+            margin-left: -1px;
+            -webkit-border-radius: 0 6px 6px 6px;
+            -moz-border-radius: 0 6px 6px;
+            border-radius: 0 6px 6px 6px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .dropdown-submenu:hover .dropdown-menu {
+            display: block;
+        }
+        .dropdown-submenu a:after {
+            display: block;
+            content: " ";
+            float: right;
+            width: 0;
+            height: 0;
+            border-color: transparent;
+            border-style: solid;
+            border-width: 5px 0 5px 5px;
+            border-left-color: #ccc;
+            margin-top: 5px;
+            margin-right: -10px;
+        }
+        .dropdown-submenu:hover a:after {
+            border-left-color: #fff;
+        }
+        .dropdown-submenu.pull-left {
+            float: none;
+        }
+        .dropdown-submenu.pull-left .dropdown-menu {
+            left: -100%;
+            margin-left: 10px;
+            -webkit-border-radius: 6px 0 6px 6px;
+            -moz-border-radius: 6px 0 6px 6px;
+            border-radius: 6px 0 6px 6px;
+        }
     </style>
     <div>
         <div class="d-flex align-items-center gap-3 mb-5">
@@ -130,11 +175,18 @@
                     <span>Profile</span>
                 </a>
             </li>
-            <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="#">
+            <li class="dropdown-submenu">
+                <a class="dropdown-item d-flex align-items-center gap-2 dropdown-toggle" href="#" aria-expanded="false">
                     <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span>Settings</span>
                 </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ route('superadmin.brands.index') }}">Brands</a></li>
+                    <li><a class="dropdown-item" href="{{ route('superadmin.categories.index') }}">Categories</a></li>
+                    <li><a class="dropdown-item" href="{{ route('superadmin.product-types.index') }}">Product Types</a></li>
+                    <li><a class="dropdown-item" href="{{ route('superadmin.unit-types.index') }}">Unit Types</a></li>
+                    <li><a class="dropdown-item" href="{{ route('superadmin.branches.index') }}">Branches</a></li>
+                </ul>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
@@ -150,3 +202,42 @@
     </div>
 </aside>
 <!-- dark mode removed -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle submenu positioning to stay within viewport
+    const submenus = document.querySelectorAll('.dropdown-submenu .dropdown-menu');
+    
+    submenus.forEach(function(submenu) {
+        const parent = submenu.parentElement;
+        
+        parent.addEventListener('mouseenter', function() {
+            const rect = submenu.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const windowWidth = window.innerWidth;
+            
+            // Reset any previous adjustments
+            submenu.style.maxHeight = '80vh';
+            submenu.style.overflowY = 'auto';
+            
+            // Check if submenu goes beyond right edge
+            if (rect.right > windowWidth) {
+                submenu.style.left = '-100%';
+                submenu.style.marginLeft = '10px';
+            } else {
+                submenu.style.left = '100%';
+                submenu.style.marginLeft = '-1px';
+            }
+            
+            // Check if submenu goes beyond bottom edge
+            if (rect.bottom > windowHeight) {
+                submenu.style.top = 'auto';
+                submenu.style.bottom = '0';
+                submenu.style.maxHeight = (windowHeight - rect.top) + 'px';
+            } else {
+                submenu.style.top = '0';
+                submenu.style.bottom = 'auto';
+            }
+        });
+    });
+});
+</script>

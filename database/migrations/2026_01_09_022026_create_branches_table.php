@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('branch_name');
             $table->string('address')->nullable();
+            $table->unsignedBigInteger('assign_to')->nullable();
             $table->enum('status', ['active','inactive'])->default('active');
             $table->timestamps();
         });

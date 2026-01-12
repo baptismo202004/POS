@@ -42,18 +42,22 @@ class UserAndUserTypeSeeder extends Seeder
         // ============================
         DB::table('users')->insert([
             [
-                'email' => 'admin@example.com',
+                'name' => 'Admin User',
+                'email' => 'dablo@sample.com',
                 'password' => Hash::make('password'),
                 'profile_picture' => null,
                 'user_type_id' => 1, // Admin
+                'status' => 'active',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
+                'name' => 'Cashier User',
                 'email' => 'cashier@example.com',
                 'password' => Hash::make('password'),
                 'profile_picture' => null,
                 'user_type_id' => 2, // Cashier
+                'status' => 'active',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
