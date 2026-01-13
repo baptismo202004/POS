@@ -49,7 +49,7 @@
                                             <th>Barcode</th>
                                             <th>Brand</th>
                                             <th>Category</th>
-                                            <th>Product Type</th>
+                                            <th>Electronic</th>
                                             <th>Unit Type</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -63,7 +63,10 @@
                                                 <td>{{ $product->barcode }}</td>
                                                 <td>{{ $product->brand->name ?? 'N/A' }}</td>
                                                 <td>{{ $product->category->name ?? 'N/A' }}</td>
-                                                <td>{{ $product->productType->name ?? 'N/A' }}</td>
+                                                <td>
+                                                    @php $isElectronic = optional($product->category)->is_electronic ?? false; @endphp
+                                                    <span class="badge {{ $isElectronic ? 'bg-info' : 'bg-secondary' }}">{{ $isElectronic ? 'Yes' : 'No' }}</span>
+                                                </td>
                                                 <td>{{ $product->unitType->name ?? 'N/A' }}</td>
                                                 <td>
                                                     <span class="badge {{ $product->status === 'active' ? 'bg-success' : 'bg-secondary' }}">

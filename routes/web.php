@@ -51,10 +51,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/products', [SuperAdminProductController::class, 'index'])->name('superadmin.products.index');
         Route::get('/products/create', [SuperAdminProductController::class, 'create'])->name('superadmin.products.create');
         Route::post('/products', [SuperAdminProductController::class, 'store'])->name('superadmin.products.store');
+        // Place static helper routes BEFORE parameterized routes to avoid 405 conflicts
+        Route::get('/products/checkName', [SuperAdminProductController::class, 'checkName'])->name('superadmin.products.check-name');
+        Route::get('/products/checkBarcode', [SuperAdminProductController::class, 'checkBarcode'])->name('superadmin.products.check-barcode');
         Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->name('superadmin.products.edit');
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->name('superadmin.products.destroy');
-
+        
         // Purchase routes
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('superadmin.purchases.create');

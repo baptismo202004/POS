@@ -14,7 +14,6 @@ class Product extends Model
         'barcode',
         'brand_id',
         'category_id',
-        'product_type_id',
         'unit_type_id',
         'model_number',
         'image',
@@ -36,10 +35,7 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function productType()
-    {
-        return $this->belongsTo(ProductType::class);
-    }
+    // Removed productType relationship; category now handles is_electronic
 
     public function unitType()
     {

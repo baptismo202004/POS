@@ -12,7 +12,6 @@ use App\Models\Product;
 use App\Models\ProductSerial;
 use App\Models\Brand;
 use App\Models\Category;
-use App\Models\ProductType;
 use App\Models\UnitType;
 use App\Models\Branch;
 
@@ -27,7 +26,6 @@ class ProductController extends Controller
         $products = Product::with([
             'brand',
             'category',
-            'productType',
             'unitType'
         ])->latest()->paginate(15);
 
@@ -43,7 +41,6 @@ class ProductController extends Controller
         return view('SuperAdmin.products.productList', [
             'brands'       => Brand::where('status', 'active')->get(),
             'categories'   => Category::where('status', 'active')->get(),
-            'productTypes' => ProductType::all(),
             'unitTypes'    => UnitType::all(),
             'branches'     => Branch::all(),
         ]);
@@ -80,7 +77,6 @@ class ProductController extends Controller
             'barcode' => 'required|string|unique:products,barcode',
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
-            'product_type_id' => 'nullable',
             'unit_type_id' => 'nullable',
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
@@ -97,13 +93,41 @@ class ProductController extends Controller
         ]);
 
         if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
-            $b = Brand::create(['brand_name' => $request->input('brand_id'), 'status' => 'active']);
+            $b = Brand::firstOrCreate(
+                ['brand_name' => $request->input('brand_id')],
+                ['status' => 'active']
+            );
+            if (!$b->wasRecentlyCreated) {
+                session()->flash('notice', "Brand '" . $b->brand_name . "' already exists. Selected it automatically.");
+            }
             $validated['brand_id'] = $b->id;
         }
 
+        // Category: create or select existing; update is_electronic if different
         if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
-            $c = Category::create(['category_name' => $request->input('category_id'), 'status' => 'active']);
+            $requestedElectronic = (bool) $request->input('is_electronic', false);
+            $c = Category::firstOrCreate(
+                ['category_name' => $request->input('category_id')],
+                ['is_electronic' => $requestedElectronic, 'status' => 'active']
+            );
+            if (!$c->wasRecentlyCreated) {
+                if ((bool) $c->is_electronic !== $requestedElectronic) {
+                    $c->is_electronic = $requestedElectronic;
+                    $c->save();
+                    session()->flash('notice', "Category '" . $c->category_name . "' already exists and its electronic setting was updated to match your selection.");
+                } else {
+                    session()->flash('notice', "Category '" . $c->category_name . "' already exists. Selected it automatically.");
+                }
+            }
             $validated['category_id'] = $c->id;
+        }
+
+        if (!empty($request->input('unit_type_id')) && !is_numeric($request->input('unit_type_id'))) {
+            $ut = UnitType::firstOrCreate(['unit_name' => $request->input('unit_type_id')]);
+            if (!$ut->wasRecentlyCreated) {
+                session()->flash('notice', "Unit type '" . $ut->unit_name . "' already exists. Selected it automatically.");
+            }
+            $validated['unit_type_id'] = $ut->id;
         }
 
         DB::transaction(function () use ($request, $validated) {
@@ -138,7 +162,6 @@ class ProductController extends Controller
             'product'      => $product,
             'brands'       => Brand::where('status', 'active')->get(),
             'categories'   => Category::where('status', 'active')->get(),
-            'productTypes' => ProductType::all(),
             'unitTypes'    => UnitType::all(),
             'branches'     => Branch::all(),
         ]);
@@ -157,7 +180,6 @@ class ProductController extends Controller
             // allow ids OR free-text values (we'll resolve/create below)
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
-            'product_type_id' => 'nullable',
             'unit_type_id' => 'nullable',
 
             'model_number' => 'nullable|string|max:255',
@@ -174,33 +196,40 @@ class ProductController extends Controller
 
         // Resolve possible string inputs (from select2 "tags") into actual IDs for update
         if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
-            $b = new Brand();
-            $b->brand_name = $request->input('brand_id');
-            $b->status = 'active';
-            $b->save();
+            $b = Brand::firstOrCreate(
+                ['brand_name' => $request->input('brand_id')],
+                ['status' => 'active']
+            );
+            if (!$b->wasRecentlyCreated) {
+                session()->flash('notice', "Brand '" . $b->brand_name . "' already exists. Selected it automatically.");
+            }
             $validated['brand_id'] = $b->id;
         }
 
+        // Category: create or select existing; update is_electronic if different
         if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
-            $c = new Category();
-            $c->category_name = $request->input('category_id');
-            $c->status = 'active';
-            $c->save();
+            $requestedElectronic = (bool) $request->input('is_electronic', false);
+            $c = Category::firstOrCreate(
+                ['category_name' => $request->input('category_id')],
+                ['is_electronic' => $requestedElectronic, 'status' => 'active']
+            );
+            if (!$c->wasRecentlyCreated) {
+                if ((bool) $c->is_electronic !== $requestedElectronic) {
+                    $c->is_electronic = $requestedElectronic;
+                    $c->save();
+                    session()->flash('notice', "Category '" . $c->category_name . "' already exists and its electronic setting was updated to match your selection.");
+                } else {
+                    session()->flash('notice', "Category '" . $c->category_name . "' already exists. Selected it automatically.");
+                }
+            }
             $validated['category_id'] = $c->id;
         }
 
-        if (!empty($request->input('product_type_id')) && !is_numeric($request->input('product_type_id'))) {
-            $pt = new ProductType();
-            $pt->type_name = $request->input('product_type_id');
-            $pt->is_electronic = false;
-            $pt->save();
-            $validated['product_type_id'] = $pt->id;
-        }
-
         if (!empty($request->input('unit_type_id')) && !is_numeric($request->input('unit_type_id'))) {
-            $ut = new UnitType();
-            $ut->unit_name = $request->input('unit_type_id');
-            $ut->save();
+            $ut = UnitType::firstOrCreate(['unit_name' => $request->input('unit_type_id')]);
+            if (!$ut->wasRecentlyCreated) {
+                session()->flash('notice', "Unit type '" . $ut->unit_name . "' already exists. Selected it automatically.");
+            }
             $validated['unit_type_id'] = $ut->id;
         }
 
@@ -254,5 +283,56 @@ class ProductController extends Controller
         return redirect()
             ->route('superadmin.products.index')
             ->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * AJAX: Check for similar product names and existence
+     * GET /superadmin/products/check-name?name=...
+     */
+    public function checkName(Request $request)
+    {
+        $name = trim((string) $request->query('name', ''));
+        if ($name === '') {
+            return response()->json(['ok' => true, 'exists' => false, 'suggestions' => []]);
+        }
+
+        $query = Product::query();
+        $query->where(function ($q) use ($name) {
+            $q->where('product_name', $name)
+              ->orWhere('product_name', 'like', '%' . str_replace(['%', '_'], ['\\%', '\\_'], $name) . '%');
+        });
+
+        $matches = $query->limit(8)->pluck('product_name');
+        $existsExact = $matches->contains(function ($v) use ($name) { return mb_strtolower($v) === mb_strtolower($name); });
+
+        return response()->json([
+            'ok' => true,
+            'exists' => $existsExact,
+            'suggestions' => $matches,
+        ]);
+    }
+
+    /**
+     * AJAX: Check if a barcode already exists
+     * GET /superadmin/products/check-barcode?barcode=...&ignore_id=...
+     */
+    public function checkBarcode(Request $request)
+    {
+        $barcode = trim((string) $request->query('barcode', ''));
+        if ($barcode === '') {
+            return response()->json(['ok' => true, 'duplicate' => false]);
+        }
+
+        $ignoreId = $request->query('ignore_id');
+        $query = Product::where('barcode', $barcode);
+        if (!empty($ignoreId)) {
+            $query->where('id', '!=', $ignoreId);
+        }
+        $exists = $query->exists();
+
+        return response()->json([
+            'ok' => true,
+            'duplicate' => $exists,
+        ]);
     }
 }
