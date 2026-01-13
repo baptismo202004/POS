@@ -12,7 +12,9 @@ class Purchase extends Model
     protected $fillable = [
         'supplier_id',
         'branch_id',
+        'reference_number',
         'total_cost',
+        'payment_status',
         'purchase_date',
     ];
 

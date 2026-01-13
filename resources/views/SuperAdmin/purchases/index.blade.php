@@ -41,9 +41,9 @@
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>
-                                            <th>Reference Numbers</th>
+                                            <th>Reference Number</th>
                                             <th>Purchase Date</th>
-                                            <th>Branch</th>
+                                            <th>Payment Status</th>
                                             <th>Items</th>
                                             <th>Total Cost</th>
                                         </tr>
@@ -51,9 +51,17 @@
                                     <tbody>
                                         @forelse($purchases as $purchase)
                                             <tr>
-                                                <td>{{ $purchase->items->pluck('reference_number')->filter()->implode(', ') ?: 'N/A' }}</td>
-                                                <td>{{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}</td>
-                                                <td>{{ $purchase->branch->branch_name ?? 'N/A' }}</td>
+                                                <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
+                                                <td>
+                                                    <a href="{{ route('superadmin.purchases.show', $purchase) }}">
+                                                        {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">
+                                                        {{ ucfirst($purchase->payment_status) }}
+                                                    </span>
+                                                </td>
                                                 <td>{{ $purchase->items->count() }} item(s)</td>
                                                 <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
                                             </tr>

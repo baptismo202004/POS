@@ -13,7 +13,7 @@ class PurchaseItem extends Model
         'purchase_id',
         'product_id',
         'quantity',
-        'reference_number',
+        'unit_type_id',
         'unit_cost',
         'subtotal',
     ];
@@ -32,5 +32,10 @@ class PurchaseItem extends Model
     public function product(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unitType(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(UnitType::class);
     }
 }

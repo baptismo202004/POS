@@ -42,18 +42,44 @@ class StockInController extends Controller
             'items.*.price' => 'nullable|numeric|min:0',
         ]);
 
+        $purchase = Purchase::with('items.product')->findOrFail($validated['purchase_id']);
         $stockInCount = 0;
+        $errorMessages = [];
+
         foreach ($validated['items'] as $item) {
-            if (!empty($item['quantity']) && $item['quantity'] > 0) {
-                StockIn::create([
-                    'product_id' => $item['product_id'],
-                    'branch_id' => $validated['branch_id'],
-                    'purchase_id' => $validated['purchase_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                ]);
-                $stockInCount++;
+            if (empty($item['quantity']) || $item['quantity'] <= 0) {
+                continue;
             }
+
+            $purchaseItem = $purchase->items->firstWhere('product_id', $item['product_id']);
+
+            if (!$purchaseItem) {
+                return back()->withInput()->with('error', 'Invalid product found in the stock-in request.');
+            }
+
+            $totalStockedIn = StockIn::where('purchase_id', $validated['purchase_id'])
+                                     ->where('product_id', $item['product_id'])
+                                     ->sum('quantity');
+
+            $availableQuantity = $purchaseItem->quantity - $totalStockedIn;
+
+            if ($item['quantity'] > $availableQuantity) {
+                $errorMessages[] = "Cannot stock in {$item['quantity']} for {$purchaseItem->product->product_name}. Only {$availableQuantity} remaining.";
+                continue;
+            }
+
+            StockIn::create([
+                'product_id' => $item['product_id'],
+                'branch_id' => $validated['branch_id'],
+                'purchase_id' => $validated['purchase_id'],
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+            ]);
+            $stockInCount++;
+        }
+
+        if (!empty($errorMessages)) {
+            return back()->withInput()->with('error', implode('<br>', $errorMessages));
         }
 
         if ($stockInCount > 0) {

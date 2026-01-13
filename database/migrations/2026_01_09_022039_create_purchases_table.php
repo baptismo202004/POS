@@ -16,9 +16,9 @@ return new class extends Migration
 
             $table->unsignedBigInteger('supplier_id')->nullable();
             $table->foreignId('branch_id')->constrained('branches');
-
             $table->string('reference_number')->nullable();
             $table->decimal('total_cost', 12, 2);
+            $table->string('payment_status')->default('pending');
             $table->date('purchase_date');
 
             $table->timestamps();

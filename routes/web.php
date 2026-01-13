@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('superadmin.purchases.create');
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('superadmin.purchases.store');
+        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('superadmin.purchases.show');
 
         // Stock In routes
         Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->name('superadmin.stockin.index');
@@ -72,6 +73,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class, ['as' => 'superadmin']);
         Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class, ['as' => 'superadmin']);
         Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class, ['as' => 'superadmin']);
+        Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class, ['as' => 'superadmin']);
     });
 
     // Password reset routes (remote)

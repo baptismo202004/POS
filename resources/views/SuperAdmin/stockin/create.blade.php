@@ -56,6 +56,16 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
+        @if(session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Stock-in Error',
+            html: '{!! session('error') !!}',
+            confirmButtonText: 'Okay',
+            confirmButtonColor: '#3085d6',
+        });
+        @endif
+
         $('#purchase_id').on('change', function() {
             var purchaseId = $(this).val();
             var tableBody = $('#purchase-items-table-body');

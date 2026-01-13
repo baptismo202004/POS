@@ -71,26 +71,42 @@
                             <input type="date" name="purchase_date" class="form-control" required
                                    value="{{ date('Y-m-d') }}">
                         </div>
-
+                         <div class="col-md-4">
+                            <label class="form-label">Supplier</label>
+                            <select name="supplier_id" class="form-select supplier-select">
+                                <option value="">-- Select Supplier --</option>
+                                @foreach($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Reference No.</label>
+                            <input type="text" name="reference_number" class="form-control">
+                        </div>
                     </div>
 
                     <h5>Purchase Items</h5>
                     <div id="items-container"></div>
 
-                    <div class="row mt-3">
-                        <div class="col-md-9 text-end">
-                            <strong class="fs-5">Grand Total:</strong>
+                    <div class="row mt-4 align-items-end">
+                        <div class="col-md-auto ms-auto">
+                            <label for="payment_status" class="form-label">Payment Status</label>
+                            <select name="payment_status" id="payment_status" class="form-select">
+                                <option value="pending" selected>Pending</option>
+                                <option value="paid">Paid</option>
+                            </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-auto">
+                            <label class="form-label">Grand Total</label>
                             <input type="text" id="grand-total" class="form-control fs-5 fw-bold" readonly value="0.00">
                         </div>
                     </div>
 
-                    <button type="button" id="add-item-btn" class="btn btn-secondary mt-3">
-                        Add Item
-                    </button>
-
-                    <div class="mt-4 text-end">
+                    <div class="d-flex justify-content-between mt-4">
+                         <button type="button" id="add-item-btn" class="btn btn-secondary">
+                            Add Item
+                        </button>
                         <button type="submit" class="btn theme-bg text-white">
                             Save Purchase
                         </button>
@@ -116,13 +132,18 @@
         </div>
 
         <div class="col-md-2">
-            <label class="form-label">Reference No.</label>
-            <input type="text" name="items[][reference_number]" class="form-control">
+            <label class="form-label">Quantity</label>
+            <input type="number" name="items[][quantity]" class="form-control" min="1" required>
         </div>
 
         <div class="col-md-2">
-            <label class="form-label">Quantity</label>
-            <input type="number" name="items[][quantity]" class="form-control" min="1" required>
+            <label class="form-label">Unit Type</label>
+            <select name="items[][unit_type_id]" class="form-select" required>
+                <option value="">-- Select Unit --</option>
+                @foreach($unit_types as $unit)
+                    <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                @endforeach
+            </select>
         </div>
 
         <div class="col-md-2">
@@ -140,6 +161,49 @@
         </div>
     </div>
 </template>
+
+<!-- ADD SUPPLIER MODAL -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Add New Supplier</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSupplierForm">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label">Supplier Name</label>
+                        <input type="text" name="supplier_name" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contact Person</label>
+                            <input type="text" name="contact_person" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" name="phone" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <textarea name="address" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" id="saveSupplierBtn">Save Supplier</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ADD PRODUCT MODAL -->
 <div class="modal fade" id="addProductModal" tabindex="-1">
@@ -313,7 +377,76 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    $('.main-select2').select2({ width: '100%' });
+    const supplierSelect = $('.supplier-select');
+    const supplierModal = new bootstrap.Modal(document.getElementById('addSupplierModal'));
+
+    supplierSelect.select2({
+        width: '100%'
+    }).on('select2:open', function () {
+        setTimeout(() => {
+            const results = document.querySelector('.select2-results__options');
+            const search = document.querySelector('.select2-search__field');
+            const term = search ? search.value : '';
+
+            if (!results || document.querySelector('.select2-add-supplier')) return;
+
+            const li = document.createElement('li');
+            li.className = 'select2-results__option select2-add-product'; // Re-use style
+            li.innerHTML = `➕ Add new supplier`;
+
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                supplierSelect.select2('close');
+                $('#addSupplierForm [name="supplier_name"]').val(term);
+                supplierModal.show();
+            });
+
+            results.appendChild(li);
+        }, 0);
+    });
+
+    $('#saveSupplierBtn').on('click', function () {
+        const form = $('#addSupplierForm');
+        $.ajax({
+            url: '{{ route("superadmin.suppliers.store") }}',
+            method: 'POST',
+            data: form.serialize(),
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function (response) {
+                if (response.success) {
+                    const newOption = new Option(response.supplier.supplier_name, response.supplier.id, true, true);
+                    supplierSelect.append(newOption).trigger('change');
+                    supplierModal.hide();
+                    form[0].reset();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Supplier saved successfully!',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    // Handle non-validation errors from controller
+                }
+            },
+            error: function (xhr) {
+                 let errorMessages = 'An unexpected error occurred. Please try again.';
+                 if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorMessages = Object.values(xhr.responseJSON.errors).map(e => e[0]).join('<br>');
+                 }
+                 Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    html: errorMessages
+                 });
+            }
+        });
+    });
 
     $('#saveProductBtn').on('click', function () {
         const form = $('#addProductForm');
