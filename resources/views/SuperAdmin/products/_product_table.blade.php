@@ -1,5 +1,8 @@
 @forelse($products as $product)
     <tr>
+        <td>
+            <input type="checkbox" class="form-check-input product-select" name="selected_ids[]" value="{{ $product->id }}">
+        </td>
         <td>{{ $product->id }}</td>
         <td>{{ $product->product_name }}</td>
         <td>{{ $product->barcode }}</td>
@@ -11,14 +14,6 @@
             <span class="badge {{ $product->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
                 {{ ucfirst($product->status) }}
             </span>
-        </td>
-        <td>
-            <a href="{{ route('superadmin.products.edit', $product) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-            <form action="{{ route('superadmin.products.destroy', $product) }}" method="POST" class="d-inline">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
-            </form>
         </td>
     </tr>
 @empty

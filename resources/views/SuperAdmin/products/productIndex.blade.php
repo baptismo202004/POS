@@ -9,6 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Product List - SuperAdmin</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -48,13 +49,20 @@
                                         <button type="submit" class="btn btn-primary ms-2">Search</button>
                                     </form>
                                 </div>
-                                <a href="{{ route('superadmin.products.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Product</a>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a href="{{ route('superadmin.products.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Product</a>
+                                    <button type="button" id="editSelectedBtn" class="btn btn-outline-primary">Edit Selected</button>
+                                    <button type="button" id="deleteSelectedBtn" class="btn btn-outline-danger">Delete Selected</button>
+                                </div>
                             </div>
 
                             <div class="table-responsive">
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>
+                                            <th>
+                                                <input type="checkbox" class="form-check-input" id="selectAll">
+                                            </th>
                                             <th>
                                                 <a href="{{ route('superadmin.products.index', ['sort_by' => 'id', 'sort_direction' => ($sortBy == 'id' && $sortDirection == 'asc') ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                                     ID
@@ -70,7 +78,6 @@
                                             <th>Product Type</th>
                                             <th>Unit Type</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="product-table-body">
@@ -112,6 +119,56 @@
                         }
                     });
                 }, 300); // 300ms delay
+            });
+
+            // Select all toggle
+            $(document).on('change', '#selectAll', function(){
+                const checked = $(this).is(':checked');
+                $('#product-table-body input.product-select').prop('checked', checked);
+            });
+
+            // Sync header checkbox if rows are toggled individually
+            $(document).on('change', '#product-table-body input.product-select', function(){
+                const total = $('#product-table-body input.product-select').length;
+                const selected = $('#product-table-body input.product-select:checked').length;
+                $('#selectAll').prop('checked', total > 0 && selected === total);
+            });
+
+            // Edit selected: exactly one
+            $('#editSelectedBtn').on('click', function(){
+                const ids = $('#product-table-body input.product-select:checked').map(function(){ return this.value; }).get();
+                if (ids.length !== 1){
+                    alert('Please select exactly one product to edit.');
+                    return;
+                }
+                window.location.href = '/superadmin/products/' + ids[0] + '/edit';
+            });
+
+            // Delete selected: one or many
+            $('#deleteSelectedBtn').on('click', async function(){
+                const ids = $('#product-table-body input.product-select:checked').map(function(){ return this.value; }).get();
+                if (ids.length === 0){
+                    alert('Please select at least one product to delete.');
+                    return;
+                }
+                if (!confirm('Are you sure you want to delete the selected product(s)?')) return;
+
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                for (const id of ids){
+                    try{
+                        await fetch('/superadmin/products/' + id, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'X-CSRF-TOKEN': token,
+                                'Accept': 'text/html,application/json'
+                            },
+                            body: new URLSearchParams({ _method: 'DELETE', _token: token })
+                        });
+                    }catch(e){ /* ignore and continue */ }
+                }
+                // Reload to reflect deletions
+                window.location.reload();
             });
         });
 
