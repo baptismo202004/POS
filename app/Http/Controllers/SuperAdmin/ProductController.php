@@ -22,23 +22,45 @@ class ProductController extends Controller
      * Display product list
      * GET /products
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with([
-            'brand',
-            'category',
-            'productType',
-            'unitType'
-        ])->latest()->paginate(15);
+        $sortBy = $request->query('sort_by', 'id');
+        $sortDirection = $request->query('sort_direction', 'asc');
+        $search = $request->query('search');
 
-        return view('SuperAdmin.products.productIndex', compact('products'));
+        if (!in_array($sortBy, ['id', 'product_name', 'status'])) {
+            $sortBy = 'id';
+        }
+
+        $productsQuery = Product::with(['brand', 'category', 'productType', 'unitType']);
+
+        if ($search) {
+            $productsQuery->where(function ($query) use ($search) {
+                $query->where('product_name', 'like', "%{$search}%")
+                      ->orWhere('barcode', 'like', "%{$search}%")
+                      ->orWhereHas('brand', function ($q) use ($search) {
+                          $q->where('brand_name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($q) use ($search) {
+                          $q->where('category_name', 'like', "%{$search}%");
+                      });
+            });
+        }
+
+        $products = $productsQuery->orderBy($sortBy, $sortDirection)->paginate(15);
+
+        if ($request->ajax()) {
+            return view('SuperAdmin.products._product_table', compact('products'))->render();
+        }
+
+        return view('SuperAdmin.products.productIndex', [
+            'products' => $products->appends($request->query()),
+            'sortBy' => $sortBy,
+            'sortDirection' => $sortDirection
+        ]);
     }
 
-    /**
-     * Show create product form
-     * GET /products/create
-     */
-    public function create()
+      public function create()
     {
         return view('SuperAdmin.products.productList', [
             'brands'       => Brand::where('status', 'active')->get(),
@@ -49,10 +71,6 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * Store new product
-     * POST /products
-     */
     public function store(Request $request)
     {
         if ($request->ajax()) {

@@ -1,5 +1,5 @@
 @php
-    // Expected variables: $branches, $products, $brands, $categories
+    // Expected variables: $branches, $products, $brands, $categories, $product_types, $unit_types
 @endphp
 
 <!doctype html>
@@ -16,6 +16,9 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -62,10 +65,6 @@
                     @csrf
 
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Reference Number</label>
-                            <input type="text" name="reference_number" class="form-control">
-                        </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Purchase Date</label>
@@ -73,15 +72,6 @@
                                    value="{{ date('Y-m-d') }}">
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Branch</label>
-                            <select name="branch_id" class="form-select main-select2" required>
-                                <option value="">-- Select Branch --</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                     </div>
 
                     <h5>Purchase Items</h5>
@@ -115,7 +105,7 @@
 <!-- ITEM TEMPLATE -->
 <template id="item-template">
     <div class="row g-3 mb-3 item-row align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">Product</label>
             <select name="items[][product_id]" class="form-select product-select" required>
                 <option value="">-- Select Product --</option>
@@ -125,7 +115,12 @@
             </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <label class="form-label">Reference No.</label>
+            <input type="text" name="items[][reference_number]" class="form-control">
+        </div>
+
+        <div class="col-md-2">
             <label class="form-label">Quantity</label>
             <input type="number" name="items[][quantity]" class="form-control" min="1" required>
         </div>
@@ -168,6 +163,48 @@
                     <div class="mb-3">
                         <label class="form-label">Barcode</label>
                         <input type="text" name="barcode" class="form-control" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Brand</label>
+                            <select name="brand_id" class="form-select">
+                                <option value="">-- Select Brand --</option>
+                                @foreach($brands as $brand)
+                                    <option value="{{ $brand->id }}">{{ $brand->brand_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select name="category_id" class="form-select">
+                                <option value="">-- Select Category --</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Product Type</label>
+                            <select name="product_type_id" class="form-select">
+                                <option value="">-- Select Product Type --</option>
+                                                                @foreach($product_types as $type)
+                                    <option value="{{ $type->id }}">{{ $type->type_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Unit Type</label>
+                            <select name="unit_type_id" class="form-select">
+                                <option value="">-- Select Unit Type --</option>
+                                                                @foreach($unit_types as $unit)
+                                    <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <input type="hidden" name="tracking_type" value="none">
@@ -293,13 +330,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     lastSelect.append(newOption).trigger('change');
                     modal.hide();
                     form[0].reset();
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Product saved successfully!',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
                 } else {
-                    // Handle errors if needed
-                    alert('Error saving product.');
+                    let errorMessages = 'An unknown error occurred.';
+                    if (response.errors) {
+                        errorMessages = Object.values(response.errors).map(e => e[0]).join('<br>');
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        html: errorMessages
+                    });
                 }
             },
-            error: function () {
-                alert('An unexpected error occurred.');
+            error: function (xhr) {
+                 let errorMessages = 'An unexpected error occurred. Please try again.';
+                 if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorMessages = Object.values(xhr.responseJSON.errors).map(e => e[0]).join('<br>');
+                 }
+                 Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    html: errorMessages
+                 });
             }
         });
     });

@@ -41,7 +41,7 @@
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>
-                                            <th>Reference Number</th>
+                                            <th>Reference Numbers</th>
                                             <th>Purchase Date</th>
                                             <th>Branch</th>
                                             <th>Items</th>
@@ -51,7 +51,7 @@
                                     <tbody>
                                         @forelse($purchases as $purchase)
                                             <tr>
-                                                <td>{{ $purchase->reference_number ?? 'N/A' }}</td>
+                                                <td>{{ $purchase->items->pluck('reference_number')->filter()->implode(', ') ?: 'N/A' }}</td>
                                                 <td>{{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}</td>
                                                 <td>{{ $purchase->branch->branch_name ?? 'N/A' }}</td>
                                                 <td>{{ $purchase->items->count() }} item(s)</td>

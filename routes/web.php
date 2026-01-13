@@ -59,6 +59,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('superadmin.purchases.create');
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('superadmin.purchases.store');
+
+        // Stock In routes
+        Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->name('superadmin.stockin.index');
+        Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'create'])->name('superadmin.stockin.create');
+        Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'store'])->name('superadmin.stockin.store');
+        Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->name('superadmin.stockin.products-by-purchase');
+
         // Settings routes
         Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class, ['as' => 'superadmin']);
         Route::resource('categories', \App\Http\Controllers\SuperAdmin\CategoryController::class, ['as' => 'superadmin']);

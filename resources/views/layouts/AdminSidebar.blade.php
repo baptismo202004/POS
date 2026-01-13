@@ -91,10 +91,9 @@
                 <span class="fw-semibold">Home</span>
             </a>
             
-            </a>
-            <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
+                                    <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16V8a2 2 0 0 0-1-1.732L12 3 4 6.268A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.732L12 21l8-3.268A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.586 2.586a2 2 0 0 0-2.828 0L2 10.172V20h9.828l7.586-7.586a2 2 0 0 0 0-2.828l-7.414-7.414zM6 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
                 </span>
                 <span>Products</span>
             </a>
@@ -104,9 +103,15 @@
                 </span>
                 <span>Purchase</span>
             </a>
-            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16V8a2 2 0 0 0-1-1.732L12 3 4 6.268A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.732L12 21l8-3.268A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 15h2v3h12v-3h2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3zm9-4V2h-2v9H8l4 4 4-4h-3z"/></svg>
+                </span>
+                <span>Stock In</span>
+            </a>
+                                    <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-4 18c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H9v-2h6v2z"/></svg>
                 </span>
                 <span>Inventory</span>
             </a>
