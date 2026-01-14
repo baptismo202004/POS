@@ -11,7 +11,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Keep this hook empty; middleware should be registered via providers.
+        // Route middleware aliases
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            // ability: enforce role/module ability checks. Usage: ability:module,required
+            // e.g., ability:purchases,edit
+            'ability' => \App\Http\Middleware\EnsureAbility::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

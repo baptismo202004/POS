@@ -91,36 +91,63 @@
                 <span class="fw-semibold">Home</span>
             </a>
             
-                                    <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
+            @canAccess('products','view')
+            <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.586 2.586a2 2 0 0 0-2.828 0L2 10.172V20h9.828l7.586-7.586a2 2 0 0 0 0-2.828l-7.414-7.414zM6 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
                 </span>
                 <span>Products</span>
             </a>
+            @endcanAccess
+            @canAccess('purchases','view')
             <a href="{{ route('superadmin.purchases.index') }}" class="{{ request()->routeIs('superadmin.purchases.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6h15l-1.5 9h-12L6 6z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="18" cy="19" r="1" fill="currentColor"/></svg>
                 </span>
                 <span>Purchase</span>
             </a>
+            @endcanAccess
                     <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 15h2v3h12v-3h2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3zm9-4V2h-2v9H8l4 4 4-4h-3z"/></svg>
                 </span>
                 <span>Stock In</span>
             </a>
-                                    <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+            @canAccess('inventory','view')
+            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-4 18c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H9v-2h6v2z"/></svg>
                 </span>
                 <span>Inventory</span>
             </a>
+            @endcanAccess
+            @canAccess('sales','view')
             <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0l-.01-.01a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2v-.02a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82L4.8 5.5a2 2 0 0 1 0-2.83L4.81 2.7a2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1 1.51V5a2 2 0 0 1 2 2v.09c0 .44.16.86.46 1.18a1.65 1.65 0 0 0 .96 1.23c.53.28 1.13.28 1.66 0 .36-.2.68-.46.96-.77.36-.41.56-.88.56-1.38V7a2 2 0 0 1 2-2h.02a2 2 0 0 1 2 2v.09c0 .5.2.98.56 1.38.28.31.6.57.96.77.53.28 1.13.28 1.66 0 .39-.22.7-.58.96-.96.23-.34.46-.68.7-1.01z" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span>Sales</span>
             </a>
+            @endcanAccess
+            @canAccess('user_management','view')
+                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ request()->routeIs('admin.*') ? 'text-dark bg-indigo-50' : 'text-muted hover:bg-gray-100' }}" href="#" data-role="user-mgmt-toggle" aria-expanded="{{ (request()->routeIs('admin.*') || session('ui.sidebar.user_mgmt_open')) ? 'true' : 'false' }}" aria-controls="userMgmtMenu">
+                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 22a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 10v-2m-1 1h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span>User Management</span>
+                    <svg class="icon ms-auto" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <div class="collapse {{ (request()->routeIs('admin.*') || session('ui.sidebar.user_mgmt_open')) ? 'show' : '' }}" id="userMgmtMenu">
+                    <nav class="d-flex flex-column ms-4 mt-1">
+                        <a href="{{ route('admin.access.index') }}" class="{{ request()->routeIs('admin.access.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none text-dark' : 'd-flex gap-2 align-items-center py-2 text-decoration-none text-muted hover:bg-gray-100' }}">
+                            <span class="small">Access</span>
+                        </a>
+                        <a href="{{ route('admin.users.create') }}" class="{{ request()->routeIs('admin.users.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none text-dark' : 'd-flex gap-2 align-items-center py-2 text-decoration-none text-muted hover:bg-gray-100' }}">
+                            <span class="small">Create Account</span>
+                        </a>
+                    </nav>
+                </div>
+            @endcanAccess
         </nav>
     </div>
 
@@ -206,25 +233,21 @@
         </ul>
     </div>
 </aside>
-<!-- dark mode removed -->
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Handle submenu positioning to stay within viewport
     const submenus = document.querySelectorAll('.dropdown-submenu .dropdown-menu');
-    
     submenus.forEach(function(submenu) {
         const parent = submenu.parentElement;
-        
         parent.addEventListener('mouseenter', function() {
             const rect = submenu.getBoundingClientRect();
             const windowHeight = window.innerHeight;
             const windowWidth = window.innerWidth;
-            
-            // Reset any previous adjustments
+
             submenu.style.maxHeight = '80vh';
             submenu.style.overflowY = 'auto';
-            
-            // Check if submenu goes beyond right edge
+
             if (rect.right > windowWidth) {
                 submenu.style.left = '-100%';
                 submenu.style.marginLeft = '10px';
@@ -232,8 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submenu.style.left = '100%';
                 submenu.style.marginLeft = '-1px';
             }
-            
-            // Check if submenu goes beyond bottom edge
+
             if (rect.bottom > windowHeight) {
                 submenu.style.top = 'auto';
                 submenu.style.bottom = '0';
@@ -244,5 +266,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Lightweight collapse handler for User Management nested menu
+    const userMgmtToggle = document.querySelector('[data-role="user-mgmt-toggle"]');
+    const userMgmtMenu = document.getElementById('userMgmtMenu');
+    if (userMgmtToggle && userMgmtMenu) {
+        userMgmtToggle.addEventListener('click', function (e) {
+            e.preventDefault();
+            const isShown = userMgmtMenu.classList.contains('show');
+            if (isShown) {
+                userMgmtMenu.classList.remove('show');
+                userMgmtToggle.setAttribute('aria-expanded', 'false');
+                userMgmtMenu.style.height = '0px';
+            } else {
+                userMgmtMenu.classList.add('show');
+                userMgmtToggle.setAttribute('aria-expanded', 'true');
+                userMgmtMenu.style.height = 'auto';
+            }
+
+            // Persist state via AJAX (moved inside click handler)
+            try {
+                fetch('{{ route('ui.sidebar.user-mgmt') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ open: !isShown })
+                });
+            } catch (err) {
+                // no-op
+            }
+        });
+    }
 });
 </script>
