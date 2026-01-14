@@ -20,6 +20,9 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- Tesseract.js -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
@@ -56,9 +59,14 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Add New Purchase</h2>
-                    <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">
-                        Back to Purchases
-                    </a>
+                    <div>
+                        <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">
+                            Back to Purchases
+                        </a>
+                        <button type="button" id="ocr-button" class="btn btn-primary">
+                            OCR
+                        </button>
+                    </div>
                 </div>
 
                 <form method="POST" action="{{ route('superadmin.purchases.store') }}">
@@ -335,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function addItem() {
+    function addItem(productData = null) {
         const node = template.content.cloneNode(true);
 
         // Update the name attributes with the current index
@@ -345,8 +353,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         container.appendChild(node);
-        initProductSelect(container.querySelector('.item-row:last-child'));
+        const newRow = container.querySelector('.item-row:last-child');
+        initProductSelect(newRow);
+
+        if (productData) {
+            $(newRow).find('.product-select').val(productData.id).trigger('change');
+            $(newRow).find('input[name$="[quantity]"]').val(productData.quantity);
+            $(newRow).find('input[name$="[cost]"]').val(productData.cost);
+        }
+
         itemIndex++;
+        updateTotals();
     }
 
     addItemBtn.addEventListener('click', addItem);
@@ -499,7 +516,82 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    addItem();
+    // addItem(); // Removed to prevent adding an empty item on page load
+
+    const ocrButton = document.getElementById('ocr-button');
+    const ocrFileInput = document.createElement('input');
+    ocrFileInput.type = 'file';
+    ocrFileInput.accept = 'image/*';
+
+    ocrButton.addEventListener('click', function() {
+        ocrFileInput.click();
+    });
+
+    ocrFileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        Swal.fire({
+            title: 'Processing OCR',
+            text: 'Please wait...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        Tesseract.recognize(
+            file,
+            'eng',
+            {
+                logger: m => console.log(m)
+            }
+        ).then(({ data: { text } }) => {
+            console.log("Full OCR Text:\n", text); // For debugging
+            $.ajax({
+                url: '{{ route("superadmin.purchases.ocr-product-match") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    text: text
+                },
+                success: function(response) {
+                    Swal.close();
+
+                    if (response.reference_number) {
+                        $('input[name="reference_number"]').val(response.reference_number);
+                    }
+
+                    // Clear existing items before adding new ones
+                    $('#items-container').empty();
+                    itemIndex = 0; // Reset index
+
+                    if (response.products && response.products.length > 0) {
+                        response.products.forEach(product => {
+                            addItem(product);
+                        });
+                        Swal.fire('Success', 'Products added from OCR scan.', 'success');
+                    } else {
+                        Swal.fire('No Products Found', 'Could not match any products from the scanned text.', 'warning');
+                    }
+                },
+                error: function() {
+                    Swal.close();
+                    Swal.fire('Error', 'An error occurred while matching products.', 'error');
+                }
+            });
+        }).catch(err => {
+            Swal.close();
+            console.error(err);
+            Swal.fire({
+                title: 'OCR Error',
+                text: 'Could not recognize text from the image.',
+                icon: 'error'
+            });
+        });
+    });
 });
 </script>
 

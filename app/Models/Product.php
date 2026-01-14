@@ -15,7 +15,6 @@ class Product extends Model
         'brand_id',
         'category_id',
         'product_type_id',
-        'unit_type_id',
         'model_number',
         'image',
         'tracking_type',
@@ -41,9 +40,9 @@ class Product extends Model
         return $this->belongsTo(ProductType::class);
     }
 
-    public function unitType()
+    public function unitTypes()
     {
-        return $this->belongsTo(UnitType::class);
+        return $this->belongsToMany(UnitType::class, 'product_unit_type');
     }
 
     public function serials()

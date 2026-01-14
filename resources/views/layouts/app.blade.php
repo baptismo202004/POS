@@ -22,7 +22,7 @@
         .card-rounded{ border-radius: 12px; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="bg-white min-h-screen font-sans">
 
     <div class="flex">
         {{-- Sidebar --}}
@@ -35,7 +35,6 @@
         </main>
     </div>
 
-    <!-- Bootstrap JS bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

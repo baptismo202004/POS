@@ -13,6 +13,7 @@
                 <p><strong>Purchase Date:</strong> {{ optional($purchase->purchase_date)->format('M d, Y') }}</p>
                 <p><strong>Total Cost:</strong> ₱{{ number_format($purchase->total_cost, 2) }}</p>
                 <p><strong>Payment Status:</strong> <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">{{ ucfirst($purchase->payment_status) }}</span></p>
+                <p><strong>Reference No.:</strong> {{ $purchase->reference_number ?: 'N/A' }}</p>
             </div>
         </div>
 
@@ -22,7 +23,6 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Reference No.</th>
                         <th>Quantity</th>
                         <th>Unit Type</th>
                         <th>Unit Cost</th>
@@ -33,7 +33,6 @@
                     @forelse($purchase->items as $item)
                         <tr>
                             <td>{{ $item->product->product_name ?? 'N/A' }}</td>
-                            <td>{{ $item->reference_number ?: 'N/A' }}</td>
                             <td>{{ $item->quantity }}</td>
                             <td>{{ $item->unitType->unit_name ?? 'N/A' }}</td>
                             <td>₱{{ number_format($item->unit_cost, 2) }}</td>
@@ -41,7 +40,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center">No items found for this purchase.</td>
+                            <td colspan="5" class="text-center">No items found for this purchase.</td>
                         </tr>
                     @endforelse
                 </tbody>

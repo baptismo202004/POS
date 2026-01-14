@@ -85,4 +85,46 @@ class PurchaseController extends Controller
         $purchase->load('items.product', 'items.unitType');
         return view('SuperAdmin.purchases.show', compact('purchase'));
     }
+
+    public function matchProduct(Request $request)
+    {
+        $text = $request->input('text', '');
+        $lines = explode("\n", $text);
+        $matchedProducts = [];
+        $referenceNumber = null;
+
+        // Extract Reference Number
+        foreach ($lines as $line) {
+            if (preg_match('/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i', $line, $matches)) {
+                $referenceNumber = trim($matches[1]);
+                break;
+            }
+        }
+
+        foreach ($lines as $line) {
+            // Regex to capture quantity, item description, and price
+            if (preg_match('/^(\d+)\s+(.+?)\s+(\d+\.\d{2})/', $line, $matches)) {
+                $quantity = (int)$matches[1];
+                $productName = trim($matches[2]);
+                $cost = (float)$matches[3];
+
+                // Find the product in the database
+                $product = Product::where('product_name', 'like', '%' . $productName . '%')->first();
+
+                if ($product) {
+                    $matchedProducts[] = [
+                        'id' => $product->id,
+                        'name' => $product->product_name,
+                        'quantity' => $quantity,
+                        'cost' => $cost,
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'reference_number' => $referenceNumber,
+            'products' => $matchedProducts
+        ]);
+    }
 }

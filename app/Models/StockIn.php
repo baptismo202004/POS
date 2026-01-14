@@ -13,6 +13,7 @@ class StockIn extends Model
         'product_id',
         'branch_id',
         'purchase_id',
+        'unit_type_id',
         'quantity',
         'price',
         'sold'
@@ -31,5 +32,10 @@ class StockIn extends Model
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    public function unitType()
+    {
+        return $this->belongsTo(UnitType::class);
     }
 }

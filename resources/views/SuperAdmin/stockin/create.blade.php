@@ -36,7 +36,7 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th>Reference No.</th>
+                                <th>Unit Type</th>
                                 <th>Purchased Qty</th>
                                 <th>Stock-In Qty</th>
                                 <th>Price</th>
@@ -80,18 +80,52 @@
                         tableBody.empty();
 
                         if(data.length > 0) {
+                            var itemIndex = 0;
                             $.each(data, function(index, item) {
-                                var row = `<tr>
-                                    <td>
-                                        <input type="hidden" name="items[${index}][product_id]" value="${item.product.id}">
-                                        ${item.product.product_name}
-                                    </td>
-                                    <td>${item.reference_number || 'N/A'}</td>
-                                    <td>${item.quantity}</td>
-                                    <td><input type="number" name="items[${index}][quantity]" class="form-control" min="0" max="${item.quantity}"></td>
-                                    <td><input type="number" name="items[${index}][price]" class="form-control" step="0.01" value="${item.unit_cost}"></td>
-                                </tr>`;
-                                tableBody.append(row);
+                                var product = item.product;
+                                var unitTypes = product.unit_types;
+                                var rowspan = unitTypes.length > 0 ? `rowspan="${unitTypes.length}"` : '';
+
+                                if (unitTypes.length > 0) {
+                                    $.each(unitTypes, function(utIndex, unitType) {
+                                        var row;
+                                        var priceInput = `<input type="number" name="items[${itemIndex}][price]" class="form-control" step="0.01" value="${item.unit_cost}">`;
+                                        if (utIndex === 0) {
+                                            row = `<tr>
+                                                <td ${rowspan}>${product.product_name}</td>
+                                                <td>
+                                                    <input type="hidden" name="items[${itemIndex}][product_id]" value="${product.id}">
+                                                    <input type="hidden" name="items[${itemIndex}][unit_type_id]" value="${unitType.id}">
+                                                    ${unitType.unit_name}
+                                                </td>
+                                                <td ${rowspan}>${item.quantity}</td>
+                                                <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control" min="0"></td>
+                                                <td>${priceInput}</td>
+                                            </tr>`;
+                                        } else {
+                                            row = `<tr>
+                                                <td>
+                                                    <input type="hidden" name="items[${itemIndex}][product_id]" value="${product.id}">
+                                                    <input type="hidden" name="items[${itemIndex}][unit_type_id]" value="${unitType.id}">
+                                                    ${unitType.unit_name}
+                                                </td>
+                                                <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control" min="0"></td>
+                                                <td>${priceInput}</td>
+                                            </tr>`;
+                                        }
+                                        tableBody.append(row);
+                                        itemIndex++;
+                                    });
+                                } else {
+                                    var row = `<tr>
+                                        <td>${product.product_name}</td>
+                                        <td>No unit type defined</td>
+                                        <td>${item.quantity}</td>
+                                        <td><input type="number" class="form-control" disabled></td>
+                                        <td><input type="number" class="form-control" value="${item.unit_cost}" disabled></td>
+                                    </tr>`;
+                                    tableBody.append(row);
+                                }
                             });
                             container.show();
                         } else {

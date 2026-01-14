@@ -20,7 +20,7 @@ class StockInController extends Controller
 
     public function create()
     {
-        $products = Product::all();
+        $products = Product::with('unitTypes')->get();
         $branches = Branch::all();
         $purchases = Purchase::with('items')->get();
         return view('SuperAdmin.stockin.create', compact('products', 'branches', 'purchases'));
@@ -28,7 +28,7 @@ class StockInController extends Controller
 
     public function getProductsByPurchase(Purchase $purchase)
     {
-        return response()->json($purchase->items()->with('product')->get());
+        return response()->json($purchase->items()->with('product.unitTypes')->get());
     }
 
     public function store(Request $request)
@@ -38,44 +38,52 @@ class StockInController extends Controller
             'purchase_id' => 'required|exists:purchases,id',
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
+            'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.quantity' => 'nullable|integer|min:0',
-            'items.*.price' => 'nullable|numeric|min:0',
+            'items.*.price' => 'required|numeric|min:0',
         ]);
 
         $purchase = Purchase::with('items.product')->findOrFail($validated['purchase_id']);
         $stockInCount = 0;
         $errorMessages = [];
 
-        foreach ($validated['items'] as $item) {
-            if (empty($item['quantity']) || $item['quantity'] <= 0) {
-                continue;
-            }
+        $groupedItems = collect($validated['items'])->groupBy('product_id');
 
-            $purchaseItem = $purchase->items->firstWhere('product_id', $item['product_id']);
+        foreach ($groupedItems as $productId => $items) {
+            $purchaseItem = $purchase->items->firstWhere('product_id', $productId);
 
             if (!$purchaseItem) {
                 return back()->withInput()->with('error', 'Invalid product found in the stock-in request.');
             }
 
             $totalStockedIn = StockIn::where('purchase_id', $validated['purchase_id'])
-                                     ->where('product_id', $item['product_id'])
+                                     ->where('product_id', $productId)
                                      ->sum('quantity');
 
             $availableQuantity = $purchaseItem->quantity - $totalStockedIn;
+            $currentStockInQuantity = $items->sum('quantity');
 
-            if ($item['quantity'] > $availableQuantity) {
-                $errorMessages[] = "Cannot stock in {$item['quantity']} for {$purchaseItem->product->product_name}. Only {$availableQuantity} remaining.";
+            if ($currentStockInQuantity > $availableQuantity) {
+                $productName = $purchaseItem->product->product_name;
+                $errorMessages[] = "Cannot stock in {$currentStockInQuantity} for {$productName}. Only {$availableQuantity} remaining.";
                 continue;
             }
 
-            StockIn::create([
-                'product_id' => $item['product_id'],
-                'branch_id' => $validated['branch_id'],
-                'purchase_id' => $validated['purchase_id'],
-                'quantity' => $item['quantity'],
-                'price' => $item['price'],
-            ]);
-            $stockInCount++;
+            foreach ($items as $item) {
+                if (empty($item['quantity']) || $item['quantity'] <= 0) {
+                    continue;
+                }
+
+                StockIn::create([
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $validated['branch_id'],
+                    'purchase_id' => $validated['purchase_id'],
+                    'unit_type_id' => $item['unit_type_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                ]);
+                $stockInCount++;
+            }
         }
 
         if (!empty($errorMessages)) {

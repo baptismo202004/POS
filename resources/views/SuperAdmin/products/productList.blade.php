@@ -91,11 +91,13 @@
                                     </div>
 
                                     <div class="col-md-3">
-                                        <label class="form-label">Unit Type</label>
-                                        <select name="unit_type_id" id="unitTypeSelect" class="form-select select2-tags" style="width:100%">
-                                            <option value="">-- Select Unit --</option>
+                                        <label class="form-label">Unit Types</label>
+                                        <select name="unit_type_ids[]" id="unitTypeSelect" class="form-select" style="width:100%" multiple>
+                                            @php
+                                                $selectedUnitTypes = old('unit_type_ids', $isEdit ? $product->unitTypes->pluck('id')->all() : []);
+                                            @endphp
                                             @foreach($unitTypes ?? [] as $ut)
-                                                <option value="{{ $ut->id }}" {{ $isEdit && $product->unit_type_id == $ut->id ? 'selected' : '' }}>{{ $ut->name }}</option>
+                                                <option value="{{ $ut->id }}" {{ in_array($ut->id, $selectedUnitTypes) ? 'selected' : '' }}>{{ $ut->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -286,11 +288,17 @@
                     width: 'resolve'
                 });
 
-                $('#productType, #unitTypeSelect').select2({
+                $('#productType').select2({
                     placeholder: '-- Select --',
                     allowClear: true,
                     width: 'resolve',
-                    minimumResultsForSearch: Infinity // Hide search box for these
+                    minimumResultsForSearch: Infinity
+                });
+
+                $('#unitTypeSelect').select2({
+                    placeholder: '-- Select unit types --',
+                    allowClear: true,
+                    width: 'resolve'
                 });
             }
 
@@ -333,6 +341,86 @@
             });
 
 
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const productForm = document.getElementById('productForm');
+            if (productForm) {
+                productForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const form = this;
+                    const formData = new FormData(form);
+                    const url = form.action;
+
+                    // Clear previous errors
+                    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                    document.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
+
+                    fetch(url, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: '{{ $isEdit ? "Product updated successfully." : "Product created successfully." }}',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = '{{ route("superadmin.products.index") }}';
+                            });
+                        } else if (data.errors) {
+                            Object.keys(data.errors).forEach(key => {
+                                const field = document.querySelector(`[name="${key}"]`);
+                                if (field) {
+                                    field.classList.add('is-invalid');
+                                    const error = document.createElement('div');
+                                    error.className = 'invalid-feedback';
+                                    error.innerText = data.errors[key][0];
+                                    field.parentNode.appendChild(error);
+                                }
+                            });
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Validation Error',
+                                text: 'Please check the form for errors.',
+                            });
+                        } else {
+                            throw new Error(data.message || 'An unknown error occurred.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        let errorMessage = 'Something went wrong. Please try again.';
+                        if (error.message) {
+                            errorMessage = error.message;
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'An Error Occurred',
+                            text: errorMessage,
+                        });
+                    });
+                });
+            }
         });
     </script>
 

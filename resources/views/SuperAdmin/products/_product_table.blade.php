@@ -9,7 +9,7 @@
         <td>{{ $product->brand->name ?? 'N/A' }}</td>
         <td>{{ $product->category->name ?? 'N/A' }}</td>
         <td>{{ $product->productType->name ?? 'N/A' }}</td>
-        <td>{{ $product->unitType->name ?? 'N/A' }}</td>
+        <td>{{ $product->unitTypes->isNotEmpty() ? $product->unitTypes->pluck('name')->join(', ') : 'N/A' }}</td>
         <td>
             <span class="badge {{ $product->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
                 {{ ucfirst($product->status) }}
