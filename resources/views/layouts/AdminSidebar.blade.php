@@ -77,6 +77,12 @@
             -moz-border-radius: 6px 0 6px 6px;
             border-radius: 6px 0 6px 6px;
         }
+
+        /* Ensure the user management menu is visible when expanded on page load */
+        #userMgmtMenu.collapse.show {
+            visibility: visible;
+        }
+
     </style>
     <div>
         <div class="d-flex align-items-center gap-3 mb-5">
@@ -130,7 +136,7 @@
             </a>
             @endcanAccess
             @canAccess('user_management','view')
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ request()->routeIs('admin.*') ? 'text-dark bg-indigo-50' : 'text-muted hover:bg-gray-100' }}" href="#" data-role="user-mgmt-toggle" aria-expanded="{{ (request()->routeIs('admin.*') || session('ui.sidebar.user_mgmt_open')) ? 'true' : 'false' }}" aria-controls="userMgmtMenu">
+                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ request()->routeIs('admin.*') ? 'text-dark bg-indigo-50' : 'text-muted hover:bg-gray-100' }}" href="#userMgmtMenu" data-bs-toggle="collapse" aria-expanded="{{ (request()->routeIs('admin.*') || session('ui.sidebar.user_mgmt_open')) ? 'true' : 'false' }}" aria-controls="userMgmtMenu">
                     <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                         <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 22a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 10v-2m-1 1h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </span>
@@ -235,7 +241,7 @@
 </aside>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() {
     // Handle submenu positioning to stay within viewport
     const submenus = document.querySelectorAll('.dropdown-submenu .dropdown-menu');
     submenus.forEach(function(submenu) {
@@ -267,24 +273,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Lightweight collapse handler for User Management nested menu
-    const userMgmtToggle = document.querySelector('[data-role="user-mgmt-toggle"]');
+    // Persist state via AJAX for User Management nested menu
     const userMgmtMenu = document.getElementById('userMgmtMenu');
-    if (userMgmtToggle && userMgmtMenu) {
-        userMgmtToggle.addEventListener('click', function (e) {
-            e.preventDefault();
-            const isShown = userMgmtMenu.classList.contains('show');
-            if (isShown) {
-                userMgmtMenu.classList.remove('show');
-                userMgmtToggle.setAttribute('aria-expanded', 'false');
-                userMgmtMenu.style.height = '0px';
-            } else {
-                userMgmtMenu.classList.add('show');
-                userMgmtToggle.setAttribute('aria-expanded', 'true');
-                userMgmtMenu.style.height = 'auto';
-            }
+    if (userMgmtMenu) {
 
-            // Persist state via AJAX (moved inside click handler)
+        userMgmtMenu.addEventListener('show.bs.collapse', function () {
             try {
                 fetch('{{ route('ui.sidebar.user-mgmt') }}', {
                     method: 'POST',
@@ -293,11 +286,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ open: !isShown })
+                    body: JSON.stringify({ open: true })
                 });
-            } catch (err) {
-                // no-op
-            }
+            } catch (err) { /* no-op */ }
+        });
+
+        userMgmtMenu.addEventListener('hide.bs.collapse', function () {
+            try {
+                fetch('{{ route('ui.sidebar.user-mgmt') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ open: false })
+                });
+            } catch (err) { /* no-op */ }
         });
     }
 });
