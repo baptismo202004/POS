@@ -26,14 +26,22 @@ class AccessController extends Controller
         // Define manageable modules via config
         $modules = config('rbac.modules', []);
 
-        $roles = UserType::orderBy('name')->get();
+        $roles = UserType::whereNull('parent_id')->with('children')->orderBy('name')->get();
 
         // Load existing permissions keyed by role and module
         $existing = RolePermission::query()
             ->get()
-            ->groupBy(['user_type_id', 'module']);
+            ->groupBy('user_type_id')
+            ->map(function ($roles) {
+                return $roles->groupBy('module')->map(function ($modules) {
+                    return $modules->pluck('ability')->all();
+                });
+            });
 
-        return view('Admin.access.index', compact('modules', 'roles', 'existing'));
+        $allRoles = UserType::with('parent')->get();
+        $permissions = $this->resolvePermissions($allRoles, $existing);
+
+        return view('Admin.access.index', compact('modules', 'roles', 'permissions'));
     }
 
     /**
@@ -41,23 +49,22 @@ class AccessController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->input('abilities', []);
+        $abilities = $request->input('abilities', []);
 
-        // Valid ability values
-        $valid = ['none','view','edit','full'];
-
-        DB::transaction(function () use ($data, $valid) {
+        DB::transaction(function () use ($abilities) {
             $touchedRoleIds = [];
-            foreach ($data as $roleId => $perModule) {
-                foreach ($perModule as $module => $ability) {
-                    $ability = in_array($ability, $valid, true) ? $ability : 'view';
-                    RolePermission::updateOrCreate(
-                        ['user_type_id' => (int)$roleId, 'module' => (string)$module],
-                        ['ability' => $ability]
-                    );
-                    $touchedRoleIds[(int)$roleId] = true;
+            foreach ($abilities as $roleId => $modules) {
+                foreach ($modules as $moduleKey => $permissions) {
+                    foreach ($permissions as $permission => $value) {
+                        RolePermission::updateOrCreate(
+                            ['user_type_id' => (int)$roleId, 'module' => $moduleKey, 'ability' => $permission],
+                            ['ability' => $permission] // Simplified: presence means allowed
+                        );
+                    }
                 }
+                $touchedRoleIds[(int)$roleId] = true;
             }
+
             // Invalidate cached role permissions for affected roles
             foreach (array_keys($touchedRoleIds) as $rid) {
                 Cache::forget("rp:" . $rid);
@@ -65,5 +72,26 @@ class AccessController extends Controller
         });
 
         return redirect()->route('admin.access.index')->with('success', 'Access configuration saved.');
+    }
+
+    private function resolvePermissions($allRoles, $existing)
+    {
+        $resolved = [];
+        foreach ($allRoles as $role) {
+            $resolved[$role->id] = $this->getInheritedPermissions($role, $existing, $allRoles);
+        }
+        return $resolved;
+    }
+
+    private function getInheritedPermissions($role, $existing, $allRoles)
+    {
+        $permissions = $existing->get($role->id, collect())->toArray();
+
+        if ($role->parent) {
+            $parentPermissions = $this->getInheritedPermissions($role->parent, $existing, $allRoles);
+            $permissions = array_replace_recursive($parentPermissions, $permissions);
+        }
+
+        return $permissions;
     }
 }
