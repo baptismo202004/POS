@@ -128,13 +128,22 @@
             </a>
             @endcanAccess
             @canAccess('sales','view')
-            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+            <a href="{{ route('admin.sales.index') }}" class="{{ request()->routeIs('admin.sales.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0l-.01-.01a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2v-.02a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82L4.8 5.5a2 2 0 0 1 0-2.83L4.81 2.7a2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1 1.51V5a2 2 0 0 1 2 2v.09c0 .44.16.86.46 1.18a1.65 1.65 0 0 0 .96 1.23c.53.28 1.13.28 1.66 0 .36-.2.68-.46.96-.77.36-.41.56-.88.56-1.38V7a2 2 0 0 1 2-2h.02a2 2 0 0 1 2 2v.09c0 .5.2.98.56 1.38.28.31.6.57.96.77.53.28 1.13.28 1.66 0 .39-.22.7-.58.96-.96.23-.34.46-.68.7-1.01z" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span>Sales</span>
             </a>
             @endcanAccess
+
+            {{-- Expenses Link --}}
+            <a href="{{ route('admin.expenses.index') }}" class="{{ request()->routeIs('admin.expenses.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
+                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 18h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span>Expenses</span>
+            </a>
+
             @canAccess('user_management','view')
                 <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ request()->routeIs('admin.*') ? 'text-dark bg-indigo-50' : 'text-muted hover:bg-gray-100' }}" href="#userMgmtMenu" data-bs-toggle="collapse" aria-expanded="{{ (request()->routeIs('admin.*') || session('ui.sidebar.user_mgmt_open')) ? 'true' : 'false' }}" aria-controls="userMgmtMenu">
                     <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">

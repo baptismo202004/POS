@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             ProductTypeSeeder::class,
             UnitTypeSeeder::class,
             AdminFullAccessSeeder::class,
+            ExpenseCategorySeeder::class,
         ]);
 
     }

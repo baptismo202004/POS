@@ -11,18 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('purchases', function (Blueprint $table) {
+        Schema::create('expense_categories', function (Blueprint $table) {
             $table->id();
-
-            $table->unsignedBigInteger('supplier_id')->nullable();
-            $table->string('reference_number')->nullable();
-            $table->decimal('total_cost', 12, 2);
-            $table->string('payment_status')->default('pending');
-            $table->date('purchase_date');
-
+            $table->string('name')->unique();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
-
     }
 
     /**
@@ -30,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchases');
+        Schema::dropIfExists('expense_categories');
     }
 };

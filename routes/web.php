@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\POS\PosController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SuperAdmin\ProductController as SuperAdminProductController;
@@ -32,6 +33,9 @@ Route::post('/login', function (Request $request) {
 Route::get('/dashboard', function () {
     return view('SuperAdmin.dashboard');
 })->middleware('auth')->name('dashboard');
+
+// POS Route
+Route::get('/pos', [PosController::class, 'index'])->name('pos.index')->middleware('auth');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();
@@ -90,12 +94,25 @@ Route::middleware('auth')->group(function () {
         // Role-based access configuration UI
         Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
         Route::post('/access', [\App\Http\Controllers\Admin\AccessController::class, 'store'])->name('access.store');
+<<<<<<< Updated upstream
         Route::post('/roles', [\App\Http\Controllers\Admin\AccessController::class, 'storeRole'])->name('roles.store');
 Route::prefix('admin')->group(function () {
     Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])
         ->name('admin.roles.update');
 });
         Route::delete('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'destroyRole'])->name('roles.destroy');
+=======
+
+        // Expenses routes
+        Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
+
+        // Routes for Select2 expense category search and creation
+        Route::get('expense-categories-search', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'index'])->name('expense-categories.search');
+        Route::post('expense-categories', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+
+        // Sales route
+        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+>>>>>>> Stashed changes
     });
     });
 
