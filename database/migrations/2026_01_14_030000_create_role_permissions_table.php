@@ -14,10 +14,10 @@ return new class extends Migration
                   ->constrained('user_types')
                   ->cascadeOnUpdate()
                   ->cascadeOnDelete();
-            $table->string('module'); // e.g., purchases, products, stockin, inventory, sales, settings, user_management
-            $table->enum('ability', ['none','view','edit','full'])->default('view');
+            $table->string('module'); 
+            $table->string('ability');
             $table->timestamps();
-            $table->unique(['user_type_id','module']);
+            $table->unique(['user_type_id', 'module', 'ability']);
         });
     }
 

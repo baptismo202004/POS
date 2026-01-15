@@ -90,14 +90,18 @@ Route::middleware('auth')->group(function () {
         // Role-based access configuration UI
         Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
         Route::post('/access', [\App\Http\Controllers\Admin\AccessController::class, 'store'])->name('access.store');
+        Route::post('/roles', [\App\Http\Controllers\Admin\AccessController::class, 'storeRole'])->name('roles.store');
+Route::prefix('admin')->group(function () {
+    Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])
+        ->name('admin.roles.update');
+});
+        Route::delete('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'destroyRole'])->name('roles.destroy');
     });
     });
 
-    // UI state (AJAX): persist sidebar "User Management" nested collapse open/closed
     Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])
         ->name('ui.sidebar.user-mgmt');
 
-    // Password reset routes (remote)
     Route::get('/password/reset', function () {
         return view('auth.passwords.email');
     })->name('password.request');

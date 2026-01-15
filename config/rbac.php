@@ -7,36 +7,31 @@ return [
             'label' => 'Root',
             'permissions' => ['full'],
         ],
-        'administrator' => [
-            'label' => 'Administrator',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
+        'products' => [
+            'label' => 'Products',
+            'permissions' => ['view', 'edit', 'full'],
         ],
-        'customer' => [
-            'label' => 'Customer',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
+        'purchases' => [
+            'label' => 'Purchases',
+            'permissions' => ['view', 'edit', 'full'],
         ],
-        'expense' => [
-            'label' => 'Expense',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
+        'stockin' => [
+            'label' => 'Stock In',
+            'permissions' => ['view', 'edit', 'full'],
         ],
-        'item' => [
-            'label' => 'Item',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
+        'inventory' => [
+            'label' => 'Inventory',
+            'permissions' => ['view', 'edit', 'full'],
         ],
-        'lead' => [
-            'label' => 'Lead',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
+        'sales' => [
+            'label' => 'Sales',
+            'permissions' => ['view', 'edit', 'full'],
         ],
-        'report' => [
-            'label' => 'Report',
-            'permissions' => ['view'],
-        ],
-        'setting' => [
-            'label' => 'Setting',
-            'permissions' => ['view', 'edit'],
+        'user_management' => [
+            'label' => 'User Management',
+            'permissions' => ['view', 'edit', 'full'],
         ],
     ],
-    // Roles with implicit full access to all modules/actions
     'super_roles' => [
         'Admin',
     ],

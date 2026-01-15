@@ -11,9 +11,12 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Access Control - User Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         .list-group-item.active {
             background-color: #0d6efd;
@@ -65,7 +68,10 @@
                     <div class="col-md-4">
                         <div class="card shadow-sm">
                             <div class="card-header bg-transparent border-0 pt-3">
-                                <h6 class="mb-0 text-muted">ROLES</h6>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0 text-muted">ROLES</h6>
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">Add User Type</button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <table class="table table-hover roles-table">
@@ -105,33 +111,32 @@
                                                     @foreach($modules as $moduleKey => $moduleData)
                                                         <tr data-module="{{ $moduleKey }}">
                                                             <td>
-                                                                <a href="#" class="toggle-module"><i class="fas fa-chevron-right me-2"></i></a>
+                                                                @php
+                                                                    $subPermissions = array_filter($moduleData['permissions'], fn($p) => $p !== 'full');
+                                                                @endphp
+                                                                @if(count($subPermissions) > 0)
+                                                                    <a href="#" class="toggle-module"><i class="fas fa-chevron-right me-2"></i></a>
+                                                                @else
+                                                                    <span class="me-2" style="width: 1em; display: inline-block;"></span>
+                                                                @endif
                                                                 {{ $moduleData['label'] }}
                                                             </td>
-                                                            <td>
-                                                                @php
-                                                                    $rolePermissions = $permissions[$role->id] ?? [];
-                                                                    $modulePermissions = $rolePermissions[$moduleKey] ?? [];
-                                                                    $isAllowed = in_array('full', $modulePermissions);
-                                                                @endphp
-                                                                <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" name="abilities[{{ $role->id }}][{{ $moduleKey }}][full]" value="1" {{ $isAllowed ? 'checked' : '' }}>
-                                                                    <label class="form-check-label">Allow</label>
-                                                                </div>
-                                                            </td>
+                                                            <td></td>
                                                         </tr>
+                                                        @php
+                                                            $rolePermissions = $permissions[$role->id] ?? [];
+                                                            $modulePermissions = $rolePermissions[$moduleKey] ?? [];
+                                                        @endphp
                                                         @foreach($moduleData['permissions'] as $permission)
-                                                            @if($permission !== 'full')
-                                                                <tr class="sub-permission d-none" data-parent-module="{{ $moduleKey }}">
-                                                                    <td class="ps-4">{{ ucfirst($permission) }}</td>
-                                                                    <td>
-                                                                        <div class="form-check form-switch">
-                                                                            <input class="form-check-input" type="checkbox" name="abilities[{{ $role->id }}][{{ $moduleKey }}][{{ $permission }}]" value="1" {{ in_array($permission, $modulePermissions) ? 'checked' : '' }}>
-                                                                            <label class="form-check-label">Allow</label>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            @endif
+                                                            <tr class="sub-permission d-none" data-parent-module="{{ $moduleKey }}">
+                                                                <td class="ps-4">{{ $permission === 'full' ? 'Full Access' : ucfirst($permission) }}</td>
+                                                                <td>
+                                                                    <div class="form-check form-switch">
+                                                                        <input class="form-check-input" type="checkbox" name="abilities[{{ $role->id }}][{{ $moduleKey }}][{{ $permission }}]" value="1" {{ in_array($permission, $modulePermissions) ? 'checked' : '' }}>
+                                                                        <label class="form-check-label">Allow</label>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
                                                         @endforeach
                                                     @endforeach
                                                 </tbody>
@@ -148,16 +153,183 @@
                 </div>
 
                 <div class="mt-3 small text-muted">
-                    <!-- Maintenance notes: Keep this module list in sync with routes and sidebar.
-                         Consider extracting modules to a config/rbac.php if growing further. -->
+                    
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Add Role Modal -->
+    <div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRoleModalLabel">Add New Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addRoleForm" method="POST" action="{{ route('admin.roles.store') }}">
+                        @csrf
+                        <div class="mb-3">
+                            <label for="roleName" class="form-label">Role Name</label>
+                            <input type="text" class="form-control" id="roleName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="roleDescription" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="roleDescription" name="description">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" form="addRoleForm" class="btn btn-primary">Save Role</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Role Modal -->
+    <div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRoleModalLabel">Edit Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editRoleForm" method="POST">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="mb-3">
+                            <label for="editRoleName" class="form-label">Role Name</label>
+                            <input type="text" class="form-control" id="editRoleName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editRoleDescription" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="editRoleDescription" name="description">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" form="editRoleForm" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+                document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('addRoleForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                let form = e.target;
+                let formData = new FormData(form);
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: data.message,
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        let errorMessages = Object.values(data.errors).join('<br>');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            html: errorMessages,
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Something went wrong!',
+                    });
+                });
+            });
+
+            document.getElementById('editRoleForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                let form = e.target;
+                let formData = new FormData(form);
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => { 
+                            throw new Error(text || 'Server responded with an error'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: data.message,
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        let errorMessages = Object.values(data.errors).join('<br>');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            html: errorMessages,
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error details:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Something went wrong! Please check the browser console for more details.',
+                    });
+                });
+            });
+
+            // Edit Role Modal Logic
+            const editRoleModal = document.getElementById('editRoleModal');
+            editRoleModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const roleId = button.dataset.roleId;
+                const roleName = button.dataset.roleName;
+                const roleDescription = button.dataset.roleDescription;
+
+                const form = editRoleModal.querySelector('#editRoleForm');
+                const nameInput = editRoleModal.querySelector('#editRoleName');
+                const descriptionInput = editRoleModal.querySelector('#editRoleDescription');
+
+                const baseUrl = '/superadmin/admin/admin/roles';
+                form.action = `${baseUrl}/${roleId}`;
+                nameInput.value = roleName;
+                descriptionInput.value = roleDescription;
+            });
+
             // Role selection logic
             const roleRows = document.querySelectorAll('.role-row');
             const permissionGroups = document.querySelectorAll('.permission-group');

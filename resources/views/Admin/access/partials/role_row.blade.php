@@ -6,10 +6,18 @@
         {{ $role->name }}
     </td>
     <td>
-        <a href="#" class="btn btn-sm btn-outline-secondary border-0"><i class="fas fa-plus"></i></a>
-        <a href="#" class="btn btn-sm btn-outline-secondary border-0"><i class="fas fa-pencil-alt"></i></a>
-        <a href="#" class="btn btn-sm btn-outline-secondary border-0"><i class="fas fa-lock"></i></a>
-        <a href="#" class="btn btn-sm btn-outline-danger border-0"><i class="fas fa-trash"></i></a>
+        <a href="#" class="btn btn-sm btn-outline-secondary border-0 edit-role-btn"
+           data-bs-toggle="modal" data-bs-target="#editRoleModal"
+           data-role-id="{{ $role->id }}"
+           data-role-name="{{ $role->name }}"
+           data-role-description="{{ $role->description ?? '' }}">
+            <i class="fas fa-pencil-alt"></i>
+        </a>
+        <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this role?');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="fas fa-trash"></i></button>
+        </form>
     </td>
 </tr>
 @if($role->children->isNotEmpty())

@@ -8,6 +8,7 @@ use App\Models\UserType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
 
 class AccessController extends Controller
@@ -52,6 +53,10 @@ class AccessController extends Controller
         $abilities = $request->input('abilities', []);
 
         DB::transaction(function () use ($abilities) {
+            // Prevent changes to the Admin role (ID 1)
+            if (isset($abilities[1])) {
+                unset($abilities[1]);
+            }
             $touchedRoleIds = [];
             foreach ($abilities as $roleId => $modules) {
                 foreach ($modules as $moduleKey => $permissions) {
@@ -72,6 +77,60 @@ class AccessController extends Controller
         });
 
         return redirect()->route('admin.access.index')->with('success', 'Access configuration saved.');
+    }
+
+        public function storeRole(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255|unique:user_types,name',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        UserType::create([
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'New role created successfully.']);
+    }
+
+    public function updateRole(Request $request, $role)
+    {
+        $role = UserType::find($role);
+
+        if (!$role) {
+            return response()->json(['success' => false, 'message' => 'Role not found.'], 404);
+        }
+
+        $data = $request->all();
+        $validator = Validator::make($data, [
+            'name' => 'required|string|max:255|unique:user_types,name,' . $role->id,
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $role->update($data);
+
+        return response()->json(['success' => true, 'message' => 'Role updated successfully.']);
+    }
+
+    public function destroyRole(UserType $role)
+    {
+        // Add any checks here to prevent deletion of critical roles, e.g., Admin
+        if ($role->id === 1) { // Assuming 1 is the ID for the Admin role
+            return redirect()->route('admin.access.index')->with('error', 'Cannot delete the default Admin role.');
+        }
+
+        $role->delete();
+
+        return redirect()->route('admin.access.index')->with('success', 'Role deleted successfully.');
     }
 
     private function resolvePermissions($allRoles, $existing)

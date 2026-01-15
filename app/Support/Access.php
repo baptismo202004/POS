@@ -15,44 +15,57 @@ use Illuminate\Support\Facades\Cache;
  */
 class Access
 {
-    /** @var array<string,int> */
-    protected static array $rank = [
-        'none' => 0,
-        'view' => 1,
-        'edit' => 2,
-        'full' => 3,
-    ];
-
-    public static function ability(?User $user, string $module): string
+    /**
+     * Get all permissions for a user's role, keyed by module.
+     * The result is cached.
+     *
+     * @param User|null $user
+     * @return array<string, array<string>>
+     */
+    protected static function getPermissions(?User $user): array
     {
         if (!$user || !$user->user_type_id) {
-            return 'none';
+            return [];
         }
+
         // Super roles: grant full access across all modules
         $super = (array) config('rbac.super_roles', []);
         $roleName = optional($user->userType)->name;
         if ($roleName && in_array($roleName, $super, true)) {
-            return 'full';
+            $modules = config('rbac.modules', []);
+            $allPermissions = [];
+            foreach ($modules as $moduleKey => $moduleData) {
+                $allPermissions[$moduleKey] = $moduleData['permissions'] ?? [];
+            }
+            return $allPermissions;
         }
+
         $roleId = (int) $user->user_type_id;
         $cacheKey = "rp:{$roleId}";
 
-        // Cache role permissions map: module => ability
-        $map = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($roleId) {
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($roleId) {
             return RolePermission::where('user_type_id', $roleId)
                 ->get()
-                ->pluck('ability', 'module')
+                ->groupBy('module')
+                ->map(function ($permissions) {
+                    return $permissions->pluck('ability')->all();
+                })
                 ->toArray();
         });
-
-        return $map[$module] ?? 'none'; // default to none if not configured
     }
 
+    /**
+     * Check if a user has a specific permission for a module.
+     *
+     * @param User|null $user
+     * @param string $module
+     * @param string $required
+     * @return bool
+     */
     public static function can(?User $user, string $module, string $required): bool
     {
-        $ability = self::ability($user, $module);
-        $a = self::$rank[$ability] ?? 0;
-        $r = self::$rank[$required] ?? 0;
-        return $a >= $r;
+        $permissions = self::getPermissions($user);
+
+        return isset($permissions[$module]) && in_array($required, $permissions[$module]);
     }
 }
