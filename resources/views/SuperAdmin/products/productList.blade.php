@@ -86,7 +86,7 @@
                                         <select name="product_type_id" id="productType" class="form-select select2-tags" style="width:100%">
                                             <option value="">-- Select Type --</option>
                                             <option value="1" data-electronic="1" {{ $isEdit && $product->product_type_id == 1 ? 'selected' : '' }}>Electronic</option>
-                                            <option value="2" data-electronic="0" {{ $isEdit && $product->product_type_id == 2 ? 'selected' : '' }}>Non-Electronic</option>
+                                            <option value="2" data-electronic="0" {{ ($isEdit && $product->product_type_id == 2) || !$isEdit ? 'selected' : '' }}>Non-Electronic</option>
                                         </select>
                                     </div>
 
@@ -102,7 +102,7 @@
                                         </select>
                                     </div>
 
-                                    <div class="col-md-4">
+                                    <div class="col-md-4 electronic-field d-none">
                                         <label class="form-label">Model Number</label>
                                         <input type="text" name="model_number" class="form-control" value="{{ $isEdit ? $product->model_number : '' }}">
                                     </div>
@@ -115,7 +115,7 @@
                                         @endif
                                     </div>
 
-                                    <div class="col-md-4">
+                                    <div class="col-md-4 electronic-field d-none">
                                         <label class="form-label">Tracking Type</label>
                                         <select name="tracking_type" class="form-select">
                                             <option value="none" {{ $isEdit && $product->tracking_type == 'none' ? 'selected' : '' }}>None</option>
@@ -124,7 +124,7 @@
                                         </select>
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Warranty Type</label>
                                         <select name="warranty_type" class="form-select">
                                             <option value="none" {{ $isEdit && $product->warranty_type == 'none' ? 'selected' : '' }}>None</option>
@@ -133,12 +133,12 @@
                                         </select>
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Warranty Coverage (months)</label>
                                         <input type="number" name="warranty_coverage_months" min="0" class="form-control" value="{{ $isEdit ? $product->warranty_coverage_months : '' }}">
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Voltage Specs</label>
                                         <input type="text" name="voltage_specs" class="form-control" value="{{ $isEdit ? $product->voltage_specs : '' }}" placeholder="e.g. 110-220V">
                                     </div>
@@ -152,68 +152,6 @@
                                     </div>
 
                                 </div>
-
-                                {{-- Electronic-only area: will be toggled by JS when product type is 'electronic' --}}
-                                <div id="electronicArea" class="mt-4 p-3 bg-white card-rounded border theme-border d-none">
-                                    <h5 class="mb-3 theme-text">Electronic product details & serials</h5>
-
-                                    <p class="text-muted">Add product serials / IMEIs. You can add multiple entries.</p>
-
-                                    <div id="serialsContainer">
-                                        <!-- dynamic serial rows will be appended here -->
-                                        @if($isEdit && $product->serials)
-                                            @foreach($product->serials as $serial)
-                                                <div class="serial-row p-3 mb-3 bg-gray-50 border rounded d-flex gap-3 align-items-start">
-                                                    <div class="flex-1 w-100">
-                                                        <div class="row g-2">
-                                                            <div class="col-md-4">
-                                                                <label class="form-label">Branch</label>
-                                                                <select name="serials[][branch_id]" class="form-select">
-                                                                    <option value="">-- Select Branch --</option>
-                                                                    @foreach($branches ?? [] as $b)
-                                                                        <option value="{{ $b->id }}" {{ $serial->branch_id == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                            </div>
-
-                                                            <div class="col-md-4">
-                                                                <label class="form-label">Serial / IMEI</label>
-                                                                <input type="text" name="serials[][serial_number]" class="form-control" required value="{{ $serial->serial_number }}">
-                                                            </div>
-
-                                                            <div class="col-md-2">
-                                                                <label class="form-label">Status</label>
-                                                                <select name="serials[][status]" class="form-select">
-                                                                    <option value="in_stock" {{ $serial->status == 'in_stock' ? 'selected' : '' }}>In stock</option>
-                                                                    <option value="sold" {{ $serial->status == 'sold' ? 'selected' : '' }}>Sold</option>
-                                                                    <option value="returned" {{ $serial->status == 'returned' ? 'selected' : '' }}>Returned</option>
-                                                                    <option value="defective" {{ $serial->status == 'defective' ? 'selected' : '' }}>Defective</option>
-                                                                    <option value="lost" {{ $serial->status == 'lost' ? 'selected' : '' }}>Lost</option>
-                                                                </select>
-                                                            </div>
-
-                                                            <div class="col-md-2">
-                                                                <label class="form-label">Warranty expiry</label>
-                                                                <input type="date" name="serials[][warranty_expiry_date]" class="form-control" value="{{ $serial->warranty_expiry_date ? $serial->warranty_expiry_date->format('Y-m-d') : '' }}">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="ps-2">
-                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-serial">Remove</button>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        @endif
-                                    </div>
-
-                                    <div class="d-flex gap-2 mt-3">
-                                        <button type="button" id="addSerialBtn" class="btn btn-sm" style="background-color:var(--theme-color); color:white">Add serial</button>
-                                        <small class="align-self-center text-muted">Each serial links to a branch and may have a warranty expiry date.</small>
-                                    </div>
-
-                                </div>
-
                                 <div class="mt-4 d-flex justify-content-end">
                                     <button type="submit" class="btn" style="background-color:var(--theme-color); color:white">{{ $isEdit ? 'Update Product' : 'Save Product' }}</button>
                                 </div>
@@ -227,120 +165,45 @@
         </main>
     </div>
 
-    {{-- Templates and scripts --}}
-    <template id="serialRowTemplate">
-        <div class="serial-row p-3 mb-3 bg-gray-50 border rounded d-flex gap-3 align-items-start">
-            <div class="flex-1 w-100">
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label">Branch</label>
-                        <select name="serials[][branch_id]" class="form-select">
-                            <option value="">-- Select Branch --</option>
-                            @foreach($branches ?? [] as $b)
-                                <option value="{{ $b->id }}">{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Serial / IMEI</label>
-                        <input type="text" name="serials[][serial_number]" class="form-control" required>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Status</label>
-                        <select name="serials[][status]" class="form-select">
-                            <option value="in_stock">In stock</option>
-                            <option value="sold">Sold</option>
-                            <option value="returned">Returned</option>
-                            <option value="defective">Defective</option>
-                            <option value="lost">Lost</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Warranty expiry</label>
-                        <input type="date" name="serials[][warranty_expiry_date]" class="form-control">
-                    </div>
-                </div>
-            </div>
-
-            <div class="ps-2">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-serial">Remove</button>
-            </div>
-        </div>
-    </template>
+    {{-- Scripts --}}
 
     <script>
-        // Tiny helper to determine if selected product type triggers electronic UI
-        function isSelectedTypeElectronic(selectEl){
-            const opt = selectEl.selectedOptions[0];
-            return opt && opt.dataset && opt.dataset.electronic === '1';
-        }
+        $(document).ready(function() {
+            // Initialize all select2 dropdowns
+            $('#brandSelect, #categorySelect').select2({
+                tags: true,
+                placeholder: '-- Select or create --',
+                allowClear: true,
+                width: 'resolve'
+            });
 
-        document.addEventListener('DOMContentLoaded', function(){
-            // init select2 on non-creatable selects
-            if (window.jQuery && $.fn.select2) {
-                $('#brandSelect, #categorySelect').select2({
-                    tags: true,
-                    placeholder: '-- Select or create --',
-                    allowClear: true,
-                    width: 'resolve'
-                });
+            $('#productType').select2({
+                placeholder: '-- Select --',
+                allowClear: true,
+                width: 'resolve',
+                minimumResultsForSearch: Infinity
+            });
 
-                $('#productType').select2({
-                    placeholder: '-- Select --',
-                    allowClear: true,
-                    width: 'resolve',
-                    minimumResultsForSearch: Infinity
-                });
+            $('#unitTypeSelect').select2({
+                placeholder: '-- Select unit types --',
+                allowClear: true,
+                width: 'resolve'
+            });
 
-                $('#unitTypeSelect').select2({
-                    placeholder: '-- Select unit types --',
-                    allowClear: true,
-                    width: 'resolve'
-                });
+            // --- Conditional Visibility Logic ---
+            const productType = $('#productType');
+            const electronicFields = $('.electronic-field');
+
+            function toggleElectronicFields() {
+                const isElectronic = productType.val() === '1';
+                electronicFields.toggleClass('d-none', !isElectronic);
             }
 
-            const productType = document.getElementById('productType');
-            const electronicArea = document.getElementById('electronicArea');
+            // Attach the event listener to select2's change event
+            productType.on('change', toggleElectronicFields);
 
-            function toggleElectronicArea(){
-                const selectedOption = productType.options[productType.selectedIndex];
-                if (selectedOption && selectedOption.text === 'Electronic') {
-                    electronicArea.classList.remove('d-none');
-                } else {
-                    electronicArea.classList.add('d-none');
-                }
-            }
-
-            productType.addEventListener('change', toggleElectronicArea);
-            toggleElectronicArea(); // initial call to set visibility based on default selection
-
-            addSerialBtn.addEventListener('click', function(){
-                const node = document.importNode(serialTemplate.content, true);
-                serialsContainer.appendChild(node);
-            });
-
-            // delegated remove
-            serialsContainer.addEventListener('click', function(e){
-                if(e.target.classList.contains('remove-serial')){
-                    const row = e.target.closest('.serial-row');
-                    if(row) row.remove();
-                }
-            });
-
-            // Show new entry field based on selection
-            $('.form-select').on('change', function(){
-                const selectedValue = $(this).val();
-                if(selectedValue === 'new'){
-                    $(this).next('input').removeClass('d-none').focus();
-                } else {
-                    $(this).next('input').addClass('d-none');
-                }
-            });
-
-
+            // Initial call to set the correct visibility on page load
+            toggleElectronicFields();
         });
     </script>
 
