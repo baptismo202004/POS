@@ -179,7 +179,7 @@
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="addSupplierForm">
+                <form id="addSupplierForm" action="{{ route('superadmin.suppliers.store') }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label">Supplier Name</label>
@@ -207,7 +207,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button class="btn btn-primary" id="saveSupplierBtn">Save Supplier</button>
+                <button type="button" class="btn btn-primary" id="saveSupplierBtn">Save Supplier</button>
             </div>
         </div>
     </div>
@@ -302,11 +302,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const container = document.getElementById('items-container');
     const template = document.getElementById('item-template');
     const addItemBtn = document.getElementById('add-item-btn');
-    const modal = new bootstrap.Modal(document.getElementById('addProductModal'));
+    const productModal = new bootstrap.Modal(document.getElementById('addProductModal'));
+    const supplierModal = new bootstrap.Modal(document.getElementById('addSupplierModal'));
 
     let lastSelect = null;
     let itemIndex = 0;
 
+    // ----------------- PRODUCT SELECT2 & ADD NEW PRODUCT -----------------
     function initProductSelect(wrapper) {
         const select = $(wrapper).find('.product-select');
 
@@ -323,19 +325,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 const search = document.querySelector('.select2-search__field');
                 const term = search ? search.value : '';
 
-                if (!results || document.querySelector('.select2-add-product')) return;
+                if (!results || document.querySelector('.select2-add-supplier')) return;
 
                 const li = document.createElement('li');
-                li.className = 'select2-results__option select2-add-product';
-                li.innerHTML = `➕ Add new product`;
+                li.className = 'select2-results__option select2-add-supplier';
+                li.innerHTML = `➕ Add new supplier`;
 
                 li.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-
                     select.select2('close');
                     $('#addProductForm [name="product_name"]').val(term);
-                    modal.show();
+                    productModal.show();
                 });
 
                 results.appendChild(li);
@@ -346,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function addItem(productData = null) {
         const node = template.content.cloneNode(true);
 
-        // Update the name attributes with the current index
+        // Update name attributes with current index
         node.querySelectorAll('[name^="items[]"]').forEach(el => {
             const name = el.getAttribute('name').replace('[]', `[${itemIndex}]`);
             el.setAttribute('name', name);
@@ -368,11 +369,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     addItemBtn.addEventListener('click', addItem);
 
-    function updateTotals() {
+        function updateTotals() {
         let grandTotal = 0;
         document.querySelectorAll('.item-row').forEach(row => {
-            const quantityInput = row.querySelector('input[name^="items"][name$="[quantity]"]');
-            const quantity = parseFloat(quantityInput.value) || 0;
+            const quantity = parseFloat(row.querySelector('input[name$="[quantity]"]').value) || 0;
             const cost = parseFloat(row.querySelector('.item-cost').value) || 0;
             const total = quantity * cost;
             row.querySelector('.item-total').value = total.toFixed(2);
@@ -394,28 +394,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const supplierSelect = $('.supplier-select');
-    const supplierModal = new bootstrap.Modal(document.getElementById('addSupplierModal'));
+    // ----------------- SUPPLIER SELECT2 & ADD NEW SUPPLIER -----------------
+    const $supplierSelect = $('.supplier-select');
+    const $supplierForm = $('#addSupplierForm');
+    const $supplierNameInput = $supplierForm.find('[name="supplier_name"]');
+    const $saveSupplierBtn = $('#saveSupplierBtn');
 
-    supplierSelect.select2({
-        width: '100%'
-    }).on('select2:open', function () {
+    $supplierSelect.select2({ width: '100%' }).on('select2:open', function () {
         setTimeout(() => {
             const results = document.querySelector('.select2-results__options');
+            if (!results || document.querySelector('.select2-add-supplier')) return;
+
             const search = document.querySelector('.select2-search__field');
             const term = search ? search.value : '';
 
-            if (!results || document.querySelector('.select2-add-supplier')) return;
-
             const li = document.createElement('li');
-            li.className = 'select2-results__option select2-add-product'; // Re-use style
+            li.className = 'select2-results__option select2-add-product';
             li.innerHTML = `➕ Add new supplier`;
 
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                supplierSelect.select2('close');
-                $('#addSupplierForm [name="supplier_name"]').val(term);
+                $supplierSelect.select2('close');
+                $supplierNameInput.val(term);
                 supplierModal.show();
             });
 
@@ -423,21 +424,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 0);
     });
 
-    $('#saveSupplierBtn').on('click', function () {
-        const form = $('#addSupplierForm');
+    $saveSupplierBtn.on('click', function () {
+        const name = $supplierNameInput.val().trim();
+        if (!name) {
+            Swal.fire('Error', 'Supplier name is required.', 'error');
+            return;
+        }
+
         $.ajax({
-            url: '{{ route("superadmin.suppliers.store") }}',
+            url: $supplierForm.attr('action'),
             method: 'POST',
-            data: form.serialize(),
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
+            data: $supplierForm.serialize(),
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
             success: function (response) {
                 if (response.success) {
                     const newOption = new Option(response.supplier.supplier_name, response.supplier.id, true, true);
-                    supplierSelect.append(newOption).trigger('change');
+                    $supplierSelect.append(newOption).trigger('change');
                     supplierModal.hide();
-                    form[0].reset();
+                    $supplierForm[0].reset();
+
                     Swal.fire({
                         toast: true,
                         position: 'top-end',
@@ -448,19 +453,51 @@ document.addEventListener('DOMContentLoaded', function () {
                         timerProgressBar: true
                     });
                 } else {
-                    // Handle non-validation errors from controller
+                    let errorMessages = 'An unknown error occurred.';
+                    if (response.errors) {
+                        errorMessages = Object.values(response.errors).map(e => e[0]).join('<br>');
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        html: errorMessages,
+                        didOpen: () => {
+                            const supplierModal = document.getElementById('addSupplierModal');
+                            if (supplierModal) {
+                                supplierModal.setAttribute('aria-hidden', 'true');
+                            }
+                        },
+                        didClose: () => {
+                            const supplierModal = document.getElementById('addSupplierModal');
+                            if (supplierModal) {
+                                supplierModal.removeAttribute('aria-hidden');
+                            }
+                        }
+                    });
                 }
             },
-            error: function (xhr) {
-                 let errorMessages = 'An unexpected error occurred. Please try again.';
-                 if (xhr.responseJSON && xhr.responseJSON.errors) {
-                    errorMessages = Object.values(xhr.responseJSON.errors).map(e => e[0]).join('<br>');
-                 }
-                 Swal.fire({
+            error: function (xhr, status, error) {
+                let errorMessages = 'An unexpected error occurred. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorMessages = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                }
+                Swal.fire({
                     icon: 'error',
                     title: 'Save Failed',
-                    html: errorMessages
-                 });
+                    html: errorMessages,
+                    didOpen: () => {
+                        const supplierModal = document.getElementById('addSupplierModal');
+                        if (supplierModal) {
+                            supplierModal.setAttribute('aria-hidden', 'true');
+                        }
+                    },
+                    didClose: () => {
+                        const supplierModal = document.getElementById('addSupplierModal');
+                        if (supplierModal) {
+                            supplierModal.removeAttribute('aria-hidden');
+                        }
+                    }
+                });
             }
         });
     });
@@ -471,14 +508,12 @@ document.addEventListener('DOMContentLoaded', function () {
             url: '{{ route("superadmin.products.store") }}',
             method: 'POST',
             data: form.serialize(),
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
             success: function (response) {
                 if (response.success) {
                     const newOption = new Option(response.product.product_name, response.product.id, true, true);
                     lastSelect.append(newOption).trigger('change');
-                    modal.hide();
+                    productModal.hide();
                     form[0].reset();
 
                     Swal.fire({
@@ -495,105 +530,86 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (response.errors) {
                         errorMessages = Object.values(response.errors).map(e => e[0]).join('<br>');
                     }
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Oops...',
-                        html: errorMessages
-                    });
+                    Swal.fire({ icon: 'error', title: 'Oops...', html: errorMessages });
                 }
             },
             error: function (xhr) {
-                 let errorMessages = 'An unexpected error occurred. Please try again.';
-                 if (xhr.responseJSON && xhr.responseJSON.errors) {
+                let errorMessages = 'An unexpected error occurred. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
                     errorMessages = Object.values(xhr.responseJSON.errors).map(e => e[0]).join('<br>');
-                 }
-                 Swal.fire({
-                    icon: 'error',
-                    title: 'Save Failed',
-                    html: errorMessages
-                 });
+                }
+                Swal.fire({ icon: 'error', title: 'Save Failed', html: errorMessages });
             }
         });
     });
 
-    // addItem(); // Removed to prevent adding an empty item on page load
+    // ----------------- MODAL FOCUS FIX -----------------
+    const addSupplierModalEl = document.getElementById('addSupplierModal');
+    const addProductModalEl = document.getElementById('addProductModal');
 
+    // When a new modal is shown, hide the one behind it
+    $(addProductModalEl).on('show.bs.modal', function () {
+        $(addSupplierModalEl).attr('aria-hidden', 'true');
+    });
+
+    // When the new modal is hidden, show the original one again
+    $(addProductModalEl).on('hidden.bs.modal', function () {
+        $(addSupplierModalEl).removeAttr('aria-hidden');
+    });
+
+    // ----------------- OCR FUNCTIONALITY -----------------
     const ocrButton = document.getElementById('ocr-button');
     const ocrFileInput = document.createElement('input');
     ocrFileInput.type = 'file';
     ocrFileInput.accept = 'image/*';
 
-    ocrButton.addEventListener('click', function() {
-        ocrFileInput.click();
-    });
+    ocrButton.addEventListener('click', () => ocrFileInput.click());
 
     ocrFileInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
-        if (!file) {
-            return;
-        }
+        if (!file) return;
 
         Swal.fire({
             title: 'Processing OCR',
             text: 'Please wait...',
             allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            didOpen: () => Swal.showLoading()
         });
 
-        Tesseract.recognize(
-            file,
-            'eng',
-            {
-                logger: m => console.log(m)
-            }
-        ).then(({ data: { text } }) => {
-            console.log("Full OCR Text:\n", text); // For debugging
-            $.ajax({
-                url: '{{ route("superadmin.purchases.ocr-product-match") }}',
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    text: text
-                },
-                success: function(response) {
-                    Swal.close();
-
-                    if (response.reference_number) {
-                        $('input[name="reference_number"]').val(response.reference_number);
+        Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
+            .then(({ data: { text } }) => {
+                $.ajax({
+                    url: '{{ route("superadmin.purchases.ocr-product-match") }}',
+                    method: 'POST',
+                    data: { _token: '{{ csrf_token() }}', text: text },
+                    success: function(response) {
+                        Swal.close();
+                        if (response.reference_number) $('input[name="reference_number"]').val(response.reference_number);
+                        $('#items-container').empty();
+                        itemIndex = 0;
+                        if (response.products && response.products.length > 0) {
+                            response.products.forEach(product => addItem(product));
+                            Swal.fire('Success', 'Products added from OCR scan.', 'success');
+                        } else {
+                            Swal.fire('No Products Found', 'Could not match any products from the scanned text.', 'warning');
+                        }
+                    },
+                    error: function() {
+                        Swal.close();
+                        Swal.fire('Error', 'An error occurred while matching products.', 'error');
                     }
-
-                    // Clear existing items before adding new ones
-                    $('#items-container').empty();
-                    itemIndex = 0; // Reset index
-
-                    if (response.products && response.products.length > 0) {
-                        response.products.forEach(product => {
-                            addItem(product);
-                        });
-                        Swal.fire('Success', 'Products added from OCR scan.', 'success');
-                    } else {
-                        Swal.fire('No Products Found', 'Could not match any products from the scanned text.', 'warning');
-                    }
-                },
-                error: function() {
-                    Swal.close();
-                    Swal.fire('Error', 'An error occurred while matching products.', 'error');
-                }
+                });
+            })
+            .catch(err => {
+                Swal.close();
+                console.error(err);
+                Swal.fire({ title: 'OCR Error', text: 'Could not recognize text from the image.', icon: 'error' });
             });
-        }).catch(err => {
-            Swal.close();
-            console.error(err);
-            Swal.fire({
-                title: 'OCR Error',
-                text: 'Could not recognize text from the image.',
-                icon: 'error'
-            });
-        });
     });
+
 });
 </script>
+
 
 </body>
 </html>

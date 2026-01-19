@@ -59,11 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('superadmin.products.destroy');
 
-        // Purchase routes
-        /*Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('superadmin.purchases.index');
-        Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('superadmin.purchases.create');
-        Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('superadmin.purchases.store');
-        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('superadmin.purchases.show');*/
+       
         Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->middleware('ability:purchases,edit')->name('superadmin.purchases.ocr-product-match');
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->middleware('ability:purchases,view')->name('superadmin.purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->middleware('ability:purchases,edit')->name('superadmin.purchases.create');
@@ -83,9 +79,11 @@ Route::middleware('auth')->group(function () {
             Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class, ['as' => 'superadmin']);
             Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class, ['as' => 'superadmin']);
             Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class, ['as' => 'superadmin']);
-            Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class, ['as' => 'superadmin']);
         });
     
+        // Separate Suppliers routes with proper abilities
+            Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class, ['as' => 'superadmin']);
+
     // Admin-only user management (account creation, access control)
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('users.create');
@@ -94,14 +92,9 @@ Route::middleware('auth')->group(function () {
         // Role-based access configuration UI
         Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
         Route::post('/access', [\App\Http\Controllers\Admin\AccessController::class, 'store'])->name('access.store');
-<<<<<<< Updated upstream
         Route::post('/roles', [\App\Http\Controllers\Admin\AccessController::class, 'storeRole'])->name('roles.store');
-Route::prefix('admin')->group(function () {
-    Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])
-        ->name('admin.roles.update');
-});
+        Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])->name('roles.update');
         Route::delete('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'destroyRole'])->name('roles.destroy');
-=======
 
         // Expenses routes
         Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
@@ -112,7 +105,6 @@ Route::prefix('admin')->group(function () {
 
         // Sales route
         Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
->>>>>>> Stashed changes
     });
     });
 
@@ -127,7 +119,6 @@ Route::prefix('admin')->group(function () {
         $request->validate(['email' => 'required|email']);
         $user = \App\Models\User::where('email', $request->input('email'))->first();
         if ($user) {
-            // dispatch reset email here if implemented
         }
         return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
     })->name('password.email');
