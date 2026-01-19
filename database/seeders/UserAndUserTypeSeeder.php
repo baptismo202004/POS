@@ -42,6 +42,7 @@ class UserAndUserTypeSeeder extends Seeder
         // ============================
         DB::table('users')->insert([
             [
+                'employee_id' => 'EMP00001',
                 'name' => 'Admin User',
                 'email' => 'dablo@sample.com',
                 'password' => Hash::make('password'),
@@ -52,6 +53,7 @@ class UserAndUserTypeSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'employee_id' => 'EMP00002',
                 'name' => 'Cashier User',
                 'email' => 'cashier@example.com',
                 'password' => Hash::make('password'),

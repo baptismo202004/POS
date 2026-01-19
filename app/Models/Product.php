@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\StockIn;
+use App\Models\StockOut;
+use App\Models\SaleItem;
 
 class Product extends Model
 {
@@ -48,5 +51,27 @@ class Product extends Model
     public function serials()
     {
         return $this->hasMany(ProductSerial::class);
+    }
+
+    public function stockIns()
+    {
+        return $this->hasMany(StockIn::class);
+    }
+
+    public function stockOuts()
+    {
+        return $this->hasMany(StockOut::class);
+    }
+
+    public function saleItems()
+    {
+        return $this->hasMany(SaleItem::class);
+    }
+
+    public function getCurrentStockAttribute()
+    {
+        $stockIn = $this->stockIns()->sum('quantity');
+        $stockOut = $this->stockOuts()->sum('quantity');
+        return $stockIn - $stockOut;
     }
 }

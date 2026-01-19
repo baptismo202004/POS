@@ -36,6 +36,9 @@ Route::get('/dashboard', function () {
 
 // POS Route
 Route::get('/pos', [PosController::class, 'index'])->name('pos.index')->middleware('auth');
+Route::post('/pos', [PosController::class, 'store'])->name('pos.store')->middleware('auth');
+Route::get('/pos/lookup', [PosController::class, 'lookup'])->name('pos.lookup')->middleware('auth');
+Route::post('/pos/cashier/validate', [PosController::class, 'validateCashier'])->name('pos.cashier.validate')->middleware('auth');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();

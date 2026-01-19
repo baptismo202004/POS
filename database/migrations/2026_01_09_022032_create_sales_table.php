@@ -13,14 +13,13 @@ return new class extends Migration
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_number')->unique();
-
-            $table->foreignId('customer_id')->nullable()->constrained('customers');
-            $table->foreignId('branch_id')->constrained('branches');
-
-            $table->decimal('total_amount', 12, 2);
-            $table->enum('payment_method', ['cash','card','gcash','bank']);
-
+            $table->foreignId('cashier_id')->constrained('users')->restrictOnDelete();
+            $table->string('employee_id');
+            $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
+            $table->decimal('total_amount', 10, 2);
+            $table->decimal('tax', 10, 2)->default(0);
+            $table->string('payment_method');
             $table->timestamps();
         });
 

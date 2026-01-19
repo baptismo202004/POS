@@ -9,11 +9,13 @@ return new class extends Migration {
     {
       Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('employee_id')->unique();
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
 
             $table->string('profile_picture')->nullable();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
 
             $table->foreignId('user_type_id')
                   ->constrained('user_types')
