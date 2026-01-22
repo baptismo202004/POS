@@ -35,11 +35,12 @@ class PurchaseController extends Controller
         $product_types = ProductType::all();
         $unit_types = UnitType::all();
         $suppliers = Supplier::where('status', 'active')->get();
+        $branches = Branch::where('status', 'active')->get();
 
-        return view('SuperAdmin.purchases.create', compact('products', 'brands', 'categories', 'product_types', 'unit_types', 'suppliers'));
+        return view('SuperAdmin.purchases.create', compact('products', 'brands', 'categories', 'product_types', 'unit_types', 'suppliers', 'branches'));
     }
 
-     public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'purchase_date' => 'required|date',
@@ -47,16 +48,44 @@ class PurchaseController extends Controller
             'reference_number' => 'nullable|string|max:255',
             'payment_status' => 'required|in:pending,paid',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.is_new' => 'nullable|boolean',
+            'items.*.product_id' => 'required_if:items.*.is_new,null|exists:products,id',
+            'items.*.product_name' => 'required_if:items.*.is_new,1|string|max:255|unique:products,product_name',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $validated) {
+        DB::transaction(function () use ($validated) {
             $totalCost = 0;
+            $purchaseItemsData = [];
+
             foreach ($validated['items'] as $item) {
-                $totalCost += $item['quantity'] * $item['cost'];
+                $productId = null;
+                if (!empty($item['is_new'])) {
+                    $newProduct = Product::create([
+                        'product_name' => $item['product_name'],
+                        'barcode' => 'BC-' . uniqid(),
+                        'status' => 'active',
+                        'tracking_type' => 'none',
+                        'warranty_type' => 'none',
+                    ]);
+                    $newProduct->unitTypes()->sync([$item['unit_type_id']]);
+                    $productId = $newProduct->id;
+                } else {
+                    $productId = $item['product_id'];
+                }
+
+                $subtotal = $item['quantity'] * $item['cost'];
+                $totalCost += $subtotal;
+
+                $purchaseItemsData[] = [
+                    'product_id' => $productId,
+                    'quantity' => $item['quantity'],
+                    'unit_type_id' => $item['unit_type_id'],
+                    'unit_cost' => $item['cost'],
+                    'subtotal' => $subtotal,
+                ];
             }
 
             $purchase = Purchase::create([
@@ -67,15 +96,7 @@ class PurchaseController extends Controller
                 'reference_number' => $validated['reference_number'] ?? null,
             ]);
 
-            foreach ($validated['items'] as $item) {
-                $purchase->items()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_type_id' => $item['unit_type_id'],
-                    'unit_cost' => $item['cost'],
-                    'subtotal' => $item['quantity'] * $item['cost'],
-                ]);
-            }
+            $purchase->items()->createMany($purchaseItemsData);
         });
 
         return redirect()->route('superadmin.purchases.index')->with('success', 'Purchase created successfully.');
@@ -92,6 +113,7 @@ class PurchaseController extends Controller
         $text = $request->input('text', '');
         $lines = explode("\n", $text);
         $matchedProducts = [];
+        $unmatchedProducts = [];
         $referenceNumber = null;
 
         // Extract Reference Number
@@ -104,10 +126,10 @@ class PurchaseController extends Controller
 
         foreach ($lines as $line) {
             // Regex to capture quantity, item description, and price
-            if (preg_match('/^(\d+)\s+(.+?)\s+(\d+\.\d{2})/', $line, $matches)) {
+            if (preg_match('/^(\d+)\s+(.*?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})/', $line, $matches)) {
                 $quantity = (int)$matches[1];
                 $productName = trim($matches[2]);
-                $cost = (float)$matches[3];
+                $cost = (float)str_replace(',', '', $matches[3]);
 
                 // Find the product in the database
                 $product = Product::where('product_name', 'like', '%' . $productName . '%')->first();
@@ -119,13 +141,20 @@ class PurchaseController extends Controller
                         'quantity' => $quantity,
                         'cost' => $cost,
                     ];
+                } else {
+                    $unmatchedProducts[] = [
+                        'name' => $productName,
+                        'quantity' => $quantity,
+                        'cost' => $cost,
+                    ];
                 }
             }
         }
 
         return response()->json([
             'reference_number' => $referenceNumber,
-            'products' => $matchedProducts
+            'products' => $matchedProducts,
+            'unmatched_products' => $unmatchedProducts
         ]);
     }
 }

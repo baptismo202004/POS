@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SuperAdmin\ProductController as SuperAdminProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\PurchaseController;
+use App\Http\Controllers\SuperAdmin\InventoryController;
 
 Route::get('/', function () {
     return view('login');
@@ -58,6 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products', [SuperAdminProductController::class, 'index'])->middleware('ability:products,view')->name('superadmin.products.index');
         Route::get('/products/create', [SuperAdminProductController::class, 'create'])->middleware('ability:products,edit')->name('superadmin.products.create');
         Route::post('/products', [SuperAdminProductController::class, 'store'])->middleware('ability:products,edit')->name('superadmin.products.store');
+                Route::get('/products/{product}', [SuperAdminProductController::class, 'show'])->middleware('ability:products,view')->name('superadmin.products.show');
         Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->middleware('ability:products,edit')->name('superadmin.products.edit');
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('superadmin.products.update');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('superadmin.products.destroy');
@@ -73,7 +75,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->middleware('ability:stockin,view')->name('superadmin.stockin.index');
         Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'create'])->middleware('ability:stockin,edit')->name('superadmin.stockin.create');
         Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'store'])->middleware('ability:stockin,edit')->name('superadmin.stockin.store');
-        Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->middleware('ability:stockin,view')->name('superadmin.stockin.products-by-purchase');
+                Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->middleware('ability:stockin,view')->name('superadmin.stockin.products-by-purchase');
+
+        // Inventory routes
+        Route::get('/inventory', [InventoryController::class, 'index'])->middleware('ability:inventory,view')->name('superadmin.inventory.index');
+        Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('superadmin.inventory.stock-in');
+        Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('superadmin.inventory.adjust');
 
         // Settings routes (guard at least with view-level ability)
         Route::middleware('ability:settings,view')->group(function () {

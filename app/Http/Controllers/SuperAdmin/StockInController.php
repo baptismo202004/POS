@@ -12,9 +12,21 @@ use App\Models\Purchase;
 
 class StockInController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $stockIns = StockIn::with(['product', 'branch'])->latest()->paginate(15);
+        $query = StockIn::with(['product', 'branch']);
+
+        if ($request->get('sort') === 'product') {
+            $direction = $request->get('direction', 'asc') === 'asc' ? 'asc' : 'desc';
+            $query->join('products', 'stock_ins.product_id', '=', 'products.id')
+                  ->orderBy('products.product_name', $direction)
+                  ->select('stock_ins.*');
+        } else {
+            $query->latest();
+        }
+
+        $stockIns = $query->paginate(15)->withQueryString();
+
         return view('SuperAdmin.stockin.index', compact('stockIns'));
     }
 

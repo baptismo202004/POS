@@ -120,6 +120,12 @@ class ProductController extends Controller
     }
 
 
+    public function show(Product $product)
+    {
+        $product->load('brand', 'category', 'productType', 'unitTypes');
+        return view('SuperAdmin.products.show', compact('product'));
+    }
+
     public function edit(Product $product)
     {
         $product->load('unitTypes');

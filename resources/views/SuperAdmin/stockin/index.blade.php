@@ -12,7 +12,7 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Product</th>
+                                                <th><a href="{{ route('superadmin.stockin.index', ['sort' => 'product', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
                         <th>Branch</th>
                         <th>Quantity</th>
                         <th>Price</th>
@@ -22,7 +22,7 @@
                 <tbody>
                     @forelse($stockIns as $stock)
                         <tr>
-                            <td>{{ $stock->product->product_name ?? 'N/A' }}</td>
+                                                        <td><a href="{{ route('superadmin.products.show', $stock->product->id) }}">{{ $stock->product->product_name ?? 'N/A' }}</a></td>
                             <td>{{ $stock->branch->branch_name ?? 'N/A' }}</td>
                             <td>{{ $stock->quantity }}</td>
                             <td>{{ $stock->price }}</td>

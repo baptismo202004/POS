@@ -73,14 +73,7 @@
         .dropdown-submenu.pull-left .dropdown-menu {
             left: -100%;
             margin-left: 10px;
-            -webkit-border-radius: 6px 0 6px 6px;
-            -moz-border-radius: 6px 0 6px 6px;
             border-radius: 6px 0 6px 6px;
-        }
-
-        /* Ensure the user management menu is visible when expanded on page load */
-        #userMgmtMenu.collapse.show {
-            visibility: visible;
         }
 
     </style>
@@ -113,19 +106,27 @@
                 <span>Purchase</span>
             </a>
             @endcanAccess
-                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
-                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 15h2v3h12v-3h2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3zm9-4V2h-2v9H8l4 4 4-4h-3z"/></svg>
-                </span>
-                <span>Stock In</span>
-            </a>
             @canAccess('inventory','view')
-            <a href="#" class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100">
+            @php
+                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isInventoryActive ? 'text-dark bg-indigo-50' : 'text-muted hover:bg-gray-100' }}" href="#inventoryMenu" data-bs-toggle="collapse" aria-expanded="{{ $isInventoryActive ? 'true' : 'false' }}" aria-controls="inventoryMenu">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-4 18c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H9v-2h6v2z"/></svg>
                 </span>
                 <span>Inventory</span>
+                <svg class="icon ms-auto" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
+            <div class="collapse {{ $isInventoryActive ? 'show' : '' }}" id="inventoryMenu">
+                <nav class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none text-dark' : 'd-flex gap-2 align-items-center py-2 text-decoration-none text-muted hover:bg-gray-100' }}">
+                        <span class="small">Inventory List</span>
+                    </a>
+                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none text-dark' : 'd-flex gap-2 align-items-center py-2 text-decoration-none text-muted hover:bg-gray-100' }}">
+                        <span class="small">Stock In</span>
+                    </a>
+                </nav>
+            </div>
             @endcanAccess
             @canAccess('sales','view')
             <a href="{{ route('admin.sales.index') }}" class="{{ request()->routeIs('admin.sales.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-dark bg-indigo-50' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none text-muted hover:bg-gray-100' }}">
@@ -133,7 +134,7 @@
                     <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0l-.01-.01a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2v-.02a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82L4.8 5.5a2 2 0 0 1 0-2.83L4.81 2.7a2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1 1.51V5a2 2 0 0 1 2 2v.09c0 .44.16.86.46 1.18a1.65 1.65 0 0 0 .96 1.23c.53.28 1.13.28 1.66 0 .36-.2.68-.46.96-.77.36-.41.56-.88.56-1.38V7a2 2 0 0 1 2-2h.02a2 2 0 0 1 2 2v.09c0 .5.2.98.56 1.38.28.31.6.57.96.77.53.28 1.13.28 1.66 0 .39-.22.7-.58.96-.96.23-.34.46-.68.7-1.01z" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span>Sales</span>
-            </a>
+            </a>    
             @endcanAccess
 
             {{-- Expenses Link --}}

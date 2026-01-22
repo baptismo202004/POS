@@ -128,44 +128,133 @@
 
 <!-- ITEM TEMPLATE -->
 <template id="item-template">
-    <div class="row g-3 mb-3 item-row align-items-end">
-        <div class="col-md-3">
-            <label class="form-label">Product</label>
-            <select name="items[][product_id]" class="form-select product-select" required>
-                <option value="">-- Select Product --</option>
-                @foreach($products as $product)
-                    <option value="{{ $product->id }}">{{ $product->product_name }}</option>
-                @endforeach
+    <div class="item-row border rounded p-3 mb-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Product</label>
+                <select name="items[][product_id]" class="form-select product-select" required>
+                    <option value="">-- Select Product --</option>
+                    @foreach($products as $product)
+                        <option value="{{ $product->id }}">{{ $product->product_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Product Type</label>
+                <select name="items[][product_type]" class="form-select product-type-select" required>
+                    <option value="non-electronic" selected>Non-Electronic</option>
+                    <option value="electronic">Electronic</option>
+                </select>
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label">Quantity</label>
+                <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Unit Type</label>
+                <select name="items[][unit_type_id]" class="form-select" required>
+                    <option value="">-- Select Unit --</option>
+                    @foreach($unit_types as $unit)
+                        <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Cost</label>
+                <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label invisible">Remove</label>
+                <button type="button" class="btn btn-danger remove-item-btn w-100">Remove</button>
+            </div>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-12 serials-container d-none">
+                <div class="border rounded p-3">
+                    <h6>Electronic product details & serials</h6>
+                    <p class="text-muted small">Add product serials / IMEIs. You can add multiple entries.</p>
+                    <div class="serial-entries-container"></div>
+                    <button type="button" class="btn btn-primary btn-sm add-serial-btn mt-2">Add serial</button>
+                    <span class="text-muted small ms-2">Each serial links to a branch and may have a warranty expiry date.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+ <!-- UNMATCHED ITEM TEMPLATE -->
+<template id="unmatched-item-template">
+    <div class="item-row border rounded p-3 mb-3 bg-light">
+        <input type="hidden" name="items[][is_new]" value="1">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">New Product Name</label>
+                <input type="text" name="items[][product_name]" class="form-control" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Product Type</label>
+                <select name="items[][product_type]" class="form-select product-type-select" required>
+                    <option value="non-electronic" selected>Non-Electronic</option>
+                    <option value="electronic">Electronic</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Quantity</label>
+                <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Unit Type</label>
+                <select name="items[][unit_type_id]" class="form-select" required>
+                    <option value="">-- Select Unit --</option>
+                    @foreach($unit_types as $unit)
+                        <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Cost</label>
+                <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label invisible">Remove</label>
+                <button type="button" class="btn btn-danger remove-item-btn w-100">Remove</button>
+            </div>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-12 serials-container d-none">
+                <div class="border rounded p-3">
+                    <h6>Electronic product details & serials</h6>
+                    <p class="text-muted small">Add product serials / IMEIs. You can add multiple entries.</p>
+                    <div class="serial-entries-container"></div>
+                    <button type="button" class="btn btn-primary btn-sm add-serial-btn mt-2">Add serial</button>
+                    <span class="text-muted small ms-2">Each serial links to a branch and may have a warranty expiry date.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- SERIAL ENTRY TEMPLATE -->
+<template id="serial-entry-template">
+    <div class="row g-3 align-items-center serial-entry-row mb-2">
+        <div class="col-md-5">
+            <input type="text" name="serial_number" class="form-control" placeholder="Serial Number / IMEI" required>
+        </div>
+        <div class="col-md-4">
+            <select name="branch_id" class="form-select branch-select" required>
+                <option value="">-- Select Branch --</option>
             </select>
         </div>
-
         <div class="col-md-2">
-            <label class="form-label">Quantity</label>
-            <input type="number" name="items[][quantity]" class="form-control" min="1" required>
+            <input type="date" name="warranty_expiry" class="form-control">
         </div>
-
-        <div class="col-md-2">
-            <label class="form-label">Unit Type</label>
-            <select name="items[][unit_type_id]" class="form-select" required>
-                <option value="">-- Select Unit --</option>
-                @foreach($unit_types as $unit)
-                    <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="col-md-2">
-            <label class="form-label">Cost</label>
-            <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
-        </div>
-
-        <div class="col-md-2">
-            <label class="form-label">Total</label>
-            <input type="number" class="form-control item-total" readonly>
-        </div>
-
         <div class="col-md-1">
-            <button type="button" class="btn btn-danger remove-item-btn">Remove</button>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-serial-btn">X</button>
         </div>
     </div>
 </template>
@@ -299,6 +388,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
+    const branches = @json($branches);
+
     const container = document.getElementById('items-container');
     const template = document.getElementById('item-template');
     const addItemBtn = document.getElementById('add-item-btn');
@@ -367,16 +458,53 @@ document.addEventListener('DOMContentLoaded', function () {
         updateTotals();
     }
 
-    addItemBtn.addEventListener('click', addItem);
+    addItemBtn.addEventListener('click', () => addItem());
 
-        function updateTotals() {
+    function addUnmatchedItem(productData = null) {
+        const unmatchedTemplate = document.getElementById('unmatched-item-template');
+        const node = unmatchedTemplate.content.cloneNode(true);
+
+        node.querySelectorAll('[name^="items[]"]').forEach(el => {
+            const name = el.getAttribute('name').replace('[]', `[${itemIndex}]`);
+            el.setAttribute('name', name);
+        });
+
+        container.appendChild(node);
+        const newRow = container.querySelector('.item-row:last-child');
+
+        if (productData) {
+            $(newRow).find('input[name$="[product_name]"]').val(productData.name);
+            $(newRow).find('input[name$="[quantity]"]').val(productData.quantity);
+            $(newRow).find('input[name$="[cost]"]').val(productData.cost);
+        }
+
+        itemIndex++;
+        updateTotals();
+    }
+
+    // --- SERIALS VISIBILITY ---
+    container.addEventListener('change', function(e) {
+        if (e.target.classList.contains('product-type-select')) {
+            const row = e.target.closest('.item-row');
+            const serialsContainer = row.querySelector('.serials-container');
+            if (e.target.value === 'electronic') {
+                serialsContainer.classList.remove('d-none');
+            } else {
+                serialsContainer.classList.add('d-none');
+                const serialEntriesContainer = serialsContainer.querySelector('.serial-entries-container');
+                if (serialEntriesContainer) {
+                    serialEntriesContainer.innerHTML = '';
+                }
+            }
+        }
+    });
+
+    function updateTotals() {
         let grandTotal = 0;
         document.querySelectorAll('.item-row').forEach(row => {
             const quantity = parseFloat(row.querySelector('input[name$="[quantity]"]').value) || 0;
             const cost = parseFloat(row.querySelector('.item-cost').value) || 0;
-            const total = quantity * cost;
-            row.querySelector('.item-total').value = total.toFixed(2);
-            grandTotal += total;
+            grandTotal += quantity * cost;
         });
         document.getElementById('grand-total').value = grandTotal.toFixed(2);
     }
@@ -392,9 +520,42 @@ document.addEventListener('DOMContentLoaded', function () {
             e.target.closest('.item-row').remove();
             updateTotals();
         }
+
+        // --- ADD / REMOVE SERIALS ---
+        if (e.target.classList.contains('add-serial-btn')) {
+            const itemRow = e.target.closest('.item-row');
+            const serialsContainer = itemRow.querySelector('.serial-entries-container');
+            const serialTemplate = document.getElementById('serial-entry-template');
+            const itemIndex = Array.from(container.children).indexOf(itemRow);
+            const serialIndex = serialsContainer.children.length;
+
+            const node = serialTemplate.content.cloneNode(true);
+
+            node.querySelector('[name="serial_number"]').name = `items[${itemIndex}][serials][${serialIndex}][serial_number]`;
+            node.querySelector('[name="branch_id"]').name = `items[${itemIndex}][serials][${serialIndex}][branch_id]`;
+            const warrantyInput = node.querySelector('[name="warranty_expiry"]');
+            warrantyInput.name = `items[${itemIndex}][serials][${serialIndex}][warranty_expiry]`;
+            warrantyInput.value = new Date().toISOString().slice(0, 10);
+
+            serialsContainer.appendChild(node);
+
+            const branchSelect = serialsContainer.querySelector('.serial-entry-row:last-child .branch-select');
+            branches.forEach(branch => {
+                const option = new Option(branch.name, branch.id);
+                branchSelect.add(option);
+            });
+
+            $(branchSelect).select2({
+                placeholder: '-- Select Branch --',
+                width: '100%'
+            });
+        }
+
+        if (e.target.classList.contains('remove-serial-btn')) {
+            e.target.closest('.serial-entry-row').remove();
+        }
     });
 
-    // ----------------- SUPPLIER SELECT2 & ADD NEW SUPPLIER -----------------
     const $supplierSelect = $('.supplier-select');
     const $supplierForm = $('#addSupplierForm');
     const $supplierNameInput = $supplierForm.find('[name="supplier_name"]');
@@ -587,12 +748,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (response.reference_number) $('input[name="reference_number"]').val(response.reference_number);
                         $('#items-container').empty();
                         itemIndex = 0;
+                        let message = '';
+                        let icon = 'info';
+
                         if (response.products && response.products.length > 0) {
                             response.products.forEach(product => addItem(product));
-                            Swal.fire('Success', 'Products added from OCR scan.', 'success');
-                        } else {
-                            Swal.fire('No Products Found', 'Could not match any products from the scanned text.', 'warning');
+                            message += `${response.products.length} product(s) were matched and added.<br>`;
+                            icon = 'success';
                         }
+
+                        if (response.unmatched_products && response.unmatched_products.length > 0) {
+                            response.unmatched_products.forEach(product => addUnmatchedItem(product));
+                            message += `${response.unmatched_products.length} new product(s) were found and are ready to be added.`;
+                            icon = 'success';
+                        }
+
+                        if (!message) {
+                            message = 'Could not find any products from the scanned text.';
+                            icon = 'warning';
+                        }
+
+                        Swal.fire({ title: 'OCR Scan Complete', html: message, icon: icon });
                     },
                     error: function() {
                         Swal.close();

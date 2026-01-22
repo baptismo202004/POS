@@ -74,4 +74,14 @@ class Product extends Model
         $stockOut = $this->stockOuts()->sum('quantity');
         return $stockIn - $stockOut;
     }
+
+    public function getTotalSoldAttribute()
+    {
+        return $this->saleItems()->sum('quantity');
+    }
+
+    public function getTotalRevenueAttribute()
+    {
+        return $this->saleItems()->sum('subtotal');
+    }
 }
