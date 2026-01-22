@@ -76,6 +76,24 @@
             border-radius: 6px 0 6px 6px;
         }
 
+        /* Force visibility for sidebar dropdowns */
+        #inventoryMenu.collapse.show,
+        #userMgmtMenu.collapse.show {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* Select2 visibility fix in modals */
+        .select2-container, .select2-dropdown, .select2-results__options, .select2-results__option {
+            display: block !important;
+            visibility: visible !important;
+        }
+        .select2-selection__rendered, .select2-results__option {
+            color: #495057 !important;
+        }
+        .select2-dropdown {
+            z-index: 9999 !important;
+        }
     </style>
     <div>
         <div class="d-flex align-items-center gap-3 mb-5">

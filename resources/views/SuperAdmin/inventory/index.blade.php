@@ -66,6 +66,7 @@
                     <div class="mb-3">
                         <label for="branch_id" class="form-label">Branch</label>
                         <select class="form-control" id="branch_id" name="branch_id" required>
+                            <option></option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                             @endforeach
@@ -110,8 +111,15 @@
                 $('#adjustStockModal #branch_id').select2('destroy');
             }
             $('#adjustStockModal #branch_id').select2({
+                placeholder: '-- Select Branch --',
                 dropdownParent: $('#adjustStockModal')
             });
+        });
+
+        adjustStockModal.addEventListener('hide.bs.modal', function () {
+            if ($('#adjustStockModal #branch_id').data('select2')) {
+                $('#adjustStockModal #branch_id').select2('destroy');
+            }
         });
 
         const searchInput = document.getElementById('searchInput');
