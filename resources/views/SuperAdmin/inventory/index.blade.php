@@ -1,6 +1,27 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+    .select2-container--open .select2-dropdown {
+        z-index: 99999;
+    }
+    .select2-container {
+        z-index: 99998;
+    }
+    /* Force standard select to be visible */
+    select.form-control {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+        color: #212529 !important;
+        background-color: #fff !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+    }
+</style>
 <div class="container-fluid">
     <div class="p-4 card-rounded shadow-sm bg-white">
         @if(session('success'))
@@ -66,11 +87,9 @@
                     <div class="mb-3">
                         <label for="branch_id" class="form-label">Branch</label>
                         <select class="form-control" id="branch_id" name="branch_id" required>
-                            <option></option>
-                            @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                            @endforeach
+                            <option value="">-- Select Branch --</option>
                         </select>
+                        {{-- Debug: {{ $branches->count() }} branches found --}}
                     </div>
                     <div class="mb-3">
                         <label for="quantity" class="form-label">New Stock Quantity</label>
@@ -106,19 +125,51 @@
             form.action = `/superadmin/inventory/${productId}/adjust`;
             quantityInput.value = currentStock;
 
-            // Ensure any existing Select2 instance is destroyed before re-initializing
-            if ($('#adjustStockModal #branch_id').data('select2')) {
-                $('#adjustStockModal #branch_id').select2('destroy');
+            // Prevent Select2 from being applied to branch dropdown
+            const $branchSelect = $('#adjustStockModal #branch_id');
+            $branchSelect.removeClass('select2-hidden-accessible');
+            
+            // Destroy any existing Select2 instances
+            if ($branchSelect.data('select2')) {
+                $branchSelect.select2('destroy');
             }
-            $('#adjustStockModal #branch_id').select2({
-                placeholder: '-- Select Branch --',
-                dropdownParent: $('#adjustStockModal')
-            });
-        });
-
-        adjustStockModal.addEventListener('hide.bs.modal', function () {
-            if ($('#adjustStockModal #branch_id').data('select2')) {
-                $('#adjustStockModal #branch_id').select2('destroy');
+            
+            // Remove Select2 containers
+            $branchSelect.siblings('.select2').remove();
+            
+            // Make sure the select is visible
+            $branchSelect.show();
+            
+            // Populate branch dropdown
+            try {
+                const branches = {!! $branchesJson !!};
+                console.log('Branches in modal:', branches);
+                console.log('Type of branches:', typeof branches);
+                console.log('Is array?', Array.isArray(branches));
+                
+                $branchSelect.empty().append('<option value="">-- Select Branch --</option>');
+                
+                if (Array.isArray(branches) && branches.length > 0) {
+                    branches.forEach((branch, index) => {
+                        console.log(`Branch ${index}:`, branch);
+                        console.log(`Branch ID: ${branch.id}, Name: ${branch.branch_name}`);
+                        $branchSelect.append(`<option value="${branch.id}">${branch.branch_name}</option>`);
+                    });
+                    console.log('Branches added to modal dropdown');
+                } else {
+                    console.error('Branches data is not an array or is empty');
+                    // Try to parse as string if it's not an array
+                    if (typeof branches === 'string') {
+                        try {
+                            const parsed = JSON.parse(branches);
+                            console.log('Parsed branches from string:', parsed);
+                        } catch (e) {
+                            console.error('Failed to parse branches string:', e);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing branches JSON:', error);
             }
         });
 

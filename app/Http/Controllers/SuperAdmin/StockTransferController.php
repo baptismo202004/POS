@@ -16,7 +16,8 @@ class StockTransferController extends Controller
         $branches = Branch::all();
         $transfers = StockTransfer::with(['product', 'fromBranch', 'toBranch'])->latest()->paginate(15);
 
-        return view('SuperAdmin.stocktransfer.index', compact('products', 'branches', 'transfers'));
+        return view('SuperAdmin.stocktransfer.index', compact('products', 'branches', 'transfers'))
+            ->with('branchesJson', $branches->toJson());
     }
 
     public function store(Request $request)
@@ -33,10 +34,25 @@ class StockTransferController extends Controller
         $stockAtSource = $product->getStockAtBranch($request->from_branch_id);
 
         if ($stockAtSource < $request->quantity) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Not enough stock at the source branch.',
+                    'icon' => 'error'
+                ]);
+            }
             return back()->with('error', 'Not enough stock at the source branch.');
         }
 
         StockTransfer::create($request->all());
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock transfer request created successfully!',
+                'icon' => 'success'
+            ]);
+        }
 
         return back()->with('success', 'Stock transfer request created successfully.');
     }

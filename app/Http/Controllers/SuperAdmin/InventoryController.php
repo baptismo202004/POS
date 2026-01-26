@@ -49,7 +49,7 @@ class InventoryController extends Controller
             'branches' => $branches,
             'sortBy' => $sortBy,
             'sortDirection' => $sortDirection
-        ]);
+        ])->with('branchesJson', $branches->toJson());
     }
 
     public function stockIn(Request $request, Product $product)
@@ -82,13 +82,12 @@ class InventoryController extends Controller
             $product->stockIns()->create([
                 'quantity' => $newStock - $currentStock,
                 'branch_id' => $request->branch_id,
-                'reason' => 'Stock Adjustment',
+                'price' => 0, // Default price for stock adjustments
             ]);
         } elseif ($newStock < $currentStock) {
             $product->stockOuts()->create([
                 'quantity' => $currentStock - $newStock,
                 'branch_id' => $request->branch_id,
-                'reason' => 'Stock Adjustment',
             ]);
         }
 
