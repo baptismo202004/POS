@@ -26,9 +26,13 @@
         .theme-text{ color: var(--theme-color) !important; }
         /* small helper to mix Bootstrap and tailwind spacing */
         .card-rounded{ border-radius: 12px; }
+        .main-content { background-color: #3d5a7c;}
+
     </style>
+    @stack('stylesDashboard')
+
 </head>
-<body class="bg-white min-h-screen font-sans">
+<body class="min-h-screen font-sans">
 
     <div class="d-flex min-vh-100">
         {{-- Sidebar --}}
@@ -36,7 +40,7 @@
             @include('layouts.AdminSidebar')
         </aside>
 
-        <main class="flex-fill p-4">
+        <main class="flex-1 p-6" main-content>
             @yield('content')
         </main>
     </div>
