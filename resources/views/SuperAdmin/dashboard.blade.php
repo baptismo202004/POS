@@ -34,6 +34,7 @@
         /* (dark mode removed) */
     </style>
 @endpush
+<<<<<<< Updated upstream
 
 @section('content')
 <div class="container-fluid p-4">
@@ -47,6 +48,27 @@
             <div class="position-relative d-flex align-items-center">
                 <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="#94a3b8" stroke-width="1.5"/></svg>
                 <input class="form-control search-input" placeholder="Search..." />
+=======
+    @section('content')
+    <div class="p-4">
+
+        <!-- Topbar -->
+        <div class="bg-white border rounded-3 p-3 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="position-relative d-flex align-items-center">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="#94a3b8" stroke-width="1.5"/></svg>
+                    <input class="form-control search-input" placeholder="Search..." />
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <select class="form-select form-select-sm" style="margin-right:0.50rem;">
+                    <option>Last 7 days</option>
+                    <option>Last 30 days</option>
+                </select>
+
+                
+>>>>>>> Stashed changes
             </div>
         </div>
 
@@ -125,6 +147,7 @@
             </div>
         </div>
 
+<<<<<<< Updated upstream
         <div class="col-lg-4">
             <div class="card mb-3 p-3 panel">
                 <div class="fw-semibold mb-2">Top Selling Products</div>
@@ -156,10 +179,15 @@
     </div>
 </div>
 @endsection
+=======
+    </div>
+    @endsection
+>>>>>>> Stashed changes
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+<<<<<<< Updated upstream
     const ctx = document.getElementById('salesChart');
     if (ctx) {
         new Chart(ctx, {
@@ -186,7 +214,36 @@
         title: @json(session('success')),
         showConfirmButton: false,
         timer: 2200
+=======
+  const ctx = document.getElementById('salesChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [
+          { label: 'Store A', data:[12,19,7,14,18,10,16], borderColor:'#ef4444', tension:0.4, fill:false },
+          { label: 'Store B', data:[10,14,22,12,11,24,18], borderColor:'#3b82f6', tension:0.4, fill:false },
+          { label: 'Store C', data:[8,6,5,18,9,12,10], borderColor:'#f59e0b', tension:0.4, fill:false },
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+>>>>>>> Stashed changes
     });
+  }
 </script>
-@endif
+@if(session('success') && request()->query('from') !== 'login')
+@push('scripts')
+<script>
+  Swal.fire({ toast:true, position:'top-end', icon:'success', title:@json(session('success')), showConfirmButton:false, timer:2200 });
+</script>
 @endpush
+@endif
+<<<<<<< Updated upstream
+@endpush
+=======
+@endpush
+
+</body>
+</html>
+>>>>>>> Stashed changes

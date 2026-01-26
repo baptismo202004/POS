@@ -1,3 +1,6 @@
+@import "tailwindcss/preflight";
+@tailwind utilities;
+
 /* Minimal CSS fallback replacing Tailwind directives to avoid build dependency */
 /* Color palette tokens */
 :root {
