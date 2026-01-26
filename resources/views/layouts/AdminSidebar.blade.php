@@ -1,8 +1,8 @@
-<aside class="sidebar bg-white shadow-sm p-4 d-lg-flex flex-column" style="height: 100vh;">
+<aside class="sidebar shadow-sm p-4 d-none d-lg-flex flex-column justify-content-between">
     <style>
         /* Ensure sidebar SVG icons render correctly even if global CSS isn't loaded */
-        :root { --sidebar-icon-color: #2563eb; --sidebar-icon-stroke: 1.6; }
-        .sidebar { width:220px; min-height:100vh; }
+        :root { --sidebar-icon-color: #2563eb; --sidebar-icon-stroke: 1.6; --sidebar-bg: #eaf0f5;}
+        .sidebar { width:220px; min-height:100vh; background-color: var(--sidebar-bg);}
         .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: var(--sidebar-icon-color); }
         .icon { width:20px; height:20px; color: var(--sidebar-icon-color); }
 

@@ -1,18 +1,7 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Laravel') }} - Dashboard</title>
-
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
+@section('title', 'Dashboard')
+@push('stylesDashboard')
     <style>
-        body { font-family: 'Inter', sans-serif; background: #ffffff; }
+        body { font-family: 'Inter', sans-serif;}
         .sidebar { width: 220px; }
         .dash-header { font-size: 28px; font-weight:700; }
         .search-input { border-radius: 999px; padding-left: 44px; padding-right: 1rem; }
@@ -42,9 +31,9 @@
         .caret-icon { opacity:0.75; color:var(--icon-muted); }
         /* (dark mode removed) */
     </style>
-</head>
-<body class="bg-white">
-
+@endpush
+@section('content')
+    
 <div class="d-flex min-vh-100">
     <!-- Sidebar -->
     @include('layouts.AdminSidebar')
