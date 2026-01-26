@@ -16,7 +16,7 @@
         border-radius: 0.375rem !important;
     }
 </style>
-<div class="container-fluid">
+<div class="container-fluid p-4">
     <div class="p-4 card-rounded shadow-sm bg-white mb-4">
         <h2 class="m-0">Create Stock Transfer</h2>
         <form action="{{ route('superadmin.stocktransfer.store') }}" method="POST" class="mt-4">

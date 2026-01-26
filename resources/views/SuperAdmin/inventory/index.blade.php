@@ -22,56 +22,54 @@
         border-radius: 0.375rem !important;
     }
 </style>
-<div class="container-fluid">
-    <div class="p-4 card-rounded shadow-sm bg-white">
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="m-0">Inventory</h2>
-            <div class="d-flex">
-                <input type="text" id="searchInput" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
-            </div>
+<div class="container-fluid p-4">
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="m-0">Inventory</h2>
+        <div class="d-flex">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
         </div>
+    </div>
 
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
+                    <th>Brand</th>
+                    <th>Category</th>
+                    <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'current_stock', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Current Stock</a></th>
+                    <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_sold', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Sold</a></th>
+                    <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_revenue', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Revenue</a></th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($products as $product)
                     <tr>
-                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
-                        <th>Brand</th>
-                        <th>Category</th>
-                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'current_stock', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Current Stock</a></th>
-                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_sold', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Sold</a></th>
-                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_revenue', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Revenue</a></th>
-                        <th>Actions</th>
+                        <td><a href="{{ route('superadmin.products.show', $product->id) }}">{{ $product->product_name }}</a></td>
+                        <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
+                        <td>{{ $product->category->category_name ?? 'N/A' }}</td>
+                        <td class="{{ $product->current_stock < 10 ? 'text-danger' : '' }}">{{ $product->current_stock }}</td>
+                        <td>{{ $product->total_sold }}</td>
+                        <td>{{ number_format($product->total_revenue, 2) }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $product->current_stock }}">Adjust Stock</button>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @forelse($products as $product)
-                        <tr>
-                            <td><a href="{{ route('superadmin.products.show', $product->id) }}">{{ $product->product_name }}</a></td>
-                            <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
-                            <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                            <td class="{{ $product->current_stock < 10 ? 'text-danger' : '' }}">{{ $product->current_stock }}</td>
-                            <td>{{ $product->total_sold }}</td>
-                            <td>{{ number_format($product->total_revenue, 2) }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $product->current_stock }}">Adjust Stock</button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center">No products found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                @empty
+                    <tr>
+                        <td colspan="6" class="text-center">No products found.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 
-        <div class="d-flex justify-content-center mt-4">
-            {{ $products->links() }}
-        </div>
+    <div class="d-flex justify-content-center mt-4">
+        {{ $products->links() }}
     </div>
 </div>
 <div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
