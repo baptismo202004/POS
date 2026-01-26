@@ -12,6 +12,7 @@ use App\Observers\PurchaseObserver;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
 use App\Models\Expense;
+use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         // Blade conditional: @canAccess('module','required')
         Blade::if('canAccess', function (string $module, string $required = 'view') {
             return Access::can(Auth::user(), $module, $required);

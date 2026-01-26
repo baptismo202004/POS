@@ -10,11 +10,11 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Tailwind Play CDN (for utility classes) -->
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
         :root{ --theme-color: #2563eb; }
@@ -27,23 +27,34 @@
 </head>
 <body class="bg-white min-h-screen font-sans">
 
-    <div class="flex">
+    <div class="d-flex min-vh-100">
         {{-- Sidebar --}}
-        <aside class="w-64">
+        <aside>
             @include('layouts.AdminSidebar')
         </aside>
 
-        <main class="flex-1 p-6">
+        <main class="flex-fill p-4">
             @yield('content')
         </main>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @stack('scripts')
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize all Bootstrap collapse elements
+            const collapseElements = document.querySelectorAll('.collapse');
+            collapseElements.forEach(function (collapseElement) {
+                new bootstrap.Collapse(collapseElement, {
+                    toggle: false
+                });
+            });
+        });
+    </script>
 </body>
 </html>

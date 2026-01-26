@@ -16,18 +16,59 @@
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Tailwind Play CDN (for utility classes) -->
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
-        :root{ --theme-color: #2563eb; }
-        .theme-bg{ background-color: var(--theme-color) !important; }
-        .theme-border{ border-color: var(--theme-color) !important; }
-        .theme-text{ color: var(--theme-color) !important; }
-        .card-rounded{ border-radius: 12px; }
+        :root {
+            --theme-color: #2563eb;
+            --bs-table-striped-bg: #f8f9fa;
+        }
+        .theme-bg { background-color: var(--theme-color) !important; }
+        .theme-border { border-color: var(--theme-color) !important; }
+        .theme-text { color: var(--theme-color) !important; }
+        .card-rounded { border-radius: 12px; }
+
+        .table thead th {
+            font-weight: 600;
+            background-color: #f3f4f6;
+            vertical-align: middle;
+        }
+        .table tbody td {
+            vertical-align: middle;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        .badge.bg-success {
+            background-color: #dcfce7 !important;
+            color: #166534 !important;
+        }
+        .badge.bg-secondary {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+        }
+        .badge {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.4em 0.8em;
+            border-radius: 20px;
+        }
+        .search-wrapper {
+            position: relative;
+        }
+        .search-icon {
+            position: absolute;
+            top: 50%;
+            left: 12px;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        #product-search-input {
+            padding-left: 38px;
+            width: 300px;
+        }
     </style>
 </head>
 <body class="bg-white">
@@ -42,22 +83,20 @@
                     <div class="col-12">
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <div class="d-flex align-items-center gap-3">
-                                    <h2 class="m-0">Product List</h2>
-                                    <form action="{{ route('superadmin.products.index') }}" method="GET" class="d-flex">
-                                        <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
-                                        <button type="submit" class="btn btn-primary ms-2">Search</button>
-                                    </form>
-                                </div>
+                                <h2 class="m-0">Product List</h2>
                                 <div class="d-flex align-items-center gap-2">
+                                    <div class="search-wrapper">
+                                        <i class="bi bi-search search-icon"></i>
+                                        <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
+                                    </div>
                                     <a href="{{ route('superadmin.products.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Product</a>
-                                    <button type="button" id="editSelectedBtn" class="btn btn-outline-primary">Edit Selected</button>
+                                    <button type="button" id="editSelectedBtn" class="btn btn-outline-secondary">Edit Selected</button>
                                     <button type="button" id="deleteSelectedBtn" class="btn btn-outline-danger">Delete Selected</button>
                                 </div>
                             </div>
 
                             <div class="table-responsive">
-                                <table class="table table-striped">
+                                <table class="table table-striped table-hover">
                                     <thead>
                                         <tr>
                                             <th>

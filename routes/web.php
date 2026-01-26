@@ -82,6 +82,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('superadmin.inventory.stock-in');
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('superadmin.inventory.adjust');
 
+        // Stock Transfer routes
+        Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('superadmin.stocktransfer.index');
+        Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('superadmin.stocktransfer.store');
+        Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('superadmin.stocktransfer.update');
+
         // Settings routes (guard at least with view-level ability)
         Route::middleware('ability:settings,view')->group(function () {
             Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class, ['as' => 'superadmin']);

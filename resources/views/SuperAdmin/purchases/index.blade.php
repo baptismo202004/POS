@@ -7,8 +7,6 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Tailwind Play CDN (for utility classes) -->
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
         :root{ --theme-color: #2563eb; }

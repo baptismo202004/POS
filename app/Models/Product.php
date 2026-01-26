@@ -84,4 +84,11 @@ class Product extends Model
     {
         return $this->saleItems()->sum('subtotal');
     }
+
+    public function getStockAtBranch($branchId)
+    {
+        $stockIn = $this->stockIns()->where('branch_id', $branchId)->sum('quantity');
+        $stockOut = $this->stockOuts()->where('branch_id', $branchId)->sum('quantity');
+        return $stockIn - $stockOut;
+    }
 }
