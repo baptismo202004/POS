@@ -51,7 +51,7 @@
             @include('layouts.AdminSidebar')
         </aside>
 
-        <main class="main-content flex-1 p-6">
+        <main class="main-content flex-1">
             @yield('content')
         </main>
     </div>
@@ -73,6 +73,7 @@
                     toggle: false
                 });
             });
+
         });
     </script>
 </body>

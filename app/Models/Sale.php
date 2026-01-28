@@ -30,4 +30,9 @@ class Sale extends Model
     {
         return $this->belongsTo(User::class, 'cashier_id');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'cashier_id');
+    }
 }

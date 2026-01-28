@@ -53,4 +53,29 @@ class CategoryController extends Controller
         $category->delete();
         return back()->with('success', 'Category deleted successfully');
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:categories,id',
+        ]);
+
+        Category::whereIn('id', $request->ids)->delete();
+
+        return back()->with('success', 'Selected categories deleted successfully');
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:categories,id',
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        Category::whereIn('id', $request->ids)->update(['status' => $request->status]);
+
+        return back()->with('success', 'Selected categories updated successfully');
+    }
 }
