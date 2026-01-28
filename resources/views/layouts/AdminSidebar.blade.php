@@ -62,7 +62,7 @@
             <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:200px;height:80px;object-fit:contain;border-radius:8px;max-width:100%;">
         </div>
 
-            <div class="flex-grow-1" style="overflow-y: auto;">
+            <div class="grow" style="overflow-y: auto;">
         <nav class="d-flex flex-column gap-2">
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
