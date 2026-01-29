@@ -1,27 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Refunds & Returns - SuperAdmin</title>
+@extends('layouts.app')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
+@section('content')
+<div class="container-fluid">
     <div class="card card-rounded shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <div>
@@ -133,8 +113,5 @@
             @endif
         </div>
     </div>
-            </div>
-        </main>
-    </div>
-</body>
-</html>
+</div>
+@endsection

@@ -39,8 +39,8 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label for="date" class="form-label">Date</label>
-                            <input type="date" class="form-control" name="date" id="date" required>
+                            <label for="due_date" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" name="due_date" id="due_date" required>
                         </div>
 
                         <div class="col-12">
@@ -65,14 +65,16 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    // Set minimum date to today
+    // Set minimum due date to tomorrow
     document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date();
-        document.getElementById('date').min = today.toISOString().split('T')[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('due_date').min = tomorrow.toISOString().split('T')[0];
         
-        // Set default date to today
-        const defaultDate = new Date();
-        document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
+        // Set default due date to 30 days from now
+        const defaultDueDate = new Date();
+        defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+        document.getElementById('due_date').value = defaultDueDate.toISOString().split('T')[0];
     });
 
     document.getElementById('creditForm').addEventListener('submit', function(e) {

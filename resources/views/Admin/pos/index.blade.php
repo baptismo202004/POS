@@ -418,10 +418,10 @@
                                                     </h6>
                                                     <div class="mb-2">
                                                         <label class="form-label">Customer Name:</label>
-                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
+                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
                                                     </div>
                                                     <div class="mb-2">
-                                                        <label class="form-label"> Date:</label>
+                                                        <label class="form-label">Due Date:</label>
                                                         <input type="date" class="form-control" id="credit_due_date">
                                                     </div>
                                                     <div class="mb-2">
@@ -459,7 +459,6 @@
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
     (function(){
@@ -537,14 +536,9 @@
                 }
 
                 tableBody.innerHTML = items.map(it => {
-                    const branches = (it.branches || []).map(b => {
-                        const branchId = b.branch_id;
-                        const branchName = b.branch_name||'Branch #'+branchId;
-                        const hasBranch2Or3 = (it.branches || []).some(br => br.branch_id == 2 || br.branch_id == 3);
-                        const checkbox = (hasBranch2Or3) ? 
-                            `<input type="checkbox" class="form-check-input me-2" data-branch-id="${branchId}">` : '';
-                        return `${checkbox}${branchName} <span class="badge-stock">${b.stock}</span>`;
-                    }).join('<br>');
+                    const branches = (it.branches || []).map(b => 
+                        `${b.branch_name||'Branch #'+b.branch_id} <span class="badge-stock">${b.stock}</span>`
+                    ).join('<br>');
                     
                     return `
                     <tr class="animate-in">
@@ -561,7 +555,7 @@
                         <td>${branches||'<span class="text-muted">Not available</span>'}</td>
                         <td class="text-end price-display">₱${(it.price||0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(${it.product_id}, '${it.name.replace(/'/g, "\\'")}', ${it.price||0}, ${it.total_stock||0}, ${JSON.stringify(it.branches || []).replace(/"/g, '&quot;')}, this)">
+                            <button class="btn add-btn" onclick="addToOrder(${it.product_id}, '${it.name.replace(/'/g, "\\'")}', ${it.price||0}, ${it.total_stock||0})">
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -584,61 +578,19 @@
         let cart = [];
         
         // Make functions globally accessible for onclick handlers
-        window.addToOrder = function(productId, name, price, stock, branches, buttonElement) {
-            console.log('addToOrder called with:', {productId, name, price, stock, branches}); // Debug
+        window.addToOrder = function(productId, name, price, stock) {
+            console.log('addToOrder called with:', {productId, name, price, stock}); // Debug
             
-            // Find the row containing this button
-            const row = buttonElement.closest('tr');
-            const selectedCheckboxes = row.querySelectorAll('input[type="checkbox"]:checked');
-            
-            // Check if product has Branch #2 or #3 (then checkboxes should be visible)
-            const hasBranch2Or3 = branches.some(b => b.branch_id == 2 || b.branch_id == 3);
-            
-            if (hasBranch2Or3 && selectedCheckboxes.length > 0) {
-                // Add selected branches to cart
-                selectedCheckboxes.forEach(checkbox => {
-                    const branchId = parseInt(checkbox.dataset.branchId);
-                    const selectedBranch = branches.find(b => b.branch_id == branchId);
-                    if (selectedBranch) {
-                        addProductToCart(productId, name, price, stock, selectedBranch);
-                    }
-                });
-                
-                // Clear checkboxes after adding
-                selectedCheckboxes.forEach(cb => cb.checked = false);
-                
-            } else if (hasBranch2Or3) {
-                // No branch selected but checkboxes are visible
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Branch Selected',
-                    text: 'Please select at least one branch to purchase from.',
-                    confirmButtonColor: '#2563eb',
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-            } else {
-                // No branch selection needed, add directly
-                const defaultBranch = branches.length > 0 ? branches[0] : null;
-                addProductToCart(productId, name, price, stock, defaultBranch);
-            }
-        };
-        
-        function addProductToCart(productId, name, price, stock, selectedBranch) {
             // Check if product already in cart
-            const existingItem = cart.find(item => 
-                item.product_id === productId && 
-                (!selectedBranch || item.branch_id === selectedBranch.branch_id)
-            );
+            const existingItem = cart.find(item => item.product_id === productId);
             
             if (existingItem) {
                 // Check if adding more would exceed available stock
-                const availableStock = selectedBranch ? selectedBranch.stock : stock;
-                if (existingItem.quantity >= availableStock) {
+                if (existingItem.quantity >= stock) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Stock Limit Reached',
-                        text: `Cannot add more ${name}. Only ${availableStock} available in stock.`,
+                        text: `Cannot add more ${name}. Only ${stock} available in stock.`,
                         confirmButtonColor: '#2563eb',
                         timer: 3000,
                         timerProgressBar: true
@@ -647,25 +599,19 @@
                 }
                 existingItem.quantity += 1;
             } else {
-                const newItem = {
+                cart.push({
                     product_id: productId,
                     name: name,
                     price: price,
                     quantity: 1,
-                    stock: selectedBranch ? selectedBranch.stock : stock,
-                    subtotal: price,
-                    branch_id: selectedBranch ? selectedBranch.branch_id : null,
-                    branch_name: selectedBranch ? (selectedBranch.branch_name || 'Branch #' + selectedBranch.branch_id) : null
-                };
-                cart.push(newItem);
-                console.log('Added new cart item:', newItem);
+                    stock: stock,
+                    subtotal: price
+                });
             }
             
-            console.log('Current cart:', cart);
             updateCartDisplay();
-            const branchText = selectedBranch ? ` from ${selectedBranch.branch_name || 'Branch #' + selectedBranch.branch_id}` : '';
-            showNotification(`${name}${branchText} added to cart!`, 'success');
-        }
+            showNotification(`${name} added to cart!`, 'success');
+        };
         
         window.updateQuantity = function(productId, change) {
             const item = cart.find(item => item.product_id === productId);
@@ -754,6 +700,10 @@
                         ${itemsList.split('\n').map(item => `<div>${item}</div>`).join('')}
                         <hr>
                         <div style="font-weight: bold; color: #2563eb;">Total: ₱${total.toFixed(2)}</div>
+                        <br>
+                        <div style="color: #ef4444; font-size: 12px;">
+                            <i class="fas fa-info-circle"></i> This will deduct stock and record the sale
+                        </div>
                     </div>
                 `,
                 icon: 'question',
@@ -771,9 +721,6 @@
         };
         
         function processOrder() {
-            console.log('processOrder called, cart length:', cart.length);
-            console.log('Cart contents:', cart);
-            
             // Show loading
             Swal.fire({
                 title: 'Processing Order...',
@@ -785,110 +732,39 @@
             });
             
             // Send order to server
-            console.log('Starting checkout process...');
-            
-            const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-            console.log('Payment method element:', paymentMethod);
-            
-            if (!paymentMethod) {
-                console.error('No payment method selected!');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Payment Required',
-                    text: 'Please select a payment method (Cash or Credit)',
-                    confirmButtonColor: '#ef4444'
-                });
-                return;
-            }
-            
-            const paymentValue = paymentMethod.value;
-            console.log('Selected payment method:', paymentValue);
-            
-            const payload = {
-                items: cart.map(item => ({
-                    product_id: item.product_id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    stock: item.stock,
-                    subtotal: item.subtotal,
-                    branch_id: item.branch_id,
-                    branch_name: item.branch_name
-                })),
-                total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-                payment_method: paymentValue
-            };
-
-            if (paymentValue === 'credit') {
-                payload.customer_name = document.getElementById('customer_name').value;
-                payload.date = document.getElementById('credit_due_date').value;
-                payload.notes = document.getElementById('credit_notes').value;
-                console.log('Credit details added:', {
-                    customer_name: payload.customer_name,
-                    date: payload.date,
-                    notes: payload.notes
-                });
-            }
-
-            console.log('Sending checkout request:', payload);
-            console.log('Request URL:', '{{ route("admin.pos.checkout") }}');
-            console.log('Cart items structure:', JSON.stringify(cart, null, 2));
-
-            fetch('{{ route("admin.pos.checkout") }}', {
+            fetch('{{ route("pos.store") }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    items: cart,
+                    total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                })
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Response data:', data);
                 if (data.success) {
                     cart = [];
                     updateCartDisplay();
-                    document.getElementById('customer_name').value = '';
-                    document.getElementById('credit_due_date').value = '';
-                    document.getElementById('credit_notes').value = '';
                     Swal.fire({
                         icon: 'success',
                         title: 'Order Completed!',
-                        text: `Order has been processed successfully.`,
+                        text: `Order #${data.order_id} has been processed successfully.`,
                         confirmButtonColor: '#10b981',
                         timer: 3000,
                         timerProgressBar: true
                     });
-
-                    if (payload.payment_method === 'cash' && data.order_id) {
-                        const receiptUrl = `{{ url('superadmin/admin/sales') }}/${data.order_id}/receipt`;
-                        window.open(receiptUrl, '_blank');
-                    }
                     
                     // Refresh products to show updated stock
                     search('list');
                 } else {
-                    console.error('Checkout failed:', data); // Log detailed error
-                    
-                    // Show detailed validation errors if available
-                    let errorMessage = data.message || 'There was an error processing your order.';
-                    
-                    if (data.errors && Object.keys(data.errors).length > 0) {
-                        errorMessage = 'Validation errors:\n';
-                        for (const [field, messages] of Object.entries(data.errors)) {
-                            errorMessage += `\n• ${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
-                        }
-                    }
-                    
                     Swal.fire({
                         icon: 'error',
                         title: 'Order Failed',
-                        text: errorMessage,
+                        text: data.message || 'There was an error processing your order.',
                         confirmButtonColor: '#ef4444'
                     });
                 }
@@ -1000,8 +876,9 @@
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
             
-            // Set default due date to today
+            // Set default due date to 30 days from now
             const defaultDueDate = new Date();
+            defaultDueDate.setDate(defaultDueDate.getDate() + 30);
             dueDateInput.value = defaultDueDate.toISOString().split('T')[0];
             dueDateInput.min = new Date(Date.now() + 86400000).toISOString().split('T')[0]; // Tomorrow
             
@@ -1016,9 +893,131 @@
             });
         });
         
+        function checkout() {
+            if (cart.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cart Empty',
+                    text: 'Your cart is empty! Please add items first.',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
+            
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemsList = cart.map(item => `${item.name} x${item.quantity} = ₱${(item.price * item.quantity).toFixed(2)}`).join('\n');
+            
+            let confirmMessage = `Order Summary:\n\n${itemsList}\n\nTotal: ₱${total.toFixed(2)}\n\nPayment Method: ${paymentMethod.toUpperCase()}`;
+            
+            if (paymentMethod === 'credit') {
+                const customerName = document.getElementById('customer_name').value;
+                const dueDate = document.getElementById('credit_due_date').value;
+                const notes = document.getElementById('credit_notes').value;
+                
+                if (!dueDate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Missing Information',
+                        text: 'Please specify a due date for the credit.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                    return;
+                }
+                
+                confirmMessage += `\n\nCustomer: ${customerName || 'Walk-in Customer'}`;
+                confirmMessage += `\nDue Date: ${new Date(dueDate).toLocaleDateString()}`;
+                if (notes) confirmMessage += `\nNotes: ${notes}`;
+            }
+            
+            Swal.fire({
+                title: 'Confirm Order',
+                html: `<pre style="text-align: left; font-family: monospace; font-size: 14px;">${confirmMessage}</pre>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Process Order',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#ef4444'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    processOrder(paymentMethod, total);
+                }
+            });
+        }
         
+        function processOrder(paymentMethod, total) {
+            const orderData = {
+                items: cart.map(({ stock, ...item }) => item), // Remove stock field before sending
+                total: total,
+                payment_method: paymentMethod,
+                cashier_id: 1 // This should come from auth
+            };
+            
+            if (paymentMethod === 'credit') {
+                orderData.customer_name = document.getElementById('customer_name').value;
+                orderData.due_date = document.getElementById('credit_due_date').value;
+                orderData.notes = document.getElementById('credit_notes').value;
+            }
+            
+            Swal.fire({
+                title: 'Processing Order...',
+                html: 'Please wait while we process your order.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch('/admin/pos/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Order Completed!',
+                        text: paymentMethod === 'credit' ? 'Credit created successfully!' : 'Payment processed successfully!',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        cart = [];
+                        updateCartDisplay();
+                        
+                        // Reset payment form
+                        document.getElementById('payment_cash').checked = true;
+                        document.getElementById('credit-details').style.display = 'none';
+                        document.getElementById('customer_name').value = '';
+                        document.getElementById('credit_notes').value = '';
+                        
+                        showNotification('Order completed successfully!', 'success');
+                        search('list'); // Refresh product list
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Order Failed',
+                        text: data.message || 'An error occurred while processing your order.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while processing your order.',
+                    confirmButtonColor: '#2563eb'
+                });
+            });
+        }
         
-           
         function showNotification(message, type = 'success') {
             const Toast = Swal.mixin({
                 toast: true,

@@ -1,27 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Credits Management - SuperAdmin</title>
+@extends('layouts.app')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
+@section('content')
+<div class="container-fluid">
     <div class="card card-rounded shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <div>
@@ -119,12 +99,12 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Created Date</th>
+                            <th>Date</th>
                             <th>Customer</th>
                             <th>Credit Amount</th>
                             <th>Paid Amount</th>
                             <th>Remaining Balance</th>
-                            <th>Date</th>
+                            <th>Due Date</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -137,7 +117,7 @@
                                 <td>₱{{ number_format($credit->credit_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->paid_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->remaining_balance, 2) }}</td>
-                                <td>{{ $credit->date->format('M d, Y') }}</td>
+                                <td>{{ $credit->due_date->format('M d, Y') }}</td>
                                 <td>
                                     <span class="badge bg-{{ $credit->status == 'active' ? 'primary' : ($credit->status == 'paid' ? 'success' : 'danger') }}">
                                         {{ ucfirst($credit->status) }}
@@ -198,8 +178,15 @@
                         <select class="form-select" name="payment_method" id="payment_method" required>
                             <option value="">Select payment method...</option>
                             <option value="cash">Cash</option>
-                          
+                            <option value="card">Card</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="other">Other</option>
                         </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_notes" class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" id="payment_notes" rows="2"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -225,7 +212,7 @@
         document.getElementById('payment_credit_id').value = creditId;
         document.getElementById('remaining_balance_display').textContent = remainingBalance.toFixed(2);
         document.getElementById('payment_amount').max = remainingBalance;
-        document.getElementById('payment_amount').value = remainingBalance.toFixed(2);
+        document.getElementById('payment_amount').value = Math.min(remainingBalance, 100).toFixed(2);
         
         const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
         modal.show();
@@ -290,8 +277,4 @@
         });
     });
 </script>
-            </div>
-        </main>
-    </div>
-</body>
-</html>
+@endsection

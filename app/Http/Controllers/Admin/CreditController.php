@@ -28,7 +28,7 @@ class CreditController extends Controller
             ->first();
         
         // Get overdue credits
-        $overdueCredits = Credit::where('date', '<', $today)
+        $overdueCredits = Credit::where('due_date', '<', $today)
             ->where('status', 'active')
             ->selectRaw('COUNT(*) as total_overdue, COALESCE(SUM(remaining_balance), 0) as total_overdue_amount')
             ->first();
@@ -54,10 +54,10 @@ class CreditController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'sale_id' => 'nullable|exists:sales,id',
             'credit_amount' => 'required|numeric|min:0',
-            'date' => 'required|date|after_or_equal:today',
+            'due_date' => 'required|date|after:today',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -75,7 +75,7 @@ class CreditController extends Controller
                     'paid_amount' => 0,
                     'remaining_balance' => $request->credit_amount,
                     'status' => 'active',
-                    'date' => $request->date,
+                    'due_date' => $request->due_date,
                     'notes' => $request->notes,
                 ]);
 

@@ -14,7 +14,7 @@ class Credit extends Model
         'paid_amount',
         'remaining_balance',
         'status',
-        'date',
+        'due_date',
         'notes',
     ];
 
@@ -22,7 +22,7 @@ class Credit extends Model
         'credit_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'remaining_balance' => 'decimal:2',
-        'date' => 'date',
+        'due_date' => 'date',
     ];
 
     public function customer()

@@ -1,8 +1,8 @@
 <aside class="sidebar shadow-sm p-4 d-none d-lg-flex flex-column justify-content-between">
     <style>
         /* Ensure sidebar SVG icons render correctly even if global CSS isn't loaded */
-        :root { --sidebar-icon-color: #dde4ed; --sidebar-icon-stroke: 1.6; --sidebar-bg: rgba(37,29,80,0.18); --sidebar-active-bg:#251d50; --sidebar-active-text:#dde4ed; --sidebar-link:#dde4ed; --sidebar-link-hover:#ffffff; }
-        .sidebar { width:220px; min-height:100vh; background: var(--sidebar-bg); border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.22); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.08); position: relative; z-index: 1000; }
+        :root { --sidebar-icon-color: #A1A1AA; --sidebar-icon-stroke: 1.6; --sidebar-bg: #1E1E2C; --sidebar-active-bg:#F29F67; --sidebar-active-text:#FFFFFF; --sidebar-link:#A1A1AA; --sidebar-link-hover:#FFFFFF; }
+        .sidebar { width:220px; min-height:100vh; background: var(--sidebar-bg); border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.22); }
         .sidebar .sidebar-icon { width: 24px; height: 24px; display: block; color: inherit; }
         .icon { width:20px; height:20px; color: inherit; }
 
@@ -25,16 +25,19 @@
         .sidebar nav a span { line-height: 1; }
         .sidebar nav a .fw-semibold { font-weight:600; }
 
-        .sidebar nav a:hover { color: var(--sidebar-link-hover); background: rgba(255,255,255,0.04); }
+        .sidebar nav a:hover { color: var(--sidebar-link-hover); background: rgba(242,159,103,0.15); }
         .sidebar nav a.active { background: var(--sidebar-active-bg) !important; color: var(--sidebar-active-text) !important; }
         .sidebar nav a.active .icon-badge { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); }
+
+        /* Section label styling */
+        .section-label { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#A1A1AA; margin:8px 8px 4px; }
 
         /* Match dashboard dropdown styles so sidebar dropdown isn't oversized */
         .user-dropdown-menu { min-width:210px; border-radius:12px; box-shadow:0 10px 30px rgba(15,23,42,0.08); padding:6px; list-style:none; }
         .dropdown-item svg { opacity:0.95; width:18px; height:18px; }
         .dropdown-item { border-radius:8px; padding:8px 12px; }
         .dropdown-item:hover { background:rgba(255,255,255,0.06); }
-        .dropdown-toggle .username { font-weight:600; color:#dde4ed; }
+        .dropdown-toggle .username { font-weight:600; color:#FFFFFF; }
         .dropdown-toggle .role { font-size:12px; color:#dde4ed; margin-left:2px; opacity:0.8; }
         .dropdown-menu { list-style: none; }
         .dropdown-menu li { list-style: none; }
@@ -59,7 +62,7 @@
             <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:200px;height:80px;object-fit:contain;border-radius:8px;max-width:100%;">
         </div>
 
-            <div class="flex-grow-1">
+            <div class="grow" style="overflow-y: auto;">
         <nav class="d-flex flex-column gap-2">
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
@@ -67,6 +70,7 @@
                 </span>
                 <span class="fw-semibold">Home</span>
             </a>
+            <div class="section-label">Activity Data & Targets</div>
             
             @canAccess('products','view')
             <div>
@@ -155,6 +159,7 @@
             </div>
             @endcanAccess
 
+            <div class="section-label">Masters</div>
             {{-- Expenses Link --}}
             <a href="{{ route('superadmin.admin.expenses.index') }}" class="{{ request()->routeIs('superadmin.admin.expenses.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
                 <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
@@ -188,7 +193,8 @@
                 </span>
                 <span>Reports</span>
             </a>
-        
+
+            <div class="section-label">Users & Roles</div>
             @canAccess('user_management','view')
             <div>
                 @php
@@ -273,18 +279,18 @@
             }
         @endphp
 
-        <div class="dropdown mt-auto">
-            <a href="#" class="d-flex align-items-center gap-2 p-0 text-decoration-none dropdown-toggle" id="sidebarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" onclick="event.preventDefault();">
-                @if(!empty($sidebarAvatarUrl))
-                    <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:56px;height:56px;object-fit:cover">
-                @else
-                    <div class="rounded-circle" style="width:56px;height:56px;background:#251d50;color:#dde4ed;display:flex;align-items:center;justify-content:center">{{ $sidebarUser ? strtoupper(substr($sidebarUser->name,0,1)) : 'U' }}</div>
-                @endif
-                <div class="ms-2 text-start">
-                    <div class="fw-semibold" style="color:#dde4ed">{{ $sidebarUser->name ?? 'User' }}</div>
-                </div>
-                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" style="margin-left:6px"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
+    <div class="dropend mt-auto">
+        <button class="btn btn-sm btn-white d-flex align-items-center gap-2 p-0" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background:transparent;border:none">
+            @if(!empty($sidebarAvatarUrl))
+                <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:56px;height:56px;object-fit:cover">
+            @else
+                <div class="rounded-circle" style="width:56px;height:56px;background:#1E1E2C;color:#FFFFFF;display:flex;align-items:center;justify-content:center">{{ $sidebarUser ? strtoupper(substr($sidebarUser->name,0,1)) : 'U' }}</div>
+            @endif
+            <div class="ms-2 text-start">
+                <div class="fw-semibold" style="color:#dde4ed">{{ $sidebarUser->name ?? 'User' }}</div>
+            </div>
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" style="margin-left:6px"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
 
         <ul class="dropdown-menu user-dropdown-menu" aria-labelledby="sidebarUserDropdown" style="position: absolute; top: 100%; left: 0; z-index: 1000;">
             <li class="px-3 py-2">

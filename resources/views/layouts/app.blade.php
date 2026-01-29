@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'POS System')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="icon" href="{{ asset('favicon.ico') }}">
@@ -20,7 +21,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        :root{ --theme-color: #2563eb; }
+        :root{ --theme-color: #F29F67; --color-soft-orange:#F29F67; --color-deep-navy:#1E1E2C; --color-blue:#3B8FF3; --color-blue-hover:#256FE0; --color-teal:#34B1AA; --color-yellow:#E0B50F; --color-red:#DC2626; --color-app-bg:#F9FAFB; --color-card-bg:#FFFFFF; --color-divider:#E5E7EB; --color-text:#111827; --color-text-muted:#6B7280; }
         .theme-bg{ background-color: var(--theme-color) !important; }
         .theme-border{ border-color: var(--theme-color) !important; }
         .theme-text{ color: var(--theme-color) !important; }
@@ -28,15 +29,24 @@
         .card-rounded{ border-radius: 12px; }
         /* Global page background */
         body {
-            background:
-                
-                url('/images/BGH_bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-color: var(--color-app-bg);
+            color: var(--color-text);
         }
-        .main-content { background-color: transparent; color: #dde4ed; }
+        .main-content { background-color: transparent; color: var(--color-text); }
+        /* Buttons mapping to palette (Bootstrap override) */
+        .btn-primary{
+            --bs-btn-bg: var(--color-blue);
+            --bs-btn-border-color: var(--color-blue);
+            --bs-btn-hover-bg: var(--color-blue-hover);
+            --bs-btn-hover-border-color: var(--color-blue-hover);
+        }
+        .btn-secondary{
+            --bs-btn-bg: #E5E7EB;
+            --bs-btn-border-color: #E5E7EB;
+            --bs-btn-color: #111827;
+            --bs-btn-hover-bg: #d1d5db;
+            --bs-btn-hover-border-color: #d1d5db;
+        }
         
 
     </style>
