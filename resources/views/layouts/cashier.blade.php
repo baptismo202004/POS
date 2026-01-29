@@ -4,15 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'POS System')</title>
+    <title>@yield('title', 'Cashier POS System')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="icon" href="{{ asset('favicon.ico') }}">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- FontAwesome CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -25,132 +22,123 @@
     <style>
         :root { 
             /* ========================================
-               NEW COLOR PALETTE
+               ELECTRIC MODERN PALETTE - CASHIER
                ======================================== */
             
             /* Core Palette */
-            --deep-blue: #05668D;           /* Trust, authority, structure */
-            --blue-teal: #028090;           /* Navigation, stability */
-            --teal: #00A896;                /* Actions, primary interaction */
-            --mint-green: #02C39A;          /* Success, positive states */
-            --soft-yellow: #F0F3BD;         /* Background, highlights, calm contrast */
+            --electric-blue: #0D47A1;           /* Trust, authority, structure */
+            --neon-blue: #2196F3;               /* Navigation, stability */
+            --cyan-bright: #00E5FF;            /* Actions, primary interaction */
+            --magenta: #E91E63;                /* Accent, attention */
+            --violet: #9C27B0;                 /* Secondary accent */
+            --lime-electric: #C6FF00;          /* Highlights */
+            --slate-bg: #ECEFF1;               /* Background */
+            --ice-white: #FAFBFC;              /* Card backgrounds */
             
             /* Status Colors */
-            --success: #02C39A;             /* Mint Green - Success states */
-            --info: #028090;                /* Blue-Teal - Info states */
-            --warning: #F0F3BD;             /* Soft Yellow - Warning background */
-            --error: #E63946;               /* Red - Error states */
+            --success: #43A047;               /* Success states */
+            --info: #2196F3;                  /* Info states */
+            --warning: #C6FF00;               /* Warning background */
+            --error: #E53935;                 /* Error states */
             
             /* Opacity Variants */
-            --blue-teal-hover: rgba(2, 128, 144, 0.2);
-            --teal-hover: rgba(0, 168, 150, 0.08);
-            --deep-blue-border: rgba(5, 102, 141, 0.15);
+            --neon-blue-hover: rgba(33, 150, 243, 0.2);
+            --cyan-hover: rgba(0, 229, 255, 0.08);
+            --electric-blue-border: rgba(13, 71, 161, 0.15);
             
             /* Layout Colors */
-            --color-app-bg: #F0F3BD;        /* Soft Yellow - Main background */
-            --color-card-bg: #FFFFFF;       /* White - Card backgrounds */
-            --color-divider: rgba(5, 102, 141, 0.15); /* Deep Blue - Dividers */
-            --color-text: #05668D;          /* Deep Blue - Primary text */
-            --color-text-muted: #6B7280;    /* Gray - Muted text */
+            --color-app-bg: #ECEFF1;          /* Main background */
+            --color-card-bg: #FAFBFC;         /* Card backgrounds */
+            --color-divider: rgba(13, 71, 161, 0.15); /* Dividers */
+            --color-text: #263238;            /* Primary text */
+            --color-text-muted: #546E7A;      /* Muted text */
             --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
             
             /* Sidebar Variables */
-            --sidebar-bg: #05668D;          /* Deep Blue - Sidebar background */
-            --sidebar-icon-color: #FFFFFF;  /* White - Icons */
+            --sidebar-bg: #0D47A1;            /* Sidebar background */
+            --sidebar-icon-color: #FFFFFF;   /* Icons */
             --sidebar-icon-stroke: 1.6;
-            --sidebar-active-bg: #028090;   /* Blue-Teal - Active states */
-            --sidebar-hover-bg: #00A896;    /* Teal - Hover states */
-            --sidebar-text: #FFFFFF;        /* White - Sidebar text */
-            
-            /* Legacy mappings for backward compatibility */
-            --theme-color: #00A896;         /* Teal - Primary theme color */
-            --color-soft-orange: #00A896;   /* Mapped to Teal */
-            --color-deep-navy: #05668D;     /* Mapped to Deep Blue */
-            --color-blue: #028090;          /* Mapped to Blue-Teal */
-            --color-blue-hover: #05668D;    /* Mapped to Deep Blue */
-            --color-teal: #00A896;          /* Teal */
-            --color-yellow: #F0F3BD;        /* Soft Yellow */
-            --color-red: #E63946;           /* Error Red */
+            --sidebar-active-bg: #2196F3;     /* Active states */
+            --sidebar-hover-bg: #00E5FF;     /* Hover states */
+            --sidebar-text: #FFFFFF;          /* Sidebar text */
         }
         
         /* Theme utility classes */
-        .theme-bg { background-color: var(--teal) !important; }
-        .theme-border { border-color: var(--teal) !important; }
-        .theme-text { color: var(--teal) !important; }
+        .theme-bg { background-color: var(--neon-blue) !important; }
+        .theme-border { border-color: var(--neon-blue) !important; }
+        .theme-text { color: var(--neon-blue) !important; }
         
         /* Helper classes */
         .card-rounded { border-radius: 12px; }
         
         /* Global page background */
         body {
-            background-color: var(--color-app-bg); /* Soft Yellow */
-            color: var(--color-text); /* Deep Blue */
+            background-color: var(--color-app-bg);
+            color: var(--color-text);
             font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         
         .main-content { 
             background-color: transparent; 
             color: var(--color-text); 
-            flex: 1;
-            min-width: 0; /* Prevent flex item from overflowing */
         }
         
         /* ========================================
            BUTTON STYLING (Bootstrap Override)
            ======================================== */
         
-        /* Primary Button - Teal for primary interactions */
+        /* Primary Button - Neon Blue */
         .btn-primary {
-            --bs-btn-bg: var(--teal);                    /* #00A896 */
-            --bs-btn-border-color: var(--teal);
-            --bs-btn-hover-bg: var(--mint-green);        /* #02C39A */
-            --bs-btn-hover-border-color: var(--mint-green);
-            --bs-btn-active-bg: var(--mint-green);
-            --bs-btn-active-border-color: var(--mint-green);
+            --bs-btn-bg: var(--neon-blue);
+            --bs-btn-border-color: var(--neon-blue);
+            --bs-btn-hover-bg: var(--cyan-bright);
+            --bs-btn-hover-border-color: var(--cyan-bright);
+            --bs-btn-active-bg: var(--cyan-bright);
+            --bs-btn-active-border-color: var(--cyan-bright);
             --bs-btn-color: #FFFFFF;
         }
         
-        /* Success Button - Mint Green */
+        /* Success Button */
         .btn-success {
-            --bs-btn-bg: var(--mint-green);              /* #02C39A */
-            --bs-btn-border-color: var(--mint-green);
-            --bs-btn-hover-bg: #029C7B;
-            --bs-btn-hover-border-color: #029C7B;
+            --bs-btn-bg: var(--success);
+            --bs-btn-border-color: var(--success);
+            --bs-btn-hover-bg: #388E3C;
+            --bs-btn-hover-border-color: #388E3C;
             --bs-btn-color: #FFFFFF;
         }
         
-        /* Warning Button - Deep Blue (authority) */
+        /* Warning Button - Electric Blue */
         .btn-warning {
-            --bs-btn-bg: var(--deep-blue);               /* #05668D */
-            --bs-btn-border-color: var(--deep-blue);
-            --bs-btn-hover-bg: #045271;
-            --bs-btn-hover-border-color: #045271;
+            --bs-btn-bg: var(--electric-blue);
+            --bs-btn-border-color: var(--electric-blue);
+            --bs-btn-hover-bg: #1565C0;
+            --bs-btn-hover-border-color: #1565C0;
             --bs-btn-color: #FFFFFF;
         }
         
-        /* Info Button - Blue-Teal */
+        /* Info Button - Cyan Bright */
         .btn-info {
-            --bs-btn-bg: var(--blue-teal);               /* #028090 */
-            --bs-btn-border-color: var(--blue-teal);
-            --bs-btn-hover-bg: #026673;
-            --bs-btn-hover-border-color: #026673;
-            --bs-btn-color: #FFFFFF;
+            --bs-btn-bg: var(--cyan-bright);
+            --bs-btn-border-color: var(--cyan-bright);
+            --bs-btn-hover-bg: #00ACC1;
+            --bs-btn-hover-border-color: #00ACC1;
+            --bs-btn-color: var(--electric-blue);
         }
         
-        /* Danger Button - Error Red */
+        /* Danger Button */
         .btn-danger {
-            --bs-btn-bg: var(--error);                   /* #E63946 */
+            --bs-btn-bg: var(--error);
             --bs-btn-border-color: var(--error);
-            --bs-btn-hover-bg: #DC2626;
-            --bs-btn-hover-border-color: #DC2626;
+            --bs-btn-hover-bg: #D32F2F;
+            --bs-btn-hover-border-color: #D32F2F;
             --bs-btn-color: #FFFFFF;
         }
         
-        /* Secondary Button - Light gray */
+        /* Secondary Button */
         .btn-secondary {
             --bs-btn-bg: #E5E7EB;
             --bs-btn-border-color: #E5E7EB;
-            --bs-btn-color: var(--deep-blue);
+            --bs-btn-color: var(--electric-blue);
             --bs-btn-hover-bg: #D1D5DB;
             --bs-btn-hover-border-color: #D1D5DB;
         }
@@ -160,14 +148,14 @@
            ======================================== */
         
         .card {
-            background-color: var(--color-card-bg); /* White */
+            background-color: var(--color-card-bg);
             box-shadow: var(--card-shadow);
             border: 1px solid var(--color-divider);
             border-radius: 12px;
         }
         
         .card-header {
-            background-color: var(--blue-teal);     /* Blue-Teal for headers */
+            background-color: var(--neon-blue);
             color: #FFFFFF;
             border-bottom: 1px solid var(--color-divider);
             border-radius: 12px 12px 0 0 !important;
@@ -179,13 +167,13 @@
         
         .form-control:focus,
         .form-select:focus {
-            border-color: var(--teal);
-            box-shadow: 0 0 0 0.2rem rgba(0, 168, 150, 0.25);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
         }
         
         .form-control,
         .form-select {
-            border-color: var(--blue-teal);
+            border-color: var(--neon-blue);
         }
         
         /* ========================================
@@ -193,16 +181,16 @@
            ======================================== */
         
         .table thead {
-            background-color: var(--deep-blue);
+            background-color: var(--electric-blue);
             color: #FFFFFF;
         }
         
         .table tbody tr:hover {
-            background-color: var(--teal-hover);
+            background-color: var(--cyan-hover);
         }
         
         .table-bordered {
-            border-color: var(--deep-blue-border);
+            border-color: var(--electric-blue-border);
         }
         
         /* ========================================
@@ -210,15 +198,15 @@
            ======================================== */
         
         .badge.bg-success {
-            background-color: var(--mint-green) !important;
+            background-color: var(--success) !important;
         }
         
         .badge.bg-info {
-            background-color: var(--blue-teal) !important;
+            background-color: var(--neon-blue) !important;
         }
         
         .badge.bg-warning {
-            background-color: #FACC15 !important;
+            background-color: var(--warning) !important;
             color: #1F2937 !important;
         }
         
@@ -227,7 +215,7 @@
         }
         
         .badge.bg-primary {
-            background-color: var(--teal) !important;
+            background-color: var(--neon-blue) !important;
         }
         
         /* ========================================
@@ -235,27 +223,27 @@
            ======================================== */
         
         .alert-success {
-            background-color: #E6FBF6;
-            border-color: var(--mint-green);
-            color: #01755C;
+            background-color: #E8F5E8;
+            border-color: var(--success);
+            color: #2E7D32;
         }
         
         .alert-info {
-            background-color: #E6F5F7;
-            border-color: var(--blue-teal);
-            color: #014D56;
+            background-color: #E3F2FD;
+            border-color: var(--neon-blue);
+            color: #1565C0;
         }
         
         .alert-warning {
-            background-color: #FEFEF9;
-            border-color: #E0E761;
-            color: #B8C81A;
+            background-color: #FFF9C4;
+            border-color: var(--warning);
+            color: #F57C00;
         }
         
         .alert-danger {
-            background-color: #FEE2E2;
+            background-color: #FFEBEE;
             border-color: var(--error);
-            color: #991B1B;
+            color: #C62828;
         }
         
         /* ========================================
@@ -321,43 +309,22 @@
             }
         }
         
-        /* High DPI displays */
-        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-            .icon-badge {
-                border-width: 0.5px;
-            }
-        }
-        
-        /* Reduced motion preferences */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-        
-        /* Dark mode support preparation */
-        @media (prefers-color-scheme: dark) {
-            /* Future dark mode variables can be added here */
-        }
-        
         /* ========================================
            SELECT2 STYLING
            ======================================== */
         
         .select2-container--default .select2-selection--single {
-            border-color: var(--blue-teal);
+            border-color: var(--neon-blue);
         }
         
         .select2-container--default .select2-selection--single:focus,
         .select2-container--default.select2-container--focus .select2-selection--single {
-            border-color: var(--teal);
-            box-shadow: 0 0 0 0.2rem rgba(0, 168, 150, 0.25);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
         }
         
         .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-            background-color: var(--teal);
+            background-color: var(--neon-blue);
         }
     </style>
     @stack('stylesDashboard')
@@ -366,7 +333,7 @@
 <body class="min-h-screen font-sans">
 
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
+        {{-- Admin Sidebar with Cashier Context --}}
         <aside>
             @include('layouts.AdminSidebar')
         </aside>

@@ -1,66 +1,27 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reports - Admin</title>
+@extends('layouts.app')
+@section('title', 'Reports')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+@section('content')
+<div class="container-fluid">
+    <div class="p-4 card-rounded shadow-sm bg-white">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Business Reports</h2>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+        </div>
 
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-        .table th {
-            font-weight: 600;
-            color: #475569;
-            background-color: #f8fafc;
-        }
-        .stat-card {
-            transition: transform 0.2s ease-in-out;
-            border-radius: 12px;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-        .nav-tabs .nav-link {
-            border-radius: 8px 8px 0 0;
-            font-weight: 500;
-        }
-        .nav-tabs .nav-link.active {
-            background-color: var(--theme-color);
-            border-color: var(--theme-color);
-            color: white;
-        }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="mb-0">Business Reports</h2>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-                            <i class="fas fa-print"></i> Print
-                        </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
-                            <i class="fas fa-filter"></i> Filter
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Quick Stats Cards -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card stat-card bg-primary text-white shadow-sm">
-                            <div class="card-body">
+        <!-- Quick Stats Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card bg-primary text-white shadow-sm">
+                    <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-white-50 mb-2">Today's Sales</h6>
@@ -482,6 +443,5 @@
         // This could be used to show a product breakdown modal or section
         console.log('Sales by product:', salesByProduct);
     }
-    </script>
-</body>
-</html>
+</script>
+@endsection

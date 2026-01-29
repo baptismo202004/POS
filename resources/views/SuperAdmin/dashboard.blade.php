@@ -5,69 +5,433 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@7.2.1/dist/gridstack.min.css"/>
     <style>
-        body { font-family: 'Inter', sans-serif;}
+        /* ========================================
+           ELECTRIC MODERN PALETTE - DASHBOARD
+           High-tech futuristic color scheme
+           ======================================== */
+        
+        :root {
+            /* Electric Modern Palette */
+            --electric-blue: #0D47A1;
+            --neon-blue: #2196F3;
+            --cyan-bright: #00E5FF;
+            --magenta: #E91E63;
+            --violet: #9C27B0;
+            --lime-electric: #C6FF00;
+            --slate-bg: #ECEFF1;
+            --ice-white: #FAFBFC;
+            
+            /* Dashboard Color Mapping */
+            --app-bg: linear-gradient(135deg, #ECEFF1 0%, #E8EAF6 100%);
+            --card-bg: #FAFBFC;
+            --card-border: rgba(13, 71, 161, 0.15);
+            --page-header: #263238;
+            
+            /* KPI Colors - Electric Theme */
+            --text-primary: #263238;
+            --text-secondary: #546E7A;
+            --success-teal: #43A047;
+            --danger-red: #E53935;
+            --warning-yellow: #C6FF00;
+            --attention-orange: #E91E63;
+            --info-blue: #2196F3;
+            --hover-blue: #00E5FF;
+            --inactive-text: #78909C;
+            
+            /* Chart Colors - Electric */
+            --chart-this-week: #2196F3;
+            --chart-last-week: #0D47A1;
+            --chart-target: #00E5FF;
+            --chart-positive-area: rgba(0, 229, 255, 0.15);
+            --chart-warning: #C6FF00;
+            
+            /* State Colors */
+            --profit-positive: #43A047;
+            --profit-negative: #E53935;
+            --sales-trend-up: #43A047;
+            --sales-trend-down: #E53935;
+            --expenses-warning: #C6FF00;
+            --low-stock-warning: #C6FF00;
+            --low-stock-critical: #E91E63;
+            --cash-normal: #263238;
+            --cash-balanced: #43A047;
+            --cash-mismatch: #E91E63;
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--slate-bg) 0%, #E8EAF6 100%);
+        }
+        
         .sidebar { width: 220px; }
-        .dash-header { font-size: 28px; font-weight:700; color: var(--color-deep-navy); }
-        .search-input { border-radius: 999px; padding-left: 44px; padding-right: 1rem; }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #9aa6b2; }
-        .stat-card { border-radius: 14px; padding: 18px; display:flex; align-items:center; justify-content:space-between; }
-        .stat-icon { width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.6); }
-        .card-soft { background: var(--color-card-bg); border-radius:12px; }
-        .panel { background: var(--color-card-bg); border-radius:12px; padding:18px; border:1px solid var(--color-divider); }
-        .small-circle { width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3f2ff;color:#1e3a8a;font-weight:600 }
-        .bottom-avatar { position:fixed; left:32px; bottom:24px; display:flex; flex-direction:column; align-items:center; gap:6px }
-        .ring { width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#2b8af9 var(--pct), rgba(0,0,0,0.06) 0); }
-        .ring-inner { width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center }
+        
+        .dash-header { 
+            font-size: 28px; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+        
+        .search-input { 
+            border-radius: 999px; 
+            padding-left: 44px; 
+            padding-right: 1rem;
+            border: 2px solid var(--electric-blue);
+            transition: all 0.3s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--cyan-bright);
+            box-shadow: 0 0 0 0.2rem rgba(0, 229, 255, 0.25);
+        }
+        
+        .search-icon { 
+            position: absolute; 
+            left: 1rem; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            color: var(--neon-blue);
+        }
+        
+        .stat-card { 
+            border-radius: 14px; 
+            padding: 18px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(33, 150, 243, 0.15);
+            border-color: var(--cyan-bright);
+        }
+        
+        .stat-icon { 
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(0, 229, 255, 0.15));
+            color: var(--neon-blue);
+        }
+        
+        .card-soft { 
+            background: var(--card-bg); 
+            border-radius: 12px;
+            border: 2px solid var(--card-border);
+        }
+        
+        .panel { 
+            background: var(--card-bg);
+            border-radius: 14px; 
+            padding: 18px; 
+            border: 2px solid var(--card-border);
+            box-shadow: 0 6px 18px rgba(13, 71, 161, 0.08);
+        }
+        
+        .small-circle { 
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+        
+        .bottom-avatar { 
+            position: fixed; 
+            left: 32px; 
+            bottom: 24px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 6px;
+        }
+        
+        .ring { 
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: conic-gradient(var(--cyan-bright) var(--pct), rgba(13, 71, 161, 0.1) 0);
+        }
+        
+        .ring-inner { 
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #fff;
+            display: grid;
+            place-items: center;
+        }
 
         /* User dropdown aesthetics */
-        :root { --icon-color: var(--color-blue); --icon-muted: #60a5fa; --icon-stroke: 1.6; }
-        .icon { width:20px; height:20px; color:var(--icon-color); opacity:0.98; }
-        .icon path, .icon rect { stroke:currentColor; fill:none; stroke-width:var(--icon-stroke); stroke-linecap:round; stroke-linejoin:round; }
+        .icon { 
+            width: 20px; 
+            height: 20px; 
+            color: var(--neon-blue);
+            opacity: 0.98;
+        }
+        
+        .icon path, 
+        .icon rect { 
+            stroke: currentColor; 
+            fill: none; 
+            stroke-width: 1.6;
+            stroke-linecap: round; 
+            stroke-linejoin: round;
+        }
+        
         .icon circle { fill: currentColor; }
-        .icon-badge { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,0.06); }
-        .user-avatar { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight:700;box-shadow:0 6px 14px rgba(59,130,246,0.12); }
-        .user-dropdown-menu { min-width:210px;border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,0.08);padding:6px; }
-        .dropdown-item svg { opacity:0.95; width:18px;height:18px; }
-        .dropdown-item { border-radius:8px; padding:8px 12px; }
-        .dropdown-item:hover { background: rgba(242,159,103,0.15); }
-        .dropdown-toggle .username { font-weight:600;color: var(--color-text); }
-        .dropdown-toggle .role { font-size:12px;color:var(--icon-muted);margin-left:2px; }
-        .caret-icon { opacity:0.75; color:var(--icon-muted); }
-        /* (dark mode removed) */
-        .page-tabs .tab { display:inline-block; padding:8px 12px; border-radius:8px; color: var(--color-text-muted); text-decoration:none; }
-        .page-tabs .tab.active { color: var(--color-deep-navy); background:#FFFFFF; border:1px solid var(--color-divider); }
-        .legend-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
-        .status-card { background:#1E1E2C; color:#FFFFFF; border-radius:12px; padding:18px; }
-        .status-card .value { font-size:32px; font-weight:700; color:#34B1AA; }
+        
+        .icon-badge { 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #fff; 
+            box-shadow: 0 8px 20px rgba(13, 71, 161, 0.08);
+        }
+        
+        .user-avatar { 
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
+            font-weight: 700;
+            box-shadow: 0 6px 14px rgba(33, 150, 243, 0.2);
+        }
+        
+        .user-dropdown-menu { 
+            min-width: 210px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(13, 71, 161, 0.12);
+            padding: 6px;
+            border: 1px solid var(--card-border);
+        }
+        
+        .dropdown-item svg { 
+            opacity: 0.95; 
+            width: 18px;
+            height: 18px;
+            color: var(--neon-blue);
+        }
+        
+        .dropdown-item { 
+            border-radius: 8px; 
+            padding: 8px 12px;
+            transition: all 0.2s;
+        }
+        
+        .dropdown-item:hover { 
+            background: rgba(0, 229, 255, 0.1);
+            color: var(--electric-blue);
+        }
+        
+        .dropdown-toggle .username { 
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .dropdown-toggle .role { 
+            font-size: 12px;
+            color: var(--neon-blue);
+            margin-left: 2px;
+        }
+        
+        .caret-icon { 
+            opacity: 0.75; 
+            color: var(--neon-blue);
+        }
+        
+        .page-tabs .tab { 
+            display: inline-block; 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .page-tabs .tab.active { 
+            color: var(--electric-blue);
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(0, 229, 255, 0.1));
+            border: 1px solid var(--cyan-bright);
+            font-weight: 600;
+        }
+        
+        .legend-dot { 
+            width: 8px; 
+            height: 8px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            margin-right: 6px;
+        }
+        
+        .status-card { 
+            background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+            color: #FFFFFF; 
+            border-radius: 12px; 
+            padding: 18px;
+            box-shadow: 0 8px 24px rgba(13, 71, 161, 0.3);
+        }
+        
+        .status-card .value { 
+            font-size: 32px; 
+            font-weight: 700; 
+            color: var(--cyan-bright);
+        }
+        
         /* Dashboard-specific styles */
-        .kpi { position: relative; margin-bottom: 6px; border-radius:10px; padding:10px 12px; background: var(--color-card-bg); border:1px solid var(--color-divider); }
-        .kpi .label { color: var(--color-text-muted); font-weight: 600; }
-        .kpi .value { font-size: 28px; font-weight: 700; color: var(--color-deep-navy); }
-        .kpi .value.profit { color: var(--color-teal); }
-        /* blur-on-hover without layout shift */
-        .kpi .value .amt { filter:none; transition: filter 160ms ease; display:inline-block; }
-        .kpi .pct { opacity:0; font-size: 12px; margin-left: 8px; transition: opacity 160ms ease; }
+        .kpi { 
+            position: relative; 
+            margin-bottom: 6px; 
+            border-radius: 10px; 
+            padding: 10px 12px; 
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+        }
+        
+        .kpi .label { 
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        
+        .kpi .value { 
+            font-size: 28px; 
+            font-weight: 700; 
+            color: var(--electric-blue);
+        }
+        
+        .kpi .value.profit { 
+            color: var(--profit-positive);
+        }
+        
+        /* Blur-on-hover without layout shift */
+        .kpi .value .amt { 
+            filter: none; 
+            transition: filter 160ms ease; 
+            display: inline-block;
+        }
+        
+        .kpi .pct { 
+            opacity: 0; 
+            font-size: 12px; 
+            margin-left: 8px; 
+            transition: opacity 160ms ease;
+        }
+        
         .kpi:hover .value .amt { filter: blur(3px); }
-        .kpi:hover .pct { opacity:1; }
-        .pct.up { color: var(--color-teal); }
-        .pct.down { color: var(--color-red); }
-        .pill-input { border-radius: 999px; border:1px solid var(--color-divider); background: #FFFFFF; }
-        .btn-soft { background: #FFFFFF; border:1px solid var(--color-divider); }
-        .panel { background: var(--color-card-bg); border-radius:14px; padding:18px; box-shadow: 0 6px 18px rgba(15,23,42,0.08); border:1px solid var(--color-divider); }
+        .kpi:hover .pct { opacity: 1; }
+        
+        .pct.up { color: var(--profit-positive); }
+        .pct.down { color: var(--danger-red); }
+        
+        .pill-input { 
+            border-radius: 999px; 
+            border: 2px solid var(--electric-blue);
+            background: #FFFFFF;
+            transition: all 0.3s;
+        }
+        
+        .pill-input:focus {
+            border-color: var(--cyan-bright);
+            box-shadow: 0 0 0 0.2rem rgba(0, 229, 255, 0.25);
+        }
+        
+        .btn-soft { 
+            background: #FFFFFF; 
+            border: 2px solid var(--electric-blue);
+            color: var(--electric-blue);
+            transition: all 0.3s;
+        }
+        
+        .btn-soft:hover {
+            background: var(--electric-blue);
+            color: #FFFFFF;
+            transform: translateY(-2px);
+        }
+        
+        .panel { 
+            background: var(--card-bg);
+            border-radius: 14px; 
+            padding: 18px; 
+            box-shadow: 0 6px 18px rgba(13, 71, 161, 0.08);
+            border: 2px solid var(--card-border);
+        }
         
         /* POS Widget specific styles */
-        .widget-item { transition: all 0.2s ease; }
-        .widget-item:hover { background: rgba(242,159,103,0.05); border-radius: 6px; }
-        .widget-number { font-family: 'Inter', monospace; font-weight: 600; }
-        .stock-badge-danger { background: rgba(239,68,68,0.1); color: #dc2626; }
-        .stock-badge-warning { background: rgba(245,158,11,0.1); color: #d97706; }
-        .rank-badge { background: linear-gradient(135deg,#f3f4f6,#e5e7eb); color: #374151; font-weight: 600; min-width: 20px; text-align: center; }
+        .widget-item { 
+            transition: all 0.2s ease;
+        }
         
-                /* Additional widget styles */
-        .status-badge-active { background: rgba(34,197,94,0.1); color: #16a34a; }
-        .status-badge-inactive { background: rgba(107,114,128,0.1); color: #6b7280; }
+        .widget-item:hover { 
+            background: rgba(0, 229, 255, 0.08);
+            border-radius: 6px;
+        }
+        
+        .widget-number { 
+            font-family: 'Inter', monospace; 
+            font-weight: 600;
+        }
+        
+        .stock-badge-danger { 
+            background: rgba(233, 30, 99, 0.1);
+            color: var(--magenta);
+        }
+        
+        .stock-badge-warning { 
+            background: rgba(198, 255, 0, 0.1);
+            color: #827717;
+        }
+        
+        .rank-badge { 
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
+            font-weight: 600; 
+            min-width: 20px; 
+            text-align: center;
+        }
+        
+        /* Additional widget styles */
+        .status-badge-active { 
+            background: rgba(67, 160, 71, 0.1);
+            color: var(--success-teal);
+        }
+        
+        .status-badge-inactive { 
+            background: rgba(120, 144, 156, 0.1);
+            color: var(--inactive-text);
+        }
+        
         .widget-section { margin-bottom: 0.5rem; }
-        .widget-section-title { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.5rem; }
+        
+        .widget-section-title { 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
         
         /* New Dashboard Layout Styles */
         .col-lg-2-4 { 
@@ -76,20 +440,34 @@
             padding: 0 12px;
         }
         
-        /* KPI Cards - Row 1 with Admin Color Mapping */
+        /* KPI Cards - Row 1 with Electric Colors */
         .kpi-card {
             background: var(--card-bg);
             border-radius: 16px;
             padding: 20px;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+            border: 2px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
             transition: all 0.3s ease;
             height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.08), transparent 70%);
+            pointer-events: none;
         }
         
         .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(15,23,42,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(13, 71, 161, 0.15);
+            border-color: var(--cyan-bright);
         }
         
         .kpi-header {
@@ -106,69 +484,63 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(242,159,103,0.1);
+            background: rgba(33, 150, 243, 0.1);
             border-radius: 12px;
+            transition: all 0.3s;
         }
         
-        /* Sales Widget - Blue accent */
+        .kpi-card:hover .kpi-icon {
+            transform: scale(1.1);
+        }
+        
+        /* Sales Widget - Neon Blue */
+        .kpi-card[data-widget="today-sales"] {
+            border-top: 4px solid var(--neon-blue);
+        }
+        
         .kpi-card[data-widget="today-sales"] .kpi-icon {
-            background: rgba(59,143,243,0.1);
-            color: var(--info-blue);
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(0, 229, 255, 0.15));
+            color: var(--neon-blue);
         }
         
-        /* Profit Widget - Teal accent */
+        /* Profit Widget - Success Green */
+        .kpi-card[data-widget="today-profit"] {
+            border-top: 4px solid var(--success-teal);
+        }
+        
         .kpi-card[data-widget="today-profit"] .kpi-icon {
-            background: rgba(52,177,170,0.1);
+            background: linear-gradient(135deg, rgba(67, 160, 71, 0.15), rgba(102, 187, 106, 0.15));
             color: var(--success-teal);
         }
         
-        /* Expenses Widget - Yellow accent */
+        /* Expenses Widget - Lime Electric */
+        .kpi-card[data-widget="today-expenses"] {
+            border-top: 4px solid var(--lime-electric);
+        }
+        
         .kpi-card[data-widget="today-expenses"] .kpi-icon {
-            background: rgba(224,181,15,0.1);
-            color: var(--warning-yellow);
+            background: linear-gradient(135deg, rgba(198, 255, 0, 0.15), rgba(174, 234, 0, 0.15));
+            color: #827717;
         }
         
-        /* Critical Stock Widget - Yellow/Red accent */
-        .kpi-card[data-widget="critical-stock"] .kpi-icon {
-            background: rgba(224,181,15,0.1);
-            color: var(--warning-yellow);
+        /* Cash on Hand Widget - Electric Blue */
+        .kpi-card[data-widget="cash-on-hand"] {
+            border-top: 4px solid var(--electric-blue);
         }
         
-        .kpi-card[data-widget="critical-stock"].critical .kpi-icon {
-            background: rgba(220,38,38,0.1);
-            color: var(--danger-red);
-        }
-        
-        /* Cash on Hand Widget - Blue accent */
         .kpi-card[data-widget="cash-on-hand"] .kpi-icon {
-            background: rgba(59,143,243,0.1);
-            color: var(--info-blue);
+            background: linear-gradient(135deg, rgba(13, 71, 161, 0.15), rgba(33, 150, 243, 0.15));
+            color: var(--electric-blue);
         }
         
-        /* Responsive adjustments for different widget sizes */
-        .grid-stack-item[gs-w="1"] .kpi-value {
-            font-size: 18px;
-        }
+        /* Responsive adjustments */
+        .grid-stack-item[gs-w="1"] .kpi-value { font-size: 18px; }
+        .grid-stack-item[gs-w="2"] .kpi-value { font-size: 24px; }
+        .grid-stack-item[gs-w="3"] .kpi-value { font-size: 28px; }
         
-        .grid-stack-item[gs-w="2"] .kpi-value {
-            font-size: 24px;
-        }
-        
-        .grid-stack-item[gs-w="3"] .kpi-value {
-            font-size: 28px;
-        }
-        
-        .grid-stack-item[gs-h="1"] .kpi-card {
-            padding: 12px;
-        }
-        
-        .grid-stack-item[gs-h="2"] .kpi-card {
-            padding: 16px;
-        }
-        
-        .grid-stack-item[gs-h="3"] .kpi-card {
-            padding: 20px;
-        }
+        .grid-stack-item[gs-h="1"] .kpi-card { padding: 12px; }
+        .grid-stack-item[gs-h="2"] .kpi-card { padding: 16px; }
+        .grid-stack-item[gs-h="3"] .kpi-card { padding: 20px; }
         
         /* Chart container responsiveness */
         .grid-stack-item-content canvas {
@@ -177,28 +549,24 @@
         }
         
         /* List responsiveness */
-        .top-list, .performance-list, .alerts-list {
+        .top-list, 
+        .performance-list, 
+        .alerts-list {
             max-height: 100%;
             overflow-y: auto;
         }
         
         .grid-stack-item[gs-h="2"] .top-list,
         .grid-stack-item[gs-h="2"] .performance-list,
-        .grid-stack-item[gs-h="2"] .alerts-list {
-            max-height: 120px;
-        }
+        .grid-stack-item[gs-h="2"] .alerts-list { max-height: 120px; }
         
         .grid-stack-item[gs-h="3"] .top-list,
         .grid-stack-item[gs-h="3"] .performance-list,
-        .grid-stack-item[gs-h="3"] .alerts-list {
-            max-height: 200px;
-        }
+        .grid-stack-item[gs-h="3"] .alerts-list { max-height: 200px; }
         
         .grid-stack-item[gs-h="4"] .top-list,
         .grid-stack-item[gs-h="4"] .performance-list,
-        .grid-stack-item[gs-h="4"] .alerts-list {
-            max-height: 280px;
-        }
+        .grid-stack-item[gs-h="4"] .alerts-list { max-height: 280px; }
         
         .kpi-title {
             font-size: 14px;
@@ -206,9 +574,7 @@
             color: var(--text-primary);
         }
         
-        .kpi-body {
-            text-align: center;
-        }
+        .kpi-body { text-align: center; }
         
         .kpi-value {
             font-size: 28px;
@@ -218,46 +584,12 @@
             font-family: 'Inter', monospace;
         }
         
-        /* Sales Widget - Primary text */
-        .kpi-card[data-widget="today-sales"] .kpi-value {
-            color: var(--text-primary);
-        }
-        
-        /* Profit Widget - Teal for positive, Red for negative */
-        .kpi-card[data-widget="today-profit"] .kpi-value.profit-positive {
-            color: var(--profit-positive);
-        }
-        
-        .kpi-card[data-widget="today-profit"] .kpi-value.profit-negative {
-            color: var(--profit-negative);
-        }
-        
-        /* Expenses Widget - Primary text */
-        .kpi-card[data-widget="today-expenses"] .kpi-value {
-            color: var(--text-primary);
-        }
-        
-        /* Critical Stock - Yellow warning, Red critical */
-        .kpi-card[data-widget="critical-stock"] .kpi-value {
-            color: var(--low-stock-warning);
-        }
-        
-        .kpi-card[data-widget="critical-stock"].critical .kpi-value {
-            color: var(--low-stock-critical);
-        }
-        
-        /* Cash on Hand - Contextual coloring */
-        .kpi-card[data-widget="cash-on-hand"] .kpi-value.cash-normal {
-            color: var(--cash-normal);
-        }
-        
-        .kpi-card[data-widget="cash-on-hand"] .kpi-value.cash-balanced {
-            color: var(--cash-balanced);
-        }
-        
-        .kpi-card[data-widget="cash-on-hand"] .kpi-value.cash-mismatch {
-            color: var(--cash-mismatch);
-        }
+        /* Value color variants */
+        .kpi-card[data-widget="today-sales"] .kpi-value { color: var(--neon-blue); }
+        .kpi-card[data-widget="today-profit"] .kpi-value.profit-positive { color: var(--profit-positive); }
+        .kpi-card[data-widget="today-profit"] .kpi-value.profit-negative { color: var(--profit-negative); }
+        .kpi-card[data-widget="today-expenses"] .kpi-value { color: #827717; }
+        .kpi-card[data-widget="cash-on-hand"] .kpi-value { color: var(--electric-blue); }
         
         .kpi-change {
             display: flex;
@@ -272,23 +604,19 @@
             font-size: 16px;
         }
         
-        .change-value.positive {
-            color: var(--sales-trend-up);
-        }
-        
-        .change-value.negative {
-            color: var(--sales-trend-down);
-        }
+        .change-value.positive { color: var(--sales-trend-up); }
+        .change-value.negative { color: var(--sales-trend-down); }
         
         .kpi-subtitle {
             font-size: 12px;
             color: var(--inactive-text);
         }
         
-        /* Alerts Panel - Admin Color Mapping */
+        /* Alerts Panel - Electric Theme */
         .alerts-panel {
             background: var(--card-bg);
-            border: 1px solid var(--card-border);
+            border: 2px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
         }
         
         .alerts-list {
@@ -309,27 +637,28 @@
         
         .alert-item:hover {
             transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1);
         }
         
-        /* Alert Type Colors */
+        /* Alert Type Colors - Electric */
         .alert-item.critical {
-            border-left-color: var(--danger-red);
-            background: rgba(220,38,38,0.05);
+            border-left-color: var(--magenta);
+            background: rgba(233, 30, 99, 0.05);
         }
         
         .alert-item.warning {
-            border-left-color: var(--warning-yellow);
-            background: rgba(224,181,15,0.05);
+            border-left-color: var(--lime-electric);
+            background: rgba(198, 255, 0, 0.05);
         }
         
         .alert-item.action-needed {
-            border-left-color: var(--attention-orange);
-            background: rgba(242,159,103,0.05);
+            border-left-color: var(--neon-blue);
+            background: rgba(33, 150, 243, 0.05);
         }
         
         .alert-item.info {
-            border-left-color: var(--info-blue);
-            background: rgba(59,143,243,0.05);
+            border-left-color: var(--cyan-bright);
+            background: rgba(0, 229, 255, 0.05);
         }
         
         .alert-icon {
@@ -337,9 +666,7 @@
             font-size: 18px;
         }
         
-        .alert-content {
-            flex: 1;
-        }
+        .alert-content { flex: 1; }
         
         .alert-title {
             font-weight: 600;
@@ -353,7 +680,7 @@
             color: var(--inactive-text);
         }
         
-        /* Top Lists - Admin Color Mapping */
+        /* Top Lists - Electric Theme */
         .top-list {
             max-height: 280px;
             overflow-y: auto;
@@ -365,13 +692,15 @@
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 8px;
-            background: rgba(242,159,103,0.05);
+            background: rgba(0, 229, 255, 0.05);
             transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
         
         .top-item:hover {
-            background: rgba(242,159,103,0.1);
+            background: rgba(0, 229, 255, 0.1);
             transform: translateX(4px);
+            border-color: var(--cyan-bright);
         }
         
         .top-rank {
@@ -380,7 +709,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--attention-orange);
+            background: var(--neon-blue);
             color: white;
             border-radius: 8px;
             font-weight: 700;
@@ -400,9 +729,7 @@
             background: linear-gradient(135deg, #f97316, #ea580c);
         }
         
-        .top-content {
-            flex: 1;
-        }
+        .top-content { flex: 1; }
         
         .top-name {
             font-weight: 600;
@@ -416,14 +743,12 @@
             color: var(--inactive-text);
         }
         
-        .top-metrics {
-            text-align: right;
-        }
+        .top-metrics { text-align: right; }
         
         .top-value {
             font-weight: 700;
             font-size: 14px;
-            color: var(--success-teal);
+            color: var(--neon-blue);
         }
         
         .top-subtitle {
@@ -431,7 +756,7 @@
             color: var(--inactive-text);
         }
         
-        /* Performance List - Admin Color Mapping */
+        /* Performance List - Electric Theme */
         .performance-list {
             max-height: 280px;
             overflow-y: auto;
@@ -443,21 +768,23 @@
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 8px;
-            background: rgba(52,177,170,0.05);
+            background: rgba(33, 150, 243, 0.05);
             transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
         
         .performance-item:hover {
-            background: rgba(52,177,170,0.1);
+            background: rgba(33, 150, 243, 0.1);
             transform: translateX(4px);
+            border-color: var(--neon-blue);
         }
         
         .performance-avatar {
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--info-blue), var(--hover-blue));
-            color: white;
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -466,9 +793,7 @@
             margin-right: 12px;
         }
         
-        .performance-content {
-            flex: 1;
-        }
+        .performance-content { flex: 1; }
         
         .performance-name {
             font-weight: 600;
@@ -482,14 +807,12 @@
             color: var(--inactive-text);
         }
         
-        .performance-value {
-            text-align: right;
-        }
+        .performance-value { text-align: right; }
         
         .performance-amount {
             font-weight: 700;
             font-size: 14px;
-            color: var(--success-teal);
+            color: var(--neon-blue);
         }
         
         .performance-transactions {
@@ -497,10 +820,11 @@
             color: var(--inactive-text);
         }
         
-        /* Transaction Summary - Admin Color Mapping */
+        /* Transaction Summary */
         .transaction-summary {
             background: var(--card-bg);
-            border: 1px solid var(--card-border);
+            border: 2px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
         }
         
         .summary-item {
@@ -509,11 +833,13 @@
             background: var(--card-bg);
             margin: 8px;
             transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
         
         .summary-item:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15,23,42,0.08);
+            box-shadow: 0 6px 16px rgba(13, 71, 161, 0.12);
+            border-color: var(--cyan-bright);
         }
         
         .summary-label {
@@ -526,12 +852,12 @@
         .summary-value {
             font-size: 20px;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--electric-blue);
             font-family: 'Inter', monospace;
         }
         
         .summary-value.alert-value {
-            color: var(--danger-red);
+            color: var(--magenta);
         }
         
         /* GridStack Dashboard Customization */
@@ -541,15 +867,16 @@
         
         .grid-stack-item {
             background: var(--card-bg);
-            border: 1px solid var(--card-border);
+            border: 2px solid var(--card-border);
             border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
             overflow: hidden;
             transition: all 0.3s ease;
         }
         
         .grid-stack-item:hover {
-            box-shadow: 0 8px 24px rgba(15,23,42,0.12);
+            box-shadow: 0 12px 32px rgba(13, 71, 161, 0.15);
+            border-color: var(--cyan-bright);
         }
         
         .grid-stack-item-content {
@@ -561,18 +888,18 @@
         /* Edit Mode Styles */
         .dashboard-edit-mode .grid-stack-item {
             cursor: move;
-            border: 2px dashed var(--attention-orange);
+            border: 2px dashed var(--neon-blue);
         }
         
         .dashboard-edit-mode .grid-stack-item.ui-draggable-dragging {
             opacity: 0.8;
             transform: rotate(2deg);
-            box-shadow: 0 12px 32px rgba(15,23,42,0.2);
+            box-shadow: 0 16px 48px rgba(33, 150, 243, 0.3);
         }
         
         /* Resize Handles */
         .grid-stack-item .ui-resizable-handle {
-            background: var(--attention-orange);
+            background: var(--cyan-bright);
             opacity: 0;
             transition: opacity 0.2s ease;
         }
@@ -584,7 +911,7 @@
         .grid-stack-item .ui-resizable-se {
             width: 20px;
             height: 20px;
-            background: linear-gradient(135deg, transparent 50%, var(--attention-orange) 50%);
+            background: linear-gradient(135deg, transparent 50%, var(--cyan-bright) 50%);
             border-radius: 0 0 14px 0;
         }
         
@@ -594,27 +921,30 @@
             top: 20px;
             right: 20px;
             z-index: 1000;
-            background: var(--info-blue);
-            color: white;
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
             border: none;
             border-radius: 12px;
             padding: 12px 20px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(59,143,243,0.3);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+            min-height: 44px;
+            min-width: 44px;
+            font-size: 14px;
         }
         
         .customize-dashboard-btn:hover {
-            background: var(--hover-blue);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59,143,243,0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 32px rgba(33, 150, 243, 0.5);
         }
         
         .customize-dashboard-btn.editing {
-            background: var(--success-teal);
+            background: linear-gradient(135deg, var(--success-teal), #66BB6A);
+            color: white;
         }
-        
+
         /* Edit Mode Controls */
         .edit-controls {
             position: fixed;
@@ -632,120 +962,279 @@
         
         .edit-btn {
             background: white;
-            border: 1px solid var(--card-border);
+            border: 2px solid var(--card-border);
             border-radius: 8px;
-            padding: 8px 16px;
+            padding: 10px 16px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(15,23,42,0.1);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1);
+            min-height: 44px;
+            min-width: 44px;
+            font-weight: 600;
         }
         
         .edit-btn:hover {
-            background: var(--app-bg);
-            transform: translateY(-1px);
+            background: rgba(0, 229, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--cyan-bright);
         }
         
         .edit-btn.save {
-            background: var(--success-teal);
+            background: linear-gradient(135deg, var(--success-teal), #66BB6A);
             color: white;
             border-color: var(--success-teal);
         }
         
         .edit-btn.reset {
-            background: var(--danger-red);
+            background: linear-gradient(135deg, var(--magenta), var(--violet));
             color: white;
-            border-color: var(--danger-red);
+            border-color: var(--magenta);
         }
         
-        /* Widget Grid Layout */
-        .widget-grid {
-            min-height: 600px;
+        /* Static Dashboard Layout */
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 0;
+        }
+
+        .dashboard-row {
+            display: flex;
+            gap: 16px;
+            width: 100%;
+        }
+
+        /* Row 1: KPI Cards - 4 columns */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        /* Row 2: Middle Row - 50%, 25%, 25% */
+        .middle-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Row 3: Bottom Row - 70%, 30% */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 7fr 3fr;
+            gap: 16px;
+        }
+
+        /* KPI Card Styles */
+        .kpi-card {
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .kpi-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Widget Card Styles */
+        .widget-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 2px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
+            overflow: hidden;
+            transition: all 0.3s;
         }
         
-        /* Responsive adjustments for GridStack */
-        @media (max-width: 768px) {
-            .grid-stack-item {
-                margin-bottom: 10px;
-            }
-            
-            .customize-dashboard-btn {
-                top: 10px;
-                right: 10px;
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-            
-            .edit-controls {
-                top: 60px;
-                right: 10px;
-            }
+        .widget-card:hover {
+            box-shadow: 0 8px 24px rgba(13, 71, 161, 0.12);
+            border-color: var(--cyan-bright);
+        }
+
+        .widget-header {
+            padding: 16px 20px;
+            border-bottom: 2px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, rgba(33, 150, 243, 0.02), transparent);
+        }
+
+        .widget-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--electric-blue);
+            margin: 0;
+        }
+
+        .widget-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(0, 229, 255, 0.1);
+            color: var(--neon-blue);
+            font-weight: 600;
+        }
+
+        .widget-content {
+            padding: 20px;
+        }
+
+        /* Specific Widget Heights */
+        .top-branches-card,
+        .cashier-performance-card,
+        .alerts-card {
+            height: 180px;
+        }
+
+        .trend-chart-card,
+        .transaction-summary-card {
+            height: 250px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            height: 180px;
+            position: relative;
+        }
+
+        /* Trend Controls */
+        .trend-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .trend-option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .trend-option input[type="radio"] {
+            margin: 0;
+            accent-color: var(--cyan-bright);
+        }
+
+        .trend-option input[type="radio"]:checked + span {
+            color: var(--neon-blue);
+            font-weight: 600;
+        }
+
+        /* Summary Stats */
+        .summary-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+            justify-content: center;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--card-border);
+            border-top: 2px solid var(--cyan-bright);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Count Badge */
+        .alert-count {
+            background: linear-gradient(135deg, var(--magenta), var(--violet)) !important;
+            color: white !important;
         }
         
-        /* Color Palette - Admin Dashboard Mapping */
-        :root {
-            /* Global Structure */
-            --app-bg: #F9FAFB;
-            --card-bg: #FFFFFF;
-            --card-border: #E5E7EB;
-            --page-header: #1E1E2C;
-            
-            /* KPI Colors */
-            --text-primary: #1E1E2C;
-            --text-secondary: #111827;
-            --success-teal: #34B1AA;
-            --danger-red: #DC2626;
-            --warning-yellow: #E0B50F;
-            --attention-orange: #F29F67;
-            --info-blue: #3B8FF3;
-            --hover-blue: #256FE0;
-            --inactive-text: #A1A1AA;
-            
-            /* Chart Colors */
-            --chart-this-week: #F29F67;
-            --chart-last-week: #1E1E2C;
-            --chart-target: #3B8FF3;
-            --chart-positive-area: rgba(52,177,170,0.15);
-            --chart-warning: #E0B50F;
-            
-            /* State Colors */
-            --profit-positive: #34B1AA;
-            --profit-negative: #DC2626;
-            --sales-trend-up: #34B1AA;
-            --sales-trend-down: #DC2626;
-            --expenses-warning: #E0B50F;
-            --low-stock-warning: #E0B50F;
-            --low-stock-critical: #DC2626;
-            --cash-normal: #1E1E2C;
-            --cash-balanced: #34B1AA;
-            --cash-mismatch: #F29F67;
+        /* Responsive adjustments for Static Dashboard */
+        @media (max-width: 767.98px) {
+            .dashboard-container { gap: 12px; }
+            .kpi-row { grid-template-columns: 1fr; gap: 12px; }
+            .middle-row { grid-template-columns: 1fr; gap: 12px; }
+            .bottom-row { grid-template-columns: 1fr; gap: 12px; }
+            .kpi-card { height: 120px; padding: 16px; }
+            .kpi-value { font-size: 20px; }
+            .kpi-title { font-size: 12px; }
+            .widget-card { height: auto; min-height: 180px; }
+            .widget-content { padding: 16px; }
+            .chart-container { height: 200px; }
+            .summary-stats { gap: 12px; }
+            .summary-value { font-size: 16px; }
+        }
+
+        /* Tablet responsive */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+            .middle-row { grid-template-columns: 1fr 1fr; gap: 14px; }
+            .middle-row .alerts-card { grid-column: span 2; }
+            .bottom-row { grid-template-columns: 1fr; gap: 14px; }
+            .kpi-card { height: 140px; padding: 18px; }
+            .kpi-value { font-size: 22px; }
+            .widget-card { height: 200px; }
+            .chart-container { height: 160px; }
+        }
+
+        /* Large desktop */
+        @media (min-width: 1200px) {
+            .dashboard-container { max-width: 1400px; margin: 0 auto; }
+            .kpi-card { height: 160px; }
+            .widget-card { height: auto; }
+            .trend-chart-card { height: 280px; }
+            .transaction-summary-card { height: 280px; }
+            .chart-container { height: 200px; }
         }
     </style>
 @endpush
+
 @php
     use Illuminate\Support\Facades\DB;
     use Carbon\Carbon;
 
     $end = Carbon::today();
-    $start = $end->copy()->subDays(6); // last 7 days including today
+    $start = $end->copy()->subDays(6);
 
-    // Prepare label dates for each day in range
     $datePeriod = new DatePeriod($start, new DateInterval('P1D'), $end->copy()->addDay());
     $labels = [];
-    $labelKeys = []; // Y-m-d keys to align data
+    $labelKeys = [];
     foreach ($datePeriod as $d) {
         $labels[] = $d->format('D');
         $labelKeys[] = $d->format('Y-m-d');
     }
 
-    // Sales sums by date (created_at)
     $salesRows = DB::table('sales')
         ->selectRaw('DATE(created_at) as d, SUM(total_amount) as s')
         ->whereBetween('created_at', [$start->startOfDay(), $end->endOfDay()])
         ->groupBy('d')
         ->pluck('s', 'd');
 
-    // Expenses sums by date (expense_date)
     $expenseRows = DB::table('expenses')
         ->selectRaw('expense_date as d, SUM(amount) as s')
         ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
@@ -759,328 +1248,221 @@
         $expensesData[] = (float) ($expenseRows[$key] ?? 0);
     }
 @endphp
-    @section('content')
-    <div class="p-3 p-lg-4">
-        <!-- Customize Dashboard Button -->
-        <button class="customize-dashboard-btn" id="customizeBtn">
-            <i class="fas fa-puzzle-piece me-2"></i>Customize Dashboard
+
+@section('content')
+<div class="p-3 p-lg-4">
+    <!-- Customize Dashboard Button -->
+    <button class="customize-dashboard-btn" id="customizeBtn">
+        <i class="fas fa-puzzle-piece me-2"></i>Customize Dashboard
+    </button>
+    
+    <!-- Edit Mode Controls -->
+    <div class="edit-controls" id="editControls">
+        <button class="edit-btn save" id="saveLayoutBtn">
+            <i class="fas fa-save me-1"></i>Save Layout
         </button>
-        
-        <!-- Edit Mode Controls -->
-        <div class="edit-controls" id="editControls">
-            <button class="edit-btn save" id="saveLayoutBtn">
-                <i class="fas fa-save me-1"></i>Save Layout
-            </button>
-            <button class="edit-btn reset" id="resetLayoutBtn">
-                <i class="fas fa-undo me-1"></i>Reset to Default
-            </button>
-            <button class="edit-btn" id="cancelEditBtn">
-                <i class="fas fa-times me-1"></i>Cancel
-            </button>
+        <button class="edit-btn reset" id="resetLayoutBtn">
+            <i class="fas fa-undo me-1"></i>Reset to Default
+        </button>
+        <button class="edit-btn" id="cancelEditBtn">
+            <i class="fas fa-times me-1"></i>Cancel
+        </button>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+        <div>
+            <div class="dash-header mb-1">Good Morning, {{ auth()->user()->name ?? 'User' }}</div>
+            <div class="text-muted small">Your performance overview for today</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-secondary btn-sm">🔄 Refresh</button>
+            <button class="btn btn-secondary btn-sm">📊 Export</button>
+        </div>
+    </div>
+
+    <!-- Static Dashboard Layout -->
+    <div class="dashboard-container">
+        <!-- Row 1: Top KPI Cards -->
+        <div class="dashboard-row kpi-row">
+            <div class="kpi-card" data-widget="today-sales">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Today's Sales</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="todaySalesAmount">₱0.00</div>
+                    <div class="kpi-subtitle" id="todaySalesTransactions">0 transactions</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="today-expenses">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Today's Expenses</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="todayExpensesAmount">₱0.00</div>
+                    <div class="kpi-subtitle">Operating costs</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="cash-on-hand">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="4" width="20" height="16" rx="2"/>
+                            <path d="M7 15h.01M12 15h.01M17 15h.01"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Cash on Hand</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="cashOnHandAmount">₱0.00</div>
+                    <div class="kpi-subtitle">Available cash</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="today-profit">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="2" x2="12" y2="22"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Today's Profit</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="todayProfitAmount">₱0.00</div>
+                    <div class="kpi-subtitle">Net profit margin</div>
+                </div>
+            </div>
         </div>
 
-        <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
-            <div>
-                <div class="dash-header mb-1">Good Morning, {{ auth()->user()->name ?? 'User' }}</div>
-                <div class="text-muted small">Your performance overview for today</div>
+        <!-- Row 2: Middle Row -->
+        <div class="dashboard-row middle-row">
+            <div class="widget-card top-branches-card">
+                <div class="widget-header">
+                    <h3 class="widget-title">Top Branches</h3>
+                    <div class="widget-badge">Revenue</div>
+                </div>
+                <div class="widget-content">
+                    <div id="topBranchesList" class="branches-list">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-secondary btn-sm">🔄 Refresh</button>
-                <button class="btn btn-secondary btn-sm">📊 Export</button>
+
+            <div class="widget-card cashier-performance-card">
+                <div class="widget-header">
+                    <h3 class="widget-title">Cashier Performance</h3>
+                    <div class="widget-badge">Today</div>
+                </div>
+                <div class="widget-content">
+                    <div id="cashierPerformanceList" class="performance-list">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget-card alerts-card">
+                <div class="widget-header">
+                    <h3 class="widget-title">Alerts</h3>
+                    <div class="widget-badge alert-count" id="totalAlertsCount">0</div>
+                </div>
+                <div class="widget-content">
+                    <div id="alertsList" class="alerts-list">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- GridStack Widget Grid -->
-        <div class="widget-grid grid-stack" id="dashboardGrid">
-            <!-- Today's Sales Widget -->
-            <div class="grid-stack-item" gs-id="widget-today-sales" gs-x="0" gs-y="0" gs-w="2" gs-h="2" id="widget-today-sales">
-                <div class="grid-stack-item-content">
-                    <div class="kpi-card" data-widget="today-sales">
-                        <div class="kpi-header">
-                            <div class="kpi-icon">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <div class="kpi-title">Today's Sales</div>
-                        </div>
-                        <div class="kpi-body">
-                            <div class="kpi-value" id="todaySalesAmount">₱0.00</div>
-                            <div class="kpi-change" id="todaySalesChange">
-                                <span class="change-indicator">→</span>
-                                <span class="change-value">+0.0%</span>
-                            </div>
-                            <div class="kpi-subtitle" id="todaySalesTransactions">0 transactions</div>
-                        </div>
+        <!-- Row 3: Bottom Row -->
+        <div class="dashboard-row bottom-row">
+            <div class="widget-card trend-chart-card">
+                <div class="widget-header">
+                    <h3 class="widget-title">Sales & Profit Trend</h3>
+                    <div class="trend-controls">
+                        <label class="trend-option">
+                            <input type="radio" name="trendType" value="sales" checked>
+                            <span>Sales</span>
+                        </label>
+                        <label class="trend-option">
+                            <input type="radio" name="trendType" value="profit">
+                            <span>Profit</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="widget-content">
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Today's Profit Widget -->
-            <div class="grid-stack-item" gs-id="widget-today-profit" gs-x="2" gs-y="0" gs-w="2" gs-h="2" id="widget-today-profit">
-                <div class="grid-stack-item-content">
-                    <div class="kpi-card" data-widget="today-profit">
-                        <div class="kpi-header">
-                            <div class="kpi-icon">
-                                <i class="fas fa-arrow-trend-up"></i>
-                            </div>
-                            <div class="kpi-title">Today's Profit</div>
-                        </div>
-                        <div class="kpi-body">
-                            <div class="kpi-value" id="todayProfitAmount">₱0.00</div>
-                            <div class="kpi-subtitle">Net profit</div>
-                        </div>
-                    </div>
+            <div class="widget-card transaction-summary-card">
+                <div class="widget-header">
+                    <h3 class="widget-title">Transaction Summary</h3>
+                    <div class="widget-badge">Today</div>
                 </div>
-            </div>
-
-            <!-- Today's Expenses Widget -->
-            <div class="grid-stack-item" gs-id="widget-today-expenses" gs-x="4" gs-y="0" gs-w="2" gs-h="2" id="widget-today-expenses">
-                <div class="grid-stack-item-content">
-                    <div class="kpi-card" data-widget="today-expenses">
-                        <div class="kpi-header">
-                            <div class="kpi-icon">
-                                <i class="fas fa-file-invoice-dollar"></i>
-                            </div>
-                            <div class="kpi-title">Today's Expenses</div>
+                <div class="widget-content">
+                    <div class="summary-stats">
+                        <div class="summary-item">
+                            <div class="summary-label">Total Transactions</div>
+                            <div class="summary-value" id="totalTransactions">0</div>
                         </div>
-                        <div class="kpi-body">
-                            <div class="kpi-value" id="todayExpensesAmount">₱0.00</div>
-                            <div class="kpi-subtitle" id="biggestExpenseCategory">No expenses</div>
+                        <div class="summary-item">
+                            <div class="summary-label">Average Value</div>
+                            <div class="summary-value" id="avgTransactionValue">₱0.00</div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Critical Stock Widget -->
-            <div class="grid-stack-item" gs-id="widget-critical-stock" gs-x="6" gs-y="0" gs-w="2" gs-h="2" id="widget-critical-stock">
-                <div class="grid-stack-item-content">
-                    <div class="kpi-card" data-widget="critical-stock">
-                        <div class="kpi-header">
-                            <div class="kpi-icon">
-                                <i class="fas fa-triangle-exclamation"></i>
-                            </div>
-                            <div class="kpi-title">Critical Stock</div>
-                        </div>
-                        <div class="kpi-body">
-                            <div class="kpi-value" id="criticalStockCount">0</div>
-                            <div class="kpi-subtitle">items below minimum</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cash on Hand Widget -->
-            <div class="grid-stack-item" gs-id="widget-cash-on-hand" gs-x="8" gs-y="0" gs-w="2" gs-h="2" id="widget-cash-on-hand">
-                <div class="grid-stack-item-content">
-                    <div class="kpi-card" data-widget="cash-on-hand">
-                        <div class="kpi-header">
-                            <div class="kpi-icon">
-                                <i class="fas fa-cash-register"></i>
-                            </div>
-                            <div class="kpi-title">Cash on Hand</div>
-                        </div>
-                        <div class="kpi-body">
-                            <div class="kpi-value" id="cashOnHandAmount">₱0.00</div>
-                            <div class="kpi-subtitle">Cash sales today</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sales & Profit Trend Chart -->
-            <div class="grid-stack-item" gs-id="widget-trend-chart" gs-x="0" gs-y="2" gs-w="6" gs-h="4" id="widget-trend-chart">
-                <div class="grid-stack-item-content">
-                    <div class="panel">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3" style="color: var(--attention-orange); font-size: 20px;">
-                                    <i class="fas fa-chart-area"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold">Sales & Profit Trend</div>
-                                    <div class="text-muted small">Last 7 days performance</div>
-                                </div>
-                            </div>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <input type="radio" class="btn-check" name="trendType" id="trendSales" value="sales" autocomplete="off" checked>
-                                <label class="btn btn-outline-primary" for="trendSales">Sales</label>
-                                
-                                <input type="radio" class="btn-check" name="trendType" id="trendProfit" value="profit" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="trendProfit">Profit</label>
-                            </div>
-                        </div>
-                        <div style="height:280px;">
-                            <canvas id="trendChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Alerts Panel -->
-            <div class="grid-stack-item" gs-id="widget-alerts" gs-x="6" gs-y="2" gs-w="4" gs-h="4" id="widget-alerts">
-                <div class="grid-stack-item-content">
-                    <div class="panel alerts-panel">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2" style="color: var(--danger-red); font-size: 18px;">
-                                    <i class="fas fa-bell"></i>
-                                </div>
-                                <div class="fw-semibold">Alerts Panel</div>
-                            </div>
-                            <div class="badge bg-danger" id="totalAlertsCount">0</div>
-                        </div>
-                        <div id="alertsList" class="alerts-list">
-                            <div class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm me-2"></div>
-                                Loading alerts...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Products -->
-            <div class="grid-stack-item" gs-id="widget-top-products" gs-x="0" gs-y="6" gs-w="4" gs-h="4" id="widget-top-products">
-                <div class="grid-stack-item-content">
-                    <div class="panel">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2" style="color: var(--attention-orange); font-size: 18px;">
-                                    <i class="fas fa-trophy"></i>
-                                </div>
-                                <div class="fw-semibold">Top Products (Revenue)</div>
-                            </div>
-                            <div class="text-muted small">Last 30 days</div>
-                        </div>
-                        <div id="topProductsList" class="top-list">
-                            <div class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm me-2"></div>
-                                Loading...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Branches -->
-            <div class="grid-stack-item" gs-id="widget-top-branches" gs-x="4" gs-y="6" gs-w="4" gs-h="4" id="widget-top-branches">
-                <div class="grid-stack-item-content">
-                    <div class="panel">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2" style="color: var(--info-blue); font-size: 18px;">
-                                    <i class="fas fa-store"></i>
-                                </div>
-                                <div class="fw-semibold">Top Branches</div>
-                            </div>
-                            <div class="text-muted small">By revenue</div>
-                        </div>
-                        <div id="topBranchesList" class="top-list">
-                            <div class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm me-2"></div>
-                                Loading...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cashier Performance -->
-            <div class="grid-stack-item" gs-id="widget-cashier-performance" gs-x="8" gs-y="6" gs-w="4" gs-h="4" id="widget-cashier-performance">
-                <div class="grid-stack-item-content">
-                    <div class="panel">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-2" style="color: var(--info-blue); font-size: 18px;">
-                                    <i class="fas fa-user-check"></i>
-                                </div>
-                                <div class="fw-semibold">Cashier Performance</div>
-                            </div>
-                            <div class="text-muted small">Today</div>
-                        </div>
-                        <div id="cashierPerformanceList" class="performance-list">
-                            <div class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm me-2"></div>
-                                Loading...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Transaction Summary -->
-            <div class="grid-stack-item" gs-id="widget-transaction-summary" gs-x="0" gs-y="10" gs-w="12" gs-h="2" id="widget-transaction-summary">
-                <div class="grid-stack-item-content">
-                    <div class="panel transaction-summary">
-                        <div class="row text-center">
-                            <div class="col-md-3">
-                                <div class="summary-item">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i class="fas fa-receipt me-2" style="color: var(--text-primary); font-size: 16px;"></i>
-                                        <div class="summary-label">Total Transactions</div>
-                                    </div>
-                                    <div class="summary-value" id="totalTransactions">0</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="summary-item">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i class="fas fa-chart-line me-2" style="color: var(--text-primary); font-size: 16px;"></i>
-                                        <div class="summary-label">Avg Transaction Value</div>
-                                    </div>
-                                    <div class="summary-value" id="avgTransactionValue">₱0.00</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="summary-item">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i class="fas fa-trophy me-2" style="color: var(--text-primary); font-size: 16px;"></i>
-                                        <div class="summary-label">Highest Sale Today</div>
-                                    </div>
-                                    <div class="summary-value" id="highestSaleToday">₱0.00</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="summary-item">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i class="fas fa-shield-halved me-2" style="color: var(--attention-orange); font-size: 16px;"></i>
-                                        <div class="summary-label">Unusual Activities</div>
-                                    </div>
-                                    <div class="summary-value alert-value" id="unusualActivitiesCount">0</div>
-                                </div>
-                            </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Highest Sale</div>
+                            <div class="summary-value" id="highestSaleToday">₱0.00</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/gridstack@7.2.1/dist/gridstack-all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Global variables
-  let grid;
+  const isDebug = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  function debugLog(...args) { if (isDebug) console.log(...args); }
+  function debugError(...args) { if (isDebug) console.error(...args); }
+
   let trendChartInstance = null;
   let currentTrendType = 'sales';
-  let isEditMode = false;
   let dashboardRefreshInterval = null;
-  let originalLayout = null;
   
-  // Helper function - query elements ONLY at update time
-  function $(id) {
-    return document.getElementById(id);
-  }
+  function $(id) { return document.getElementById(id); }
   
-  // DOM safety utilities
   function qs(root, selector) {
     if (!root || !root.querySelector) return null;
     try { return root.querySelector(selector); } catch (_) { return null; }
   }
-  function qsById(id) {
-    return document.getElementById(id);
-  }
+  
+  function qsById(id) { return document.getElementById(id); }
+  
   function qsIn(widgetId, selectorOrId) {
     const root = qsById(widgetId);
     if (!root) return null;
@@ -1088,9 +1470,9 @@
     const sel = selectorOrId.startsWith('#') || selectorOrId.startsWith('.') ? selectorOrId : `#${selectorOrId}`;
     return qs(root, sel);
   }
-  function isAttached(el) {
-    return !!(el && document.contains(el));
-  }
+  
+  function isAttached(el) { return !!(el && document.contains(el)); }
+  
   function waitForEl(selector, { timeout = 5000, root = document } = {}) {
     const start = performance.now();
     return new Promise((resolve, reject) => {
@@ -1103,190 +1485,42 @@
       check();
     });
   }
+  
   function debounce(fn, wait = 400) {
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
   }
-  function readLayoutFromDOM() {
-    return Array.from(document.querySelectorAll('.grid-stack-item')).map(el => ({
-      id: el.getAttribute('gs-id') || el.id,
-      x: parseInt(el.getAttribute('gs-x') || '0', 10),
-      y: parseInt(el.getAttribute('gs-y') || '0', 10),
-      w: parseInt(el.getAttribute('gs-w') || '1', 10),
-      h: parseInt(el.getAttribute('gs-h') || '1', 10)
-    })).filter(n => !!n.id).sort((a,b) => (a.y - b.y) || (a.x - b.x));
+  
+  function initDashboard() {
+    debugLog('🚀 Initializing electric dashboard...');
+    initTrendChart();
+    fetchDashboardData().then(updateDashboardUI);
+    dashboardRefreshInterval = setInterval(() => {
+      fetchDashboardData().then(updateDashboardUI);
+    }, 60000);
+    debugLog('✅ Electric dashboard initialized');
   }
   
-  // Default layout
-  const defaultLayout = [
-    {id: 'widget-today-sales', x: 0, y: 0, w: 2, h: 2},
-    {id: 'widget-today-profit', x: 2, y: 0, w: 2, h: 2},
-    {id: 'widget-today-expenses', x: 4, y: 0, w: 2, h: 2},
-    {id: 'widget-critical-stock', x: 6, y: 0, w: 2, h: 2},
-    {id: 'widget-cash-on-hand', x: 8, y: 0, w: 2, h: 2},
-    {id: 'widget-trend-chart', x: 0, y: 2, w: 6, h: 4},
-    {id: 'widget-alerts', x: 6, y: 2, w: 4, h: 4},
-    {id: 'widget-top-products', x: 0, y: 6, w: 4, h: 4},
-    {id: 'widget-top-branches', x: 4, y: 6, w: 4, h: 4},
-    {id: 'widget-cashier-performance', x: 8, y: 6, w: 4, h: 4},
-    {id: 'widget-transaction-summary', x: 0, y: 10, w: 12, h: 2}
-  ];
-  
-  // Layout-safe application (no destructive grid.load())
-  function applyLayoutSafely(layout) {
-    if (!grid || !Array.isArray(layout)) return;
-    grid.batchUpdate();
-    try {
-      layout.forEach(n => {
-        if (!n || !n.id) return;
-        const el = document.getElementById(n.id);
-        if (el) {
-          grid.update(el, { x: n.x ?? 0, y: n.y ?? 0, w: n.w ?? 1, h: n.h ?? 1 });
-        } else {
-          // Only add if missing; keep minimal content to avoid crashes
-          grid.addWidget({ id: n.id, x: n.x ?? 0, y: n.y ?? 0, w: n.w ?? 1, h: n.h ?? 1, content: '<div class="grid-stack-item-content"></div>' });
-        }
-      });
-    } finally {
-      grid.commit();
-    }
-    // Mount widgets after layout is applied
-    WidgetManager.mountAll();
-  }
-
-  // Widget lifecycle manager
-  let trendChartObserver = null;
-  const WidgetManager = {
-    registry: {
-      'widget-trend-chart': {
-        async mount(el) {
-          if (!el) return;
-          // Avoid duplicate
-          if (trendChartInstance) {
-            try { trendChartInstance.destroy(); } catch (_) {}
-            trendChartInstance = null;
-          }
-          let canvas;
-          try {
-            canvas = await waitForEl('canvas#trendChart, canvas', { root: el, timeout: 4000 });
-          } catch (_) {
-            return; // no canvas, keep placeholder
-          }
-          if (!(canvas instanceof HTMLCanvasElement) || !isAttached(canvas)) return;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          trendChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [
-              { label: 'Sales', data: [], borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4 },
-              { label: 'Profit', data: [], borderColor: 'rgb(34, 197, 94)', backgroundColor: 'rgba(34, 197, 94, 0.1)', tension: 0.4 }
-            ]},
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { callback: function(value){ return '₱' + value.toLocaleString(); } } } } }
-          });
-          // Initial data
-          fetchChartData().then(d => { if (d) updateTrendChart(d); }).catch(() => {});
-          // Observe DOM changes to recover if canvas replaced
-          trendChartObserver?.disconnect?.();
-          trendChartObserver = new MutationObserver(() => {
-            const currentCanvas = el.querySelector('canvas');
-            if (!currentCanvas || !isAttached(currentCanvas)) {
-              // Re-mount
-              this.destroy(el);
-              this.mount(el);
-            }
-          });
-          trendChartObserver.observe(el, { childList: true, subtree: true });
-        },
-        resize() {
-          if (trendChartInstance) {
-            try { trendChartInstance.resize(); } catch (_) {}
-          }
-        },
-        destroy() {
-          trendChartObserver?.disconnect?.();
-          trendChartObserver = null;
-          if (trendChartInstance) {
-            try { trendChartInstance.destroy(); } catch (_) {}
-            trendChartInstance = null;
-          }
-        }
-      }
-    },
-    mountById(id) { const el = qsById(id); if (!el) return; const w = this.registry[id]; if (w?.mount) w.mount.call(this.registry[id], el); },
-    destroyById(id) { const w = this.registry[id]; if (w?.destroy) w.destroy(); },
-    onAdded(items) { (items||[]).forEach(i => i?.el?.id && this.mountById(i.el.id)); },
-    onRemoved(items) { (items||[]).forEach(i => i?.el?.id && this.destroyById(i.el.id)); },
-    onResized(items) { (items||[]).forEach(i => i?.el?.id && this.registry[i.el.id]?.resize?.(i.el)); },
-    mountAll() { document.querySelectorAll('.grid-stack-item').forEach(el => this.mountById(el.id)); }
-  };
-
-  // Initialize GridStack (ONCE only)
-  function initGridStack() {
-    grid = GridStack.init({
-      float: false,
-      cellHeight: 70,
-      minRow: 1,
-      resizable: { handles: 'e, se, s, sw, w' },
-      draggable: { handle: '.kpi-header, .panel' },
-      removable: false,
-      autoPosition: false,
-      staticGrid: false,
-      disableDrag: false,
-      disableResize: false,
-      alwaysShowResizeHandle: false,
-      itemClass: 'grid-stack-item'
-    }, '.widget-grid');
-
-    // GridStack event-driven lifecycle (normalize single node vs array)
-    grid.on('added', (e, itemOrItems) => {
-      const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
-      WidgetManager.onAdded(items);
-    });
-    grid.on('removed', (e, itemOrItems) => {
-      const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
-      WidgetManager.onRemoved(items);
-    });
-    grid.on('resizestop', (e, nodeOrNodes) => {
-      const nodes = Array.isArray(nodeOrNodes) ? nodeOrNodes : [nodeOrNodes];
-      WidgetManager.onResized(nodes);
-      autoSaveLayout();
-    });
-    grid.on('dragstop', () => autoSaveLayout());
-    grid.on('change', () => autoSaveLayout());
-
-    // Load saved layout on init (non-destructive)
-    loadUserLayout();
-
-    console.log('✅ GridStack initialized');
-  }
-  
-  // 🔥 Fetch dashboard data (REPEATED)
   function fetchDashboardData() {
-    console.log('📊 Fetching dashboard data...');
+    debugLog('📊 Fetching dashboard data...');
     return fetch('/dashboard/widgets', {
       method: 'GET',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      }
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
     })
     .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
-      console.log('✅ Dashboard data received:', data);
+      debugLog('✅ Dashboard data received:', data);
       return data;
     })
     .catch(error => {
-      console.error('❌ Error fetching dashboard data:', error);
+      debugError('❌ Error fetching dashboard data:', error);
       return null;
     });
   }
   
-  // Normalize backend response into the structure expected by update* functions
   function normalizeDashboardResponse(payload) {
     if (!payload) return null;
     if (payload.kpis || payload.topProducts || payload.topBranches || payload.cashierPerformance || payload.transactionSummary) {
@@ -1297,19 +1531,9 @@
     const ops = payload.operations || {};
     return {
       kpis: {
-        sales: {
-          amount: kpisSrc.sales?.amount ?? 0,
-          transactions: kpisSrc.sales?.transactions ?? 0,
-          change: kpisSrc.sales?.change ?? 0
-        },
-        profit: {
-          amount: kpisSrc.profit?.amount ?? 0,
-          isPositive: !!kpisSrc.profit?.isPositive
-        },
-        expenses: {
-          amount: kpisSrc.expenses?.amount ?? 0,
-          biggestCategory: kpisSrc.expenses?.biggestCategory || null
-        },
+        sales: { amount: kpisSrc.sales?.amount ?? 0, transactions: kpisSrc.sales?.transactions ?? 0, change: kpisSrc.sales?.change ?? 0 },
+        profit: { amount: kpisSrc.profit?.amount ?? 0, isPositive: !!kpisSrc.profit?.isPositive },
+        expenses: { amount: kpisSrc.expenses?.amount ?? 0, biggestCategory: kpisSrc.expenses?.biggestCategory || null },
         criticalStock: typeof kpisSrc.criticalStock === 'number' ? { count: kpisSrc.criticalStock } : (kpisSrc.criticalStock || { count: 0 }),
         cashOnHand: { amount: kpisSrc.cashOnHand?.amount ?? 0 }
       },
@@ -1321,11 +1545,10 @@
     };
   }
 
-  // 🔥 Update dashboard UI (REPEATED)
   function updateDashboardUI(raw) {
     const data = normalizeDashboardResponse(raw);
-    if (!data) { console.warn('⚠️ No data to update UI'); return; }
-    console.log('🔄 Updating dashboard UI...');
+    if (!data) { debugLog('⚠️ No data to update UI'); return; }
+    debugLog('🔄 Updating dashboard UI...');
 
     if (data.kpis) updateTodayKPIs(data.kpis);
     if (data.alerts) updateAlertsPanel(data.alerts);
@@ -1336,28 +1559,82 @@
     if (data.alerts) updateUnusualActivities(data.alerts);
 
     fetchChartData().then(chartData => { if (chartData) updateTrendChart(chartData); });
-    console.log('✅ Dashboard UI updated');
+    debugLog('✅ Dashboard UI updated');
   }
   
-  // 🔥 Initialize trend chart via WidgetManager (no timeouts)
   function initTrendChart() {
-    WidgetManager.mountById('widget-trend-chart');
+    const canvas = document.getElementById('trendChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (trendChartInstance) {
+      try { trendChartInstance.destroy(); } catch (_) {}
+      trendChartInstance = null;
+    }
+    
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Sales',
+          data: [],
+          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+          tension: 0.4,
+          borderWidth: 3
+        }, {
+          label: 'Profit',
+          data: [],
+          borderColor: '#00E5FF',
+          backgroundColor: 'rgba(0, 229, 255, 0.1)',
+          tension: 0.4,
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { 
+            position: 'top',
+            labels: { boxWidth: 20, padding: 20, color: '#263238', font: { weight: 600 } }
+          }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { callback: function(value) { return '₱' + value.toLocaleString(); }, color: '#546E7A' },
+            grid: { color: 'rgba(13, 71, 161, 0.1)' }
+          },
+          x: {
+            ticks: { color: '#546E7A' },
+            grid: { color: 'rgba(13, 71, 161, 0.1)' }
+          }
+        }
+      }
+    });
+    
+    fetchChartData().then(chartData => {
+      if (chartData) updateTrendChart(chartData);
+    }).catch(() => {});
   }
 
-  // Chart data fetch and update
   async function fetchChartData(type = (currentTrendType || 'sales')) {
     try {
       const res = await fetch(`/dashboard/chart?type=${encodeURIComponent(type)}`, {
         method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return data;
+      return await res.json();
     } catch (err) {
       console.warn('Chart data fetch failed:', err);
       return null;
     }
   }
+  
   function updateTrendChart(payload) {
     if (!trendChartInstance || !payload) return;
     const labels = payload.labels || [];
@@ -1369,11 +1646,10 @@
     try { trendChartInstance.update(); } catch (_) {}
   }
   
-  // 🔥 Update alerts panel
   function updateAlertsPanel(alerts) {
-    console.log('🚨 Updating alerts panel with data:', alerts);
-    const alertsList = qsIn('widget-alerts', 'alertsList');
-    const totalAlertsElement = qsIn('widget-alerts', 'totalAlertsCount');
+    debugLog('🚨 Updating alerts panel with data:', alerts);
+    const alertsList = $('alertsList');
+    const totalAlertsElement = $('totalAlertsCount');
     
     if (totalAlertsElement) {
       const totalAlerts = alerts.outOfStock + alerts.negativeProfit + alerts.voidedSales + alerts.belowCostSales + alerts.highDiscountUsage;
@@ -1384,108 +1660,63 @@
       const alertItems = [];
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(`<div class="alert-item critical"><i class="fas fa-exclamation-triangle"></i> ${alerts.outOfStock} items out of stock</div>`);
+        alertItems.push(`<div class="alert-item critical"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
       
       if (alerts.negativeProfit > 0) {
-        alertItems.push(`<div class="alert-item warning"><i class="fas fa-arrow-trend-down"></i> ${alerts.negativeProfit} items sold below cost</div>`);
+        alertItems.push(`<div class="alert-item warning"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
       }
       
       if (alerts.voidedSales > 0) {
-        alertItems.push(`<div class="alert-item info"><i class="fas fa-ban"></i> ${alerts.voidedSales} voided sales today</div>`);
+        alertItems.push(`<div class="alert-item info"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
       }
       
       if (alerts.belowCostSales > 0) {
-        alertItems.push(`<div class="alert-item warning"><i class="fas fa-exclamation-triangle"></i> ${alerts.belowCostSales} items sold below cost</div>`);
+        alertItems.push(`<div class="alert-item warning"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
       }
       
       if (alerts.highDiscountUsage > 0) {
-        alertItems.push(`<div class="alert-item info"><i class="fas fa-percentage"></i> ${alerts.highDiscountUsage} high discount transactions</div>`);
+        alertItems.push(`<div class="alert-item info"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
       }
       
-      alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item success"><i class="fas fa-check-circle"></i> No alerts</div>';
+      alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';
     }
   }
   
-  // 🔥 Update KPIs
   function updateTodayKPIs(kpis) {
-    console.log('📊 Updating KPIs with data:', kpis);
+    debugLog('📊 Updating KPIs with data:', kpis);
     
-    // Sales KPI
-    const salesAmount = qsIn('widget-today-sales', 'todaySalesAmount');
-    if (salesAmount) {
-      salesAmount.textContent = peso(kpis.sales.amount);
-    }
+    const salesAmount = $('todaySalesAmount');
+    if (salesAmount) salesAmount.textContent = peso(kpis.sales.amount);
     
-    const salesTransactions = qsIn('widget-today-sales', 'todaySalesTransactions');
-    if (salesTransactions) {
-      salesTransactions.textContent = `${kpis.sales.transactions} transactions`;
-    }
+    const salesTransactions = $('todaySalesTransactions');
+    if (salesTransactions) salesTransactions.textContent = `${kpis.sales.transactions} transactions`;
     
-    const salesChange = qsIn('widget-today-sales', 'todaySalesChange');
-    if (salesChange) {
-      const changeValue = salesChange.querySelector('.change-value');
-      const changeIndicator = salesChange.querySelector('.change-indicator');
-      if (changeValue && changeIndicator) {
-        changeValue.textContent = `${kpis.sales.change >= 0 ? '+' : ''}${kpis.sales.change}%`;
-        changeValue.className = `change-value ${kpis.sales.change >= 0 ? 'positive' : 'negative'}`;
-        changeIndicator.textContent = kpis.sales.change >= 0 ? '↑' : '↓';
-      }
-    }
-    
-    // Profit KPI
-    const profitElement = qsIn('widget-today-profit', 'todayProfitAmount');
+    const profitElement = $('todayProfitAmount');
     if (profitElement) {
       profitElement.textContent = peso(kpis.profit.amount);
       profitElement.className = `kpi-value ${kpis.profit.isPositive ? 'profit-positive' : 'profit-negative'}`;
     }
     
-    // Expenses KPI
-    const expensesAmount = qsIn('widget-today-expenses', 'todayExpensesAmount');
-    if (expensesAmount) {
-      expensesAmount.textContent = peso(kpis.expenses.amount);
-    }
+    const expensesAmount = $('todayExpensesAmount');
+    if (expensesAmount) expensesAmount.textContent = peso(kpis.expenses.amount);
     
-    const biggestExpenseCategory = qsIn('widget-today-expenses', 'biggestExpenseCategory');
-    if (biggestExpenseCategory) {
-      biggestExpenseCategory.textContent = kpis.expenses.biggestCategory 
-        ? `${kpis.expenses.biggestCategory.name}: ₱${kpis.expenses.biggestCategory.total.toFixed(2)}`
-        : 'No expenses today';
-    }
-    
-    // Critical Stock KPI
-    const criticalStockElement = qsIn('widget-critical-stock', 'criticalStockCount');
-    const criticalStockCard = document.querySelector('[data-widget="critical-stock"]');
-    if (criticalStockElement && criticalStockCard && kpis.criticalStock) {
-      criticalStockElement.textContent = kpis.criticalStock.count;
-      if (kpis.criticalStock.count === 0) {
-        criticalStockCard.classList.add('critical');
-      } else {
-        criticalStockCard.classList.remove('critical');
-      }
-    }
-    
-    // Cash on Hand KPI
-    const cashOnHandElement = qsIn('widget-cash-on-hand', 'cashOnHandAmount');
+    const cashOnHandElement = $('cashOnHandAmount');
     if (cashOnHandElement && kpis.cashOnHand) {
       cashOnHandElement.textContent = peso(kpis.cashOnHand.amount);
     }
     
-    console.log('✅ KPI update completed');
+    debugLog('✅ KPI update completed');
   }
   
-  // 🔥 Update other widgets
   function updateTopProducts(products) {
-    console.log('🏆 Updating top products with data:', products);
-    
+    debugLog('🏆 Updating top products with data:', products);
     const productsList = $('topProductsList');
     if (!productsList) return;
-    
     if (!products || products.length === 0) {
       productsList.innerHTML = '<div class="text-center text-muted py-4">No sales data available</div>';
       return;
     }
-    
     productsList.innerHTML = products.map((product, index) => {
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
       return `
@@ -1504,16 +1735,13 @@
   }
   
   function updateTopBranches(branches) {
-    console.log('🏢 Updating top branches with data:', branches);
-    
+    debugLog('🏢 Updating top branches with data:', branches);
     const branchesList = $('topBranchesList');
     if (!branchesList) return;
-    
     if (!branches || branches.length === 0) {
       branchesList.innerHTML = '<div class="text-center text-muted py-4">No branch data available</div>';
       return;
     }
-    
     branchesList.innerHTML = branches.map((branch, index) => {
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
       return `
@@ -1532,16 +1760,13 @@
   }
   
   function updateCashierPerformance(cashiers) {
-    console.log('💰 Updating cashier performance with data:', cashiers);
-    
+    debugLog('💰 Updating cashier performance with data:', cashiers);
     const performanceList = $('cashierPerformanceList');
     if (!performanceList) return;
-    
     if (!cashiers || cashiers.length === 0) {
       performanceList.innerHTML = '<div class="text-center text-muted py-4">No cashier data available</div>';
       return;
     }
-    
     performanceList.innerHTML = cashiers.map(cashier => `
       <div class="performance-item">
         <div class="performance-avatar">${getInitials(cashier.name)}</div>
@@ -1558,8 +1783,7 @@
   }
   
   function updateTransactionSummary(summary) {
-    console.log('📋 Updating transaction summary with data:', summary);
-    
+    debugLog('📋 Updating transaction summary with data:', summary);
     const totalTransactionsEl = $('totalTransactions');
     const avgTransactionEl = $('avgTransactionValue');
     const highestSaleEl = $('highestSaleToday');
@@ -1570,190 +1794,36 @@
   }
   
   function updateUnusualActivities(alerts) {
-    console.log('⚠️ Updating unusual activities with data:', alerts);
-    
+    debugLog('⚠️ Updating unusual activities with data:', alerts);
     const unusualCountEl = $('unusualActivitiesCount');
     if (unusualCountEl) {
       const unusualCount = alerts.belowCostSales + alerts.highDiscountUsage;
       unusualCountEl.textContent = unusualCount;
     }
   }
-  
-  // Edit Mode Controls
-  function enterEditMode() {
-    isEditMode = true;
-    originalLayout = readLayoutFromDOM();
-    
-    document.body.classList.add('dashboard-edit-mode');
-    document.getElementById('customizeBtn').classList.add('editing');
-    document.getElementById('customizeBtn').innerHTML = '<i class="fas fa-puzzle-piece me-2"></i>Editing...';
-    document.getElementById('editControls').classList.add('show');
-    
-    // Enable dragging and resizing
-    grid.enable();
-    
-    // Show resize handles
-    document.querySelectorAll('.grid-stack-item .ui-resizable-handle').forEach(handle => {
-      handle.style.opacity = '0.7';
-    });
-  }
-  
-  function exitEditMode() {
-    isEditMode = false;
-    
-    document.body.classList.remove('dashboard-edit-mode');
-    document.getElementById('customizeBtn').classList.remove('editing');
-    document.getElementById('customizeBtn').innerHTML = '<i class="fas fa-puzzle-piece me-2"></i>Customize Dashboard';
-    document.getElementById('editControls').classList.remove('show');
-    
-    // Disable dragging and resizing
-    grid.disable();
-    
-    // Hide resize handles
-    document.querySelectorAll('.grid-stack-item .ui-resizable-handle').forEach(handle => {
-      handle.style.opacity = '0';
-    });
-  }
-  
-  // Layout Management
-  function saveLayout() {
-    const currentLayout = readLayoutFromDOM();
 
-    fetch('/dashboard/layout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
-      body: JSON.stringify({
-        layout: currentLayout
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        showNotification('Layout saved successfully!', 'success');
-      } else {
-        showNotification('Failed to save layout', 'error');
-      }
-    })
-    .catch(error => {
-      console.error('Error saving layout:', error);
-      showNotification('Error saving layout', 'error');
-    });
-  }
-  
-  function loadUserLayout() {
-    fetch('/dashboard/layout')
-      .then(response => response.json())
-      .then(data => {
-        const layout = (data && Array.isArray(data.layout) && data.layout.length > 0) ? data.layout : defaultLayout;
-        applyLayoutSafely(layout);
-        if (!window.gridStackReady) {
-          window.gridStackReady = true;
-          fetchDashboardData().then(updateDashboardUI);
-        }
-      })
-      .catch(error => {
-        console.error('Error loading layout:', error);
-        // Fallback to default layout
-        applyLayoutSafely(defaultLayout);
-        if (!window.gridStackReady) {
-          window.gridStackReady = true;
-          fetchDashboardData().then(updateDashboardUI);
-        }
-      });
-  }
-  
-  function resetToDefault() {
-    if (confirm('Are you sure you want to reset to the default layout? This will reload the page.')) {
-      fetch('/dashboard/layout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-          layout: defaultLayout,
-          reset: true
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showNotification('Layout reset to default!', 'success');
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } else {
-          showNotification('Failed to reset layout', 'error');
-        }
-      })
-      .catch(error => {
-        console.error('Error resetting layout:', error);
-        showNotification('Error resetting layout', 'error');
-      });
+  function makeChartResponsive() {
+    if (trendChartInstance) {
+      const isMobile = window.innerWidth < 768;
+      trendChartInstance.options.plugins.legend.position = isMobile ? 'bottom' : 'top';
+      trendChartInstance.options.plugins.legend.labels.boxWidth = isMobile ? 12 : 20;
+      trendChartInstance.options.plugins.legend.labels.padding = isMobile ? 10 : 20;
+      trendChartInstance.options.scales.y.ticks.callback = function(value) {
+        return isMobile ? '₱' + (value/1000) + 'k' : '₱' + value.toLocaleString();
+      };
+      trendChartInstance.update();
     }
   }
-  
-  function cancelEdit() {
-    if (originalLayout) {
-      applyLayoutSafely(originalLayout);
-    }
-    exitEditMode();
-  }
 
-  const autoSaveLayout = debounce(() => {
-    const current = readLayoutFromDOM();
-    fetch('/dashboard/layout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
-      body: JSON.stringify({ layout: current })
-    }).catch(() => {});
-  }, 600);
-  
-  // Notification helper
-  function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed top-0 start-50 translate-middle-x mt-3`;
-    notification.style.zIndex = '9999';
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
-  }
-  
-  // Event Listeners
   document.addEventListener('DOMContentLoaded', function() {
-    // Initialize GridStack
-    initGridStack();
+    initDashboard();
     
-    // Customize button
-    document.getElementById('customizeBtn').addEventListener('click', function() {
-      if (isEditMode) {
-        exitEditMode();
-      } else {
-        enterEditMode();
-      }
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(makeChartResponsive, 250);
     });
     
-    // Edit control buttons
-    document.getElementById('saveLayoutBtn').addEventListener('click', saveLayout);
-    document.getElementById('resetLayoutBtn').addEventListener('click', resetToDefault);
-    document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
-    
-    // Data will load after layout applied in loadUserLayout()
-
-    // Auto-refresh widgets every 60 seconds (using the main interval)
-    // Note: dashboardRefreshInterval is already set in the main DOMContentLoaded
-    
-    // Trend type toggle
     document.querySelectorAll('input[name="trendType"]').forEach(radio => {
       radio.addEventListener('change', function() {
         currentTrendType = this.value;
@@ -1763,19 +1833,7 @@
       });
     });
   });
-  
-  // Prevent accidental navigation during edit mode
-  window.addEventListener('beforeunload', function(e) {
-    if (isEditMode) {
-      e.preventDefault();
-      e.returnValue = 'You have unsaved changes to your dashboard layout. Are you sure you want to leave?';
-      return e.returnValue;
-    }
-  });
-</script>
 
-@push('scripts')
-<script>
   function peso(n) {
     return new Intl.NumberFormat('en-PH', {style: 'currency', currency: 'PHP'}).format(n || 0);
   }

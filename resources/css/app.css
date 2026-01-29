@@ -1,19 +1,313 @@
 @import "tailwindcss/preflight";
 @tailwind utilities;
 
-/* Minimal CSS fallback replacing Tailwind directives to avoid build dependency */
-/* Color palette tokens */
-:root {
-  --indigo-50: #eef2ff; /* light indigo */
-  --gray-100: #f3f4f6;  /* light gray */
+/* ========================================
+   PALETTE 5: ELECTRIC MODERN
+   High-tech futuristic color scheme
+   ======================================== */
+@layer base {
+  :root {
+    /* Core Palette - Electric Modern */
+    --electric-blue: #0D47A1;      /* Deep electric blue - authority */
+    --neon-blue: #2196F3;          /* Bright neon blue - primary */
+    --cyan-bright: #00E5FF;        /* Vivid cyan - interaction */
+    --magenta: #E91E63;            /* Bold magenta - accent */
+    --violet: #9C27B0;             /* Purple violet - secondary accent */
+    --lime-electric: #C6FF00;      /* Neon lime - energy */
+    --slate-bg: #ECEFF1;           /* Cool slate - background */
+    --ice-white: #FAFBFC;          /* Ice white - cards */
+    
+    /* Backgrounds */
+    --bg-app: #ECEFF1;
+    --bg-card: #FAFBFC;
+    
+    /* Status Colors */
+    --success: #43A047;
+    --info: #0D47A1;
+    --warning: #C6FF00;
+    --error: #E53935;
+    
+    /* Text Colors */
+    --text-dark: #263238;
+    --text-muted: #546E7A;
+    
+    /* Opacity Variants */
+    --electric-blue-hover: rgba(13, 71, 161, 0.2);
+    --cyan-hover: rgba(0, 229, 255, 0.08);
+    --electric-border: rgba(13, 71, 161, 0.15);
+  }
 }
 
-/* Utility shims used across templates */
-.bg-indigo-50 { background-color: var(--indigo-50) !important; }
-.hover\:bg-gray-100:hover { background-color: var(--gray-100) !important; }
-.rounded-lg { border-radius: 0.5rem !important; }
-.min-h-screen { min-height: 100vh !important; }
-.font-sans {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
+/* ========================================
+   COMPONENT STYLES
+   ======================================== */
+
+@layer components {
+  
+  /* App Layout */
+  .app-background {
+    background: linear-gradient(135deg, var(--slate-bg) 0%, #E8EAF6 100%);
+    min-height: 100vh;
+  }
+  
+  .card-widget {
+    background: var(--ice-white);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
+    border: 2px solid rgba(13, 71, 161, 0.08);
+  }
+  
+  /* Sidebar / Navigation */
+  .sidebar {
+    background: linear-gradient(180deg, var(--electric-blue) 0%, #1565C0 100%);
+    color: #FFFFFF;
+  }
+  
+  .sidebar-item {
+    color: rgba(255, 255, 255, 0.85);
+    transition: all 0.3s;
+    font-weight: 700;
+  }
+  
+  .sidebar-item-active {
+    background: linear-gradient(135deg, var(--cyan-bright), var(--neon-blue));
+    color: var(--electric-blue);
+    box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4);
+  }
+  
+  .sidebar-item:hover {
+    background: rgba(0, 229, 255, 0.2);
+    color: #FFFFFF;
+  }
+  
+  /* Buttons */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+    color: #FFFFFF;
+    font-weight: 700;
+    padding: 0.875rem 1.75rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(33, 150, 243, 0.4);
+  }
+  
+  .btn-secondary {
+    background: rgba(0, 229, 255, 0.15);
+    color: var(--electric-blue);
+    font-weight: 700;
+    padding: 0.875rem 1.75rem;
+    border-radius: 0.75rem;
+    border: 2px solid var(--electric-blue);
+    transition: all 0.3s;
+  }
+  
+  .btn-secondary:hover {
+    background: var(--electric-blue);
+    color: #FFFFFF;
+    transform: translateY(-2px);
+  }
+  
+  .btn-danger {
+    background: linear-gradient(135deg, var(--magenta), #D81B60);
+    color: #FFFFFF;
+    font-weight: 700;
+    padding: 0.875rem 1.75rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(233, 30, 99, 0.3);
+  }
+  
+  .btn-danger:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(233, 30, 99, 0.4);
+  }
+  
+  /* Widget Headers */
+  .widget-header {
+    background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+    color: #FFFFFF;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem 0.75rem 0 0;
+    font-weight: 700;
+  }
+  
+  .widget-body {
+    padding: 1.5rem;
+    color: var(--text-dark);
+  }
+  
+  /* Tables */
+  .table-header {
+    background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  
+  .table-row {
+    border-bottom: 1px solid rgba(13, 71, 161, 0.08);
+    transition: all 0.3s;
+  }
+  
+  .table-row:hover {
+    background: linear-gradient(90deg, rgba(0, 229, 255, 0.08) 0%, transparent 100%);
+    transform: scale(1.01);
+  }
+  
+  /* Forms */
+  .form-label {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--electric-blue);
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--cyan-bright);
+    box-shadow: 0 0 0 0.2rem rgba(0, 229, 255, 0.25);
+  }
+  
+  .form-input-error {
+    border-color: var(--magenta);
+  }
+  
+  .form-input-error:focus {
+    border-color: var(--magenta);
+    box-shadow: 0 0 0 0.2rem rgba(233, 30, 99, 0.25);
+  }
+  
+  /* Status Badges */
+  .badge-success {
+    background: linear-gradient(135deg, #43A047, #66BB6A);
+    color: #FFFFFF;
+    padding: 0.5rem 1.25rem;
+    border-radius: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+  }
+  
+  .badge-info {
+    background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+    color: #FFFFFF;
+    padding: 0.5rem 1.25rem;
+    border-radius: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
+  }
+  
+  .badge-warning {
+    background: linear-gradient(135deg, var(--lime-electric), #AEEA00);
+    color: var(--text-dark);
+    padding: 0.5rem 1.25rem;
+    border-radius: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(198, 255, 0, 0.3);
+  }
+  
+  .badge-error {
+    background: linear-gradient(135deg, var(--magenta), var(--violet));
+    color: #FFFFFF;
+    padding: 0.5rem 1.25rem;
+    border-radius: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  }
+  
+  /* KPI/Metrics */
+  .kpi-value {
+    color: var(--text-dark);
+    font-size: 2.5rem;
+    font-weight: 800;
+  }
+  
+  .kpi-trend-up {
+    color: var(--success);
+  }
+  
+  .kpi-trend-down {
+    color: var(--magenta);
+  }
+  
+  /* Dividers */
+  .divider {
+    border-color: var(--electric-border);
+  }
 }
-.w-64 { width: 16rem !important; }
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  /* Text colors */
+  .text-primary {
+    color: var(--text-dark);
+  }
+  
+  .text-secondary {
+    color: var(--text-muted);
+  }
+  
+  .text-electric {
+    color: var(--electric-blue);
+  }
+  
+  .text-neon {
+    color: var(--neon-blue);
+  }
+  
+  .text-cyan {
+    color: var(--cyan-bright);
+  }
+  
+  /* Background utilities */
+  .bg-app {
+    background: linear-gradient(135deg, var(--slate-bg) 0%, #E8EAF6 100%);
+  }
+  
+  .bg-card {
+    background-color: var(--ice-white);
+  }
+  
+  .bg-electric {
+    background-color: var(--electric-blue);
+  }
+  
+  .bg-neon {
+    background-color: var(--neon-blue);
+  }
+  
+  /* Gradient backgrounds */
+  .bg-gradient-electric {
+    background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+  }
+  
+  .bg-gradient-cyber {
+    background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+  }
+  
+  .bg-gradient-magenta {
+    background: linear-gradient(135deg, var(--magenta), var(--violet));
+  }
+}

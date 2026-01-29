@@ -3,79 +3,11 @@
     // $products (paginated)
 @endphp
 
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Product List - SuperAdmin</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+@extends('layouts.app')
+@section('title', 'Products')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-    <style>
-        :root {
-            --theme-color: #2563eb;
-            --bs-table-striped-bg: #f8f9fa;
-        }
-        .theme-bg { background-color: var(--theme-color) !important; }
-        .theme-border { border-color: var(--theme-color) !important; }
-        .theme-text { color: var(--theme-color) !important; }
-        .card-rounded { border-radius: 12px; }
-
-        .table thead th {
-            font-weight: 600;
-            background-color: #f3f4f6;
-            vertical-align: middle;
-        }
-        .table tbody td {
-            vertical-align: middle;
-        }
-        .table-hover tbody tr:hover {
-            background-color: #f9fafb;
-        }
-        .badge.bg-success {
-            background-color: #dcfce7 !important;
-            color: #166534 !important;
-        }
-        .badge.bg-secondary {
-            background-color: #f1f5f9 !important;
-            color: #475569 !important;
-        }
-        .badge {
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 0.4em 0.8em;
-            border-radius: 20px;
-        }
-        .search-wrapper {
-            position: relative;
-        }
-        .search-icon {
-            position: absolute;
-            top: 50%;
-            left: 12px;
-            transform: translateY(-50%);
-            color: #6c757d;
-        }
-        #product-search-input {
-            padding-left: 38px;
-            width: 300px;
-        }
-    </style>
-</head>
-<body class="bg-white">
-
+@section('content')
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
@@ -233,5 +165,4 @@
             @endif
         });
     </script>
-</body>
-</html>
+@endsection

@@ -28,7 +28,7 @@ class AccessController extends Controller
         // Define manageable modules via config
         $modules = config('rbac.modules', []);
 
-        $roles = UserType::whereNull('parent_id')->with('children')->orderBy('name')->get();
+        $roles = UserType::orderBy('name')->get();
 
         // Load existing permissions keyed by role and module
         $existing = RolePermission::query()

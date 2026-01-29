@@ -19,6 +19,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'user_type_id' => ['required', 'integer', 'exists:user_types,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'status' => ['nullable', 'in:active,inactive'],
             'profile_picture' => ['nullable', 'image', 'max:2048'],
         ];
@@ -29,6 +30,7 @@ class StoreUserRequest extends FormRequest
         return [
             'user_type_id.required' => 'Please select a role.',
             'user_type_id.exists' => 'Selected role does not exist.',
+            'branch_id.exists' => 'Selected branch does not exist.',
         ];
     }
 }

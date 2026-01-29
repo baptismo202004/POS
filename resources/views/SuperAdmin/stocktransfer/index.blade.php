@@ -1,136 +1,111 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Stock Transfer - SuperAdmin</title>
+@extends('layouts.app')
+@section('title', 'Stock Transfer')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-        .table th {
-            font-weight: 600;
-            color: #475569;
-            background-color: #f8fafc;
-        }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="card card-rounded shadow-sm mb-4">
-                    <div class="card-header">
-                        <h4 class="m-0">Create Stock Transfer</h4>
+@section('content')
+<div class="container-fluid">
+    <div class="p-4 card-rounded shadow-sm bg-white">
+        <div class="card card-rounded shadow-sm mb-4">
+            <div class="card-header">
+                <h4 class="m-0">Create Stock Transfer</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('superadmin.stocktransfer.store') }}" method="POST">
+                    @csrf
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="product_id" class="form-label">Product</label>
+                            <select name="product_id" id="product_id" class="form-control" required>
+                                <option value="">-- Select Product --</option>
+                                @foreach($products as $product)
+                                    <option value="{{ $product->id }}">{{ $product->product_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="from_branch_id" class="form-label">From Branch</label>
+                            <select name="from_branch_id" id="from_branch_id" class="form-control" required>
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="to_branch_id" class="form-label">To Branch</label>
+                            <select name="to_branch_id" id="to_branch_id" class="form-control" required>
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <input type="number" name="quantity" id="quantity" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <form action="{{ route('superadmin.stocktransfer.store') }}" method="POST">
-                            @csrf
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <label for="product_id" class="form-label">Product</label>
-                                    <select name="product_id" id="product_id" class="form-control" required>
-                                        <option value="">-- Select Product --</option>
-                                        @foreach($products as $product)
-                                            <option value="{{ $product->id }}">{{ $product->product_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="from_branch_id" class="form-label">From Branch</label>
-                                    <select name="from_branch_id" id="from_branch_id" class="form-control" required>
-                                        <option value="">-- Select Branch --</option>
-                                        @foreach($branches as $branch)
-                                            <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="to_branch_id" class="form-label">To Branch</label>
-                                    <select name="to_branch_id" id="to_branch_id" class="form-control" required>
-                                        <option value="">-- Select Branch --</option>
-                                        @foreach($branches as $branch)
-                                            <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label for="quantity" class="form-label">Quantity</label>
-                                    <input type="number" name="quantity" id="quantity" class="form-control" min="1" required>
-                                </div>
-                                <div class="col-md-1 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary">Submit</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card card-rounded shadow-sm">
+            <div class="card-header">
+                <h4 class="m-0">Recent Transfers</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>From Branch</th>
+                                <th>To Branch</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($transfers as $transfer)
+                                <tr>
+                                    <td>{{ $transfer->product->product_name }}</td>
+                                    <td>{{ $transfer->fromBranch->branch_name }}</td>
+                                    <td>{{ $transfer->toBranch->branch_name }}</td>
+                                    <td>{{ $transfer->quantity }}</td>
+                                    <td>{{ ucfirst($transfer->status) }}</td>
+                                    <td>
+                                        @if($transfer->status == 'pending')
+                                            <form action="{{ route('superadmin.stocktransfer.update', $transfer) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('PUT')
+                                                <input type="hidden" name="status" value="approved">
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form action="{{ route('superadmin.stocktransfer.update', $transfer) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('PUT')
+                                                <input type="hidden" name="status" value="rejected">
+                                                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                            </form>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center">No transfers found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-header">
-                        <h4 class="m-0">Recent Transfers</h4>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>From Branch</th>
-                                        <th>To Branch</th>
-                                        <th>Quantity</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($transfers as $transfer)
-                                        <tr>
-                                            <td>{{ $transfer->product->product_name }}</td>
-                                            <td>{{ $transfer->fromBranch->branch_name }}</td>
-                                            <td>{{ $transfer->toBranch->branch_name }}</td>
-                                            <td>{{ $transfer->quantity }}</td>
-                                            <td>{{ ucfirst($transfer->status) }}</td>
-                                            <td>
-                                                @if($transfer->status == 'pending')
-                                                    <form action="{{ route('superadmin.stocktransfer.update', $transfer) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <input type="hidden" name="status" value="approved">
-                                                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                                    </form>
-                                                    <form action="{{ route('superadmin.stocktransfer.update', $transfer) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <input type="hidden" name="status" value="rejected">
-                                                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                                                    </form>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="6" class="text-center">No transfers found.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $transfers->links() }}
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-center mt-4">
+                    {{ $transfers->links() }}
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 
     <!-- Bootstrap JS bundle (optional) -->
@@ -189,5 +164,4 @@
             });
         });
     </script>
-</body>
-</html>
+@endsection

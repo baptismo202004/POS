@@ -13,6 +13,7 @@ use App\Http\Controllers\SuperAdmin\PurchaseController;
 use App\Http\Controllers\SuperAdmin\InventoryController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Cashier\CashierDashboardController;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -32,7 +33,55 @@ Route::post('/login', function (Request $request) {
 
     if (Auth::attempt($request->only('email', 'password'))) {
         $request->session()->regenerate();
-        return redirect()->route('login')->with('success', 'Login successful');
+        
+        // Get authenticated user
+        $user = Auth::user();
+        
+        // Check if user has a user type assigned
+        if (!$user->userType) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return back()->withInput()->with('error', 'Your account is not properly configured. Please contact your administrator.');
+        }
+        
+        // Check if cashier has branch assignment
+        if ($user->userType->name === 'Cashier') {
+            if (!$user->branch_id) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withInput()->with('error', 'Your cashier account is not assigned to any branch. Please contact your administrator.');
+            }
+            
+            // Check if branch exists and is active
+            $branch = \App\Models\Branch::find($user->branch_id);
+            if (!$branch) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withInput()->with('error', 'Your assigned branch is not found in the system. Please contact your administrator.');
+            }
+            
+            if ($branch->status !== 'active') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withInput()->with('error', 'Your assigned branch is currently inactive. Please contact your administrator.');
+            }
+            
+            return redirect()->route('cashier.dashboard');
+        }
+        
+        // For non-cashier users, check if they have active status
+        if (isset($user->status) && $user->status !== 'active') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return back()->withInput()->with('error', 'Your account is currently inactive. Please contact your administrator.');
+        }
+        
+        return redirect()->route('dashboard');
     }
 
     return back()->withInput()->with('error', 'Incorrect email or password');
@@ -41,6 +90,10 @@ Route::post('/login', function (Request $request) {
 Route::get('/dashboard', function () {
     return view('SuperAdmin.dashboard');
 })->middleware('auth')->name('dashboard');
+
+// Cashier Dashboard
+Route::get('/cashier/dashboard', [CashierDashboardController::class, 'index'])->middleware('auth')->name('cashier.dashboard');
+Route::get('/cashier/dashboard/chart', [CashierDashboardController::class, 'chartData'])->middleware('auth')->name('cashier.dashboard.chart');
 
 // Dashboard chart data (JSON)
 Route::get('/dashboard/chart', [DashboardController::class, 'chartData'])->middleware('auth')->name('dashboard.chart');
@@ -707,30 +760,17 @@ Route::middleware('auth')->group(function () {
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
         });
     });
-
-    Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])
-        ->name('ui.sidebar.user-mgmt');
-
-    Route::get('/password/reset', function () {
-        return view('auth.passwords.email');
-    })->name('password.request');
-
-    Route::post('/password/email', function (Request $request) {
-        $request->validate(['email' => 'required|email']);
-        $user = \App\Models\User::where('email', $request->input('email'))->first();
-        if ($user) {
-        }
-        return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
-    })->name('password.email');
 });
-// Password reset (simple request flow)
+
+Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])
+    ->name('ui.sidebar.user-mgmt');
+
 Route::get('/password/reset', function () {
     return view('auth.passwords.email');
 })->name('password.request');
 
 Route::post('/password/email', function (Request $request) {
     $request->validate(['email' => 'required|email']);
-    // If user exists, we would normally send a reset link. For now, just show a generic message.
     $user = \App\Models\User::where('email', $request->input('email'))->first();
     if ($user) {
         // dispatch reset email here if implemented

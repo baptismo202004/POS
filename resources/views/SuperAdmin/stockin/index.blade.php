@@ -1,28 +1,8 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Stock In - SuperAdmin</title>
+@extends('layouts.app')
+@section('title', 'Purchase')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-        .table th {
-            font-weight: 600;
-            color: #475569;
-            background-color: #f8fafc;
-        }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
+@section('content')
+    <div class="p-3 p-lg-4">
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
@@ -97,5 +77,4 @@
             @endif
         });
     </script>
-</body>
-</html>
+@endsection

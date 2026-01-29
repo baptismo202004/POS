@@ -19,6 +19,7 @@ class Expense extends Model
         'expense_date',
         'payment_method',
         'receipt_path',
+        'branch_id',
     ];
 
     protected $casts = [
@@ -39,5 +40,10 @@ class Expense extends Model
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }
