@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\AccessPermissionController;
 use App\Http\Controllers\SuperAdmin\PurchaseController;
 use App\Http\Controllers\SuperAdmin\InventoryController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -678,6 +679,13 @@ Route::middleware('auth')->group(function () {
             // Routes for Select2 expense category search and creation
             Route::get('expense-categories-search', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'index'])->name('expense-categories.search');
             Route::post('expense-categories', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+
+            // Customer routes
+            Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+            Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
+            Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
+            Route::get('customers/aging-reports', [CustomerController::class, 'agingReports'])->name('customers.aging-reports');
 
             // Sales route
             Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
