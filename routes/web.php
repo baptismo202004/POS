@@ -1,13 +1,33 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\POS\PosController;
+use App\Http\Controllers\Admin\PosAdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SuperAdmin\ProductController as SuperAdminProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\AccessController;
+use App\Http\Controllers\Admin\AccessPermissionController;
 use App\Http\Controllers\SuperAdmin\PurchaseController;
 use App\Http\Controllers\SuperAdmin\InventoryController;
+use App\Http\Controllers\Admin\CustomerController;
+
+// Storage route for serving files
+Route::get('/storage/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+    
+    $mimeType = mime_content_type($filePath);
+    $headers = [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ];
+    
+    return response()->file($filePath, $headers);
+})->where('path', '.*');
 
 Route::get('/', function () {
     return view('login');
@@ -36,10 +56,11 @@ Route::get('/dashboard', function () {
 })->middleware('auth')->name('dashboard');
 
 // POS Route
-Route::get('/pos', [PosController::class, 'index'])->name('pos.index')->middleware('auth');
-Route::post('/pos', [PosController::class, 'store'])->name('pos.store')->middleware('auth');
-Route::get('/pos/lookup', [PosController::class, 'lookup'])->name('pos.lookup')->middleware('auth');
-Route::post('/pos/cashier/validate', [PosController::class, 'validateCashier'])->name('pos.cashier.validate')->middleware('auth');
+Route::get('/pos', [PosAdminController::class, 'index'])->name('pos.index')->middleware('auth');
+Route::post('/pos', [PosAdminController::class, 'store'])->name('pos.store')->middleware('auth');
+Route::post('/pos/lookup', [PosAdminController::class, 'lookup'])->name('pos.lookup')->middleware('auth');
+Route::post('/pos/cashier/validate', [PosAdminController::class, 'validateCashier'])->name('pos.cashier.validate')->middleware('auth');
+Route::post('/admin/pos/checkout', [\App\Http\Controllers\Admin\PosController::class, 'checkout'])->name('admin.pos.checkout')->middleware('auth');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();
@@ -54,73 +75,120 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'avatar'])->name('profile.avatar');
     Route::post('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
 
-    // Product routes
-    Route::prefix('superadmin')->group(function () {
-        Route::get('/products', [SuperAdminProductController::class, 'index'])->middleware('ability:products,view')->name('superadmin.products.index');
-        Route::get('/products/create', [SuperAdminProductController::class, 'create'])->middleware('ability:products,edit')->name('superadmin.products.create');
-        Route::post('/products', [SuperAdminProductController::class, 'store'])->middleware('ability:products,edit')->name('superadmin.products.store');
-                Route::get('/products/{product}', [SuperAdminProductController::class, 'show'])->middleware('ability:products,view')->name('superadmin.products.show');
-        Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->middleware('ability:products,edit')->name('superadmin.products.edit');
-        Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('superadmin.products.update');
-        Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('superadmin.products.destroy');
+    Route::prefix('superadmin')->name('superadmin.')->group(function () {
+        // Product routes
+        Route::get('/products', [SuperAdminProductController::class, 'index'])->middleware('ability:products,view')->name('products.index');
+        Route::get('/products/create', [SuperAdminProductController::class, 'create'])->middleware('ability:products,edit')->name('products.create');
+        Route::post('/products', [SuperAdminProductController::class, 'store'])->middleware('ability:products,edit')->name('products.store');
+        Route::get('/products/{product}', [SuperAdminProductController::class, 'show'])->middleware('ability:products,view')->name('products.show');
+        Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->middleware('ability:products,edit')->name('products.edit');
+        Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('products.update');
+        Route::post('/products/{product}/update-image', [SuperAdminProductController::class, 'updateImage'])->middleware('ability:products,edit')->name('products.updateImage');
+        Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('products.destroy');
 
-       
-        Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->middleware('ability:purchases,edit')->name('superadmin.purchases.ocr-product-match');
-        Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->middleware('ability:purchases,view')->name('superadmin.purchases.index');
-        Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->middleware('ability:purchases,edit')->name('superadmin.purchases.create');
-        Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->middleware('ability:purchases,edit')->name('superadmin.purchases.store');
-        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->middleware('ability:purchases,view')->name('superadmin.purchases.show');
+        // Categories routes (part of products module)
+        Route::get('/categories', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'index'])->middleware('ability:products,view')->name('categories.index');
+        Route::post('/categories', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'store'])->middleware('ability:products,edit')->name('categories.store');
+        Route::get('/categories/create', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'create'])->middleware('ability:products,edit')->name('categories.create');
+        Route::get('/categories/{category}/edit', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'edit'])->middleware('ability:products,edit')->name('categories.edit');
+        Route::put('/categories/{category}', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'update'])->middleware('ability:products,edit')->name('categories.update');
+        Route::put('/categories/bulk-update', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'bulkUpdate'])->middleware('ability:products,edit')->name('categories.bulkUpdate');
+        Route::delete('/categories/bulk-delete', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'bulkDestroy'])->middleware('ability:products,full')->name('categories.bulkDestroy');
+        Route::delete('/categories/{category}', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'destroy'])->middleware('ability:products,full')->name('categories.destroy');
+
+        Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->middleware('ability:purchases,edit')->name('purchases.ocr-product-match');
+        Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->middleware('ability:purchases,view')->name('purchases.index');
+        Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->middleware('ability:purchases,edit')->name('purchases.create');
+        Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->middleware('ability:purchases,edit')->name('purchases.store');
+        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->middleware('ability:purchases,view')->name('purchases.show');
 
         // Stock In routes
-        Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->middleware('ability:stockin,view')->name('superadmin.stockin.index');
-        Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'create'])->middleware('ability:stockin,edit')->name('superadmin.stockin.create');
-        Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'store'])->middleware('ability:stockin,edit')->name('superadmin.stockin.store');
-                Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->middleware('ability:stockin,view')->name('superadmin.stockin.products-by-purchase');
+        // DEBUG: Temporarily removed middleware to test for permissions issue.
+        Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->name('stockin.index');
+        Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'create'])->name('stockin.create');
+        Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'store'])->name('stockin.store');
+        Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->name('stockin.products-by-purchase');
 
         // Inventory routes
-        Route::get('/inventory', [InventoryController::class, 'index'])->middleware('ability:inventory,view')->name('superadmin.inventory.index');
-        Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('superadmin.inventory.stock-in');
-        Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('superadmin.inventory.adjust');
+        Route::get('/inventory', [InventoryController::class, 'index'])->middleware('ability:inventory,view')->name('inventory.index');
+        Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('inventory.stock-in');
+        Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
 
         // Stock Transfer routes
-        Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('superadmin.stocktransfer.index');
-        Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('superadmin.stocktransfer.store');
-        Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('superadmin.stocktransfer.update');
+        Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
+        Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('stocktransfer.store');
+        Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
         // Settings routes (guard at least with view-level ability)
         Route::middleware('ability:settings,view')->group(function () {
-            Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class, ['as' => 'superadmin']);
-            Route::resource('categories', \App\Http\Controllers\SuperAdmin\CategoryController::class, ['as' => 'superadmin']);
-            Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class, ['as' => 'superadmin']);
-            Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class, ['as' => 'superadmin']);
-            Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class, ['as' => 'superadmin']);
+            Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
+            Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
+            Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
+            Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
         });
-    
+
         // Separate Suppliers routes with proper abilities
-            Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class, ['as' => 'superadmin']);
+        Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class);
 
-    // Admin-only user management (account creation, access control)
-    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('users.create');
-        Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
+        // Admin-only user management (account creation, access control)
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::get('/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('users.create');
+            Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
 
-        // Role-based access configuration UI
-        Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
-        Route::post('/access', [\App\Http\Controllers\Admin\AccessController::class, 'store'])->name('access.store');
-        Route::post('/roles', [\App\Http\Controllers\Admin\AccessController::class, 'storeRole'])->name('roles.store');
-        Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])->name('roles.update');
-        Route::delete('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'destroyRole'])->name('roles.destroy');
+            // Role-based access configuration UI
+            Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
+            Route::get('/access/logs', [\App\Http\Controllers\Admin\AccessController::class, 'accessLogs'])->name('access.logs');
+            Route::post('/access', [\App\Http\Controllers\Admin\AccessController::class, 'store'])->name('access.store');
+            Route::post('/roles', [\App\Http\Controllers\Admin\AccessController::class, 'storeRole'])->name('roles.store');
+            Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'updateRole'])->name('roles.update');
+            Route::delete('/roles/{role}', [\App\Http\Controllers\Admin\AccessController::class, 'destroyRole'])->name('roles.destroy');
 
-        // Expenses routes
-        Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
+            // Permission management
+            Route::post('/access/permissions/update', [\App\Http\Controllers\Admin\AccessPermissionController::class, 'updatePermission'])->name('access.permissions.update');
+            Route::get('/access/permissions/{roleId}', [\App\Http\Controllers\Admin\AccessPermissionController::class, 'getPermissions'])->name('access.permissions.get');
 
-        // Routes for Select2 expense category search and creation
-        Route::get('expense-categories-search', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'index'])->name('expense-categories.search');
-        Route::post('expense-categories', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+            // Expenses routes
+            Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
 
-        // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
-    });
+            // Reports routes - unified in index page
+            Route::get('/reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
+            Route::post('/reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
+            Route::post('/reports/export', [\App\Http\Controllers\Admin\ReportsController::class, 'export'])->name('reports.export');
+
+            // Routes for Select2 expense category search and creation
+            Route::get('expense-categories-search', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'index'])->name('expense-categories.search');
+            Route::post('expense-categories', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+
+            // Sales route
+            Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+            Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
+
+            // Refund routes
+            Route::get('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'index'])->name('refunds.index');
+            Route::post('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'store'])->name('refunds.store');
+            Route::get('refunds/create', [\App\Http\Controllers\Admin\RefundController::class, 'create'])->name('refunds.create');
+            Route::post('refunds/{refund}/approve', [\App\Http\Controllers\Admin\RefundController::class, 'approve'])->name('refunds.approve');
+            Route::post('refunds/{refund}/reject', [\App\Http\Controllers\Admin\RefundController::class, 'reject'])->name('refunds.reject');
+
+            // Credit routes
+            Route::get('credits', [\App\Http\Controllers\Admin\CreditController::class, 'index'])->name('credits.index');
+            Route::get('credits/create', [\App\Http\Controllers\Admin\CreditController::class, 'create'])->name('credits.create');
+            Route::post('credits', [\App\Http\Controllers\Admin\CreditController::class, 'store'])->name('credits.store');
+            Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
+            Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
+            Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
+
+            // Customer routes
+            Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+            Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
+            Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
+            Route::get('customers/aging-reports', [CustomerController::class, 'agingReports'])->name('customers.aging-reports');
+
+            // Sales routes
+            Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+            Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
+        });
     });
 
     Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])

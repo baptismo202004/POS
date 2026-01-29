@@ -198,6 +198,36 @@ class ProductController extends Controller
         }
     }
 
+    public function updateImage(Request $request, Product $product)
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()]);
+        }
+
+        try {
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                
+                // Store new image
+                $imagePath = $request->file('image')->store('products', 'public');
+                $product->image = $imagePath;
+                $product->save();
+            }
+
+            return response()->json(['success' => true, 'message' => 'Image uploaded successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function destroy(Product $product)
     {
         if ($product->image) {

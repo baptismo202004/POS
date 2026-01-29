@@ -87,6 +87,7 @@ class StockTransferController extends Controller
             $product->stockIns()->create([
                 'branch_id' => $stockTransfer->to_branch_id,
                 'quantity' => $stockTransfer->quantity,
+                'price' => 0, // Set a default price for transfers
                 'reason' => 'Stock Transfer',
             ]);
 

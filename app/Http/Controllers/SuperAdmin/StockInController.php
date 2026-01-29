@@ -8,39 +8,55 @@ use App\Models\StockIn;
 use App\Models\Product;
 use App\Models\Branch;
 use App\Models\Purchase;
-
+use Illuminate\Support\Facades\Log;
 
 class StockInController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StockIn::with(['product', 'branch']);
-
-        if ($request->get('sort') === 'product') {
-            $direction = $request->get('direction', 'asc') === 'asc' ? 'asc' : 'desc';
-            $query->join('products', 'stock_ins.product_id', '=', 'products.id')
-                  ->orderBy('products.product_name', $direction)
-                  ->select('stock_ins.*');
-        } else {
-            $query->latest();
+        try {
+            // Get stock ins with relationships
+            $query = StockIn::with(['product', 'branch', 'purchase']);
+            
+            // Apply sorting if requested
+            if ($request->has('sort')) {
+                $direction = $request->get('direction', 'asc');
+                switch ($request->get('sort')) {
+                    case 'product':
+                        $query->join('products', 'stock_ins.product_id', '=', 'products.id')
+                              ->orderBy('products.product_name', $direction);
+                        break;
+                    default:
+                        $query->orderBy('created_at', 'desc');
+                }
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+            
+            $stockIns = $query->paginate(15);
+            
+            return view('SuperAdmin.stockin.index', compact('stockIns'));
+        } catch (\Exception $e) {
+            Log::error('Error loading Stock In index page: ' . $e->getMessage());
+            return response()->view('errors.500', ['message' => 'Error loading stock records: ' . $e->getMessage()], 500);
         }
-
-        $stockIns = $query->paginate(15)->withQueryString();
-
-        return view('SuperAdmin.stockin.index', compact('stockIns'));
     }
 
     public function create()
     {
+        // Eagerly load unit types to ensure they are available in the view
         $products = Product::with('unitTypes')->get();
         $branches = Branch::all();
-        $purchases = Purchase::with('items')->get();
+        $purchases = Purchase::with('items.product.unitTypes')->get();
         return view('SuperAdmin.stockin.create', compact('products', 'branches', 'purchases'));
     }
 
     public function getProductsByPurchase(Purchase $purchase)
     {
-        return response()->json($purchase->items()->with('product.unitTypes')->get());
+        // Load items with product and its unitTypes
+        $items = $purchase->items()->with('product.unitTypes')->get();
+        
+        return response()->json($items);
     }
 
     public function store(Request $request)
@@ -50,7 +66,7 @@ class StockInController extends Controller
             'purchase_id' => 'required|exists:purchases,id',
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.unit_type_id' => 'required|exists:unit_types,id',
+            'items.*.unit_type_id' => 'nullable|exists:unit_types,id',
             'items.*.quantity' => 'nullable|integer|min:0',
             'items.*.price' => 'required|numeric|min:0',
         ]);
@@ -90,7 +106,7 @@ class StockInController extends Controller
                     'product_id' => $item['product_id'],
                     'branch_id' => $validated['branch_id'],
                     'purchase_id' => $validated['purchase_id'],
-                    'unit_type_id' => $item['unit_type_id'],
+                    'unit_type_id' => !empty($item['unit_type_id']) ? $item['unit_type_id'] : null,
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
                 ]);

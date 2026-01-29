@@ -14,6 +14,7 @@ class Sale extends Model
         'total_amount',
         'tax',
         'payment_method',
+        'customer_name',
     ];
 
     public function saleItems()
@@ -27,6 +28,11 @@ class Sale extends Model
     }
 
     public function cashier()
+    {
+        return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function user()
     {
         return $this->belongsTo(User::class, 'cashier_id');
     }
