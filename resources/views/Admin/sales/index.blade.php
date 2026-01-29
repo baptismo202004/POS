@@ -1,17 +1,20 @@
 @extends('layouts.app')
-@section('title', 'Sales')
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
-        <div>
-            <h4 class="m-0">Sales Dashboard</h4>
-            <p class="mb-0 text-muted">Overview of your sales performance</p>
-        </div>
-        <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
-    </div>
-    <div class="card card-rounded shadow-sm">
-                    <div class="card-body">
+    <div class="d-flex min-vh-100">
+
+        <main class="flex-fill p-4">
+            <div class="container-fluid">
+                <div class="row mb-6">
+                    <div class="col-12">
+                        <div class="p-4 card-rounded shadow-sm bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h2 class="m-0">Sales Dashboard</h2>
+                                    <p class="mb-0 text-muted">Overview of your sales performance</p>
+                                </div>
+                                <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
+                            </div>
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
                                 <div class="card border-left-primary shadow h-100 py-2">
@@ -121,6 +124,9 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                        </div>
+                        </div>
+                    </div>
                         </div>
                     </div>
                 </div>

@@ -22,6 +22,6 @@ class ExpenseCategorySeeder extends Seeder
             ['name' => 'Miscellaneous'],
         ];
 
-        DB::table('expense_categories')->insert($categories);
+        DB::table('expense_categories')->insertOrIgnore($categories);
     }
 }

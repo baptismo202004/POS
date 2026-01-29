@@ -117,7 +117,7 @@
                                 <td>₱{{ number_format($credit->credit_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->paid_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->remaining_balance, 2) }}</td>
-                                <td>{{ $credit->due_date->format('M d, Y') }}</td>
+                                <td>{{ $credit->date->format('M d, Y') }}</td>
                                 <td>
                                     <span class="badge bg-{{ $credit->status == 'active' ? 'primary' : ($credit->status == 'paid' ? 'success' : 'danger') }}">
                                         {{ ucfirst($credit->status) }}
@@ -178,15 +178,7 @@
                         <select class="form-select" name="payment_method" id="payment_method" required>
                             <option value="">Select payment method...</option>
                             <option value="cash">Cash</option>
-                            <option value="card">Card</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                            <option value="other">Other</option>
                         </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="payment_notes" class="form-label">Notes</label>
-                        <textarea class="form-control" name="notes" id="payment_notes" rows="2"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -204,15 +196,19 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    // Force refresh to avoid caching issues
+    console.log('Credits index script loaded - v2');
+    
     function viewCredit(creditId) {
-        window.open(`/admin/credits/${creditId}`, '_blank');
+        console.log('Viewing credit:', creditId);
+        window.open(`/superadmin/admin/credits/${creditId}`, '_blank');
     }
     
     function makePayment(creditId, remainingBalance) {
         document.getElementById('payment_credit_id').value = creditId;
         document.getElementById('remaining_balance_display').textContent = remainingBalance.toFixed(2);
         document.getElementById('payment_amount').max = remainingBalance;
-        document.getElementById('payment_amount').value = Math.min(remainingBalance, 100).toFixed(2);
+        document.getElementById('payment_amount').value = remainingBalance.toFixed(2); // Auto-populate payment amount
         
         const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
         modal.show();
@@ -243,7 +239,7 @@
             }
         });
         
-        fetch(`/admin/credits/${creditId}/payment`, {
+        fetch(`/superadmin/admin/credits/${creditId}/payment`, {
             method: 'POST',
             body: formData
         })

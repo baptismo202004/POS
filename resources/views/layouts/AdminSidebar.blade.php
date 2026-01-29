@@ -333,6 +333,20 @@
             padding: 6px; 
             list-style: none;
             background: #FFFFFF;
+            z-index: 1050;
+            position: relative;
+        }
+        
+        /* Ensure dropdown button is clickable */
+        #sidebarUserDropdown {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            position: relative;
+            z-index: 1051;
+        }
+        
+        #sidebarUserDropdown:hover {
+            background: rgba(0, 229, 255, 0.1) !important;
         }
         
         .dropdown-item svg { 
@@ -667,38 +681,35 @@
             </div>
             @endcanAccess
 
-            @php
-                $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
-            @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                </span>
-                <span>System Settings</span>
-                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-            </a>
-            <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
-                <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Branch</span>
-                    </a>
-                    <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Brands</span>
-                    </a>
-                    <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Unit Types</span>
-                    </a>
-                    <a href="#" class="d-flex gap-3 align-items-center py-2 text-decoration-none">
-                        <span class="small">Tax</span>
-                    </a>
-                    <a href="#" class="d-flex gap-3 align-items-center py-2 text-decoration-none">
-                        <span class="small">Receipt Templates</span>
-                    </a>
+            <div>
+                @php
+                    $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*') || request()->routeIs('superadmin.taxes.*') || request()->routeIs('superadmin.receipt-templates.*');
+                @endphp
+                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
+                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51"/></svg>
+                    </span>
+                    <span>Settings</span>
+                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
+                </a>
+                <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
+                    <div class="d-flex flex-column ms-4 mt-1">
+                        <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                            <span class="small">Branch</span>
+                        </a>
+                        <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                            <span class="small">Brands</span>
+                        </a>
+                        <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                            <span class="small">Unit Types</span>
+                        </a>
+                        <a href="{{ route('superadmin.taxes.index') }}" class="{{ request()->routeIs('superadmin.taxes.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                            <span class="small">Tax</span>
+                        </a>
+                        <a href="{{ route('superadmin.receipt-templates.index') }}" class="{{ request()->routeIs('superadmin.receipt-templates.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                            <span class="small">Receipt Templates</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -790,6 +801,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const arrow = submenu.previousElementSibling?.querySelector('.submenu-indicator');
         if (arrow) arrow.classList.add('rotated');
     });
+    
+    // Initialize Bootstrap dropdowns with explicit configuration
+    const dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
+    dropdownElementList.map(function (dropdownToggleEl) {
+        return new bootstrap.Dropdown(dropdownToggleEl, {
+            boundary: 'viewport',
+            reference: 'toggle',
+            display: 'dynamic'
+        });
+    });
+    
+    // Specific initialization for user dropdown
+    const userDropdown = document.getElementById('sidebarUserDropdown');
+    if (userDropdown) {
+        new bootstrap.Dropdown(userDropdown, {
+            boundary: 'viewport',
+            reference: 'toggle',
+            display: 'dynamic'
+        });
+    }
     
     // Initialize mobile sidebar
     initMobileSidebar();

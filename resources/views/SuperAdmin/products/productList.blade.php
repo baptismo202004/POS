@@ -145,8 +145,17 @@
 
     {{-- Scripts --}}
 
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
         $(document).ready(function() {
+            console.log('jQuery and Select2 loaded successfully');
+            
             // Initialize all select2 dropdowns
             $('#brandSelect, #categorySelect').select2({
                 tags: true,
@@ -173,15 +182,41 @@
             const electronicFields = $('.electronic-field');
 
             function toggleElectronicFields() {
-                const isElectronic = productType.val() === '1';
+                const selectedOption = productType.find('option:selected');
+                const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === '1';
+                
+                console.log('Product type changed:', {
+                    value: productType.val(),
+                    isElectronic: isElectronic,
+                    selectedOption: selectedOption.text()
+                });
+                
                 electronicFields.toggleClass('d-none', !isElectronic);
+                
+                // Log field visibility for debugging
+                electronicFields.each(function() {
+                    console.log('Field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
+                });
             }
 
             // Attach the event listener to select2's change event
-            productType.on('change', toggleElectronicFields);
+            productType.on('change', function() {
+                console.log('Select2 change event triggered');
+                toggleElectronicFields();
+            });
+
+            // Also listen for select2:select event
+            productType.on('select2:select', function(e) {
+                console.log('Select2 select event triggered:', e.params.data);
+                toggleElectronicFields();
+            });
 
             // Initial call to set the correct visibility on page load
-            toggleElectronicFields();
+            $(document).ready(function() {
+                setTimeout(function() {
+                    toggleElectronicFields();
+                }, 100);
+            });
         });
     </script>
 

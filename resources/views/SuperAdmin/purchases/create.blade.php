@@ -1,26 +1,25 @@
 @extends('layouts.app')
-@section('title', 'Purchase')
 
 @section('content')
-    <div class="p-3 p-lg-4">
-        <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
-            
+
+    <div class="d-flex min-vh-100">
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
-                <div class="p-4 card-rounded shadow-sm bg-white">
-
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2>Add New Purchase</h2>
-                        <div>
-                            <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">
-                                Back to Purchases
-                            </a>
-                            <button type="button" id="ocr-button" class="btn btn-primary">
-                                OCR
-                            </button>
-                        </div>
-                    </div>
+                <div class="row mb-6">
+                    <div class="col-12">
+                        <div class="p-4 card-rounded shadow-sm bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2>Add New Purchase</h2>
+                                <div>
+                                    <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">
+                                        Back to Purchases
+                                    </a>
+                                    <button type="button" id="ocr-button" class="btn btn-primary">
+                                        OCR
+                                    </button>
+                                </div>
+                            </div>
 
                     <form method="POST" action="{{ route('superadmin.purchases.store') }}">
                         @csrf
@@ -74,6 +73,8 @@
                         </div>
                     </form>
 
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -100,7 +101,6 @@
                         <option value="electronic">Electronic</option>
                     </select>
                 </div>
-
                 <div class="col-md-1">
                     <label class="form-label">Quantity</label>
                     <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
@@ -195,19 +195,23 @@
     <!-- SERIAL ENTRY TEMPLATE -->
     <template id="serial-entry-template">
         <div class="row g-3 align-items-center serial-entry-row mb-2">
-            <div class="col-md-5">
-                <input type="text" name="serial_number" class="form-control" placeholder="Serial Number / IMEI" required>
+            <div class="col-md-4">
+                <label class="form-label">Serial Number / IMEI</label>
+                <input type="text" name="serial_number" class="form-control" placeholder="Enter serial number" required>
             </div>
             <div class="col-md-4">
+                <label class="form-label">Branch</label>
                 <select name="branch_id" class="form-select branch-select" required>
                     <option value="">-- Select Branch --</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
+                <label class="form-label">Warranty Expiry</label>
                 <input type="date" name="warranty_expiry" class="form-control">
             </div>
             <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-serial-btn">X</button>
+                <label class="form-label invisible">Remove</label>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-serial-btn w-100">Remove</button>
             </div>
         </div>
     </template>
@@ -336,12 +340,45 @@
         </div>
     </div>
 
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .select2-container--bootstrap-5 .select2-selection {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+        }
+        
+        .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px;
+            padding-top: 4px;
+        }
+        
+        .branch-select {
+            width: 100% !important;
+        }
+        
+        .select2-container {
+            width: 100% !important;
+        }
+    </style>
+
+    <!-- Bootstrap JS bundle (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+    console.log('Purchases create script loaded successfully!');
+    
     document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, initializing purchases...');
 
         const branches = @json($branches);
+        console.log('Branches data loaded:', branches);
 
         const container = document.getElementById('items-container');
         const template = document.getElementById('item-template');
@@ -476,11 +513,15 @@
 
             // --- ADD / REMOVE SERIALS ---
             if (e.target.classList.contains('add-serial-btn')) {
+                console.log('Add serial button clicked!');
+                
                 const itemRow = e.target.closest('.item-row');
                 const serialsContainer = itemRow.querySelector('.serial-entries-container');
                 const serialTemplate = document.getElementById('serial-entry-template');
                 const itemIndex = Array.from(container.children).indexOf(itemRow);
                 const serialIndex = serialsContainer.children.length;
+
+                console.log('Creating serial entry for item:', itemIndex, 'serial:', serialIndex);
 
                 const node = serialTemplate.content.cloneNode(true);
 
@@ -493,15 +534,77 @@
                 serialsContainer.appendChild(node);
 
                 const branchSelect = serialsContainer.querySelector('.serial-entry-row:last-child .branch-select');
-                branches.forEach(branch => {
-                    const option = new Option(branch.name, branch.id);
-                    branchSelect.add(option);
-                });
-
-                $(branchSelect).select2({
-                    placeholder: '-- Select Branch --',
-                    width: '100%'
-                });
+                
+                console.log('Adding branch dropdown:', branchSelect);
+                console.log('Available branches:', branches);
+                
+                if (branchSelect && branches) {
+                    console.log('Branches data type:', typeof branches);
+                    console.log('Branches data:', branches);
+                    
+                    // Clear and add branch options
+                    branchSelect.innerHTML = '<option value="">-- Select Branch --</option>';
+                    
+                    // Check if branches is an array of objects or a string
+                    if (Array.isArray(branches)) {
+                        branches.forEach(branch => {
+                            console.log('Processing branch:', branch);
+                            const branchName = branch.name || branch.branch_name || 'Unknown Branch';
+                            const branchId = branch.id || branch.branch_id || '';
+                            const option = new Option(branchName, branchId);
+                            branchSelect.add(option);
+                        });
+                    } else {
+                        console.log('Branches is not an array, trying to parse...');
+                        // If it's a string or object, try to extract branch info
+                        try {
+                            if (typeof branches === 'object') {
+                                Object.keys(branches).forEach(key => {
+                                    const branch = branches[key];
+                                    const branchName = branch.name || branch.branch_name || `Branch ${key}`;
+                                    const branchId = branch.id || branch.branch_id || key;
+                                    const option = new Option(branchName, branchId);
+                                    branchSelect.add(option);
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error parsing branches:', e);
+                        }
+                    }
+                    
+                    console.log('Branch options added:', branches.length, 'branches');
+                    
+                    // Try to initialize Select2, but fallback to normal select if it fails
+                    try {
+                        $(branchSelect).select2({
+                            theme: 'bootstrap-5',
+                            placeholder: '-- Select Branch --',
+                            width: '100%',
+                            dropdownParent: $(branchSelect).parent()
+                        });
+                        console.log('Select2 initialized successfully');
+                        
+                        // Force show the Select2 container
+                        setTimeout(() => {
+                            const select2Container = $(branchSelect).next('.select2-container');
+                            if (select2Container.length > 0) {
+                                select2Container.show();
+                                console.log('Select2 container forced to show');
+                            }
+                        }, 50);
+                        
+                    } catch (error) {
+                        console.log('Select2 failed, using normal select:', error);
+                        // Make the normal select visible
+                        branchSelect.style.display = 'block';
+                        branchSelect.style.width = '100%';
+                        branchSelect.classList.remove('select2-hidden-accessible');
+                    }
+                } else {
+                    console.error('Branch select or branches data missing');
+                    console.log('Branch select:', branchSelect);
+                    console.log('Branches:', branches);
+                }
             }
 
             if (e.target.classList.contains('remove-serial-btn')) {

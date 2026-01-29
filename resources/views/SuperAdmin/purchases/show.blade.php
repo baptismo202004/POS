@@ -1,21 +1,17 @@
 @extends('layouts.app')
-@section('title', 'Purchase')
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
-        
-
     <div class="d-flex min-vh-100">
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="m-0">Purchase Details</h4>
-                        <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">Back to Purchases</a>
-                    </div>
-                    <div class="card-body">
+                <div class="row mb-6">
+                    <div class="col-12">
+                        <div class="p-4 card-rounded shadow-sm bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="m-0">Purchase Details</h2>
+                                <a href="{{ route('superadmin.purchases.index') }}" class="btn btn-outline-primary">Back to Purchases</a>
+                            </div>
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <p class="text-muted mb-1">Reference Number</p>
@@ -59,6 +55,7 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                        </div>
                         </div>
                     </div>
                 </div>

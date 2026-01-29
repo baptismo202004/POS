@@ -82,20 +82,22 @@ class TestDataSeeder extends Seeder
 
         $products = [];
         for ($i = 1; $i <= 20; $i++) {
-            $products[] = Product::create([
-                'product_name' => 'Test Product ' . $i,
-                'barcode' => strtoupper(Str::random(10)) . $i,
-                'brand_id' => $brands ? $brands[array_rand($brands)] : null,
-                'category_id' => $categories ? $categories[array_rand($categories)] : null,
-                'product_type_id' => $productTypes ? $productTypes[array_rand($productTypes)] : null,
-                'model_number' => 'MDL-' . Str::upper(Str::random(5)),
-                'image' => null,
-                'tracking_type' => 'none',
-                'warranty_type' => 'none',
-                'warranty_coverage_months' => null,
-                'voltage_specs' => null,
-                'status' => 'active',
-            ]);
+            $products[] = Product::firstOrCreate(
+                ['product_name' => 'Test Product ' . $i],
+                [
+                    'barcode' => strtoupper(Str::random(10)) . $i,
+                    'brand_id' => $brands ? $brands[array_rand($brands)] : null,
+                    'category_id' => $categories ? $categories[array_rand($categories)] : null,
+                    'product_type_id' => $productTypes ? $productTypes[array_rand($productTypes)] : null,
+                    'model_number' => 'MDL-' . Str::upper(Str::random(5)),
+                    'image' => null,
+                    'tracking_type' => 'none',
+                    'warranty_type' => 'none',
+                    'warranty_coverage_months' => null,
+                    'voltage_specs' => null,
+                    'status' => 'active',
+                ]
+            );
         }
 
         $purchaseSuppliers = [$supplierA->id, $supplierB->id];

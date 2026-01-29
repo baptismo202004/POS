@@ -13,12 +13,8 @@
                     <i class="fas fa-plus"></i> Add Category
                 </button>
             </div>
-                            <button type="button" id="editBtn" class="btn btn-warning" disabled><i class="fas fa-edit"></i> Edit</button>
-                            <button type="button" id="deleteBtn" class="btn btn-danger" disabled><i class="fas fa-trash"></i> Delete</button>
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openCategoryModal()">
-                                <i class="fas fa-plus"></i> Add Category
-                            </button>
-                        </div>
+        
+                     
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">

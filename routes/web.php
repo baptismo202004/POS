@@ -699,6 +699,12 @@ Route::middleware('auth')->group(function () {
             Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
             Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
             Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
+            Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
+            Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
+            
+            // Custom receipt template routes
+            Route::get('receipt-templates/{receiptTemplate}/preview', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'preview'])->name('receipt-templates.preview');
+            Route::post('receipt-templates/{receiptTemplate}/set-default', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'setDefault'])->name('receipt-templates.set-default');
         });
 
         // Separate Suppliers routes with proper abilities

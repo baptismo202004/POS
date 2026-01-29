@@ -44,7 +44,14 @@ class ExpenseController extends Controller
         $expenses = $query->latest()->paginate(15);
         $categories = ExpenseCategory::all();
 
-        return view('Admin.expenses.index', compact('expenses', 'categories'));
+        // Calculate summary data
+        $todayExpenses = Expense::whereDate('expense_date', now()->today())->sum('amount');
+        $monthlyExpenses = Expense::whereMonth('expense_date', now()->month)
+                                 ->whereYear('expense_date', now()->year)
+                                 ->sum('amount');
+        $totalExpenses = Expense::sum('amount');
+
+        return view('Admin.expenses.index', compact('expenses', 'categories', 'todayExpenses', 'monthlyExpenses', 'totalExpenses'));
     }
 
     /**
@@ -70,7 +77,7 @@ class ExpenseController extends Controller
 
         Expense::create($data);
 
-        return redirect()->route('admin.expenses.index')->with('success', 'Expense created successfully.');
+        return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense created successfully.');
     }
 
     /**
@@ -111,7 +118,7 @@ class ExpenseController extends Controller
 
         $expense->update($data);
 
-        return redirect()->route('admin.expenses.index')->with('success', 'Expense updated successfully.');
+        return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense updated successfully.');
     }
 
     /**
@@ -127,6 +134,6 @@ class ExpenseController extends Controller
 
         $expense->delete();
 
-        return redirect()->route('admin.expenses.index')->with('success', 'Expense deleted successfully.');
+        return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense deleted successfully.');
     }
 }

@@ -1,21 +1,17 @@
 @extends('layouts.app')
-@section('title', 'Purchase')
 
 @section('content')
-    <div class="p-3 p-lg-4">
-    <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+    <div class="d-flex min-vh-100">
 
-        <div class="d-flex min-vh-100">
-
-            <main class="flex-fill p-4">
-                <div class="container-fluid">
-                    <div class="row mb-6">
-                        <div class="col-12">
-                            <div class="p-4 card-rounded shadow-sm bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-4">
-                                    <h2 class="m-0">Purchases</h2>
-                                    <a href="{{ route('superadmin.purchases.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Purchase</a>
-                                </div>
+        <main class="flex-fill p-4">
+            <div class="container-fluid">
+                <div class="row mb-6">
+                    <div class="col-12">
+                        <div class="p-4 card-rounded shadow-sm bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="m-0">Purchases</h2>
+                                <a href="{{ route('superadmin.purchases.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Purchase</a>
+                            </div>
 
                                 <div class="table-responsive">
                                     <table class="table table-striped">
@@ -62,8 +58,8 @@
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
     <!-- Bootstrap JS bundle (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
