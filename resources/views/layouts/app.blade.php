@@ -4,7 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'POS System')</title>
+    <!-- Google Fonts - Inter for electronic palette -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <title>{{ config('app.name', 'POS System') }}</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="icon" href="{{ asset('favicon.ico') }}">
 
@@ -91,9 +96,31 @@
         .main-content { 
             background-color: transparent; 
             color: var(--color-text); 
-            flex: 1;
-            min-width: 0; /* Prevent flex item from overflowing */
+            overflow-y: auto;
+            height: 100vh;
+            margin-left: 200px;
         }
+        
+        .sidebar-fixed {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+            /* Hide scrollbar visually but keep functionality */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        .sidebar-fixed::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        
+        /* Add padding to main content to account for fixed sidebar */
+        /* Note: margin-left is already set in .main-content */
         
         /* ========================================
            BUTTON STYLING (Bootstrap Override)
@@ -269,6 +296,15 @@
                 margin-left: 0;
             }
             
+            .sidebar-fixed {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar-fixed.show {
+                transform: translateX(0);
+            }
+            
             .btn {
                 min-height: 44px;
                 min-width: 44px;
@@ -296,13 +332,17 @@
                 padding: 1.5rem;
             }
             
+            .sidebar-fixed {
+                width: 200px;
+            }
+            
+            .main-content {
+                margin-left: 200px;
+            }
+            
             .btn {
                 min-height: 40px;
                 font-size: 14px;
-            }
-            
-            .sidebar {
-                width: 200px;
             }
         }
         
@@ -365,16 +405,19 @@
 </head>
 <body class="min-h-screen font-sans">
 
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        <aside>
-            @include('layouts.AdminSidebar')
-        </aside>
+    {{-- Sidebar --}}
+    <aside class="sidebar-fixed">
+        @include('layouts.AdminSidebar')
+    </aside>
 
-        <main class="main-content flex-1">
-            @yield('content')
-        </main>
-    </div>
+    <main class="main-content">
+        <!-- Mobile menu toggle -->
+        <button class="d-md-none btn btn-primary position-fixed" style="top: 1rem; left: 1rem; z-index: 1001;" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        @yield('content')
+    </main>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -382,6 +425,29 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.querySelector('.sidebar-fixed');
+            
+            if (mobileMenuToggle && sidebar) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                });
+                
+                // Close sidebar when clicking outside on mobile
+                document.addEventListener('click', function(e) {
+                    if (window.innerWidth < 768) {
+                        if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                            sidebar.classList.remove('show');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
     @stack('scripts')
 
     <script>

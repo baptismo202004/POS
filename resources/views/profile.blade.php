@@ -29,12 +29,22 @@
                         @if(!empty($avatarUrl))
                             <div class="avatar-wrapper mb-3">
                                 <img src="{{ $avatarUrl }}" alt="avatar" class="avatar-xl">
-                                <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
+                                <label for="avatarInput" class="camera-btn" title="Change picture">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <circle cx="12" cy="13" r="4"></circle>
+                                    </svg>
+                                </label>
                             </div>
                         @else
                             <div class="avatar-wrapper mb-3">
                                 <div class="avatar-xl d-inline-flex align-items-center justify-content-center bg-white text-dark border border-secondary"></div>
-                                <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
+                                <label for="avatarInput" class="camera-btn" title="Change picture">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <circle cx="12" cy="13" r="4"></circle>
+                                    </svg>
+                                </label>
                             </div>
                         @endif
                         <div class="small text-muted mb-3">

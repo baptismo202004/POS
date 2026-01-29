@@ -2,12 +2,8 @@
 @section('title', 'Create User')
 
 @section('content')
-
-    <div class="d-flex min-vh-100">
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="card card-rounded shadow-sm">
+    <div class="container-fluid">
+        <div class="card card-rounded shadow-sm">
                     <div class="card-header">
                         <h4 class="m-0">Expenses</h4>
                     </div>
@@ -102,9 +98,4 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-
-    <!-- Bootstrap JS bundle (optional) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 @endsection

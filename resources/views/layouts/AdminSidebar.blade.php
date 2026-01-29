@@ -1,20 +1,13 @@
-<aside class="sidebar shadow-sm p-4 d-none d-md-flex flex-column justify-content-between" id="sidebar">
+<aside class="sidebar shadow-sm p-4 d-flex flex-column justify-content-between" id="sidebar">
     <style>
-        /* Mobile responsive sidebar */
+        /* Mobile responsive sidebar - handled by main layout */
         @media (max-width: 767.98px) {
             .sidebar {
-                position: fixed;
-                top: 0;
-                left: -100%;
                 width: 280px;
-                height: 100vh;
-                z-index: 1050;
-                border-radius: 0;
-                transform: translateX(0);
             }
             
             .sidebar.show {
-                transform: translateX(100%);
+                /* Handled by main layout */
             }
             
             .sidebar-overlay {
@@ -24,7 +17,7 @@
                 width: 100%;
                 height: 100%;
                 background: rgba(0,0,0,0.5);
-                z-index: 1040;
+                z-index: 999;
                 display: none;
             }
             
@@ -33,22 +26,20 @@
             }
         }
 
-        @media (min-width: 992px) {
-            .sidebar {
-                position: relative;
-                transform: none !important;
-            }
-        }
-
         /* Sidebar styles - Electric Modern Palette */
         .sidebar { 
-            width: 220px; 
+            width: 200px; 
             min-height: 100vh; 
             background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
-            border-radius: 16px; 
-            box-shadow: 8px 0 32px rgba(13, 71, 161, 0.2); 
-            transition: transform 0.3s ease;
+            border-radius: 0 16px 16px 0;
+            padding: 1rem;
+            color: #FFFFFF;
             position: relative;
+            overflow: hidden;
+            overflow-x: hidden;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-weight: 500;
+            letter-spacing: -0.01em;
         }
         
         /* Subtle radial glow effect */
@@ -61,10 +52,10 @@
         }
         
         .sidebar .sidebar-icon { 
-            width: 24px; 
-            height: 24px; 
+            width: 20px; 
+            height: 20px; 
             display: block; 
-            color: #FFFFFF;
+            color: #FFFFFF; 
         }
         
         .icon { 
@@ -86,74 +77,252 @@
 
         /* Icon badge */
         .icon-badge { 
-            width: 44px; 
-            height: 44px; 
-            border-radius: 12px; 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 8px; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            background: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 8px 20px rgba(0, 229, 255, 0.1); 
-            padding: 0.45rem !important; 
-            backdrop-filter: blur(6px); 
-            -webkit-backdrop-filter: blur(6px); 
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: transparent;
+            box-shadow: none; 
+            padding: 0 !important; 
+            border: none;
+            transition: all 0.18s ease;
+            flex-shrink: 0;
+            margin: 0 !important;
         }
-
-        /* User dropdown sits at bottom */
+        
+        /* User dropdown sits at bottom with visual separation */
         .sidebar .dropend { 
             margin-top: auto; 
-            margin-bottom: 16px; 
+            margin-bottom: 12px; 
+            border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtle top divider */
+            padding-top: 12px; /* Spacing above divider */
+            background: rgba(13, 71, 161, 0.05); /* Subtle background change */
+        }
+        
+        /* User dropdown button styling */
+        .sidebar .dropdown-toggle {
+            background: transparent !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            transition: all 0.18s ease !important;
+        }
+        
+        .sidebar .dropdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        /* Clear dropdown indicator visibility */
+        .sidebar .dropdown-toggle::after {
+            filter: brightness(0) invert(1);
+            opacity: 0.8;
         }
 
-        /* Sidebar navigation links */
+        /* Sidebar navigation links - visually dominant */
         .sidebar nav a { 
-            font-size: 16px; 
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.85);
-            border-radius: 12px; 
-            min-height: 44px;
-            padding: 12px;
-            transition: all 0.3s;
+            font-size: 14px; 
+            font-weight: 500;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            letter-spacing: -0.01em;
+            color: rgba(255, 255, 255, 0.9); /* More dominant color */
+            border-radius: 8px; 
+            min-height: 44px; /* Minimum 44px height */
+            padding: 12px; /* Consistent vertical spacing */
+            transition: all 0.18s ease; /* 150-200ms transition */
             position: relative;
             z-index: 1;
+            white-space: normal;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            margin: 0 !important;
+            padding: 12px !important;
+            padding-left: 12px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Force override any Bootstrap margins */
+        .sidebar nav a.d-flex {
+            margin: 0 !important;
+            padding: 10px !important;
+            padding-left: 10px !important;
+        }
+        
+        /* Ensure icon badges are consistent */
+        .sidebar nav a .icon-badge {
+            margin: 0 !important;
+            padding: 0.35rem !important;
+            flex-shrink: 0;
+        }
+        
+        /* Ensure submenu containers don't affect alignment */
+        .sidebar nav .submenu {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Override any potential Bootstrap spacing classes */
+        .sidebar nav [class*="gap-"] {
+            gap: 12px !important;
+        }
+        
+        .sidebar nav [class*="align-items-"] {
+            align-items: center !important;
+        }
+        
+        /* Navigation container with improved spacing */
+        .sidebar nav {
+            padding-bottom: 16px; /* Space before user panel */
+        }
+        
+        .sidebar nav.d-flex.flex-column {
+            gap: 4px; /* Reduced gap between menu items */
+        }
+        
+        /* Section spacing - increased vertical spacing */
+        .sidebar nav .section-label + .d-flex,
+        .sidebar nav .section-label + a {
+            margin-top: 8px;
+        }
+        
+        /* Collapsed sidebar readiness */
+        .sidebar.collapsed {
+            width: 60px; /* Icons only width */
+        }
+        
+        .sidebar.collapsed .section-label {
+            display: none; /* Hide section headers in collapsed mode */
+        }
+        
+        .sidebar.collapsed .sidebar nav a span:not(.icon-badge):not(.submenu-indicator) {
+            display: none; /* Hide text labels in collapsed mode */
+        }
+        
+        .sidebar.collapsed .submenu {
+            display: none; /* Hide submenus in collapsed mode */
+        }
+        
+        /* Tooltip readiness for collapsed mode */
+        .sidebar nav a {
+            position: relative;
+        }
+        
+        .sidebar nav a::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 8px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease;
+            z-index: 1000;
+        }
+        
+        .sidebar.collapsed nav a:hover::before {
+            opacity: 1;
+        }
+        
+        /* Sidebar icons - smaller for text focus */
+        .sidebar .sidebar-icon {
+            width: 18px; /* Reduced from 20px */
+            height: 18px; /* Reduced from 20px */
+            display: block;
+            color: #FFFFFF;
+            transition: all 0.18s ease;
+        }
+        
+        /* Submenu indicators - smaller */
+        .submenu-indicator {
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+            width: 14px; /* Reduced from 16px */
+            height: 14px; /* Reduced from 16px */
+            flex-shrink: 0;
         }
         
         .sidebar nav a span { 
-            line-height: 1; 
+            line-height: 1.2; 
+            flex: 1;
+            white-space: normal;
+            overflow: visible;
         }
         
         .sidebar nav a .fw-semibold { 
             font-weight: 700;
         }
 
-        /* Hover state - Cyan glow */
+        /* Hover state - Background fade with icon color shift */
         .sidebar nav a:hover { 
             color: #FFFFFF; 
-            background: rgba(0, 229, 255, 0.2);
-            transform: translateX(6px);
+            background: rgba(0, 229, 255, 0.15);
+            transform: none;
         }
         
-        /* Active state - Cyan/Neon Blue gradient */
+        .sidebar nav a:hover .icon-badge {
+            background: transparent;
+            transform: none;
+        }
+        
+        .sidebar nav a:hover .sidebar-icon {
+            color: #00E5FF;
+            transform: none;
+        }
+        
+        /* Active state - Immediately identifiable with all indicators */
         .sidebar nav a.active { 
-            background: linear-gradient(135deg, #00E5FF, #2196F3) !important;
-            color: #0D47A1 !important;
-            box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4);
+            background: rgba(0, 229, 255, 0.15) !important; /* Soft background highlight */
+            color: #00E5FF !important; /* Icon color change */
+            border-left: 4px solid #00E5FF !important; /* Left border accent */
+            font-weight: 600 !important; /* Increased text weight */
+            border-radius: 0 8px 8px 0; /* Adjusted for left border */
+            transition: none; /* Instant change - no delay */
         }
         
-        .sidebar nav a.active .icon-badge { 
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.3);
+        .sidebar nav a.active .icon-badge {
+            background: transparent;
+            border-color: transparent;
+        }
+        
+        .sidebar nav a.active .sidebar-icon {
+            color: #00E5FF !important; /* Icon color change */
+        }
+        
+        .sidebar nav a.active span {
+            font-weight: 600 !important; /* Increased text weight */
+        }
+        
+        .sidebar nav a.active .submenu-indicator {
+            opacity: 1;
+            color: #00E5FF !important;
         }
 
-        /* Section label styling */
+        /* Section label styling - smaller, lighter, uppercase, non-clickable */
         .section-label { 
-            font-size: 12px; 
-            letter-spacing: 0.08em; 
+            font-size: 9px; /* Smaller than menu items */
+            font-weight: 600;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            letter-spacing: 0.15em;
             text-transform: uppercase; 
-            color: rgba(255, 255, 255, 0.6);
-            margin: 8px 8px 4px; 
-            font-weight: 700;
+            color: rgba(255, 255, 255, 0.4); /* Lighter color */
+            margin: 16px 8px 8px; /* Increased vertical spacing */
+            padding: 4px 8px;
+            pointer-events: none; /* Non-clickable */
+            user-select: none;
         }
 
         /* User dropdown menu */
@@ -215,46 +384,68 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
-        /* Submenu animations */
+        /* Submenu styles */
         .submenu {
+            max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
-            max-height: 0;
+            background: transparent;
+            border-radius: 8px;
+            margin: 4px 0;
         }
         
         .submenu.show {
             max-height: 500px;
         }
         
-        .submenu-arrow {
-            transition: transform 0.3s ease;
-        }
-        
-        .submenu-arrow.rotated {
-            transform: rotate(180deg);
-        }
-
-        /* Submenu styling */
-        .submenu {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 8px; 
-            padding: 8px;
-        }
-        
         .submenu a {
-            color: rgba(255, 255, 255, 0.85) !important; 
-            font-weight: 600;
+            font-size: 13px;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            white-space: normal;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.15s ease;
         }
         
         .submenu a:hover {
-            color: #FFFFFF !important;
-            background: rgba(0, 229, 255, 0.2);
+            color: #FFFFFF;
+            background: rgba(0, 229, 255, 0.1);
         }
         
-        .submenu a.active {
-            color: #0D47A1 !important;
-            background: linear-gradient(135deg, #00E5FF, #2196F3);
+        .submenu .small {
+            font-size: 12px;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            white-space: normal;
+            overflow: visible;
+            flex: 1;
+            line-height: 1.2;
         }
+        
+        .submenu-indicator {
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+        
+        .submenu-indicator.rotated {
+            transform: rotate(45deg);
+            opacity: 1;
+        }
+        
+        .sidebar nav a:hover .submenu-indicator {
+            opacity: 1;
+        }
+
+        /* Submenu styling - already defined above */
 
         /* Mobile menu toggle button */
         .mobile-menu-toggle {
@@ -279,212 +470,235 @@
         }
     </style>
     
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:200px;height:80px;object-fit:contain;border-radius:8px;max-width:100%;">
+    <div class="d-flex align-items-center justify-content-center mb-3" style="overflow: hidden;">
+        <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:180px;height:70px;object-fit:contain;border-radius:8px;max-width:100%;">
     </div>
 
-    <div class="grow" style="overflow-y: auto;">
-        <nav class="d-flex flex-column gap-2">
+    <div class="grow" style="overflow-y: auto; overflow-x: hidden;">
+        <nav class="d-flex flex-column gap-1" style="width: 100%; overflow: hidden;">
             @php
                 $user = auth()->user();
                 $isCashier = $user && $user->userType && $user->userType->name === 'Cashier';
                 $dashboardRoute = $isCashier ? route('cashier.dashboard') : route('dashboard');
                 $dashboardActive = $isCashier ? request()->routeIs('cashier.dashboard') : request()->routeIs('dashboard');
             @endphp
-            <a href="{{ $dashboardRoute }}" class="{{ $dashboardActive ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
-                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 9.5L12 3l9 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <a href="{{ $dashboardRoute }}" class="{{ $dashboardActive ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
                 </span>
                 <span class="fw-semibold">Dashboard</span>
             </a>
             
-            <div class="section-label">Activity Data & Targets</div>
+            <div class="section-label">OPERATIONS</div>
             
             @canAccess('products','view')
-            <div>
-                @php
-                    $isProductsActive = request()->routeIs('superadmin.products.*') || request()->routeIs('superadmin.categories.*');
-                @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isProductsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('productsMenu', event); return false;">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.586 2.586a2 2 0 0 0-2.828 0L2 10.172V20h9.828l7.586-7.586a2 2 0 0 0 0-2.828l-7.414-7.414zM6 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
-                    </span>
-                    <span>Products</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isProductsActive ? 'show' : '' }}" id="productsMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">All Products</span>
-                        </a>
-                        <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Product Category</span>
-                        </a>
-                    </div>
+            @php
+                $isProductsActive = request()->routeIs('superadmin.products.*') || request()->routeIs('superadmin.categories.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isProductsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('productsMenu', event); return false;">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                </span>
+                <span>Products</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isProductsActive ? 'show' : '' }}" id="productsMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">All Products</span>
+                    </a>
+                    <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Product Category</span>
+                    </a>
                 </div>
             </div>
             @endcanAccess
             
             @canAccess('purchases','view')
-            <a href="{{ route('superadmin.purchases.index') }}" class="{{ request()->routeIs('superadmin.purchases.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
-                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6h15l-1.5 9h-12L6 6z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="18" cy="19" r="1" fill="currentColor"/></svg>
+            <a href="{{ route('superadmin.purchases.index') }}" class="{{ request()->routeIs('superadmin.purchases.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                    </svg>
                 </span>
                 <span>Purchase</span>
             </a>
             @endcanAccess
             
             @canAccess('inventory','view')
-            <div>
-                @php
-                    $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('superadmin.stocktransfer.*');
-                @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 2H8C6.9 2 6 2.9 6 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-4 18c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H9v-2h6v2z"/></svg>
-                    </span>
-                    <span>Inventory</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isInventoryActive ? 'show' : '' }}" id="inventoryMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Report</span>
-                        </a>
-                        <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Stock In</span>
-                        </a>
-                        <a href="{{ route('superadmin.stocktransfer.index') }}" class="{{ request()->routeIs('superadmin.stocktransfer.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Stock Transfer (Branch to Branch)</span>
-                        </a>
-                    </div>
+            @php
+                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('superadmin.stocktransfer.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                </span>
+                <span>Inventory</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isInventoryActive ? 'show' : '' }}" id="inventoryMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Report</span>
+                    </a>
+                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Stock In</span>
+                    </a>
+                    <a href="{{ route('superadmin.stocktransfer.index') }}" class="{{ request()->routeIs('superadmin.stocktransfer.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Stock Transfer (Branch to Branch)</span>
+                    </a>
                 </div>
             </div>
             @endcanAccess
             
             @canAccess('sales','view')
-            <div>
-                @php
-                    $isSalesActive = request()->routeIs('superadmin.admin.sales.*');
-                @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isSalesActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('salesMenu', event); return false;">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51"/></svg>
-                    </span>
-                    <span>Sales</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isSalesActive ? 'show' : '' }}" id="salesMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.admin.sales.index') }}" class="{{ request()->routeIs('superadmin.admin.sales.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Sales</span>
-                        </a>
-                        <a href="{{ route('superadmin.admin.refunds.index') }}" class="{{ request()->routeIs('superadmin.admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Refund/Return</span>
-                        </a>
-                        <a href="{{ route('superadmin.admin.credits.index') }}" class="{{ request()->routeIs('superadmin.admin.credits.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Credit</span>
-                        </a>
-                    </div>
+            @php
+                $isSalesActive = request()->routeIs('superadmin.admin.sales.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isSalesActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('salesMenu', event); return false;">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </span>
+                <span>Sales</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isSalesActive ? 'show' : '' }}" id="salesMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.admin.sales.index') }}" class="{{ request()->routeIs('superadmin.admin.sales.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Sales</span>
+                    </a>
+                    <a href="{{ route('superadmin.admin.refunds.index') }}" class="{{ request()->routeIs('superadmin.admin.refunds.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Refund/Return</span>
+                    </a>
+                    <a href="{{ route('superadmin.admin.credits.index') }}" class="{{ request()->routeIs('superadmin.admin.credits.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Credit</span>
+                    </a>
                 </div>
             </div>
             @endcanAccess
 
-            <div class="section-label">Masters</div>
+            <div class="section-label">MANAGEMENT</div>
             
             {{-- Expenses Link --}}
-            <a href="{{ route('superadmin.admin.expenses.index') }}" class="{{ request()->routeIs('superadmin.admin.expenses.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
-                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 18h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <a href="{{ route('superadmin.admin.expenses.index') }}" class="{{ request()->routeIs('superadmin.admin.expenses.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 0h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                    </svg>
                 </span>
                 <span>Expenses</span>
             </a>
 
-            <div>
-                @php $isCustomerActive = false; @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isCustomerActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('customerMenu', event); return false;">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"/><path d="M2 22a8 8 0 0 1 16 0"/></svg>
-                    </span>
-                    <span>Customer</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isCustomerActive ? 'show' : '' }}" id="customerMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.admin.customers.index') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Customers</span></a>
-                        <a href="{{ route('superadmin.admin.customers.credit-limits') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Credit Limits</span></a>
-                        <a href="{{ route('superadmin.admin.customers.payment-history') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Payment History</span></a>
-                        <a href="{{ route('superadmin.admin.customers.aging-reports') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Aging Reports</span></a>
-                    </div>
+            @php $isCustomerActive = false; @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isCustomerActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('customerMenu', event); return false;">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </span>
+                <span>Customers</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isCustomerActive ? 'show' : '' }}" id="customerMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.admin.customers.index') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Customers</span></a>
+                    <a href="{{ route('superadmin.admin.customers.credit-limits') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Credit Limits</span></a>
+                    <a href="{{ route('superadmin.admin.customers.payment-history') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Payment History</span></a>
+                    <a href="{{ route('superadmin.admin.customers.aging-reports') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Aging Reports</span></a>
                 </div>
             </div>
 
-            <a href="{{ route('superadmin.admin.reports.index') }}" class="{{ request()->routeIs('superadmin.admin.reports.*') ? 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none' }}">
-                <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                    <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="section-label">ANALYTICS</div>
+            
+            <a href="{{ route('superadmin.admin.reports.index') }}" class="{{ request()->routeIs('superadmin.admin.reports.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6m0 0V8a2 2 0 012-2h4a2 2 0 012 2v6m0 0V8a2 2 0 012-2h4a2 2 0 012 2v6"></path>
+                    </svg>
                 </span>
                 <span>Reports</span>
             </a>
 
-            <div class="section-label">Users & Roles</div>
+            <div class="section-label">ADMINISTRATION</div>
             
             @canAccess('user_management','view')
-            <div>
-                @php
-                    $isUserMgmtActive = request()->routeIs('superadmin.admin.users.*') || request()->routeIs('superadmin.admin.access.*');
-                @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isUserMgmtActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('userMgmtMenu', event); return false;">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 22a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 10v-2m-1 1h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </span>
-                    <span>User Management</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isUserMgmtActive ? 'show' : '' }}" id="userMgmtMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.admin.access.index') }}" class="{{ request()->routeIs('superadmin.admin.access.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Access Permission</span>
-                        </a>
-                        <a href="{{ route('superadmin.admin.users.create') }}" class="{{ request()->routeIs('superadmin.admin.users.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Create Account</span>
-                        </a>
-                        <a href="{{ route('superadmin.admin.access.logs') }}" class="{{ request()->routeIs('superadmin.admin.access.logs') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Access Logs</span>
-                        </a>
-                    </div>
+            @php
+                $isUserMgmtActive = request()->routeIs('superadmin.admin.users.*') || request()->routeIs('superadmin.admin.access.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isUserMgmtActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('userMgmtMenu', event); return false;">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </span>
+                <span>Users & Roles</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isUserMgmtActive ? 'show' : '' }}" id="userMgmtMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.admin.access.index') }}" class="{{ request()->routeIs('superadmin.admin.access.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Access Permission</span>
+                    </a>
+                    <a href="{{ route('superadmin.admin.users.create') }}" class="{{ request()->routeIs('superadmin.admin.users.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Create Account</span>
+                    </a>
+                    <a href="{{ route('superadmin.admin.access.logs') }}" class="{{ request()->routeIs('superadmin.admin.access.logs') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Access Logs</span>
+                    </a>
                 </div>
             </div>
             @endcanAccess
 
-            <div>
-                @php
-                    $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
-                @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
-                        <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51"/></svg>
-                    </span>
-                    <span>Settings</span>
-                    <svg class="icon ms-auto submenu-arrow" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6"/></svg>
-                </a>
-                <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
-                    <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Branch</span>
-                        </a>
-                        <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Brands</span>
-                        </a>
-                        <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Unit Types</span>
-                        </a>
-                        <a href="#" class="d-flex gap-2 align-items-center py-2 text-decoration-none">
-                            <span class="small">Tax</span>
-                        </a>
-                        <a href="#" class="d-flex gap-2 align-items-center py-2 text-decoration-none">
-                            <span class="small">Receipt Templates</span>
-                        </a>
-                    </div>
+            @php
+                $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
+            @endphp
+            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
+                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </span>
+                <span>System Settings</span>
+                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </a>
+            <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
+                <div class="d-flex flex-column ms-4 mt-1">
+                    <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Branch</span>
+                    </a>
+                    <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Brands</span>
+                    </a>
+                    <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Unit Types</span>
+                    </a>
+                    <a href="#" class="d-flex gap-3 align-items-center py-2 text-decoration-none">
+                        <span class="small">Tax</span>
+                    </a>
+                    <a href="#" class="d-flex gap-3 align-items-center py-2 text-decoration-none">
+                        <span class="small">Receipt Templates</span>
+                    </a>
                 </div>
             </div>
         </nav>
@@ -512,8 +726,11 @@
         }
     @endphp
 
+    <!-- HR line above account -->
+    <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 0; margin-bottom: 12px;">
+    
     <div class="dropdown">
-        <button class="btn dropdown-toggle d-flex align-items-center gap-2 w-100 text-start p-2 rounded-lg" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <button class="d-flex align-items-center gap-2 w-100 text-start p-2" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.9);">
             @if(!empty($sidebarAvatarUrl))
                 <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover">
             @else
@@ -522,7 +739,6 @@
             <div class="ms-2 text-start">
                 <div class="fw-semibold username">{{ $sidebarUser->name ?? 'User' }}</div>
             </div>
-            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" style="margin-left:6px"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
 
         <ul class="dropdown-menu user-dropdown-menu" aria-labelledby="sidebarUserDropdown">
@@ -546,6 +762,12 @@
                     <span>Profile</span>
                 </a>
             </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('profile.edit') }}#password">
+                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                    <span>Change Password</span>
+                </a>
+            </li>
             <li><hr class="dropdown-divider"></li>
             <li>
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
@@ -565,7 +787,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Set initial arrow states for active submenus
     document.querySelectorAll('.submenu.show').forEach(submenu => {
-        const arrow = submenu.previousElementSibling?.querySelector('.submenu-arrow');
+        const arrow = submenu.previousElementSibling?.querySelector('.submenu-indicator');
         if (arrow) arrow.classList.add('rotated');
     });
     
@@ -579,7 +801,7 @@ function toggleSubmenu(menuId, event) {
     event.stopPropagation();
     
     const submenu = document.getElementById(menuId);
-    const arrow = event.currentTarget.querySelector('.submenu-arrow');
+    const arrow = event.currentTarget.querySelector('.submenu-indicator');
     
     if (submenu.classList.contains('show')) {
         // Close submenu
@@ -594,7 +816,7 @@ function toggleSubmenu(menuId, event) {
         });
         
         // Reset all arrows
-        document.querySelectorAll('.submenu-arrow').forEach(arr => {
+        document.querySelectorAll('.submenu-indicator').forEach(arr => {
             arr.classList.remove('rotated');
         });
         

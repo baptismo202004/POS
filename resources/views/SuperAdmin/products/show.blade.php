@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@include('layouts.theme-base')
+
 @section('content')
 <div class="d-flex align-items-center justify-content-center" style="min-height: calc(100vh - 60px); padding: 30px;">
     <div class="p-4 card-rounded shadow-sm bg-white" style="width: 100%; max-width: 950px;">

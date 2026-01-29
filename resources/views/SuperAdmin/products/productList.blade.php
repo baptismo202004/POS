@@ -8,6 +8,8 @@
 @extends('layouts.app')
 @section('title', 'Products')
 
+@include('layouts.theme-base')
+
 @section('content')
 
     <div class="d-flex min-vh-100">

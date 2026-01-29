@@ -5,17 +5,12 @@
 <div class="p-3 p-lg-4">
     <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
         <div>
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="m-0">Sales Dashboard</h4>
-                            <p class="mb-0 text-muted">Overview of your sales performance</p>
-                        </div>
-                        <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
-                    </div>
+            <h4 class="m-0">Sales Dashboard</h4>
+            <p class="mb-0 text-muted">Overview of your sales performance</p>
+        </div>
+        <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
+    </div>
+    <div class="card card-rounded shadow-sm">
                     <div class="card-body">
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
@@ -130,8 +125,6 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
 
     <!-- Refund Modal -->
     <div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">

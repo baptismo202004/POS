@@ -1,222 +1,218 @@
 @extends('layouts.app')
 @section('title', 'Access Permissions')
 
+@include('layouts.theme-base')
+
 @section('content')
-<div class="p-4">
+<div class="container-fluid">
     <!-- Page Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="h3 mb-0">Access Permissions</h1>
-                <p class="text-muted">Manage user roles and permissions</p>
-            </div>
-            <div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                    <i class="fas fa-user-plus me-2"></i>Add New User
-                </button>
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
-                    <i class="fas fa-shield-alt me-2"></i>Add Role
-                </button>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <div>
+            <h1>Access Permissions</h1>
+            <p class="text-muted mb-0">Manage user roles and permissions</p>
         </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fas fa-user-plus me-2"></i>Add New User
+            </button>
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+                <i class="fas fa-shield-alt me-2"></i>Add Role
+            </button>
+        </div>
+    </div>
 
-        <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="grow">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Users</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $users->count() }}</div>
-                            </div>
-                            <div class="ms-3">
-                                <div class="bg-primary bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-users text-primary"></i>
-                                </div>
-                            </div>
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stats-card border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="grow">
+                            <div class="stats-label">Total Users</div>
+                            <div class="stats-value">{{ $users->count() }}</div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="grow">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Roles</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $roles->count() }}</div>
-                            </div>
-                            <div class="ms-3">
-                                <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-user-shield text-success"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="grow">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Permissions</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ count($permissions) }}</div>
-                            </div>
-                            <div class="ms-3">
-                                <div class="bg-info bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-key text-info"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="grow">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Today</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $users->where('status', 'active')->count() ?: $users->count() }}</div>
-                            </div>
-                            <div class="ms-3">
-                                <div class="bg-warning bg-opacity-10 rounded-circle p-3">
-                                    <i class="fas fa-user-check text-warning"></i>
-                                </div>
-                            </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="row">
-            <!-- Users Section -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white border-bottom py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-users me-2"></i>Users Management
-                            </h6>
-                            <div class="input-group input-group-sm" style="width: 250px;">
-                                <input type="text" class="form-control" id="userSearch" placeholder="Search users...">
-                                <button class="btn btn-outline-secondary" type="button">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stats-card border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="grow">
+                            <div class="stats-label">Total Roles</div>
+                            <div class="stats-value">{{ $roles->count() }}</div>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-user-shield"></i>
                         </div>
                     </div>
-                    <div class="card-body">
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stats-card border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="grow">
+                            <div class="stats-label">Permissions</div>
+                            <div class="stats-value">{{ count($permissions) }}</div>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stats-card border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="grow">
+                            <div class="stats-label">Active Today</div>
+                            <div class="stats-value">{{ $users->where('status', 'active')->count() ?: $users->count() }}</div>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Users Section -->
+        <div class="col-lg-6">
+            <div class="card content-card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6>
+                            <i class="fas fa-users me-2"></i>Users Management
+                        </h6>
+                        <div class="search-input-group" style="width: 250px; position: relative;">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" class="form-control form-control-sm" id="userSearch" placeholder="Search users...">
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($users as $user)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-3">
+                                                    {{ strtoupper(substr($user->name, 0, 1)) }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">{{ $user->name }}</div>
+                                                    <small class="text-muted">{{ $user->email }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if($user->userType)
+                                                <span class="badge badge-primary">{{ $user->userType->name }}</span>
+                                            @else
+                                                <span class="badge badge-secondary">No Role</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success">{{ $user->status ?? 'Active' }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="editUser({{ $user->id }})" title="Edit User">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteUser({{ $user->id }})" title="Delete User">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4">
+                                            <div class="empty-state">
+                                                <i class="fas fa-users"></i>
+                                                <p>No users found</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles & Permissions Section -->
+        <div class="col-lg-6">
+            <div class="card content-card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6>
+                            <i class="fas fa-shield-alt me-2"></i>Roles & Permissions
+                        </h6>
+                        <select class="form-select form-select-sm" id="roleSelect" style="width: 200px;">
+                            <option value="">Select Role</option>
+                            @foreach($roles as $role)
+                                <option value="{{ $role->id }}">{{ $role->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="permissionsContainer" style="display: none;">
+                        <div class="mb-3">
+                            <h6 class="text-muted fw-bold">Module Permissions</h6>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table table-hover" id="usersTable">
+                            <table class="table table-sm permissions-table">
                                 <thead>
                                     <tr>
-                                        <th>User</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        <th>Module</th>
+                                        <th class="text-center">View</th>
+                                        <th class="text-center">Create</th>
+                                        <th class="text-center">Edit</th>
+                                        <th class="text-center">Delete</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    @forelse($users as $user)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-size: 14px; font-weight: 600;">
-                                                        {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                    </div>
-                                                    <div>
-                                                        <div class="fw-bold text-dark">{{ $user->name }}</div>
-                                                        <small class="text-muted">{{ $user->email }}</small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @if($user->userType)
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">{{ $user->userType->name }}</span>
-                                                @else
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2">No Role</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">{{ $user->status ?? 'Active' }}</span>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group btn-group-sm" role="group">
-                                                    <button class="btn btn-outline-primary btn-sm" onclick="editUser({{ $user->id }})" title="Edit User">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteUser({{ $user->id }})" title="Delete User">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted">No users found</td>
-                                        </tr>
-                                    @endforelse
+                                <tbody id="permissionsTableBody">
+                                    <!-- Permissions will be loaded here -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Roles & Permissions Section -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white border-bottom py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-shield-alt me-2"></i>Roles & Permissions
-                            </h6>
-                            <select class="form-select form-select-sm" id="roleSelect" style="width: 200px;">
-                                <option value="">Select Role</option>
-                                @foreach($roles as $role)
-                                    <option value="{{ $role->id }}">{{ $role->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div id="permissionsContainer" style="display: none;">
-                            <div class="mb-3">
-                                <h6 class="text-muted">Module Permissions</h6>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="border-0">Module</th>
-                                            <th class="border-0 text-center">View</th>
-                                            <th class="border-0 text-center">Create</th>
-                                            <th class="border-0 text-center">Edit</th>
-                                            <th class="border-0 text-center">Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="permissionsTableBody">
-                                        <!-- Permissions will be loaded here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div id="noRoleSelected" class="text-center text-muted py-5">
-                            <i class="fas fa-shield-alt fa-3x mb-3"></i>
-                            <p>Select a role to view and manage permissions</p>
-                        </div>
+                    <div id="noRoleSelected" class="empty-state">
+                        <i class="fas fa-shield-alt"></i>
+                        <p>Select a role to view and manage permissions</p>
                     </div>
                 </div>
             </div>
         </div>
-
+    </div>
 
     <!-- Add User Modal -->
     <div class="modal fade" id="addUserModal" tabindex="-1">
@@ -288,6 +284,8 @@
             </div>
         </div>
     </div>
+</div>
+@endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -320,7 +318,6 @@ document.getElementById('roleSelect').addEventListener('change', function() {
 function loadPermissions(roleId) {
     console.log(`Loading permissions for role ID: ${roleId}`);
     
-    // Fetch actual permissions from the database
     fetch(`/superadmin/admin/access/permissions/${roleId}`)
         .then(response => response.json())
         .then(data => {
@@ -330,13 +327,11 @@ function loadPermissions(roleId) {
                 displayPermissions(roleId, data.permissions);
             } else {
                 console.error('Failed to load permissions:', data.message);
-                // Fallback to default permissions
                 displayPermissions(roleId, getDefaultPermissions());
             }
         })
         .catch(error => {
             console.error('Error loading permissions:', error);
-            // Fallback to default permissions
             displayPermissions(roleId, getDefaultPermissions());
         });
 }
@@ -408,24 +403,24 @@ function displayPermissions(roleId, permissions) {
     permissions.forEach(perm => {
         const row = `
             <tr>
-                <td><strong class="text-dark">${moduleLabels[perm.module] || perm.module}</strong></td>
+                <td class="module-name">${moduleLabels[perm.module] || perm.module}</td>
                 <td class="text-center">
-                    <div class="form-check form-check-inline">
+                    <div class="form-check form-check-inline d-inline-block">
                         <input type="checkbox" class="form-check-input" ${perm.view ? 'checked' : ''} onchange="updatePermission(${roleId}, '${perm.module}', 'view', this.checked)">
                     </div>
                 </td>
                 <td class="text-center">
-                    <div class="form-check form-check-inline">
+                    <div class="form-check form-check-inline d-inline-block">
                         <input type="checkbox" class="form-check-input" ${perm.create ? 'checked' : ''} onchange="updatePermission(${roleId}, '${perm.module}', 'create', this.checked)">
                     </div>
                 </td>
                 <td class="text-center">
-                    <div class="form-check form-check-inline">
+                    <div class="form-check form-check-inline d-inline-block">
                         <input type="checkbox" class="form-check-input" ${perm.edit ? 'checked' : ''} onchange="updatePermission(${roleId}, '${perm.module}', 'edit', this.checked)">
                     </div>
                 </td>
                 <td class="text-center">
-                    <div class="form-check form-check-inline">
+                    <div class="form-check form-check-inline d-inline-block">
                         <input type="checkbox" class="form-check-input" ${perm.delete ? 'checked' : ''} onchange="updatePermission(${roleId}, '${perm.module}', 'delete', this.checked)">
                     </div>
                 </td>
@@ -438,7 +433,6 @@ function displayPermissions(roleId, permissions) {
 function updatePermission(roleId, module, action, checked) {
     console.log(`Updating permission: Role ${roleId}, Module ${module}, Action ${action}, Checked ${checked}`);
     
-    // Store the checkbox element to use it later
     const checkbox = event.target;
     
     fetch(`/superadmin/admin/access/permissions/update`, {
@@ -459,7 +453,6 @@ function updatePermission(roleId, module, action, checked) {
     .then(data => {
         if (data.success) {
             console.log('Permission updated successfully:', data.message);
-            // Show success message
             Swal.fire({
                 icon: 'success',
                 title: 'Permission Updated',
@@ -470,13 +463,11 @@ function updatePermission(roleId, module, action, checked) {
                 timer: 2000
             });
             
-            // Reload permissions to reflect the change immediately
             setTimeout(() => {
                 loadPermissions(roleId);
             }, 500);
         } else {
             console.error('Failed to update permission:', data.message);
-            // Revert the checkbox state
             checkbox.checked = !checked;
             Swal.fire({
                 icon: 'error',
@@ -491,7 +482,6 @@ function updatePermission(roleId, module, action, checked) {
     })
     .catch(error => {
         console.error('Error updating permission:', error);
-        // Revert the checkbox state
         checkbox.checked = !checked;
         Swal.fire({
             icon: 'error',
@@ -584,7 +574,6 @@ function saveRole() {
 }
 
 function editUser(userId) {
-    // Fetch user data and populate edit modal
     fetch(`/admin/access/users/${userId}`, {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -599,7 +588,6 @@ function editUser(userId) {
     })
     .then(data => {
         if (data.success) {
-            // Create edit user modal dynamically
             const modalHtml = `
                 <div class="modal fade" id="editUserModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -637,13 +625,11 @@ function editUser(userId) {
                 </div>
             `;
             
-            // Remove existing modal if any
             const existingModal = document.getElementById('editUserModal');
             if (existingModal) {
                 existingModal.remove();
             }
             
-            // Add modal to body and show
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
             modal.show();
@@ -735,8 +721,8 @@ function deleteUser(userId) {
         text: "You won't be able to revert this!",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#E91E63',
+        cancelButtonColor: '#2196F3',
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
@@ -772,4 +758,4 @@ function deleteUser(userId) {
     });
 }
 </script>
-@endsection
+@endpush

@@ -758,6 +758,12 @@ Route::middleware('auth')->group(function () {
             Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
             Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
+
+            // Customer routes
+            Route::get('customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');
+            Route::get('customers/credit-limits', [\App\Http\Controllers\Admin\CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
+            Route::get('customers/payment-history', [\App\Http\Controllers\Admin\CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
+            Route::get('customers/aging-reports', [\App\Http\Controllers\Admin\CustomerController::class, 'agingReports'])->name('customers.aging-reports');
         });
     });
 });
