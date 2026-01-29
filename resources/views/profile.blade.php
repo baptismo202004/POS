@@ -1,94 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+@extends('layouts.app')
+@section('title', 'Profile')
 
-    <style>
-        body { font-family: Inter, sans-serif; background: #ffffff; }
-        .sidebar { width: 220px; }
-        .avatar-xl { width:110px;height:110px;border-radius:14px;object-fit:cover; }
-        .card-soft { background:#f8fafc;border-radius:12px;padding:16px }
-        .activity { border-bottom:1px solid #eef2f7;padding:10px 0 }
-          /* Avatar with camera */
-        .avatar-wrapper {
-            position: relative;
-            display: inline-block;
-        }
+@section('content')
+<div class="container-fluid">
+    <div class="p-4 card-rounded shadow-sm bg-white">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+        </div>
 
-        .camera-btn {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            width: 36px;
-            height: 36px;
-            background: #ffffff;
-            border-radius: 50%;
-            border: 1px solid #dee2e6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-
-        .camera-btn i {
-            font-size: 18px;
-        }
-    </style>
-</head>
-<body>
-<div class="d-flex min-vh-100">
-
-    @include('layouts.AdminSidebar')
-
-    <main class="flex-fill p-4">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
+        @endif
 
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-            @if($errors->any())
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="card p-3 card-soft">
-                        
-                        <div class="text-center">
-                            @php $user = auth()->user(); @endphp
-                            @if(!empty($avatarUrl))
-                                <div class="avatar-wrapper mb-3">
-                                    <img src="{{ $avatarUrl }}" alt="avatar" class="avatar-xl">
-                                    <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
-                                </div>
-                            @else
-                                <div class="avatar-wrapper mb-3">
-                                    <div class="avatar-xl d-inline-flex align-items-center justify-content-center bg-white text-dark border border-secondary"></div>
-                                    <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
-                                </div>
-                            @endif
-                            <div class="small text-muted mb-3">
-                                <label for="avatarInput" style="cursor:pointer">Change Profile Picture</label>
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card p-3 card-soft">
+                    
+                    <div class="text-center">
+                        @php $user = auth()->user(); @endphp
+                        @if(!empty($avatarUrl))
+                            <div class="avatar-wrapper mb-3">
+                                <img src="{{ $avatarUrl }}" alt="avatar" class="avatar-xl">
+                                <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
                             </div>
-                            <h5 class="mb-0">{{ $user->name }}</h5>
-                            <small class="text-muted">{{ $user->email }}</small>
+                        @else
+                            <div class="avatar-wrapper mb-3">
+                                <div class="avatar-xl d-inline-flex align-items-center justify-content-center bg-white text-dark border border-secondary"></div>
+                                <label for="avatarInput" class="camera-btn" title="Change picture"><i class="bi bi-camera"></i></label>
+                            </div>
+                        @endif
+                        <div class="small text-muted mb-3">
+                            <label for="avatarInput" style="cursor:pointer">Change Profile Picture</label>
                         </div>
-                        <hr>
-                        <form id="avatarForm" action="{{ url('/profile/avatar') }}" method="POST" enctype="multipart/form-data">
-                            @csrf
-                            <div class="mb-3">
-                                  <input type="file" id="avatarInput" name="avatar" class="d-none" accept="image/*">
+                        <h5 class="mb-0">{{ $user->name }}</h5>
+                        <small class="text-muted">{{ $user->email }}</small>
+                    </div>
+                    <hr>
+                    <form id="avatarForm" action="{{ url('/profile/avatar') }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <div class="mb-3">
+                              <input type="file" id="avatarInput" name="avatar" class="d-none" accept="image/*">
                             </div>
                             <button class="btn btn-primary w-100" type="submit">Upload</button>
                         </form>
@@ -217,5 +176,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-</body>
-</html>
+@endsection
+
+@push('styles')
+<style>
+    .avatar-xl { width:110px;height:110px;border-radius:14px;object-fit:cover; }
+    .card-soft { background:#f8fafc;border-radius:12px;padding:16px }
+    .avatar-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .camera-btn {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        width: 36px;
+        height: 36px;
+        background: #ffffff;
+        border-radius: 50%;
+        border: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+</style>
+@endpush

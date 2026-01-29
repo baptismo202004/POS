@@ -25,6 +25,7 @@ class Product extends Model
         'warranty_coverage_months',
         'voltage_specs',
         'status',
+        'branch_id',
     ];
 
     // Relationships
@@ -46,6 +47,11 @@ class Product extends Model
     public function unitTypes()
     {
         return $this->belongsToMany(UnitType::class, 'product_unit_type');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function serials()

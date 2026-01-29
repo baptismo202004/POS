@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Models\User;
 use App\Models\UserType;
+use App\Models\Branch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,7 +20,8 @@ class UserController extends Controller
     public function create()
     {
         $userTypes = UserType::orderBy('name')->get();
-        return view('Admin.users.create', compact('userTypes'));
+        $branches = Branch::where('status', 'active')->orderBy('branch_name')->get();
+        return view('Admin.users.create', compact('userTypes', 'branches'));
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
@@ -38,6 +40,7 @@ class UserController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'user_type_id' => $data['user_type_id'],
+            'branch_id' => $data['branch_id'] ?? null,
             'status' => $data['status'] ?? 'active',
             'profile_picture' => $data['profile_picture'] ?? null,
         ]);

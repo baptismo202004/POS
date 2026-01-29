@@ -1,29 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Expenses - SuperAdmin</title>
+@extends('layouts.app')
+@section('title', 'Create User')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-        .table th {
-            font-weight: 600;
-            color: #475569;
-            background-color: #f8fafc;
-        }
-    </style>
-</head>
-<body class="bg-light">
+@section('content')
 
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
@@ -127,5 +107,4 @@
 
     <!-- Bootstrap JS bundle (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+@endsection

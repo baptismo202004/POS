@@ -16,8 +16,6 @@
 <body class="bg-light">
 
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
 
         <main class="flex-fill p-4">
             <div class="container-fluid">

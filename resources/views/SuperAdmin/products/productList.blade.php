@@ -5,34 +5,12 @@
     $isEdit = isset($product);
 @endphp
 
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Product List - SuperAdmin</title>
+@extends('layouts.app')
+@section('title', 'Products')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- jQuery + Select2 for searchable creatable selects -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .theme-bg{ background-color: var(--theme-color) !important; }
-        .theme-border{ border-color: var(--theme-color) !important; }
-        .theme-text{ color: var(--theme-color) !important; }
-        /* small helper to mix Bootstrap and tailwind spacing */
-        .card-rounded{ border-radius: 12px; }
-    </style>
-</head>
-<body class="bg-white">
+@section('content')
 
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
@@ -287,5 +265,5 @@
 
     <!-- Bootstrap JS bundle (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+@endsection
+

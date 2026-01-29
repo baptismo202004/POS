@@ -1,36 +1,16 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Inventory - SuperAdmin</title>
+@extends('layouts.app')
+@section('title', 'Inventory')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
-        .table th {
-            font-weight: 600;
-            color: #475569;
-            background-color: #f8fafc;
-        }
-    </style>
-</head>
-<body class="bg-light">
-
-    <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                @if(session('success'))
-                    <div class="alert alert-success">{{ session('success') }}</div>
-                @endif
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+@section('content')
+<div class="container-fluid">
+    <div class="p-4 card-rounded shadow-sm bg-white">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        <div class="card card-rounded shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="m-0">Inventory</h4>
+                <input type="text" id="searchInput" class="form-control w-25" placeholder="Search products..." value="{{ request('search') }}">
                         <h4 class="m-0">Inventory</h4>
                         <input type="text" id="searchInput" class="form-control w-25" placeholder="Search products..." value="{{ request('search') }}">
                     </div>
@@ -146,5 +126,4 @@
             });
         });
     </script>
-</body>
-</html>
+@endsection

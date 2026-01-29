@@ -1,17 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Access Logs - Admin</title>
+@extends('layouts.app')
+@section('title', 'Access Logs')
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <style>
-        :root{ --theme-color: #2563eb; }
-        .card-rounded{ border-radius: 12px; }
+@section('content')
+<div class="container-fluid">
+    <div class="p-4 card-rounded shadow-sm bg-white">
         .table th {
             font-weight: 600;
             color: #475569;
@@ -30,8 +22,6 @@
 <body class="bg-light">
 
     <div class="d-flex min-vh-100">
-        {{-- Sidebar --}}
-        @include('layouts.AdminSidebar')
 
         <main class="flex-fill p-4">
             <div class="container-fluid">
@@ -181,6 +171,5 @@
         console.log('Auto-refreshing access logs...');
         // You can implement AJAX refresh here
     }, 300000);
-    </script>
-</body>
-</html>
+</script>
+@endsection
