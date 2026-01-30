@@ -25,7 +25,7 @@ class PosController extends Controller
             'total' => 'required|numeric|min:0',
             'payment_method' => 'required|in:cash,credit',
             'customer_name' => 'nullable|string|max:255',
-            'due_date' => 'nullable|required_if:payment_method,credit|date|after:today',
+            'due_date' => 'nullable|required_if:payment_method,credit|date',
             'notes' => 'nullable|string|max:1000',
         ]);
 

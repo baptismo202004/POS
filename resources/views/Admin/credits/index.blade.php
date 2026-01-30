@@ -113,7 +113,7 @@
                         @forelse($credits as $credit)
                             <tr>
                                 <td>{{ $credit->created_at->format('M d, Y') }}</td>
-                                <td>{{ $credit->customer->name ?? 'Walk-in Customer' }}</td>
+                                <td>{{ $credit->customer->name ?? $credit->customer_name ?? 'Walk-in Customer' }}</td>
                                 <td>₱{{ number_format($credit->credit_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->paid_amount, 2) }}</td>
                                 <td>₱{{ number_format($credit->remaining_balance, 2) }}</td>

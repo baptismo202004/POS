@@ -421,8 +421,8 @@
                                                         <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
                                                     </div>
                                                     <div class="mb-2">
-                                                        <label class="form-label">Due Date:</label>
-                                                        <input type="date" class="form-control" id="credit_due_date">
+                                                        <label class="form-label">Date:</label>
+                                                        <input type="date" class="form-control" id="credit_due_date" value="{{ date('Y-m-d') }}">
                                                     </div>
                                                     <div class="mb-2">
                                                         <label class="form-label">Notes:</label>
@@ -774,6 +774,10 @@
                 if (data.success) {
                     cart = [];
                     updateCartDisplay();
+                    
+                    // Clear customer name field
+                    document.getElementById('customer_name').value = '';
+                    
                     Swal.fire({
                         icon: 'success',
                         title: 'Order Completed!',
@@ -901,11 +905,10 @@
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
             
-            // Set default due date to 30 days from now
+            // Set default due date to today
             const defaultDueDate = new Date();
-            defaultDueDate.setDate(defaultDueDate.getDate() + 30);
             dueDateInput.value = defaultDueDate.toISOString().split('T')[0];
-            dueDateInput.min = new Date(Date.now() + 86400000).toISOString().split('T')[0]; // Tomorrow
+            dueDateInput.min = new Date().toISOString().split('T')[0]; // Today
             
             paymentRadios.forEach(radio => {
                 radio.addEventListener('change', function() {

@@ -8,6 +8,7 @@ use App\Models\StockIn;
 use App\Models\Branch;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Credit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -184,6 +185,8 @@ class PosAdminController extends Controller
             $total = $data['total'] ?? 0;
             $paymentMethod = $data['payment_method'] ?? 'cash';
             $customerName = $data['customer_name'] ?? null;
+            $creditDueDate = $data['credit_due_date'] ?? null;
+            $creditNotes = $data['credit_notes'] ?? null;
 
             Log::info("[POS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
 
@@ -260,6 +263,24 @@ class PosAdminController extends Controller
                 ]);
                 
                 Log::info("[POS_STORE] Created sale item for product {$productId}");
+            }
+            
+            // Create credit record if payment method is credit
+            if ($paymentMethod === 'credit' && $creditDueDate) {
+                Credit::create([
+                    'customer_id' => null, // Walk-in customer
+                    'customer_name' => $customerName,
+                    'sale_id' => $sale->id,
+                    'cashier_id' => auth()->id(),
+                    'credit_amount' => $total,
+                    'paid_amount' => 0,
+                    'remaining_balance' => $total,
+                    'status' => 'active',
+                    'date' => $creditDueDate,
+                    'notes' => $creditNotes
+                ]);
+                
+                Log::info("[POS_STORE] Created credit record for sale #{$sale->id}");
             }
             
             DB::commit();

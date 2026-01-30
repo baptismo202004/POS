@@ -23,7 +23,7 @@
                                         </tr>
                                         <tr>
                                             <td><strong>Customer:</strong></td>
-                                            <td>{{ $credit->customer->name ?? 'Walk-in Customer' }}</td>
+                                            <td>{{ $credit->customer->name ?? $credit->customer_name ?? 'Walk-in Customer' }}</td>
                                         </tr>
                                         <tr>
                                             <td><strong>Credit Amount:</strong></td>
