@@ -764,6 +764,8 @@ Route::middleware('auth')->group(function () {
             Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
             Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
+            Route::post('credits/{credit}/update-name', [\App\Http\Controllers\Admin\CreditController::class, 'updateCustomerName'])->name('credits.update-name');
+            Route::post('credits/{credit}/update-customer', [\App\Http\Controllers\Admin\CreditController::class, 'updateWalkInCustomer'])->name('credits.update-customer');
 
             // Customer routes
             Route::get('customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');

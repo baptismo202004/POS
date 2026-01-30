@@ -184,11 +184,12 @@ class PosAdminController extends Controller
             $items = $data['items'] ?? [];
             $total = $data['total'] ?? 0;
             $paymentMethod = $data['payment_method'] ?? 'cash';
-            $customerName = $data['customer_name'] ?? null;
+            $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
             Log::info("[POS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
+            Log::info("[POS_STORE] Customer name: '" . $customerName . "'");
 
             DB::beginTransaction();
 
@@ -200,15 +201,21 @@ class PosAdminController extends Controller
             }
 
             // Create sale record with all required fields
-            $sale = Sale::create([
+            $saleData = [
                 'cashier_id' => auth()->id(),
                 'employee_id' => auth()->id(), // Use the numeric user ID
-                'customer_name' => $customerName, // Use customer name from request
                 'branch_id' => $branchId,
                 'total_amount' => $total,
                 'tax' => 0, // No tax for now
                 'payment_method' => $paymentMethod // Use payment method from request
-            ]);
+            ];
+            
+            // Only include customer_name if it's not null
+            if ($customerName !== null) {
+                $saleData['customer_name'] = $customerName;
+            }
+            
+            $sale = Sale::create($saleData);
 
             Log::info("[POS_STORE] Created sale record: {$sale->id}");
 

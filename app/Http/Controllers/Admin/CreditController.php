@@ -156,4 +156,50 @@ class CreditController extends Controller
         
         return response()->json(['success' => true, 'message' => 'Credit status updated successfully']);
     }
+    
+    public function updateCustomerName(Request $request, Credit $credit)
+    {
+        $validator = Validator::make($request->all(), [
+            'customer_name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $credit->update(['customer_name' => $request->customer_name]);
+            
+            return response()->json(['success' => true, 'message' => 'Customer name updated successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function updateWalkInCustomer(Request $request, Credit $credit)
+    {
+        $validator = Validator::make($request->all(), [
+            'customer_name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $credit->update([
+                'customer_name' => $request->customer_name,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'address' => $request->address,
+            ]);
+            
+            return response()->json(['success' => true, 'message' => 'Customer information updated successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

@@ -13,9 +13,46 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
+        // Get customers with their credit information
+        $customers = Customer::with(['credits' => function($query) {
+            $query->where('status', 'active');
+        }])->orderBy('created_at', 'desc')->paginate(20);
         
-        return view('admin.customers.index', compact('customers'));
+        // Get all credits to see what's in the database
+        $walkInCredits = Credit::orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        // Debug logging
+        \Log::info('Customers count: ' . $customers->count());
+        \Log::info('Credits count: ' . $walkInCredits->count());
+        \Log::info('Total credits in DB: ' . Credit::count());
+        
+        // Check if credits table exists and has data
+        try {
+            $creditTableExists = \Schema::hasTable('credits');
+            \Log::info('Credits table exists: ' . ($creditTableExists ? 'YES' : 'NO'));
+            
+            if ($creditTableExists) {
+                $totalCredits = \DB::table('credits')->count();
+                \Log::info('Total credits from DB::table: ' . $totalCredits);
+                
+                // Get some sample data
+                $sampleCredits = \DB::table('credits')->limit(3)->get();
+                foreach ($sampleCredits as $credit) {
+                    \Log::info('Sample credit: ' . json_encode($credit));
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error checking credits table: ' . $e->getMessage());
+        }
+        
+        // Log first credit details for debugging
+        if ($walkInCredits->count() > 0) {
+            \Log::info('First credit from model: ' . json_encode($walkInCredits->first()));
+        }
+        
+        return view('admin.customers.index', compact('customers', 'walkInCredits'));
     }
     
     public function update(Request $request, Customer $customer)
