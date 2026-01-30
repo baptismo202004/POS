@@ -126,11 +126,11 @@
             font-weight: 500;
             font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             letter-spacing: -0.01em;
-            color: rgba(255, 255, 255, 0.9); /* More dominant color */
+            color: rgba(255, 255, 255, 0.9);
             border-radius: 8px; 
-            min-height: 44px; /* Minimum 44px height */
-            padding: 12px; /* Consistent vertical spacing */
-            transition: all 0.18s ease; /* 150-200ms transition */
+            min-height: 44px;
+            padding: 0 10px;
+            transition: all 0.18s ease;
             position: relative;
             z-index: 1;
             white-space: normal;
@@ -140,26 +140,25 @@
             gap: 12px;
             cursor: pointer;
             margin: 0 !important;
-            padding: 12px !important;
-            padding-left: 12px !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
         }
         
         /* Force override any Bootstrap margins */
         .sidebar nav a.d-flex {
             margin: 0 !important;
-            padding: 10px !important;
-            padding-left: 10px !important;
+            padding: 0 10px !important;
+            gap: 12px !important;
         }
         
         /* Ensure icon badges are consistent */
         .sidebar nav a .icon-badge {
             margin: 0 !important;
-            padding: 0.35rem !important;
+            padding: 0 !important;
             flex-shrink: 0;
+            width: 32px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         /* Ensure submenu containers don't affect alignment */
@@ -170,7 +169,7 @@
         
         /* Override any potential Bootstrap spacing classes */
         .sidebar nav [class*="gap-"] {
-            gap: 12px !important;
+            gap: 10px !important;
         }
         
         .sidebar nav [class*="align-items-"] {
@@ -496,8 +495,8 @@
                 $dashboardRoute = $isCashier ? route('cashier.dashboard') : route('dashboard');
                 $dashboardActive = $isCashier ? request()->routeIs('cashier.dashboard') : request()->routeIs('dashboard');
             @endphp
-            <a href="{{ $dashboardRoute }}" class="{{ $dashboardActive ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a href="{{ $dashboardRoute }}" class="{{ $dashboardActive ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                     </svg>
@@ -511,8 +510,8 @@
             @php
                 $isProductsActive = request()->routeIs('superadmin.products.*') || request()->routeIs('superadmin.categories.*');
             @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isProductsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('productsMenu', event); return false;">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isProductsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('productsMenu', event); return false;">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                     </svg>
@@ -524,10 +523,10 @@
             </a>
             <div class="submenu {{ $isProductsActive ? 'show' : '' }}" id="productsMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">All Products</span>
                     </a>
-                    <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Product Category</span>
                     </a>
                 </div>
@@ -535,8 +534,8 @@
             @endcanAccess
             
             @canAccess('purchases','view')
-            <a href="{{ route('superadmin.purchases.index') }}" class="{{ request()->routeIs('superadmin.purchases.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a href="{{ route('superadmin.purchases.index') }}" class="{{ request()->routeIs('superadmin.purchases.*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
                     </svg>
@@ -549,8 +548,8 @@
             @php
                 $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('superadmin.stocktransfer.*');
             @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                     </svg>
@@ -562,13 +561,13 @@
             </a>
             <div class="submenu {{ $isInventoryActive ? 'show' : '' }}" id="inventoryMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Report</span>
                     </a>
-                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
                     </a>
-                    <a href="{{ route('superadmin.stocktransfer.index') }}" class="{{ request()->routeIs('superadmin.stocktransfer.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.stocktransfer.index') }}" class="{{ request()->routeIs('superadmin.stocktransfer.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock Transfer (Branch to Branch)</span>
                     </a>
                 </div>
@@ -579,8 +578,8 @@
             @php
                 $isSalesActive = request()->routeIs('superadmin.admin.sales.*');
             @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isSalesActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('salesMenu', event); return false;">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isSalesActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('salesMenu', event); return false;">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
@@ -592,13 +591,13 @@
             </a>
             <div class="submenu {{ $isSalesActive ? 'show' : '' }}" id="salesMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.admin.sales.index') }}" class="{{ request()->routeIs('superadmin.admin.sales.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.sales.index') }}" class="{{ request()->routeIs('superadmin.admin.sales.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Sales</span>
                     </a>
-                    <a href="{{ route('superadmin.admin.refunds.index') }}" class="{{ request()->routeIs('superadmin.admin.refunds.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.refunds.index') }}" class="{{ request()->routeIs('superadmin.admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Refund/Return</span>
                     </a>
-                    <a href="{{ route('superadmin.admin.credits.index') }}" class="{{ request()->routeIs('superadmin.admin.credits.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.credits.index') }}" class="{{ request()->routeIs('superadmin.admin.credits.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Credit</span>
                     </a>
                 </div>
@@ -608,8 +607,8 @@
             <div class="section-label">MANAGEMENT</div>
             
             {{-- Expenses Link --}}
-            <a href="{{ route('superadmin.admin.expenses.index') }}" class="{{ request()->routeIs('superadmin.admin.expenses.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a href="{{ route('superadmin.admin.expenses.index') }}" class="{{ request()->routeIs('superadmin.admin.expenses.*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 0h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
                     </svg>
@@ -618,8 +617,8 @@
             </a>
 
             @php $isCustomerActive = false; @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isCustomerActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('customerMenu', event); return false;">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isCustomerActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('customerMenu', event); return false;">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
@@ -631,17 +630,17 @@
             </a>
             <div class="submenu {{ $isCustomerActive ? 'show' : '' }}" id="customerMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.admin.customers.index') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Customers</span></a>
-                    <a href="{{ route('superadmin.admin.customers.credit-limits') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Credit Limits</span></a>
-                    <a href="{{ route('superadmin.admin.customers.payment-history') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Payment History</span></a>
-                    <a href="{{ route('superadmin.admin.customers.aging-reports') }}" class="d-flex gap-3 align-items-center py-2 text-decoration-none"><span class="small">Aging Reports</span></a>
+                    <a href="{{ route('superadmin.admin.customers.index') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Customers</span></a>
+                    <a href="{{ route('superadmin.admin.customers.credit-limits') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Credit Limits</span></a>
+                    <a href="{{ route('superadmin.admin.customers.payment-history') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Payment History</span></a>
+                    <a href="{{ route('superadmin.admin.customers.aging-reports') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Aging Reports</span></a>
                 </div>
             </div>
 
             <div class="section-label">ANALYTICS</div>
             
-            <a href="{{ route('superadmin.admin.reports.index') }}" class="{{ request()->routeIs('superadmin.admin.reports.*') ? 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none active' : 'd-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none' }}">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a href="{{ route('superadmin.admin.reports.index') }}" class="{{ request()->routeIs('superadmin.admin.reports.*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6m0 0V8a2 2 0 012-2h4a2 2 0 012 2v6m0 0V8a2 2 0 012-2h4a2 2 0 012 2v6"></path>
                     </svg>
@@ -655,8 +654,8 @@
             @php
                 $isUserMgmtActive = request()->routeIs('superadmin.admin.users.*') || request()->routeIs('superadmin.admin.access.*');
             @endphp
-            <a class="d-flex gap-3 align-items-center p-2 rounded-lg text-decoration-none {{ $isUserMgmtActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('userMgmtMenu', event); return false;">
-                <span class="bg-transparent rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isUserMgmtActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('userMgmtMenu', event); return false;">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                     </svg>
@@ -668,13 +667,13 @@
             </a>
             <div class="submenu {{ $isUserMgmtActive ? 'show' : '' }}" id="userMgmtMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.admin.access.index') }}" class="{{ request()->routeIs('superadmin.admin.access.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.access.index') }}" class="{{ request()->routeIs('superadmin.admin.access.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Access Permission</span>
                     </a>
-                    <a href="{{ route('superadmin.admin.users.create') }}" class="{{ request()->routeIs('superadmin.admin.users.*') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.users.create') }}" class="{{ request()->routeIs('superadmin.admin.users.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Create Account</span>
                     </a>
-                    <a href="{{ route('superadmin.admin.access.logs') }}" class="{{ request()->routeIs('superadmin.admin.access.logs') ? 'd-flex gap-3 align-items-center py-2 text-decoration-none active' : 'd-flex gap-3 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.admin.access.logs') }}" class="{{ request()->routeIs('superadmin.admin.access.logs') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Access Logs</span>
                     </a>
                 </div>
@@ -685,8 +684,8 @@
                 @php
                     $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*') || request()->routeIs('superadmin.taxes.*') || request()->routeIs('superadmin.receipt-templates.*');
                 @endphp
-                <a class="d-flex gap-3 align-items-center p-3 rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
-                    <span class="bg-white rounded p-2 d-flex align-items-center justify-content-center icon-badge">
+                <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
+                    <span class="bg-white rounded d-flex align-items-center justify-content-center icon-badge">
                         <svg class="icon sidebar-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 15c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83l-.01.01a2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-.02a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51"/></svg>
                     </span>
                     <span>Settings</span>
@@ -694,19 +693,19 @@
                 </a>
                 <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
                     <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Branch</span>
                         </a>
-                        <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Brands</span>
                         </a>
-                        <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Unit Types</span>
                         </a>
-                        <a href="{{ route('superadmin.taxes.index') }}" class="{{ request()->routeIs('superadmin.taxes.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.taxes.index') }}" class="{{ request()->routeIs('superadmin.taxes.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Tax</span>
                         </a>
-                        <a href="{{ route('superadmin.receipt-templates.index') }}" class="{{ request()->routeIs('superadmin.receipt-templates.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.receipt-templates.index') }}" class="{{ request()->routeIs('superadmin.receipt-templates.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Receipt Templates</span>
                         </a>
                     </div>

@@ -180,56 +180,65 @@ class PosAdminController extends Controller
     {
         try {
             $data = json_decode($request->getContent(), true);
-            $items = $data['items'];
-            $total = $data['total'];
-            
+            $items = $data['items'] ?? [];
+            $total = $data['total'] ?? 0;
+            $paymentMethod = $data['payment_method'] ?? 'cash';
+            $customerName = $data['customer_name'] ?? null;
+
             Log::info("[POS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
-            
+
             DB::beginTransaction();
-            
+
+            // Determine the branch from the first item, assuming all items are from the same branch for a single transaction
+            $branchId = auth()->user()->branch_id; // Default to cashier's branch
+            if (!empty($items)) {
+                $firstItem = reset($items);
+                $branchId = $firstItem['branch_id'] ?? $branchId;
+            }
+
             // Create sale record with all required fields
             $sale = Sale::create([
                 'cashier_id' => auth()->id(),
-                'employee_id' => auth()->user()->employee_id ?? 'EMP' . auth()->id(),
-                'customer_id' => null, // Walk-in customer
-                'branch_id' => auth()->user()->branch_id ?? 1, // Default to branch 1 or user's branch
+                'employee_id' => auth()->id(), // Use the numeric user ID
+                'customer_name' => $customerName, // Use customer name from request
+                'branch_id' => $branchId,
                 'total_amount' => $total,
                 'tax' => 0, // No tax for now
-                'payment_method' => 'cash' // Default payment method
+                'payment_method' => $paymentMethod // Use payment method from request
             ]);
-            
+
             Log::info("[POS_STORE] Created sale record: {$sale->id}");
-            
+
             // Process each item
             foreach ($items as $item) {
                 $productId = $item['product_id'];
+                $branchId = $item['branch_id'];
                 $quantity = $item['quantity'];
                 $price = $item['price'];
-                
-                Log::info("[POS_STORE] Processing item: Product {$productId}, Quantity: {$quantity}");
-                
-                // Find stock records and update sold quantities
+
+                Log::info("[POS_STORE] Processing item: Product {$productId} from Branch {$branchId}, Quantity: {$quantity}");
+
+                // Find stock records for the specific branch and update sold quantities
                 $stockRecords = StockIn::where('product_id', $productId)
+                    ->where('branch_id', $branchId)
                     ->where('quantity', '>', DB::raw('sold'))
                     ->orderBy('id', 'asc')
                     ->get();
-                
+
                 $remainingQuantity = $quantity;
-                $updatedStock = 0;
-                
+
                 foreach ($stockRecords as $stock) {
                     if ($remainingQuantity <= 0) break;
-                    
+
                     $availableStock = $stock->quantity - $stock->sold;
                     $toDeduct = min($remainingQuantity, $availableStock);
-                    
+
                     $stock->sold += $toDeduct;
                     $stock->save();
-                    
+
                     $remainingQuantity -= $toDeduct;
-                    $updatedStock += $toDeduct;
-                    
-                    Log::info("[POS_STORE] Updated stock record {$stock->id}: +{$toDeduct} sold, remaining: {$remainingQuantity}");
+
+                    Log::info("[POS_STORE] Updated stock record {$stock->id}: +{$toDeduct} sold, remaining for this batch: {$remainingQuantity}");
                 }
                 
                 if ($remainingQuantity > 0) {

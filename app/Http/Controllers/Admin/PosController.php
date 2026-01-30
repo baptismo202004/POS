@@ -18,7 +18,7 @@ class PosController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'items' => 'required|array|min:1',
-            'items.*.productId' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.name' => 'required|string|max:255',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
@@ -43,20 +43,22 @@ class PosController extends Controller
                 // Debug: Log the items structure
                 \Log::info('Items structure:', $request->items);
                 
+                $branchId = $request->items[0]['branch_id'] ?? 1; // Default to 1 if not provided
+
                 $sale = Sale::create([
                     'cashier_id' => auth()->id() ?? 1,
                     'employee_id' => auth()->id() ?? 1,
-                    'branch_id' => 1, // Add branch_id (default to 1)
+                    'branch_id' => $branchId,
                     'total_amount' => $request->total,
                     'payment_method' => $request->payment_method,
                     'product_names' => 'POS Sale',
-                    ]);
+                ]);
 
                 foreach ($request->items as $item) {
                     // Debug: Log each item
                     \Log::info('Processing item:', $item);
                     
-                    $productId = $item['productId'] ?? null;
+                    $productId = $item['product_id'] ?? null;
                     
                     $saleItem = SaleItem::create([
                         'sale_id' => $sale->id,
@@ -75,7 +77,7 @@ class PosController extends Controller
                             'sale_item_id' => $saleItem->id,
                             'quantity' => $item['quantity'],
                             'reason' => 'POS Sale',
-                            'branch_id' => 1, // Add branch_id to StockOut
+                            'branch_id' => $item['branch_id'] ?? $branchId, // Use item's branch_id
                         ]);
                         
                         \Log::info('Stock deducted for product ' . $productId . ': ' . $item['quantity'] . ' units');

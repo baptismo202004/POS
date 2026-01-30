@@ -536,10 +536,17 @@
                 }
 
                 tableBody.innerHTML = items.map(it => {
-                    const branches = (it.branches || []).map(b => 
-                        `${b.branch_name||'Branch #'+b.branch_id} <span class="badge-stock">${b.stock}</span>`
-                    ).join('<br>');
-                    
+                    const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => `
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" ${index === 0 ? 'checked' : ''}>
+                            <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
+                                ${b.branch_name || 'Branch #' + b.branch_id} <span class="badge bg-secondary">${b.stock}</span>
+                            </label>
+                        </div>
+                    `).join('') : '<span class="text-muted">No stock</span>';
+
+                    const canBeAdded = it.branches && it.branches.length > 0 && it.total_stock > 0;
+
                     return `
                     <tr class="animate-in">
                         <td>
@@ -552,10 +559,10 @@
                                 ${it.total_stock ?? 0}
                             </span>
                         </td>
-                        <td>${branches||'<span class="text-muted">Not available</span>'}</td>
+                        <td>${branchesHtml}</td>
                         <td class="text-end price-display">₱${(it.price||0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(${it.product_id}, '${it.name.replace(/'/g, "\\'")}', ${it.price||0}, ${it.total_stock||0})">
+                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${it.name.replace(/'/g, "\\'")}', ${it.price||0})" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -578,49 +585,57 @@
         let cart = [];
         
         // Make functions globally accessible for onclick handlers
-        window.addToOrder = function(productId, name, price, stock) {
-            console.log('addToOrder called with:', {productId, name, price, stock}); // Debug
+        window.addToOrder = function(button, productId, name, price) {
+            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
             
-            // Check if product already in cart
-            const existingItem = cart.find(item => item.product_id === productId);
+            if (!selectedBranchRadio) {
+                Swal.fire('Error', 'Please select a branch.', 'error');
+                return;
+            }
+            
+            const branchId = parseInt(selectedBranchRadio.value);
+            const stock = parseInt(selectedBranchRadio.dataset.stock);
+            const branchName = selectedBranchRadio.labels[0].innerText.split(' ')[0];
+
+            if (stock <= 0) {
+                Swal.fire('Out of Stock', `This product is out of stock at ${branchName}.`, 'warning');
+                return;
+            }
+
+            const cartIdentifier = `${productId}-${branchId}`;
+            const existingItem = cart.find(item => item.cartIdentifier === cartIdentifier);
             
             if (existingItem) {
-                // Check if adding more would exceed available stock
                 if (existingItem.quantity >= stock) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Stock Limit Reached',
-                        text: `Cannot add more ${name}. Only ${stock} available in stock.`,
-                        confirmButtonColor: '#2563eb',
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
+                    Swal.fire('Stock Limit', `Cannot add more. Only ${stock} available at ${branchName}.`, 'warning');
                     return;
                 }
-                existingItem.quantity += 1;
+                existingItem.quantity++;
             } else {
                 cart.push({
+                    cartIdentifier: cartIdentifier,
                     product_id: productId,
+                    branch_id: branchId,
                     name: name,
+                    branchName: branchName,
                     price: price,
                     quantity: 1,
-                    stock: stock,
-                    subtotal: price
+                    stock: stock
                 });
             }
             
             updateCartDisplay();
-            showNotification(`${name} added to cart!`, 'success');
+            showNotification(`${name} (${branchName}) added to cart!`, 'success');
         };
         
-        window.updateQuantity = function(productId, change) {
-            const item = cart.find(item => item.product_id === productId);
+        window.updateQuantity = function(cartIdentifier, change) {
+            const item = cart.find(item => item.cartIdentifier === cartIdentifier);
             if (!item) return;
-            
+
             const newQuantity = item.quantity + change;
-            
+
             if (newQuantity <= 0) {
-                removeFromCart(productId);
+                removeFromCart(cartIdentifier);
                 return;
             }
             
@@ -640,10 +655,11 @@
             updateCartDisplay();
         };
         
-        window.removeFromCart = function(productId) {
-            const item = cart.find(item => item.product_id === productId);
-            if (item) {
-                cart = cart.filter(item => item.product_id !== productId);
+        window.removeFromCart = function(cartIdentifier) {
+            const itemIndex = cart.findIndex(item => item.cartIdentifier === cartIdentifier);
+            if (itemIndex > -1) {
+                const item = cart[itemIndex];
+                cart.splice(itemIndex, 1);
                 updateCartDisplay();
                 showNotification(`${item.name} removed from cart`, 'info');
             }
@@ -740,8 +756,17 @@
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    items: cart,
-                    total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                    items: cart.map(item => ({
+                        product_id: item.product_id,
+                        branch_id: item.branch_id,
+                        quantity: item.quantity,
+                        price: item.price
+                    })),
+                    total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                    payment_method: document.querySelector('input[name="payment_method"]:checked').value,
+                    customer_name: document.getElementById('customer_name').value,
+                    credit_due_date: document.getElementById('credit_due_date').value,
+                    credit_notes: document.getElementById('credit_notes').value
                 })
             })
             .then(response => response.json())
@@ -807,17 +832,17 @@
                     <div class="cart-item d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
                         <div class="flex-grow-1">
                             <div class="fw-semibold">${item.name}</div>
-                            <div class="text-muted small">₱${item.price.toFixed(2)} x ${item.quantity}</div>
+                            <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x ${item.quantity}</div>
                         </div>
                         <div class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-outline-danger me-2" onclick="updateQuantity(${item.product_id}, -1)">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity('${item.cartIdentifier}', -1)">
                                 <i class="fas fa-minus"></i>
                             </button>
                             <span class="mx-2">${item.quantity}</span>
-                            <button class="btn btn-sm btn-outline-success me-2" onclick="updateQuantity(${item.product_id}, 1)">
+                            <button class="btn btn-sm btn-outline-success me-2" onclick="updateQuantity('${item.cartIdentifier}', 1)">
                                 <i class="fas fa-plus"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.product_id})">
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                             <div class="ms-3 text-end">
@@ -893,130 +918,7 @@
             });
         });
         
-        function checkout() {
-            if (cart.length === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Cart Empty',
-                    text: 'Your cart is empty! Please add items first.',
-                    confirmButtonColor: '#2563eb'
-                });
-                return;
-            }
-            
-            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const itemsList = cart.map(item => `${item.name} x${item.quantity} = ₱${(item.price * item.quantity).toFixed(2)}`).join('\n');
-            
-            let confirmMessage = `Order Summary:\n\n${itemsList}\n\nTotal: ₱${total.toFixed(2)}\n\nPayment Method: ${paymentMethod.toUpperCase()}`;
-            
-            if (paymentMethod === 'credit') {
-                const customerName = document.getElementById('customer_name').value;
-                const dueDate = document.getElementById('credit_due_date').value;
-                const notes = document.getElementById('credit_notes').value;
-                
-                if (!dueDate) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Missing Information',
-                        text: 'Please specify a due date for the credit.',
-                        confirmButtonColor: '#2563eb'
-                    });
-                    return;
-                }
-                
-                confirmMessage += `\n\nCustomer: ${customerName || 'Walk-in Customer'}`;
-                confirmMessage += `\nDue Date: ${new Date(dueDate).toLocaleDateString()}`;
-                if (notes) confirmMessage += `\nNotes: ${notes}`;
-            }
-            
-            Swal.fire({
-                title: 'Confirm Order',
-                html: `<pre style="text-align: left; font-family: monospace; font-size: 14px;">${confirmMessage}</pre>`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Process Order',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#ef4444'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    processOrder(paymentMethod, total);
-                }
-            });
-        }
         
-        function processOrder(paymentMethod, total) {
-            const orderData = {
-                items: cart.map(({ stock, ...item }) => item), // Remove stock field before sending
-                total: total,
-                payment_method: paymentMethod,
-                cashier_id: 1 // This should come from auth
-            };
-            
-            if (paymentMethod === 'credit') {
-                orderData.customer_name = document.getElementById('customer_name').value;
-                orderData.due_date = document.getElementById('credit_due_date').value;
-                orderData.notes = document.getElementById('credit_notes').value;
-            }
-            
-            Swal.fire({
-                title: 'Processing Order...',
-                html: 'Please wait while we process your order.',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            fetch('/admin/pos/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify(orderData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Order Completed!',
-                        text: paymentMethod === 'credit' ? 'Credit created successfully!' : 'Payment processed successfully!',
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        cart = [];
-                        updateCartDisplay();
-                        
-                        // Reset payment form
-                        document.getElementById('payment_cash').checked = true;
-                        document.getElementById('credit-details').style.display = 'none';
-                        document.getElementById('customer_name').value = '';
-                        document.getElementById('credit_notes').value = '';
-                        
-                        showNotification('Order completed successfully!', 'success');
-                        search('list'); // Refresh product list
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Order Failed',
-                        text: data.message || 'An error occurred while processing your order.',
-                        confirmButtonColor: '#2563eb'
-                    });
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'An error occurred while processing your order.',
-                    confirmButtonColor: '#2563eb'
-                });
-            });
-        }
         
         function showNotification(message, type = 'success') {
             const Toast = Swal.mixin({
