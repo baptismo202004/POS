@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('credits', function (Blueprint $table) {
-            $table->string('reference_number')->unique()->after('id')->nullable();
+            if (!Schema::hasColumn('credits', 'reference_number')) {
+                $table->string('reference_number')->unique()->after('id')->nullable();
+            }
         });
         
         // Generate reference numbers for existing records after column is added
@@ -20,7 +22,9 @@ return new class extends Migration
         
         // Make the column not nullable after filling existing records
         Schema::table('credits', function (Blueprint $table) {
-            $table->string('reference_number')->nullable(false)->change();
+            if (Schema::hasColumn('credits', 'reference_number')) {
+                $table->string('reference_number')->nullable(false)->change();
+            }
         });
     }
 

@@ -15,6 +15,7 @@ use App\Models\ProductType;
 use App\Models\UnitType;
 use App\Models\Branch;
 use App\Models\ProductSerial;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -101,6 +102,13 @@ class ProductController extends Controller
                 if (!empty($validated['product_type_id'])) {
                     $productType = ProductType::find($validated['product_type_id']);
                     $isElectronic = $productType && $productType->is_electronic;
+
+                    Log::info('Electronic product check', [
+                        'product_type_id' => $validated['product_type_id'],
+                        'product_type_found' => !!$productType,
+                        'is_electronic_flag' => $productType ? $productType->is_electronic : 'N/A',
+                        'result' => $isElectronic
+                    ]);
                 }
 
                 if ($isElectronic) {

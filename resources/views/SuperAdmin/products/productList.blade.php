@@ -126,20 +126,14 @@
                                         <input type="text" name="serial_number" class="form-control" value="{{ $isEdit ? ($product->serial_number ?? '') : '' }}" placeholder="Enter serial number">
                                     </div>
 
-                                    <div class="col-md-3 electronic-field">
+                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Branch</label>
                                         <select name="branch_id" id="branchSelect" class="form-select">
                                             <option value="">-- Select Branch --</option>
                                             @foreach($branches ?? [] as $branch)
-                                                <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                                <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
                                             @endforeach
                                         </select>
-                                        {{-- Debug: Show branch count --}}
-                                        @if(isset($branches))
-                                            <small class="text-muted">Branches found: {{ count($branches) }}</small>
-                                        @else
-                                            <small class="text-danger">No branches variable found</small>
-                                        @endif
                                     </div>
 
                                     <div class="col-md-3">
