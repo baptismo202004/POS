@@ -48,7 +48,7 @@
                                     @forelse($payments as $payment)
                                         <tr>
                                             <td>{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                            <td>{{ $payment->customer->full_name ?? 'N/A' }}</td>
+                                            <td>{{ $payment->customer_name ?? 'Walk-in Customer' }}</td>
                                             <td>₱{{ number_format($payment->credit_amount, 2) }}</td>
                                             <td>₱{{ number_format($payment->paid_amount, 2) }}</td>
                                             <td>₱{{ number_format($payment->remaining_balance, 2) }}</td>

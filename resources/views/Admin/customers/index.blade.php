@@ -57,9 +57,10 @@
                                     <!-- Registered Customers -->
                                     @forelse($customers as $customer)
                                         <?php
-                                        $totalCredits = $customer->credits->sum('credit_amount');
-                                        $totalPaid = $customer->credits->sum('paid_amount');
-                                        $outstandingBalance = $customer->credits->sum('remaining_balance');
+                                        // Since credits relationship was removed, set credit values to 0 for registered customers
+                                        $totalCredits = 0;
+                                        $totalPaid = 0;
+                                        $outstandingBalance = 0;
                                         $rowNumber = $loop->index + 1; // Start from 1
                                         ?>
                                         <tr>
@@ -77,12 +78,7 @@
                                                 ₱{{ number_format($outstandingBalance, 2) }}
                                             </td>
                                             <td>
-                                                @forelse($customer->credits as $credit)
-                                                    {{ $credit->cashier->name ?? 'Unknown' }}
-                                                    @if(!$loop->last), @endif
-                                                @empty
-                                                    No credits
-                                                @endforelse
+                                                No credits
                                             </td>
                                         </tr>
                                     @empty
@@ -99,7 +95,7 @@
                                             <td>
                                                 <input type="checkbox" class="walk-in-checkbox" value="{{ $credit->id }}" data-credit='{{ json_encode($credit) }}'>
                                             </td>
-                                            <td>{{ $credit->customer_id ? 'R-' . $loop->index + 1 : 'W-' . $loop->index + 1 }}</td>
+                                            <td>{{ $credit->customer_id ? 'R-' . $loop->index + 1 : $loop->index + 1 }}</td>
                                             <td>{{ $credit->customer_name ?? ($credit->customer->name ?? 'Walk-in Customer') }}</td>
                                             <td>{{ $credit->phone ?? 'N/A' }}</td>
                                             <td>{{ $credit->email ?? 'N/A' }}</td>
@@ -141,6 +137,24 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+// Add event listeners for single selection
+document.addEventListener('DOMContentLoaded', function() {
+    const customerCheckboxes = document.querySelectorAll('.customer-checkbox, .walk-in-checkbox');
+    
+    customerCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                // Uncheck all other checkboxes
+                customerCheckboxes.forEach(otherCheckbox => {
+                    if (otherCheckbox !== this) {
+                        otherCheckbox.checked = false;
+                    }
+                });
+            }
+        });
+    });
+});
+
 function toggleAllCheckboxes() {
     const selectAll = document.getElementById('selectAll');
     const checkboxes = document.querySelectorAll('.customer-checkbox');

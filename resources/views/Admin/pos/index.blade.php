@@ -778,14 +778,31 @@
                     // Clear customer name field
                     document.getElementById('customer_name').value = '';
                     
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Order Completed!',
-                        text: `Order #${data.order_id} has been processed successfully.`,
-                        confirmButtonColor: '#10b981',
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
+                    // Check if this is a cash payment and auto-receipt is enabled
+                    if (data.auto_receipt && data.receipt_url) {
+                        // Show success message then open receipt
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Order Completed!',
+                            text: `Order has been processed successfully. Opening receipt...`,
+                            confirmButtonColor: '#10b981',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            // Open receipt in new window
+                            window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                        });
+                    } else {
+                        // Regular success message for credit payments
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Order Completed!',
+                            text: `Order has been processed successfully.`,
+                            confirmButtonColor: '#10b981',
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }
                     
                     // Refresh products to show updated stock
                     search('list');

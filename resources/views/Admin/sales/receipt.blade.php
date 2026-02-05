@@ -10,23 +10,83 @@
             color: #000;
             background: #fff;
         }
+        
+        /* Paper Size Options - Uncomment the one you want to use */
+        
+        /* Small Receipt: 9x13cm (3.54x5.12 inches) */
         .receipt-container {
-            width: 302px; /* 80mm */
+            width: 9cm;
+            min-height: 13cm;
+            margin: 20px auto;
+            padding: 15px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* 58mm Thermal Printer (219px) */
+        /*
+        .receipt-container {
+            width: 219px;
+            margin: 20px auto;
+            padding: 8px;
+            border: 1px solid #ccc;
+        }
+        */
+        
+        /* 72mm Thermal Printer (272px) */
+        /*
+        .receipt-container {
+            width: 272px;
             margin: 20px auto;
             padding: 10px;
             border: 1px solid #ccc;
         }
+        */
+        
+        /* 80mm Thermal Printer (302px) - Original */
+        /*
+        .receipt-container {
+            width: 302px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        */
+        
+        /* A4 Paper */
+        /*
+        .receipt-container {
+            width: 210mm;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 794px;
+        }
+        */
+        
+        /* Letter Paper */
+        /*
+        .receipt-container {
+            width: 8.5in;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 816px;
+        }
+        */
+        
         .header {
             text-align: center;
             margin-bottom: 15px;
         }
         .header h1 {
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
         }
         .header p {
             margin: 2px 0;
+            font-size: 10px;
         }
         .details, .items, .total, .footer {
             margin-bottom: 15px;
@@ -40,6 +100,7 @@
         }
         .items th, .items td {
             padding: 5px 0;
+            font-size: 11px;
         }
         .items thead {
             border-top: 1px dashed #000;
@@ -72,7 +133,7 @@
         @media print {
             @page {
                 margin: 0;
-                size: auto;
+                size: 9cm 13cm; /* Small Receipt: 9x13cm */
             }
             body {
                 margin: 0;
@@ -80,9 +141,11 @@
             }
             .receipt-container {
                 margin: 0;
-                padding: 10px;
+                padding: 15px;
                 border: none;
                 box-shadow: none;
+                width: 9cm;
+                min-height: 13cm;
             }
         }
     </style>
@@ -98,7 +161,7 @@
 <body>
     <div class="receipt-container">
         <div class="header">
-            <img src="{{ asset('/images/BGH LOGO.png') }}" alt="BGH IT Solutions Logo" style="max-width: 100px; margin-bottom: 10px;">
+            <img src="{{ asset('/images/BGH LOGO.png') }}" alt="BGH IT Solutions Logo" style="max-width: 60px; margin-bottom: 8px;">
             <h1>BGH IT Solutions</h1>
             <p>Purol A1, Balirong City of Naga Cebu</p>
             <p>bghsupport@bghitsolutions.com</p>
@@ -130,7 +193,7 @@
                     @foreach($sale->saleItems as $index => $item)
                     <tr>
                         <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->product->product_name }}</td>
+                        <td>{{ Str::limit($item->product->product_name, 20) }}</td>
                         <td>{{ $item->quantity }}</td>
                         <td class="amount">P{{ number_format($item->unit_price, 2) }}</td>
                         <td class="amount">P{{ number_format($item->subtotal, 2) }}</td>
@@ -144,8 +207,6 @@
             <span>TOTAL</span>
             <span>PHP {{ number_format($sale->total_amount, 2) }}</span>
         </div>
-
-      
 
         <div class="footer">
             <p style="text-align:center;">Thank you for your business!</p>

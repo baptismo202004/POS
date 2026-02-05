@@ -45,14 +45,31 @@ class TestDataSeeder extends Seeder
             );
         }
 
-        $branch = Branch::firstOrCreate(
-            ['branch_name' => 'Main Branch'],
-            [
-                'address' => '123 Main St',
-                'assign_to' => null,
-                'status' => 'active',
-            ]
-        );
+        // Get all available branches
+        $branches = Branch::all();
+        
+        // If no branches exist, create the default ones
+        if ($branches->isEmpty()) {
+            $branches = collect([
+                Branch::firstOrCreate(['branch_name' => 'Main Branch'], [
+                    'address' => 'Lanas City of Naga, Cebu',
+                    'assign_to' => null,
+                    'status' => 'active',
+                ]),
+                Branch::firstOrCreate(['branch_name' => 'RK'], [
+                    'address' => 'Lanas Elementary School',
+                    'assign_to' => null,
+                    'status' => 'active',
+                ]),
+                Branch::firstOrCreate(['branch_name' => 'MCS'], [
+                    'address' => 'Lanas City of Naga, Cebu',
+                    'assign_to' => null,
+                    'status' => 'active',
+                ]),
+            ]);
+        }
+        
+        $branchIds = $branches->pluck('id')->toArray();
 
         $supplierA = Supplier::firstOrCreate(
             ['supplier_name' => 'Acme Supplies'],
@@ -133,7 +150,7 @@ class TestDataSeeder extends Seeder
 
                 StockIn::create([
                     'product_id' => $prod->id,
-                    'branch_id' => $branch->id,
+                    'branch_id' => $branchIds[array_rand($branchIds)], // Random branch assignment
                     'purchase_id' => $purchase->id,
                     'unit_type_id' => $unitTypeId,
                     'quantity' => $qty,
@@ -165,7 +182,7 @@ class TestDataSeeder extends Seeder
             $unitTypeId = $unitTypes ? $unitTypes[array_rand($unitTypes)] : null;
             StockIn::create([
                 'product_id' => $prod->id,
-                'branch_id' => $branch->id,
+                'branch_id' => $branchIds[array_rand($branchIds)], // Random branch assignment
                 'purchase_id' => null,
                 'unit_type_id' => $unitTypeId,
                 'quantity' => random_int(1, 5),

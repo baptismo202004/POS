@@ -74,13 +74,12 @@ class PosController extends Controller
                         // Create StockOut record to track inventory deduction
                         StockOut::create([
                             'product_id' => $product->id,
-                            'sale_item_id' => $saleItem->id,
+                            'sale_id' => $sale->id,
                             'quantity' => $item['quantity'],
-                            'reason' => 'POS Sale',
-                            'branch_id' => $item['branch_id'] ?? $branchId, // Use item's branch_id
+                            'branch_id' => $item['branch_id'] ?? $branchId,
                         ]);
                         
-                        \Log::info('Stock deducted for product ' . $productId . ': ' . $item['quantity'] . ' units');
+                        \Log::info('StockOut created for product ' . $productId . ': ' . $item['quantity'] . ' units, sale_id: ' . $sale->id);
                     }
                 }
 

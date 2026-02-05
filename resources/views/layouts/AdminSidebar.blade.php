@@ -600,6 +600,7 @@
                     <a href="{{ route('superadmin.admin.credits.index') }}" class="{{ request()->routeIs('superadmin.admin.credits.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Credit</span>
                     </a>
+                   
                 </div>
             </div>
             @endcanAccess
@@ -631,9 +632,7 @@
             <div class="submenu {{ $isCustomerActive ? 'show' : '' }}" id="customerMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
                     <a href="{{ route('superadmin.admin.customers.index') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Customers</span></a>
-                    <a href="{{ route('superadmin.admin.customers.credit-limits') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Credit Limits</span></a>
                     <a href="{{ route('superadmin.admin.customers.payment-history') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Payment History</span></a>
-                    <a href="{{ route('superadmin.admin.customers.aging-reports') }}" class="d-flex gap-2 align-items-center py-2 text-decoration-none"><span class="small">Aging Reports</span></a>
                 </div>
             </div>
 

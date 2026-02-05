@@ -206,6 +206,195 @@ Route::post('/dashboard/layout', function (Request $request) {
     ]);
 })->middleware('auth')->name('dashboard.layout.save');
 
+// Debug route for refund testing
+Route::get('/debug/refund-test', function (Request $request) {
+    try {
+        // Test basic database connections
+        $tests = [];
+        
+        // Test 1: Check if tables exist
+        $tests['tables_exist'] = [
+            'sales' => DB::getSchemaBuilder()->hasTable('sales'),
+            'sale_items' => DB::getSchemaBuilder()->hasTable('sale_items'),
+            'refunds' => DB::getSchemaBuilder()->hasTable('refunds'),
+            'products' => DB::getSchemaBuilder()->hasTable('products'),
+            'stock_ins' => DB::getSchemaBuilder()->hasTable('stock_ins'),
+            'stock_outs' => DB::getSchemaBuilder()->hasTable('stock_outs')
+        ];
+        
+        // Test 2: Check sample data
+        $tests['sample_data'] = [
+            'sales_count' => DB::table('sales')->count(),
+            'sale_items_count' => DB::table('sale_items')->count(),
+            'products_count' => DB::table('products')->count(),
+            'refunds_count' => DB::table('refunds')->count(),
+            'stock_ins_count' => DB::table('stock_ins')->count(),
+            'stock_outs_count' => DB::table('stock_outs')->count()
+        ];
+        
+        // Test 3: Check recent sale item
+        $recentSaleItem = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->select(
+                'sale_items.id as sale_item_id',
+                'sale_items.sale_id',
+                'sale_items.product_id',
+                'sale_items.quantity',
+                'sale_items.unit_price',
+                'products.product_name',
+                'sales.total_amount'
+            )
+            ->first();
+        
+        $tests['recent_sale_item'] = $recentSaleItem;
+        
+        // Test 4: Check stock for this product
+        if ($recentSaleItem) {
+            $stockIn = DB::table('stock_ins')
+                ->where('product_id', $recentSaleItem->product_id)
+                ->first();
+                
+            $stockOut = DB::table('stock_outs')
+                ->where('sale_id', $recentSaleItem->sale_id)
+                ->where('product_id', $recentSaleItem->product_id)
+                ->first();
+            
+            $tests['stock_info'] = [
+                'stock_in' => $stockIn,
+                'stock_out' => $stockOut
+            ];
+        }
+        
+        // Test 5: Check if refund can be created
+        if ($recentSaleItem) {
+            try {
+                // Test refund data
+                $refundData = [
+                    'sale_id' => $recentSaleItem->sale_id,
+                    'sale_item_id' => $recentSaleItem->sale_item_id,
+                    'product_id' => $recentSaleItem->product_id,
+                    'quantity_refunded' => 1,
+                    'refund_amount' => $recentSaleItem->unit_price,
+                    'reason' => 'Test refund',
+                    'status' => 'approved'
+                ];
+                
+                $tests['test_refund_data'] = $refundData;
+                $tests['can_create_refund'] = true;
+                
+            } catch (\Exception $e) {
+                $tests['refund_error'] = $e->getMessage();
+                $tests['can_create_refund'] = false;
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'tests' => $tests,
+            'timestamp' => now()->toDateTimeString()
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+})->middleware('auth');
+
+// Debug route to check alerts
+Route::get('/debug/alerts', function (Request $request) {
+    try {
+        // First, let's see what's in stock_ins table
+        $stockIns = DB::table('stock_ins')
+            ->join('products', 'stock_ins.product_id', '=', 'products.id')
+            ->select(
+                'products.product_name',
+                'stock_ins.quantity',
+                'stock_ins.created_at'
+            )
+            ->orderBy('stock_ins.quantity', 'asc')
+            ->get();
+        
+        // Check stock_outs
+        $stockOuts = DB::table('stock_outs')
+            ->join('products', 'stock_outs.product_id', '=', 'products.id')
+            ->select(
+                'products.product_name',
+                'stock_outs.quantity',
+                'stock_outs.created_at'
+            )
+            ->orderBy('stock_outs.quantity', 'asc')
+            ->get();
+        
+        // Simple stock calculation per product
+        $productStocks = [];
+        
+        // Get all products
+        $products = DB::table('products')->get();
+        
+        foreach ($products as $product) {
+            // Calculate stock the same way the refund system does
+            $totalIn = DB::table('stock_ins')
+                ->where('product_id', $product->id)
+                ->sum('quantity') ?? 0;
+            
+            $totalSold = DB::table('stock_ins')
+                ->where('product_id', $product->id)
+                ->sum('sold') ?? 0;
+            
+            $currentStock = $totalIn - $totalSold;
+            
+            $productStocks[] = [
+                'product_id' => $product->id,
+                'product_name' => $product->product_name,
+                'stock_in' => $totalIn,
+                'stock_sold' => $totalSold,
+                'current_stock' => $currentStock
+            ];
+        }
+        
+        // Sort by current stock
+        usort($productStocks, function($a, $b) {
+            return $a['current_stock'] - $b['current_stock'];
+        });
+        
+        // Filter for alerts
+        $criticalItems = array_filter($productStocks, function($item) {
+            return $item['current_stock'] <= 10 && $item['current_stock'] > 0;
+        });
+        
+        $outOfStockItems = array_filter($productStocks, function($item) {
+            return $item['current_stock'] == 0;
+        });
+        
+        return response()->json([
+            'critical_stock_count' => count($criticalItems),
+            'out_of_stock_count' => count($outOfStockItems),
+            'critical_items' => array_values($criticalItems),
+            'out_of_stock_items' => array_values($outOfStockItems),
+            'all_products_stock' => $productStocks,
+            'raw_stock_ins' => $stockIns,
+            'raw_stock_outs' => $stockOuts,
+            'debug_info' => [
+                'total_products' => count($products),
+                'total_stock_ins_records' => DB::table('stock_ins')->count(),
+                'total_stock_outs_records' => DB::table('stock_outs')->count(),
+                'products_with_stock_ins' => DB::table('stock_ins')->distinct('product_id')->count(),
+                'products_with_stock_outs' => DB::table('stock_outs')->distinct('product_id')->count()
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+})->middleware('auth');
+
 // Dashboard widgets data (JSON) - Complete Dashboard Layout
 Route::get('/dashboard/widgets', function (Request $request) {
     try {
@@ -294,19 +483,19 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'stock_in_totals.product_id'
             )
             ->leftJoinSub(
-                DB::table('stock_outs')
-                    ->select('product_id', DB::raw('SUM(quantity) as total_out'))
+                DB::table('stock_ins')
+                    ->select('product_id', DB::raw('SUM(sold) as total_sold'))
                     ->groupBy('product_id'),
-                'stock_out_totals',
+                'stock_sold_totals',
                 'products.id',
                 '=',
-                'stock_out_totals.product_id'
+                'stock_sold_totals.product_id'
             )
             ->select(
                 'products.product_name',
-                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
+                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) as current_stock')
             )
-            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) <= 5')
+            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) <= 10')
             ->count();
         
         Log::info('Critical stock calculated', ['count' => $criticalStock]);
@@ -414,19 +603,19 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'stock_in_totals.product_id'
             )
             ->leftJoinSub(
-                DB::table('stock_outs')
-                    ->select('product_id', DB::raw('SUM(quantity) as total_out'))
+                DB::table('stock_ins')
+                    ->select('product_id', DB::raw('SUM(sold) as total_sold'))
                     ->groupBy('product_id'),
-                'stock_out_totals',
+                'stock_sold_totals',
                 'products.id',
                 '=',
-                'stock_out_totals.product_id'
+                'stock_sold_totals.product_id'
             )
             ->select(
                 'products.product_name',
-                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
+                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) as current_stock')
             )
-            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) = 0')
+            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) = 0')
             ->count();
         
         Log::info('Out of stock items calculated', ['count' => $outOfStockItems]);
@@ -727,9 +916,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/access/permissions/update', [\App\Http\Controllers\Admin\AccessPermissionController::class, 'updatePermission'])->name('access.permissions.update');
             Route::get('/access/permissions/{roleId}', [\App\Http\Controllers\Admin\AccessPermissionController::class, 'getPermissions'])->name('access.permissions.get');
 
-            // Expenses routes
-            Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
-
             // Reports routes - unified in index page
             Route::get('/reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
             Route::post('/reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
@@ -744,11 +930,20 @@ Route::middleware('auth')->group(function () {
             Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
             Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
-            Route::get('customers/aging-reports', [CustomerController::class, 'agingReports'])->name('customers.aging-reports');
 
             // Sales route
             Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+            Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+            Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
             Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
+            Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
+            Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
+            Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
+
+            // Expenses routes
+            Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
+            Route::get('expenses/todays-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getTodaysExpenses'])->name('expenses.todays-expenses');
+            Route::get('expenses/this-month-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getThisMonthExpenses'])->name('expenses.this-month-expenses');
 
             // Refund routes
             Route::get('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'index'])->name('refunds.index');
@@ -761,6 +956,8 @@ Route::middleware('auth')->group(function () {
             Route::get('credits', [\App\Http\Controllers\Admin\CreditController::class, 'index'])->name('credits.index');
             Route::get('credits/create', [\App\Http\Controllers\Admin\CreditController::class, 'create'])->name('credits.create');
             Route::post('credits', [\App\Http\Controllers\Admin\CreditController::class, 'store'])->name('credits.store');
+            Route::get('credits/credit-limits-data', [\App\Http\Controllers\Admin\CreditController::class, 'creditLimitsData'])->name('credits.credit-limits-data');
+            Route::post('credits/update-credit-limit', [\App\Http\Controllers\Admin\CreditController::class, 'updateCreditLimit'])->name('credits.update-credit-limit');
             Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
             Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
@@ -771,7 +968,6 @@ Route::middleware('auth')->group(function () {
             Route::get('customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');
             Route::get('customers/credit-limits', [\App\Http\Controllers\Admin\CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [\App\Http\Controllers\Admin\CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
-            Route::get('customers/aging-reports', [\App\Http\Controllers\Admin\CustomerController::class, 'agingReports'])->name('customers.aging-reports');
         });
     });
 });

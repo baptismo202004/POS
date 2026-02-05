@@ -261,7 +261,7 @@ class PosAdminController extends Controller
                 }
                 
                 // Create sale item record
-                SaleItem::create([
+                $saleItem = SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $productId,
                     'quantity' => $quantity,
@@ -269,13 +269,26 @@ class PosAdminController extends Controller
                     'subtotal' => $price * $quantity
                 ]);
                 
-                Log::info("[POS_STORE] Created sale item for product {$productId}");
+                // Create corresponding StockOut record
+                \App\Models\StockOut::create([
+                    'product_id' => $productId,
+                    'sale_id' => $sale->id,
+                    'quantity' => $quantity,
+                    'branch_id' => $branchId,
+                ]);
+                
+                Log::info("[POS_STORE] Created sale item and stock out for product {$productId}");
             }
             
             // Create credit record if payment method is credit
             if ($paymentMethod === 'credit' && $creditDueDate) {
+                // Generate unique reference number
+                $lastCredit = Credit::orderBy('id', 'desc')->first();
+                $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
+                $referenceNumber = 'CR-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+                
                 Credit::create([
-                    'customer_id' => null, // Walk-in customer
+                    'reference_number' => $referenceNumber,
                     'customer_name' => $customerName,
                     'sale_id' => $sale->id,
                     'cashier_id' => auth()->id(),
@@ -294,11 +307,19 @@ class PosAdminController extends Controller
             
             Log::info("[POS_STORE] Order processed successfully: Sale #{$sale->id}");
             
-            return response()->json([
+            $response = [
                 'success' => true,
                 'message' => 'Order processed successfully',
                 'order_id' => $sale->id
-            ]);
+            ];
+            
+            // If payment method is cash, include receipt URL for automatic display
+            if ($paymentMethod === 'cash') {
+                $response['receipt_url'] = route('superadmin.admin.sales.receipt', $sale);
+                $response['auto_receipt'] = true;
+            }
+            
+            return response()->json($response);
             
         } catch (\Exception $e) {
             DB::rollBack();

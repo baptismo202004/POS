@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('credits', function (Blueprint $table) {
             $table->id();
+            $table->string('reference_number')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('sale_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('cashier_id')->constrained('users')->onDelete('cascade');

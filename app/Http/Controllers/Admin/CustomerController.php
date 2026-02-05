@@ -13,10 +13,8 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        // Get customers with their credit information
-        $customers = Customer::with(['credits' => function($query) {
-            $query->where('status', 'active');
-        }])->orderBy('created_at', 'desc')->paginate(20);
+        // Get customers without the problematic credits relationship
+        $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
         
         // Get all credits to see what's in the database
         $walkInCredits = Credit::orderBy('created_at', 'desc')
@@ -125,57 +123,10 @@ class CustomerController extends Controller
     
     public function paymentHistory()
     {
-        $payments = Credit::with(['customer', 'sale', 'cashier', 'payments'])
+        $payments = Credit::with(['sale', 'cashier', 'payments'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
             
         return view('admin.customers.payment-history', compact('payments'));
-    }
-    
-    public function agingReports()
-    {
-        $customers = Customer::with(['credits' => function($query) {
-            $query->where('status', 'active');
-        }])->get();
-        
-        $agingReport = [];
-        $currentDate = Carbon::now();
-        
-        foreach ($customers as $customer) {
-            foreach ($customer->credits as $credit) {
-                $dueDate = Carbon::parse($credit->due_date);
-                $daysOverdue = $currentDate->diffInDays($dueDate, false);
-                
-                if ($daysOverdue > 0) {
-                    $category = $this->getAgingCategory($daysOverdue);
-                    
-                    if (!isset($agingReport[$category])) {
-                        $agingReport[$category] = [
-                            'count' => 0,
-                            'total_amount' => 0,
-                            'customers' => []
-                        ];
-                    }
-                    
-                    $agingReport[$category]['count']++;
-                    $agingReport[$category]['total_amount'] += $credit->remaining_balance;
-                    $agingReport[$category]['customers'][] = [
-                        'name' => $customer->full_name,
-                        'amount' => $credit->remaining_balance,
-                        'days_overdue' => $daysOverdue
-                    ];
-                }
-            }
-        }
-        
-        return view('admin.customers.aging-reports', compact('agingReport'));
-    }
-    
-    private function getAgingCategory($daysOverdue)
-    {
-        if ($daysOverdue <= 30) return '1-30 days';
-        if ($daysOverdue <= 60) return '31-60 days';
-        if ($daysOverdue <= 90) return '61-90 days';
-        return '90+ days';
     }
 }

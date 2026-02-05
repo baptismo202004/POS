@@ -9,8 +9,6 @@
         @endif
         <div class="card card-rounded shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="m-0">Inventory</h4>
-                <input type="text" id="searchInput" class="form-control w-25" placeholder="Search products..." value="{{ request('search') }}">
                         <h4 class="m-0">Inventory</h4>
                         <input type="text" id="searchInput" class="form-control w-25" placeholder="Search products..." value="{{ request('search') }}">
                     </div>

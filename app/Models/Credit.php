@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Credit extends Model
 {
     protected $fillable = [
-        'customer_id',
+        'reference_number',
         'customer_name',
         'phone',
         'email',
@@ -28,11 +28,6 @@ class Credit extends Model
         'remaining_balance' => 'decimal:2',
         'date' => 'date',
     ];
-
-    public function customer()
-    {
-        return $this->belongsTo(Customer::class);
-    }
 
     public function sale()
     {

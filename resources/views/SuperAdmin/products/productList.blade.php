@@ -121,6 +121,27 @@
                                         <input type="text" name="voltage_specs" class="form-control" value="{{ $isEdit ? $product->voltage_specs : '' }}" placeholder="e.g. 110-220V">
                                     </div>
 
+                                    <div class="col-md-3 electronic-field d-none">
+                                        <label class="form-label">Serial Number</label>
+                                        <input type="text" name="serial_number" class="form-control" value="{{ $isEdit ? ($product->serial_number ?? '') : '' }}" placeholder="Enter serial number">
+                                    </div>
+
+                                    <div class="col-md-3 electronic-field">
+                                        <label class="form-label">Branch</label>
+                                        <select name="branch_id" id="branchSelect" class="form-select">
+                                            <option value="">-- Select Branch --</option>
+                                            @foreach($branches ?? [] as $branch)
+                                                <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        {{-- Debug: Show branch count --}}
+                                        @if(isset($branches))
+                                            <small class="text-muted">Branches found: {{ count($branches) }}</small>
+                                        @else
+                                            <small class="text-danger">No branches variable found</small>
+                                        @endif
+                                    </div>
+
                                     <div class="col-md-3">
                                         <label class="form-label">Status</label>
                                         <select name="status" class="form-select">
@@ -193,6 +214,24 @@
                 
                 electronicFields.toggleClass('d-none', !isElectronic);
                 
+                // Re-initialize branch select2 when electronic fields are shown
+                if (isElectronic) {
+                    // Only initialize select2 if not already initialized
+                    if (!$('#branchSelect').hasClass('select2-hidden-accessible')) {
+                        console.log('Initializing branch select2 with HTML:', $('#branchSelect').html());
+                        $('#branchSelect').select2({
+                            placeholder: '-- Select Branch --',
+                            allowClear: true,
+                            width: 'resolve'
+                        });
+                    }
+                } else {
+                    // If electronic fields are hidden, destroy select2 for branchSelect
+                    if ($('#branchSelect').hasClass('select2-hidden-accessible')) {
+                        $('#branchSelect').select2('destroy');
+                    }
+                }
+                
                 // Log field visibility for debugging
                 electronicFields.each(function() {
                     console.log('Field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
@@ -212,11 +251,9 @@
             });
 
             // Initial call to set the correct visibility on page load
-            $(document).ready(function() {
-                setTimeout(function() {
-                    toggleElectronicFields();
-                }, 100);
-            });
+            setTimeout(function() {
+                toggleElectronicFields();
+            }, 100);
         });
     </script>
 

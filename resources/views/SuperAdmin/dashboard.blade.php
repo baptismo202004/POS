@@ -860,11 +860,7 @@
             color: var(--magenta);
         }
         
-        /* GridStack Dashboard Customization */
-        .grid-stack {
-            background: transparent;
-        }
-        
+            
         .grid-stack-item {
             background: var(--card-bg);
             border: 2px solid var(--card-border);
@@ -885,112 +881,7 @@
             overflow: auto;
         }
         
-        /* Edit Mode Styles */
-        .dashboard-edit-mode .grid-stack-item {
-            cursor: move;
-            border: 2px dashed var(--neon-blue);
-        }
         
-        .dashboard-edit-mode .grid-stack-item.ui-draggable-dragging {
-            opacity: 0.8;
-            transform: rotate(2deg);
-            box-shadow: 0 16px 48px rgba(33, 150, 243, 0.3);
-        }
-        
-        /* Resize Handles */
-        .grid-stack-item .ui-resizable-handle {
-            background: var(--cyan-bright);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        
-        .dashboard-edit-mode .grid-stack-item .ui-resizable-handle {
-            opacity: 0.7;
-        }
-        
-        .grid-stack-item .ui-resizable-se {
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(135deg, transparent 50%, var(--cyan-bright) 50%);
-            border-radius: 0 0 14px 0;
-        }
-        
-        /* Customize Button */
-        .customize-dashboard-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
-            color: var(--electric-blue);
-            border: none;
-            border-radius: 12px;
-            padding: 12px 20px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
-            min-height: 44px;
-            min-width: 44px;
-            font-size: 14px;
-        }
-        
-        .customize-dashboard-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 32px rgba(33, 150, 243, 0.5);
-        }
-        
-        .customize-dashboard-btn.editing {
-            background: linear-gradient(135deg, var(--success-teal), #66BB6A);
-            color: white;
-        }
-
-        /* Edit Mode Controls */
-        .edit-controls {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 999;
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .edit-controls.show {
-            display: flex;
-        }
-        
-        .edit-btn {
-            background: white;
-            border: 2px solid var(--card-border);
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1);
-            min-height: 44px;
-            min-width: 44px;
-            font-weight: 600;
-        }
-        
-        .edit-btn:hover {
-            background: rgba(0, 229, 255, 0.1);
-            transform: translateY(-2px);
-            border-color: var(--cyan-bright);
-        }
-        
-        .edit-btn.save {
-            background: linear-gradient(135deg, var(--success-teal), #66BB6A);
-            color: white;
-            border-color: var(--success-teal);
-        }
-        
-        .edit-btn.reset {
-            background: linear-gradient(135deg, var(--magenta), var(--violet));
-            color: white;
-            border-color: var(--magenta);
-        }
         
         /* Static Dashboard Layout */
         .dashboard-container {
@@ -1251,33 +1142,14 @@
 
 @section('content')
 <div class="p-3 p-lg-4">
-    <!-- Customize Dashboard Button -->
-    <button class="customize-dashboard-btn" id="customizeBtn">
-        <i class="fas fa-puzzle-piece me-2"></i>Customize Dashboard
-    </button>
     
-    <!-- Edit Mode Controls -->
-    <div class="edit-controls" id="editControls">
-        <button class="edit-btn save" id="saveLayoutBtn">
-            <i class="fas fa-save me-1"></i>Save Layout
-        </button>
-        <button class="edit-btn reset" id="resetLayoutBtn">
-            <i class="fas fa-undo me-1"></i>Reset to Default
-        </button>
-        <button class="edit-btn" id="cancelEditBtn">
-            <i class="fas fa-times me-1"></i>Cancel
-        </button>
-    </div>
 
     <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
         <div>
             <div class="dash-header mb-1">Good Morning, {{ auth()->user()->name ?? 'User' }}</div>
             <div class="text-muted small">Your performance overview for today</div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-secondary btn-sm">🔄 Refresh</button>
-            <button class="btn btn-secondary btn-sm">📊 Export</button>
-        </div>
+     
     </div>
 
     <!-- Static Dashboard Layout -->

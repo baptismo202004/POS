@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreExpenseRequest;
 use App\Http\Requests\Admin\UpdateExpenseRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class ExpenseController extends Controller
 {
@@ -135,5 +136,50 @@ class ExpenseController extends Controller
         $expense->delete();
 
         return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense deleted successfully.');
+    }
+    
+    public function getTodaysExpenses()
+    {
+        $today = Carbon::today();
+        
+        $expenses = Expense::with(['category'])
+            ->whereDate('expense_date', $today)
+            ->orderBy('expense_date', 'desc')
+            ->get();
+        
+        $expensesData = $expenses->map(function ($expense) {
+            return [
+                'id' => $expense->id,
+                'created_at' => $expense->created_at,
+                'description' => $expense->description,
+                'amount' => $expense->amount,
+                'category' => $expense->category ? $expense->category->name : 'N/A'
+            ];
+        });
+        
+        return response()->json(['expenses' => $expensesData]);
+    }
+    
+    public function getThisMonthExpenses()
+    {
+        $thisMonth = Carbon::now()->startOfMonth();
+        $thisMonthEnd = Carbon::now()->endOfMonth();
+        
+        $expenses = Expense::with(['category'])
+            ->whereBetween('expense_date', [$thisMonth, $thisMonthEnd])
+            ->orderBy('expense_date', 'desc')
+            ->get();
+        
+        $expensesData = $expenses->map(function ($expense) {
+            return [
+                'id' => $expense->id,
+                'created_at' => $expense->created_at,
+                'description' => $expense->description,
+                'amount' => $expense->amount,
+                'category' => $expense->category ? $expense->category->name : 'N/A'
+            ];
+        });
+        
+        return response()->json(['expenses' => $expensesData]);
     }
 }

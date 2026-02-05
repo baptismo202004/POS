@@ -12,12 +12,8 @@ class Customer extends Model
     protected $fillable = [
         'full_name',
         'email',
+        'max_credit_limit',
         'phone',
         'address',
     ];
-
-    public function credits()
-    {
-        return $this->hasMany(Credit::class);
-    }
 }
