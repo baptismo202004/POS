@@ -89,13 +89,8 @@
 
     <!-- Recent Credits Table -->
     <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Recent Credits</h6>
-            <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-success" onclick="openPaymentModal()">
-                    <i class="fas fa-money-bill-wave"></i> Record Payment
-                </button>
-            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">

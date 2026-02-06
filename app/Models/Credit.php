@@ -8,7 +8,7 @@ class Credit extends Model
 {
     protected $fillable = [
         'reference_number',
-        'customer_id',
+        'customer_name',
         'sale_id',
         'cashier_id',
         'credit_amount',

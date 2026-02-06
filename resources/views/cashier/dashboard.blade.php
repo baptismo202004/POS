@@ -368,7 +368,7 @@
     <div class="row">
         <div class="col-lg-8 mb-4">
             <div class="chart-container">
-                <div class="chart-title">Sales Trend (Last 7 Days)</div>
+                <div class="chart-title">Sales Trend (Last 7 Days)</div>    
                 <canvas id="salesChart"></canvas>
             </div>
         </div>
@@ -426,10 +426,7 @@
 <script src="{{ asset('js/cashier-sidebar-purchase.js') }}"></script>
 <script src="{{ asset('js/cashier-sidebar-stockin.js') }}"></script>
 <script src="{{ asset('js/cashier-sidebar-categories.js') }}"></script>
-<script>
-    // Include the resizer utility before sidebar generation
-    @include('cashier._sidebar_resize')
-</script>
+<script src="{{ asset('js/cashier-sidebar-resize.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Sales Chart

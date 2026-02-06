@@ -131,16 +131,16 @@
                         <div class="lifetime-summary">
                             <div class="row">
                                 <div class="col-md-3">
-                                    <p class="mb-1"><strong>Total Credits (All Time):</strong> {{ $lifetimeSummary->total_credits_all_time }}</p>
+                                    <p class="mb-1"><strong>Total Credits (All Time):</strong> <span data-summary="total-credits">{{ $lifetimeSummary->total_credits_all_time }}</span></p>
                                 </div>
                                 <div class="col-md-3">
-                                    <p class="mb-1"><strong>Lifetime Credit Amount:</strong> ₱{{ number_format($lifetimeSummary->lifetime_credit_amount, 2) }}</p>
+                                    <p class="mb-1"><strong>Lifetime Credit Amount:</strong> <span data-summary="lifetime-credit-amount">₱{{ number_format($lifetimeSummary->lifetime_credit_amount, 2) }}</span></p>
                                 </div>
                                 <div class="col-md-3">
-                                    <p class="mb-1"><strong>Lifetime Paid Amount:</strong> ₱{{ number_format($lifetimeSummary->lifetime_paid_amount, 2) }}</p>
+                                    <p class="mb-1"><strong>Lifetime Paid Amount:</strong> <span data-summary="lifetime-paid-amount">₱{{ number_format($lifetimeSummary->lifetime_paid_amount, 2) }}</span></p>
                                 </div>
                                 <div class="col-md-3">
-                                    <p class="mb-1"><strong>Lifetime Outstanding Balance:</strong> ₱{{ number_format($lifetimeSummary->lifetime_outstanding_balance, 2) }}</p>
+                                    <p class="mb-1"><strong>Lifetime Outstanding Balance:</strong> <span data-summary="lifetime-outstanding">₱{{ number_format($lifetimeSummary->lifetime_outstanding_balance, 2) }}</span></p>
                                 </div>
                             </div>
                         </div>
@@ -336,55 +336,152 @@
 function exportToPDF() {
     const { jsPDF } = window.jspdf;
     
-    // Prepare data for export
+    // Get lifetime summary data
+    const totalCredits = document.querySelector('[data-summary="total-credits"]')?.textContent?.trim() || '0';
+    const lifetimeCreditAmount = document.querySelector('[data-summary="lifetime-credit-amount"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    const lifetimePaidAmount = document.querySelector('[data-summary="lifetime-paid-amount"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    const lifetimeOutstanding = document.querySelector('[data-summary="lifetime-outstanding"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    
+    // Prepare data for export - get all credits, not just visible ones
     const credits = [];
     document.querySelectorAll('.credit-item').forEach(item => {
-        const creditId = item.querySelector('button').getAttribute('data-bs-target').replace('#credit-', '');
-        const expanded = item.querySelector('.collapse');
+        const creditTarget = item.querySelector('button').getAttribute('data-bs-target');
+        const creditId = creditTarget.replace('#credit-', '');
         
-        if (expanded) {
-            const amount = expanded.querySelector('strong:nth-child(1)').textContent.trim();
-            const status = expanded.querySelector('.badge').textContent.trim();
-            const creditNum = expanded.querySelector('.text-muted small').textContent.trim();
-            const balance = expanded.querySelector('strong:nth-child(3)').textContent.trim();
-            const createdBy = expanded.querySelector('.text-muted').textContent.replace('Created by: ', '').trim();
+        // Get data from the main item
+        const amountElement = item.querySelector('strong');
+        const amount = amountElement ? amountElement.textContent.replace(/[\u20b1\u00b1]/g, '').trim() : '0';
+        
+        const statusElement = item.querySelector('.badge');
+        const status = statusElement ? statusElement.textContent.trim() : 'Unknown';
+        
+        const creditNumElement = item.querySelector('.text-muted.small');
+        const creditNum = creditNumElement ? creditNumElement.textContent.replace('Credit #', '').trim() : 'Unknown';
+        
+        const balanceElement = item.querySelector('.small');
+        let balance = '0';
+        if (balanceElement) {
+            const balanceText = balanceElement.textContent;
+            console.log('Balance text:', balanceText); // Debug log
             
-            credits.push({
-                id: creditNum,
-                amount: amount,
-                status: status,
-                balance: balance,
-                createdBy: createdBy
-            });
+            // Look specifically for "Balance:" followed by currency symbol and number
+            const balanceMatch = balanceText.match(/Balance:\s*[\u20b1\u00b1]?\s*([\d.,]+)/);
+            if (balanceMatch) {
+                balance = balanceMatch[1].replace(/,/g, '');
+                console.log('Extracted balance:', balance); // Debug log
+            } else {
+                // Try a different pattern - look for any number after "Balance:"
+                const altMatch = balanceText.match(/Balance:\s*([\d.,]+)/);
+                if (altMatch) {
+                    balance = altMatch[1].replace(/,/g, '');
+                    console.log('Alternative balance:', balance); // Debug log
+                } else {
+                    // Last resort: find the last number in the text (usually balance is last)
+                    const allNumbers = balanceText.match(/([\d.,]+)/g);
+                    if (allNumbers && allNumbers.length > 0) {
+                        balance = allNumbers[allNumbers.length - 1].replace(/,/g, '');
+                        console.log('Last number as balance:', balance); // Debug log
+                    } else {
+                        console.log('No balance found'); // Debug log
+                    }
+                }
+            }
         }
+        
+        // Try to get creator info from expanded content if available
+        let createdBy = 'Unknown';
+        const expandedContent = document.querySelector(creditTarget);
+        if (expandedContent) {
+            const creatorElement = expandedContent.querySelector('.small.text-muted');
+            if (creatorElement) {
+                createdBy = creatorElement.textContent.replace('Created by: ', '').trim();
+            }
+        }
+        
+        credits.push({
+            id: creditNum,
+            amount: amount.replace(/[^0-9.]/g, ''),
+            status: status,
+            balance: balance.replace(/[^0-9.]/g, ''),
+            createdBy: createdBy
+        });
     });
     
     // Create PDF
     const doc = new jsPDF();
     
     // Add title
-    doc.setFontSize(16);
-    doc.text('Credit History Report', 14, 20);
-    doc.setFontSize(10);
+    doc.setFontSize(18);
+    doc.text('Full Credit History Report', 14, 20);
+    doc.setFontSize(12);
     doc.text(`Customer: {{ $customer->full_name }}`, 14, 30);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 40);
     
+    // Add lifetime summary
+    doc.setFontSize(14);
+    doc.text('Lifetime Summary', 14, 55);
+    doc.setFontSize(10);
+    doc.text(`Total Credits: ${totalCredits}`, 14, 65);
+    doc.text(`Lifetime Credit Amount: ₱${lifetimeCreditAmount}`, 14, 72);
+    doc.text(`Lifetime Paid Amount: ₱${lifetimePaidAmount}`, 14, 79);
+    doc.text(`Lifetime Outstanding Balance: ₱${lifetimeOutstanding}`, 14, 86);
+    
+    // Add line separator
+    doc.line(14, 92, 196, 92);
+    
+    // Add credit details header
+    doc.setFontSize(12);
+    doc.text('Credit Details', 14, 102);
+    
     // Add table headers
-    let yPosition = 60;
-    doc.text('Credit ID | Amount | Status | Balance | Created By', 14, yPosition);
-    doc.line(14, yPosition + 2, 196, yPosition + 2);
+    let yPosition = 112;
+    doc.setFontSize(10);
+    
+    // Define column positions
+    const col1 = 14;
+    const col2 = 40;
+    const col3 = 80;
+    const col4 = 120;
+    const col5 = 160;
+    
+    // Draw table headers
+    doc.text('Credit ID', col1, yPosition);
+    doc.text('Amount', col2, yPosition);
+    doc.text('Status', col3, yPosition);
+    doc.text('Balance', col4, yPosition);
+    doc.text('Created By', col5, yPosition);
+    
+    // Draw header line
+    doc.line(col1, yPosition + 2, col5 + 40, yPosition + 2);
     yPosition += 10;
     
-    // Add credit data
+    // Add credit data as table rows
     credits.forEach(credit => {
-        const line = `${credit.id} | ${credit.amount} | ${credit.status} | ${credit.balance} | ${credit.createdBy}`;
-        doc.text(line, 14, yPosition);
+        if (yPosition > 270) { // Add new page if needed
+            doc.addPage();
+            yPosition = 20;
+            
+            // Redraw headers on new page
+            doc.text('Credit ID', col1, yPosition);
+            doc.text('Amount', col2, yPosition);
+            doc.text('Status', col3, yPosition);
+            doc.text('Balance', col4, yPosition);
+            doc.text('Created By', col5, yPosition);
+            doc.line(col1, yPosition + 2, col5 + 40, yPosition + 2);
+            yPosition += 10;
+        }
+        
+        // Draw row data
+        doc.text(credit.id.toString(), col1, yPosition);
+        doc.text('₱' + credit.amount, col2, yPosition);
+        doc.text(credit.status, col3, yPosition);
+        doc.text('₱' + credit.balance, col4, yPosition);
+        doc.text(credit.createdBy, col5, yPosition);
         yPosition += 8;
     });
     
     // Save PDF
-    doc.save(`credit-history-${{{
- $customer->id }}-${Date.now()}.pdf`);
+    doc.save('credit-history-{{ $customer->id }}-' + Date.now() + '.pdf');
 }
 
 function exportToCSV() {
@@ -395,11 +492,12 @@ function exportToCSV() {
         const expanded = item.querySelector('.collapse');
         
         if (expanded) {
-            const amount = expanded.querySelector('strong:nth-child(1)').textContent.trim();
-            const status = expanded.querySelector('.badge').textContent.trim();
-            const creditNum = expanded.querySelector('.text-muted small').textContent.trim();
-            const balance = expanded.querySelector('strong:nth-child(3)').textContent.trim();
-            const createdBy = expanded.querySelector('.text-muted').textContent.replace('Created by: ', '').trim();
+            const amount = expanded.querySelector('strong:nth-child(1)')?.textContent?.trim() || '0';
+            const status = expanded.querySelector('.badge')?.textContent?.trim() || 'Unknown';
+            const creditNum = expanded.querySelector('.text-muted small')?.textContent?.trim() || 'Unknown';
+            const balance = expanded.querySelector('strong:nth-child(3)')?.textContent?.trim() || '0';
+            const createdByElement = expanded.querySelector('.small.text-muted');
+            const createdBy = createdByElement ? createdByElement.textContent.replace('Created by: ', '').trim() : 'Unknown';
             
             credits.push({
                 id: creditNum,
@@ -424,8 +522,7 @@ function exportToCSV() {
     const url = URL.createObjectURL(blob);
     
     link.setAttribute('href', url);
-    link.setAttribute('download', `credit-history-${{{
- $customer->id }}-${Date.now()}.csv`);
+    link.setAttribute('download', 'credit-history-{{ $customer->id }}-' + Date.now() + '.csv');
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
