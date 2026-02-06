@@ -46,13 +46,24 @@ class ReportsController extends Controller
             
         // Get filtered expenses
         $expenses = Expense::with('category')
-            ->whereBetween('created_at', [$fromDate, $toDate])
-            ->orderBy('created_at', 'desc')
+            ->whereBetween('expense_date', [$fromDate, $toDate])
+            ->orderBy('expense_date', 'desc')
             ->get();
         
-        // Combine and sort by date
-        $allTransactions = $sales->concat($expenses)
-            ->sortByDesc('created_at')
+        // Add a common date field for sorting
+        $salesWithDate = $sales->map(function ($sale) {
+            $sale->transaction_date = $sale->created_at;
+            return $sale;
+        });
+
+        $expensesWithDate = $expenses->map(function ($expense) {
+            $expense->transaction_date = $expense->expense_date;
+            return $expense;
+        });
+
+        // Combine and sort by the common date field
+        $allTransactions = $salesWithDate->concat($expensesWithDate)
+            ->sortByDesc('transaction_date')
             ->values();
         
         // Calculate summaries
@@ -86,7 +97,13 @@ class ReportsController extends Controller
                 'sales_count' => $sales->count(),
                 'expense_count' => $expenses->count()
             ],
-            'sales_by_product' => $salesByProduct
+            'sales_by_product' => $salesByProduct,
+            'debug' => [
+                'from_date' => $fromDate->toDateTimeString(),
+                'to_date' => $toDate->toDateTimeString(),
+                'sales_found' => $sales->count(),
+                'expenses_found' => $expenses->count()
+            ]
         ]);
     }
     
@@ -109,8 +126,8 @@ class ReportsController extends Controller
             ->get();
             
         $expenses = Expense::with('category')
-            ->whereBetween('created_at', [$fromDate, $toDate])
-            ->orderBy('created_at', 'desc')
+            ->whereBetween('expense_date', [$fromDate, $toDate])
+            ->orderBy('expense_date', 'desc')
             ->get();
         
         // Generate CSV

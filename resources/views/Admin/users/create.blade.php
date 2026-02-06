@@ -36,6 +36,12 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label">Employee ID</label>
+                            <input type="text" name="employee_id" id="employee_id" class="form-control" readonly value="{{ old('employee_id') ?? 'EMP' . str_pad(\App\Models\User::count() + 1, 5, '0', STR_PAD_LEFT) }}">
+                            <small class="text-muted">Automatically generated</small>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Email</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
                         </div>

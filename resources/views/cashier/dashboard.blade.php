@@ -1,9 +1,16 @@
-@extends('layouts.cashier')
+@extends('layouts.app')
 @section('title', 'Cashier Dashboard')
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        .sidebar-fixed {
+            display: none;
+        }
+        .main-content {
+            margin-left: 0 !important;
+        }
+
         /* ========================================
            ELECTRIC MODERN PALETTE - CASHIER DASHBOARD
            Minimal, branch-scoped interface
@@ -238,6 +245,17 @@
             margin-left: 8px;
         }
         
+        /* Low Stock Item Hover */
+        .low-stock-item:hover {
+            background-color: rgba(33, 150, 243, 0.1);
+            transition: background-color 0.3s ease;
+        }
+        
+        .low-stock-item .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
         /* Responsive */
         @media (max-width: 767.98px) {
             .kpi-card { margin-bottom: 12px; }
@@ -260,8 +278,26 @@
                 @endif
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-secondary btn-sm">🔄 Refresh</button>
+
+        <!-- User Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: white;">
+                <i class="fas fa-user me-2"></i>
+                {{ auth()->user()->name }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <a class="dropdown-item" href="{{ route('logout') }}"
+                           onclick="event.preventDefault(); this.closest('form').submit();">
+                            Logout
+                        </a>
+                    </form>
+                </li>
+            </ul>
         </div>
     </div>
 
@@ -295,7 +331,7 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card">
+            <div class="kpi-card" onclick="showLowStockModal()" style="cursor: pointer;">
                 <div class="kpi-icon">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
@@ -312,94 +348,20 @@
 
     <!-- Navigation Cards -->
     <div class="row mb-4">
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="{{ route('pos.index') }}" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-shopping-cart"></i>
+        @foreach ($modules as $moduleKey => $moduleData)
+            @if (isset($permissions[$moduleKey]) && in_array('view', $permissions[$moduleKey]))
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-3 {{ in_array($moduleKey, ['stock_in','product_category']) ? 'd-none' : '' }}">
+                    <a href="{{ $moduleKey === 'products' ? route('cashier.products.index') : ($moduleKey === 'product_category' ? route('cashier.categories.index') : ($moduleKey === 'purchases' ? route('cashier.purchases.index') : ($moduleKey === 'inventory' ? route('cashier.inventory.index') : ($moduleKey === 'stock_in' ? route('cashier.stockin.index') : '#')))) }}" class="nav-card" @if($moduleKey === 'products') onclick="animateAndNavigate(event, 'products')" @elseif($moduleKey === 'product_category') onclick="animateAndNavigate(event, 'product_category')" @elseif($moduleKey === 'purchases') onclick="animateAndNavigate(event, 'purchases')" @elseif($moduleKey === 'inventory') onclick="animateAndNavigate(event, 'inventory')" @elseif($moduleKey === 'stock_in') onclick="animateAndNavigate(event, 'stock_in')" @endif>
+                        <div class="nav-icon">
+                            <i class="fas fa-{{ $moduleData['icon'] ?? 'cogs' }}"></i>
+                        </div>
+                        <div class="nav-content">
+                            <h5>{{ $moduleData['label'] }}</h5>
+                        </div>
+                    </a>
                 </div>
-                <div class="nav-content">
-                    <h5>Point of Sale</h5>
-                    <p>Process sales transactions</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Sales</h5>
-                    <p>View sales history</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="{{ route('profile.edit') }}" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Profile</h5>
-                    <p>Manage your account</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Customers</h5>
-                    <p>Customer management</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-credit-card"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Credit</h5>
-                    <p>Credit accounts</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-boxes"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Inventory</h5>
-                    <p>Branch stock levels</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-undo"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Returns/Refunds</h5>
-                    <p>Process returns</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-            <a href="#" class="nav-card">
-                <div class="nav-icon">
-                    <i class="fas fa-file-invoice"></i>
-                </div>
-                <div class="nav-content">
-                    <h5>Expenses</h5>
-                    <p>Track expenses</p>
-                </div>
-            </a>
-        </div>
+            @endif
+        @endforeach
     </div>
 
     <!-- Charts and Lists -->
@@ -456,7 +418,18 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('js/cashier-sidebar.js') }}"></script>
+<script src="{{ asset('js/cashier-sidebar-inventory.js') }}"></script>
+<script src="{{ asset('js/cashier-sidebar-products.js') }}"></script>
+<script src="{{ asset('js/cashier-sidebar-purchase.js') }}"></script>
+<script src="{{ asset('js/cashier-sidebar-stockin.js') }}"></script>
+<script src="{{ asset('js/cashier-sidebar-categories.js') }}"></script>
+<script>
+    // Include the resizer utility before sidebar generation
+    @include('cashier._sidebar_resize')
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Sales Chart
@@ -510,15 +483,382 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Auto-refresh every 60 seconds
-    setInterval(() => {
-        window.location.reload();
-    }, 60000);
 });
+
+function viewProductDetails(productName, branchName) {
+    // Close the modal first
+    const modal = bootstrap.Modal.getInstance(document.getElementById('lowStockModal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Show info about the product with branch information
+    Swal.fire({
+        icon: 'info',
+        title: 'Product Details',
+        html: `
+            <div class="text-start">
+                <p><strong>Product:</strong> ${productName}</p>
+                <p><strong>Branch:</strong> <span class="badge bg-primary">${branchName}</span></p>
+                <p><strong>Status:</strong> <span class="badge bg-danger">Low Stock</span></p>
+                <p class="text-muted">Click "Manage Stock" to update inventory levels for this branch.</p>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Manage Stock',
+        cancelButtonText: 'Close',
+        confirmButtonColor: '#2196F3'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Navigate to inventory management (you can update this route)
+            window.location.href = '{{ route('cashier.inventory.index') }}';
+        }
+    });
+
+}
+
+function showLowStockModal() {
+    // Get low stock items via AJAX
+    fetch('/cashier/dashboard/low-stock')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let modalHtml = `
+                    <div class="modal fade" id="lowStockModal" tabindex="-1">
+                        <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                        Low Stock Items
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="list-group">`;
+                
+                // Split items into two columns
+                const halfLength = Math.ceil(data.lowStockItems.length / 2);
+                const firstColumn = data.lowStockItems.slice(0, halfLength);
+                const secondColumn = data.lowStockItems.slice(halfLength);
+                
+                // First column
+                firstColumn.forEach(item => {
+                    modalHtml += `
+                                                <div class="list-group-item low-stock-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="viewProductDetails('${item.product_name}', '${item.branch_name}')">
+                                                    <div>
+                                                        <i class="fas fa-box text-warning me-2"></i>
+                                                        <span class="fw-medium">${item.product_name}</span>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>${item.branch_name}
+                                                        </small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-danger me-2">${item.current_stock}</span>
+                                                        <small class="text-muted">${item.unit_name}</small>
+                                                    </div>
+                                                </div>`;
+                });
+                
+                modalHtml += `
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="list-group">`;
+                
+                // Second column
+                secondColumn.forEach(item => {
+                    modalHtml += `
+                                                <div class="list-group-item low-stock-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="viewProductDetails('${item.product_name}', '${item.branch_name}')">
+                                                    <div>
+                                                        <i class="fas fa-box text-warning me-2"></i>
+                                                        <span class="fw-medium">${item.product_name}</span>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>${item.branch_name}
+                                                        </small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-danger me-2">${item.current_stock}</span>
+                                                        <small class="text-muted">${item.unit_name}</small>
+                                                    </div>
+                                                </div>`;
+                });
+                
+                modalHtml += `
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Remove existing modal if any
+                const existingModal = document.getElementById('lowStockModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Add modal to page
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('lowStockModal'));
+                modal.show();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to load low stock items'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to load low stock items'
+            });
+        });
+}
 
 function peso(n) {
     return new Intl.NumberFormat('en-PH', {style: 'currency', currency: 'PHP'}).format(n || 0);
 }
+
+function animateAndNavigate(event, module) {
+    event.preventDefault();
+    const clickedCard = event.currentTarget;
+    const allCards = document.querySelectorAll('.nav-card');
+    const targetUrl = clickedCard.href;
+
+    // Check if clicking on products or product_category
+    const isProductsClick = module === 'products';
+    const isCategoryClick = module === 'product_category';
+    const isPurchasesClick = module === 'purchases';
+    const isInventoryClick = module === 'inventory';
+    const isStockInClick = module === 'stock_in';
+
+    // Create a sidebar container
+    const sidebar = document.createElement('div');
+    sidebar.style.cssText = `
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 220px;
+        height: 100vh;
+        background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
+        box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        padding: 20px 10px;
+        transform: translateX(-100%);
+        transition: transform 0.5s ease-in-out;
+    `;
+    document.body.appendChild(sidebar);
+
+    // Make sidebar resizable
+    makeSidebarResizable(sidebar);
+
+    // Add sidebar header with logo
+    const sidebarHeader = document.createElement('div');
+    sidebarHeader.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    `;
+    
+    // Create logo container
+    const logoContainer = document.createElement('div');
+    logoContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    
+    // Create logo image
+    const logoImg = document.createElement('img');
+    logoImg.src = '/images/BGH LOGO.png';
+    logoImg.style.cssText = `
+        height: 40px;
+        width: auto;
+        object-fit: contain;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    `;
+    
+    // Add click event to logo
+    logoImg.addEventListener('click', () => {
+        // Close sidebar only if we're on the dashboard page
+        if (window.location.pathname === '/cashier/dashboard') {
+            const sidebar = document.querySelector('[style*="position: fixed"][style*="left: 0"]');
+            if (sidebar) {
+                sidebar.style.transform = 'translateX(-100%)';
+                setTimeout(() => {
+                    sidebar.remove();
+                }, 300);
+            }
+        }
+    });
+    
+    logoContainer.appendChild(logoImg);
+    sidebarHeader.appendChild(logoContainer);
+    sidebar.appendChild(sidebarHeader);
+
+    // Animate cards into sidebar
+    allCards.forEach((card, index) => {
+        if (card !== clickedCard) {
+            // Clone the card content
+            const cardContent = card.cloneNode(true);
+            // Inherit original classes but override for sidebar context
+            cardContent.className = 'nav-card'; // Keep the original class
+            cardContent.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 20px;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                margin-bottom: 10px;
+                cursor: pointer;
+                text-decoration: none;
+                color: white;
+                transition: all 0.3s ease;
+                transform: translateX(-100%);
+                opacity: 0;
+            `;
+
+            const iconEl = cardContent.querySelector('.nav-icon');
+            if (iconEl) {
+                iconEl.style.cssText = `
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: linear-gradient(135deg, #2196F3, #00E5FF);
+                    color: #0D47A1;
+                    font-size: 20px;
+                    flex-shrink: 0;
+                `;
+            }
+
+            const contentEl = cardContent.querySelector('.nav-content');
+            if (contentEl) {
+                contentEl.style.cssText = `
+                    display: block;
+                    color: white;
+                `;
+            }
+
+            const titleEl = cardContent.querySelector('.nav-content h5');
+            if (titleEl) {
+                titleEl.style.cssText = `
+                    margin: 0 0 4px 0;
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: white;
+                    text-decoration: none;
+                `;
+            }
+
+            const descEl = cardContent.querySelector('.nav-content p');
+            if (descEl) {
+                descEl.style.cssText = `
+                    margin: 0;
+                    font-size: 12px;
+                    color: rgba(255, 255, 255, 0.85);
+                    text-decoration: none;
+                `;
+            }
+
+            // Remove link underlines even if browser default styles apply
+            cardContent.querySelectorAll('a, h5, p, span').forEach(el => {
+                el.style.textDecoration = 'none';
+            });
+            
+            // Remove onclick from cloned cards
+            cardContent.removeAttribute('onclick');
+            
+            // Add hover effect
+            cardContent.addEventListener('mouseenter', () => {
+                cardContent.style.background = 'rgba(255,255,255,0.2)';
+                cardContent.style.transform = 'translateX(5px)';
+            });
+            cardContent.addEventListener('mouseleave', () => {
+                cardContent.style.background = 'rgba(255,255,255,0.1)';
+                cardContent.style.transform = 'translateX(0)';
+            });
+            
+            sidebar.appendChild(cardContent);
+            
+            // Hide the original card immediately
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            
+            // Animate in the cloned card
+            setTimeout(() => {
+                cardContent.style.transform = 'translateX(0)';
+                cardContent.style.opacity = '1';
+            }, 100 + (index * 100));
+            
+            // Completely hide original card after animation
+            setTimeout(() => {
+                card.style.display = 'none';
+            }, 500 + (index * 100));
+        }
+    });
+
+    // Arrange submenu items in the generated sidebar
+    const sidebarNavItems = Array.from(sidebar.querySelectorAll('.nav-card'));
+
+    const invItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Inventory');
+    const stockInItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Stock In');
+    if (invItem && stockInItem) {
+        stockInItem.style.marginLeft = '18px';
+        stockInItem.style.paddingLeft = '20px';
+        invItem.insertAdjacentElement('afterend', stockInItem);
+    }
+
+    const productsItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
+    const categoryItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
+    if (productsItem && categoryItem) {
+        categoryItem.style.marginLeft = '18px';
+        categoryItem.style.paddingLeft = '20px';
+        productsItem.insertAdjacentElement('afterend', categoryItem);
+    }
+
+    // Slide in sidebar and save to session storage if navigating
+    if (isProductsClick || isCategoryClick || isPurchasesClick || isInventoryClick || isStockInClick) {
+        sidebar.style.transform = 'translateX(0)';
+        // Store the sidebar HTML in session storage so it can be recreated on the next page
+        sessionStorage.setItem('cashierSidebarHTML', sidebar.outerHTML);
+        localStorage.setItem('cashierSidebarHTML', sidebar.outerHTML);
+    }
+
+    // Fade out and scale the clicked card
+    clickedCard.style.transition = 'all 0.5s ease-in-out';
+    clickedCard.style.transform = 'scale(0.95)';
+    clickedCard.style.opacity = '0.3';
+
+    // Navigate after animation
+    setTimeout(() => {
+        window.location.href = targetUrl;
+    }, 1500);
+}
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 @endpush

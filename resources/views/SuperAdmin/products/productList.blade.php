@@ -8,6 +8,23 @@
 @extends('layouts.app')
 @section('title', 'Products')
 
+@php
+    $isCashierContext = request()->is('cashier/*');
+@endphp
+
+@if($isCashierContext)
+@push('stylesDashboard')
+    <style>
+        .sidebar-fixed {
+            display: none !important;
+        }
+        .main-content {
+            margin-left: 0 !important;
+        }
+    </style>
+@endpush
+@endif
+
 @include('layouts.theme-base')
 
 @section('content')
@@ -21,10 +38,10 @@
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2 class="m-0">{{ $isEdit ? 'Edit Product' : 'Add Product' }}</h2>
-                                <a href="{{ route('superadmin.products.index') }}" class="btn btn-outline" style="border-color:var(--theme-color); color:var(--theme-color)">Back to products</a>
+                                <a href="{{ $isCashierContext ? route('cashier.products.index') : route('superadmin.products.index') }}" class="btn btn-outline" style="border-color:var(--theme-color); color:var(--theme-color)">Back to products</a>
                             </div>
 
-                            <form method="POST" action="{{ $isEdit ? route('superadmin.products.update', $product) : route('superadmin.products.store') }}" enctype="multipart/form-data" id="productForm">
+                            <form method="POST" action="{{ $isEdit ? ($isCashierContext ? route('cashier.products.update', $product) : route('superadmin.products.update', $product)) : ($isCashierContext ? route('cashier.products.store') : route('superadmin.products.store')) }}" enctype="multipart/form-data" id="productForm">
                                 @if($isEdit) @method('PUT') @endif
                                 @csrf
 

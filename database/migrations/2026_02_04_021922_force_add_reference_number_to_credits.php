@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('credits', function (Blueprint $table) {
-            $table->string('reference_number')->unique()->after('id')->default('');
+            if (!Schema::hasColumn('credits', 'reference_number')) {
+                $table->string('reference_number')->unique()->after('id')->default('');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('credits', function (Blueprint $table) {
-            $table->dropColumn('reference_number');
+            if (Schema::hasColumn('credits', 'reference_number')) {
+                $table->dropColumn('reference_number');
+            }
         });
     }
 };

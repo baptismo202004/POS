@@ -22,7 +22,7 @@ class Access
      * @param User|null $user
      * @return array<string, array<string>>
      */
-    protected static function getPermissions(?User $user): array
+    public static function getPermissions(?User $user): array
     {
         if (!$user || !$user->user_type_id) {
             return [];

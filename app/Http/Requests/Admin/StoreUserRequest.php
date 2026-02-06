@@ -18,6 +18,7 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'employee_id' => ['nullable', 'string', 'max:50', 'unique:users,employee_id'],
             'user_type_id' => ['required', 'integer', 'exists:user_types,id'],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'status' => ['nullable', 'in:active,inactive'],

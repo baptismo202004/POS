@@ -681,7 +681,7 @@
 
             <div>
                 @php
-                    $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*') || request()->routeIs('superadmin.taxes.*') || request()->routeIs('superadmin.receipt-templates.*');
+                    $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
                 @endphp
                 <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
                     <span class="bg-white rounded d-flex align-items-center justify-content-center icon-badge">
@@ -700,12 +700,6 @@
                         </a>
                         <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('superadmin.unit-types.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Unit Types</span>
-                        </a>
-                        <a href="{{ route('superadmin.taxes.index') }}" class="{{ request()->routeIs('superadmin.taxes.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Tax</span>
-                        </a>
-                        <a href="{{ route('superadmin.receipt-templates.index') }}" class="{{ request()->routeIs('superadmin.receipt-templates.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
-                            <span class="small">Receipt Templates</span>
                         </a>
                     </div>
                 </div>

@@ -197,6 +197,7 @@
                                         <th class="text-center">Create</th>
                                         <th class="text-center">Edit</th>
                                         <th class="text-center">Delete</th>
+                                        <th class="text-center">Allow All</th>
                                     </tr>
                                 </thead>
                                 <tbody id="permissionsTableBody">
@@ -353,7 +354,6 @@ function getDefaultPermissions() {
         { module: 'customer', view: true, create: true, edit: true, delete: false },
         { module: 'credit_limits', view: true, create: true, edit: true, delete: false },
         { module: 'payment_history', view: true, create: false, edit: false, delete: false },
-        { module: 'aging_reports', view: true, create: false, edit: false, delete: false },
         { module: 'reports', view: true, create: false, edit: false, delete: false },
         { module: 'roles_permissions', view: true, create: false, edit: true, delete: false },
         { module: 'user_management', view: true, create: true, edit: true, delete: true },
@@ -361,9 +361,7 @@ function getDefaultPermissions() {
         { module: 'settings', view: true, create: false, edit: true, delete: false },
         { module: 'branch', view: true, create: true, edit: true, delete: true },
         { module: 'brands', view: true, create: true, edit: true, delete: true },
-        { module: 'unit_types', view: true, create: true, edit: true, delete: true },
-        { module: 'tax', view: true, create: false, edit: false, delete: false },
-        { module: 'receipt_templates', view: true, create: false, edit: false, delete: false }
+        { module: 'unit_types', view: true, create: true, edit: true, delete: true }
     ];
 }
 
@@ -387,7 +385,6 @@ function displayPermissions(roleId, permissions) {
         'customer': 'Customer',
         'credit_limits': 'Credit Limits',
         'payment_history': 'Payment History',
-        'aging_reports': 'Aging Reports',
         'reports': 'Reports',
         'roles_permissions': 'Roles & Permissions',
         'user_management': 'User Management',
@@ -395,9 +392,7 @@ function displayPermissions(roleId, permissions) {
         'settings': 'Settings',
         'branch': 'Branch',
         'brands': 'Brands',
-        'unit_types': 'Unit Types',
-        'tax': 'Tax',
-        'receipt_templates': 'Receipt Templates'
+        'unit_types': 'Unit Types'
     };
     
     permissions.forEach(perm => {
@@ -424,9 +419,99 @@ function displayPermissions(roleId, permissions) {
                         <input type="checkbox" class="form-check-input" ${perm.delete ? 'checked' : ''} onchange="updatePermission(${roleId}, '${perm.module}', 'delete', this.checked)">
                     </div>
                 </td>
+                <td class="text-center">
+                    <div class="form-check form-check-inline d-inline-block">
+                        <input type="checkbox" class="form-check-input" onchange="toggleAllPermissions(${roleId}, '${perm.module}', this.checked)">
+                    </div>
+                </td>
             </tr>
         `;
         tbody.innerHTML += row;
+    });
+}
+
+function toggleAllPermissions(roleId, module, checked) {
+    console.log(`Toggling all permissions for Role ${roleId}, Module ${module}, Checked ${checked}`);
+    
+    const row = event.target.closest('tr');
+    const checkboxes = row.querySelectorAll('input[type="checkbox"]:not([onchange*="toggleAllPermissions"])');
+    
+    // Define the permission actions in order
+    const actions = ['view', 'create', 'edit', 'delete'];
+    let updateCount = 0;
+    const totalUpdates = actions.length;
+    
+    // Update all permission checkboxes
+    checkboxes.forEach((checkbox, index) => {
+        checkbox.checked = checked;
+        const action = actions[index];
+        
+        // Call a silent version of updatePermission that doesn't show toast
+        updatePermissionSilent(roleId, module, action, checked, () => {
+            updateCount++;
+            // Show success message only after all updates are complete
+            if (updateCount === totalUpdates) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Permissions Updated',
+                    text: `All permissions for ${module} have been ${checked ? 'granted' : 'revoked'}`,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    });
+}
+
+function updatePermissionSilent(roleId, module, action, checked, callback) {
+    console.log(`Updating permission: Role ${roleId}, Module ${module}, Action ${action}, Checked ${checked}`);
+    
+    fetch(`/superadmin/admin/access/permissions/update`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            role_id: roleId,
+            module: module,
+            action: action,
+            checked: checked
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Permission updated successfully:', data.message);
+            if (callback) callback();
+        } else {
+            console.error('Failed to update permission:', data.message);
+            // If any update fails, show an error message
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: data.message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error updating permission:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to update permission',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
     });
 }
 
@@ -574,7 +659,7 @@ function saveRole() {
 }
 
 function editUser(userId) {
-    fetch(`/admin/access/users/${userId}`, {
+    fetch(`/superadmin/admin/access/users/${userId}`, {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             'Accept': 'application/json'
@@ -657,7 +742,7 @@ function updateUser() {
     const userId = formData.get('user_id');
     formData.append('_method', 'PUT');
 
-    fetch(`/admin/access/users/${userId}`, {
+    fetch(`/superadmin/admin/access/users/${userId}`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -726,7 +811,7 @@ function deleteUser(userId) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`/admin/access/users/${userId}`, {
+            fetch(`/superadmin/admin/access/users/${userId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

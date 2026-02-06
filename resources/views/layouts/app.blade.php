@@ -405,16 +405,25 @@
 </head>
 <body class="min-h-screen font-sans">
 
+    @php
+        $user = auth()->user();
+        $isCashier = $user && $user->userType && $user->userType->name === 'Cashier';
+    @endphp
+
     {{-- Sidebar --}}
-    <aside class="sidebar-fixed">
-        @include('layouts.AdminSidebar')
-    </aside>
+    @if(!$isCashier)
+        <aside class="sidebar-fixed">
+            @include('layouts.AdminSidebar')
+        </aside>
+    @endif
 
     <main class="main-content">
         <!-- Mobile menu toggle -->
-        <button class="d-md-none btn btn-primary position-fixed" style="top: 1rem; left: 1rem; z-index: 1001;" id="mobileMenuToggle">
-            <i class="fas fa-bars"></i>
-        </button>
+        @if(!$isCashier)
+            <button class="d-md-none btn btn-primary position-fixed" style="top: 1rem; left: 1rem; z-index: 1001;" id="mobileMenuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        @endif
         
         @yield('content')
     </main>

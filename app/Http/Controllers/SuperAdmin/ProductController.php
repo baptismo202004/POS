@@ -96,19 +96,20 @@ class ProductController extends Controller
         $validated = $validator->validated();
 
         try {
-            DB::transaction(function () use ($request, $validated) {
+            $debugInfo = [];
+            DB::transaction(function () use ($request, $validated, &$debugInfo) {
                 // Check if product type is electronic
                 $isElectronic = false;
                 if (!empty($validated['product_type_id'])) {
                     $productType = ProductType::find($validated['product_type_id']);
                     $isElectronic = $productType && $productType->is_electronic;
 
-                    Log::info('Electronic product check', [
+                    $debugInfo = [
                         'product_type_id' => $validated['product_type_id'],
                         'product_type_found' => !!$productType,
                         'is_electronic_flag' => $productType ? $productType->is_electronic : 'N/A',
                         'result' => $isElectronic
-                    ]);
+                    ];
                 }
 
                 if ($isElectronic) {
@@ -174,7 +175,7 @@ class ProductController extends Controller
                 }
             });
 
-            return response()->json(['success' => true]);
+            return response()->json(['success' => true, 'debug' => $debugInfo]);
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'An unexpected error occurred: ' . $e->getMessage()], 500);

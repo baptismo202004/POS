@@ -8,12 +8,6 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0">Business Reports</h2>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-                    <i class="fas fa-print"></i> Print
-                </button>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
-                    <i class="fas fa-filter"></i> Filter
-                </button>
             </div>
         </div>
 
@@ -25,7 +19,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-white-50 mb-2">Monthly Sales</h6>
-                                        <h4 class="mb-0">₱{{ number_format(\App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'), 2) }}</h4>
+                                        <h4 class="mb-0" id="stat-card-sales">₱{{ number_format(\App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'), 2) }}</h4>
                                     </div>
                                     <div class="text-white-50">
                                         <i class="fas fa-shopping-cart fa-2x"></i>
@@ -40,7 +34,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-white-50 mb-2">Today's Expenses</h6>
-                                        <h4 class="mb-0">₱{{ number_format(\App\Models\Expense::whereDate('expense_date', today())->sum('amount'), 2) }}</h4>
+                                        <h4 class="mb-0" id="stat-card-today-expenses">₱{{ number_format(\App\Models\Expense::whereDate('expense_date', today())->sum('amount'), 2) }}</h4>
                                     </div>
                                     <div class="text-white-50">
                                         <i class="fas fa-money-bill-wave fa-2x"></i>
@@ -50,12 +44,12 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card stat-card bg-success text-white shadow-sm hover-card" onclick="showThisMonthExpensesModal()">
+                        <div class="card stat-card bg-success text-white shadow-sm">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-white-50 mb-2">This Month's Expenses</h6>
-                                        <h4 class="mb-0">₱{{ number_format(\App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount'), 2) }}</h4>
+                                        <h4 class="mb-0" id="stat-card-month-expenses">₱{{ number_format(\App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount'), 2) }}</h4>
                                     </div>
                                     <div class="text-white-50">
                                         <i class="fas fa-money-bill-wave fa-2x"></i>
@@ -70,7 +64,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-white-50 mb-2">Transactions</h6>
-                                        <h4 class="mb-0">{{ \App\Models\Sale::whereDate('created_at', today())->count() }}</h4>
+                                        <h4 class="mb-0" id="stat-card-transactions">{{ \App\Models\Sale::whereDate('created_at', today())->count() }}</h4>
                                     </div>
                                     <div class="text-white-50">
                                         <i class="fas fa-receipt fa-2x"></i>
@@ -86,12 +80,6 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Business Transactions</h5>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
-                                <i class="fas fa-print"></i> Print
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
-                                <i class="fas fa-filter"></i> Filter
-                            </button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -182,19 +170,19 @@
                             <div class="col-md-4">
                                 <div class="text-center">
                                     <h6 class="text-muted">Total Sales</h6>
-                                    <h5 class="text-success">₱{{ number_format($recentSales->sum('total_amount'), 2) }}</h5>
+                                    <h5 class="text-success" id="summary-row-sales">₱{{ number_format($recentSales->sum('total_amount'), 2) }}</h5>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center">
                                     <h6 class="text-muted">Total Expenses</h6>
-                                    <h5 class="text-danger">₱{{ number_format($recentExpenses->sum('amount'), 2) }}</h5>
+                                    <h5 class="text-danger" id="summary-row-expenses">₱{{ number_format($recentExpenses->sum('amount'), 2) }}</h5>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center">
                                     <h6 class="text-muted">Net Total</h6>
-                                    <h5 class="text-primary">₱{{ number_format($recentSales->sum('total_amount') - $recentExpenses->sum('amount'), 2) }}</h5>
+                                    <h5 class="text-primary" id="summary-row-net">₱{{ number_format($recentSales->sum('total_amount') - $recentExpenses->sum('amount'), 2) }}</h5>
                                 </div>
                             </div>
                         </div>
@@ -214,31 +202,6 @@
         </main>
     </div>
 
-    <!-- Filter Modal -->
-    <div class="modal fade" id="filterModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Filter Reports</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="from_date" class="form-label">From Date</label>
-                        <input type="date" class="form-control" id="from_date" value="{{ now()->subDays(30)->format('Y-m-d') }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="to_date" class="form-label">To Date</label>
-                        <input type="date" class="form-control" id="to_date" value="{{ now()->format('Y-m-d') }}">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="applyFilter()">Apply Filter</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -282,86 +245,6 @@
         location.reload();
     }
 
-    function applyFilter() {
-        const fromDate = document.getElementById('from_date').value;
-        const toDate = document.getElementById('to_date').value;
-        
-        if (!fromDate || !toDate) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Dates',
-                text: 'Please select both from and to dates.',
-            });
-            return;
-        }
-        
-        // Show loading
-        Swal.fire({
-            title: 'Loading...',
-            text: 'Fetching filtered data...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        // Make AJAX request
-        fetch('{{ route("superadmin.admin.reports.filter") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                from_date: fromDate,
-                to_date: toDate
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            Swal.close();
-            
-            if (data.error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.error,
-                });
-                return;
-            }
-            
-            // Update the table with filtered data
-            updateTable(data.transactions);
-            
-            // Update summary cards
-            updateSummaryCards(data.summaries);
-            
-            // Update product breakdown if available
-            if (data.sales_by_product) {
-                updateProductBreakdown(data.sales_by_product);
-            }
-            
-            // Close modal
-            $('#filterModal').modal('hide');
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Filter Applied',
-                text: `Showing data from ${fromDate} to ${toDate}`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-        })
-        .catch(error => {
-            Swal.close();
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to fetch filtered data. Please try again.',
-            });
-        });
-    }
     
     function updateTable(transactions) {
         const tbody = document.querySelector('table tbody');
@@ -384,9 +267,11 @@
         transactions.forEach(transaction => {
             const row = document.createElement('tr');
             
+            const transactionDate = new Date(transaction.transaction_date).toLocaleString();
+
             if (transaction.cashier_id) { // It's a sale
                 row.innerHTML = `
-                    <td>${new Date(transaction.created_at).toLocaleString()}</td>
+                    <td>${transactionDate}</td>
                     <td><span class="badge bg-primary">SALE</span></td>
                     <td>
                         <div>
@@ -400,7 +285,7 @@
                 `;
             } else { // It's an expense
                 row.innerHTML = `
-                    <td>${new Date(transaction.created_at).toLocaleString()}</td>
+                    <td>${transactionDate}</td>
                     <td><span class="badge bg-danger">EXPENSE</span></td>
                     <td>
                         <div>
@@ -421,22 +306,22 @@
     }
     
     function updateSummaryCards(summaries) {
-        // Update today's sales card
-        document.querySelector('.bg-primary h4').textContent = `₱${parseFloat(summaries.total_sales).toFixed(2)}`;
-        
-        // Update today's expenses card
-        document.querySelector('.bg-danger h4').textContent = `₱${parseFloat(summaries.total_expenses).toFixed(2)}`;
-        
-        // Update net profit card
-        document.querySelector('.bg-success h4').textContent = `₱${parseFloat(summaries.net_total).toFixed(2)}`;
-        
-        // Update transactions card
-        document.querySelector('.bg-info h4').textContent = summaries.sales_count + summaries.expense_count;
+        // Update stat card titles for filtered view
+        document.querySelector('#stat-card-sales').parentElement.querySelector('h6').textContent = 'Total Sales';
+        document.querySelector('#stat-card-today-expenses').parentElement.querySelector('h6').textContent = 'Total Expenses';
+        document.querySelector('#stat-card-month-expenses').parentElement.querySelector('h6').textContent = 'Net Total';
+        document.querySelector('#stat-card-transactions').parentElement.querySelector('h6').textContent = 'Total Transactions';
+
+        // Update stat card values
+        document.getElementById('stat-card-sales').textContent = `₱${parseFloat(summaries.total_sales).toFixed(2)}`;
+        document.getElementById('stat-card-today-expenses').textContent = `₱${parseFloat(summaries.total_expenses).toFixed(2)}`;
+        document.getElementById('stat-card-month-expenses').textContent = `₱${parseFloat(summaries.net_total).toFixed(2)}`;
+        document.getElementById('stat-card-transactions').textContent = summaries.sales_count + summaries.expense_count;
         
         // Update summary row
-        document.querySelector('.text-success h5').textContent = `₱${parseFloat(summaries.total_sales).toFixed(2)}`;
-        document.querySelector('.text-danger h5').textContent = `₱${parseFloat(summaries.total_expenses).toFixed(2)}`;
-        document.querySelector('.text-primary h5').textContent = `₱${parseFloat(summaries.net_total).toFixed(2)}`;
+        document.getElementById('summary-row-sales').textContent = `₱${parseFloat(summaries.total_sales).toFixed(2)}`;
+        document.getElementById('summary-row-expenses').textContent = `₱${parseFloat(summaries.total_expenses).toFixed(2)}`;
+        document.getElementById('summary-row-net').textContent = `₱${parseFloat(summaries.net_total).toFixed(2)}`;
     }
     
     function updateProductBreakdown(salesByProduct) {

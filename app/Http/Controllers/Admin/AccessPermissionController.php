@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserType;
 use App\Models\RolePermission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AccessPermissionController extends Controller
 {
@@ -254,7 +255,6 @@ class AccessPermissionController extends Controller
             ['module' => 'customer', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'credit_limits', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'payment_history', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
-            ['module' => 'aging_reports', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'reports', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'roles_permissions', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'user_management', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
@@ -262,9 +262,7 @@ class AccessPermissionController extends Controller
             ['module' => 'settings', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'branch', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'brands', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
-            ['module' => 'unit_types', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
-            ['module' => 'tax', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
-            ['module' => 'receipt_templates', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false]
+            ['module' => 'unit_types', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false]
         ];
     }
 }

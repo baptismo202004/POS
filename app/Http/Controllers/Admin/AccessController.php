@@ -259,6 +259,22 @@ class AccessController extends Controller
         return view('Admin.access.logs_fullscreen', compact('users'));
     }
 
+    public function editUser($id)
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+
     private function resolvePermissions($allRoles, $existing)
     {
         $resolved = [];

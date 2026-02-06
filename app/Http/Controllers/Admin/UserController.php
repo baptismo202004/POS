@@ -34,11 +34,19 @@ class UserController extends Controller
             $data['profile_picture'] = $path;
         }
 
+        // Generate employee_id if not provided
+        if (empty($data['employee_id'])) {
+            $latestEmployee = User::orderBy('employee_id', 'desc')->first();
+            $latestNumber = $latestEmployee ? (int)str_replace('EMP', '', $latestEmployee->employee_id) : 0;
+            $data['employee_id'] = 'EMP' . str_pad($latestNumber + 1, 5, '0', STR_PAD_LEFT);
+        }
+
         // Password will be hashed automatically via cast in User model (password => 'hashed')
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
+            'employee_id' => $data['employee_id'],
             'user_type_id' => $data['user_type_id'],
             'branch_id' => $data['branch_id'] ?? null,
             'status' => $data['status'] ?? 'active',
