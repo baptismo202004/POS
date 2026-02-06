@@ -97,8 +97,9 @@
             background-color: transparent; 
             color: var(--color-text); 
             overflow-y: auto;
-            height: 100vh;
-            margin-left: 200px;
+            margin-left: 260px;
+            padding: 1.5rem;
+            min-height: 100vh;
         }
         
         .sidebar-fixed {
@@ -106,7 +107,7 @@
             left: 0;
             top: 0;
             height: 100vh;
-            width: 200px;
+            width: 260px;
             overflow-y: auto;
             overflow-x: hidden;
             z-index: 1000;
@@ -333,11 +334,7 @@
             }
             
             .sidebar-fixed {
-                width: 200px;
-            }
-            
-            .main-content {
-                margin-left: 200px;
+                width: 260px;
             }
             
             .btn {

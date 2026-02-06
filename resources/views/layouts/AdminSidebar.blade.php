@@ -3,7 +3,9 @@
         /* Mobile responsive sidebar - handled by main layout */
         @media (max-width: 767.98px) {
             .sidebar {
-                width: 280px;
+                width: 320px;
+                padding: 1rem 0.5rem 1rem 0.5rem; /* minimal padding */
+                box-sizing: border-box;
             }
             
             .sidebar.show {
@@ -28,27 +30,44 @@
 
         /* Sidebar styles - Electric Modern Palette */
         .sidebar { 
-            width: 200px; 
+            width: 260px; 
             min-height: 100vh; 
             background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
             border-radius: 0 16px 16px 0;
-            padding: 1rem;
+            padding: 1rem 0.5rem 1rem 0.5rem; /* minimal padding */
             color: #FFFFFF;
             position: relative;
-            overflow: hidden;
-            overflow-x: hidden;
+            overflow: hidden; /* contain content within background */
             font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             font-weight: 500;
             letter-spacing: -0.01em;
+            box-shadow: 4px 0 20px rgba(13, 71, 161, 0.15);
+            box-sizing: border-box; /* ensure padding doesn't affect total width */
         }
         
         /* Subtle radial glow effect */
         .sidebar::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 100% 0%, rgba(0, 229, 255, 0.15), transparent 60%);
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: radial-gradient(circle at 100% 0%, rgba(0, 229, 255, 0.2), transparent 70%);
             pointer-events: none;
+            z-index: -1;
+        }
+        
+        /* Extended background container */
+        .sidebar-bg-extension {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: -150px;
+            bottom: 0;
+            background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
+            border-radius: 0 16px 16px 0;
+            z-index: -3;
         }
         
         .sidebar .sidebar-icon { 
@@ -129,24 +148,30 @@
             color: rgba(255, 255, 255, 0.9);
             border-radius: 8px; 
             min-height: 44px;
-            padding: 0 10px;
+            padding: 0 6px; /* minimal padding */
             transition: all 0.18s ease;
             position: relative;
             z-index: 1;
-            white-space: normal;
-            overflow: visible;
+            white-space: nowrap; /* prevent text wrapping */
+            overflow: hidden; /* contain text within background */
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px; /* minimal gap */
             cursor: pointer;
             margin: 0 !important;
+            box-sizing: border-box; /* ensure padding doesn't affect total width */
+            width: 100%; /* use full available width */
         }
         
         /* Force override any Bootstrap margins */
         .sidebar nav a.d-flex {
             margin: 0 !important;
-            padding: 0 10px !important;
-            gap: 12px !important;
+            padding: 0 6px !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
         }
         
         /* Ensure icon badges are consistent */
@@ -326,11 +351,10 @@
 
         /* User dropdown menu */
         .user-dropdown-menu { 
-            min-width: 210px; 
+            min-width: 280px; 
+            max-width: 320px;
             border-radius: 12px; 
             box-shadow: 0 10px 30px rgba(13, 71, 161, 0.15); 
-            padding: 6px; 
-            list-style: none;
             background: #FFFFFF;
             z-index: 1050;
             position: relative;

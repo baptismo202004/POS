@@ -29,8 +29,8 @@
                             <h4 class="m-0">Customers</h4>
                         </div>
                         <div>
-                            <button class="btn btn-warning me-2" onclick="editSelectedCustomer()">
-                                <i class="fas fa-edit me-1"></i>Edit
+                            <button class="btn btn-success me-2" onclick="addNewCustomer()">
+                                <i class="fas fa-plus me-1"></i>Add Customer
                             </button>
                             <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-primary">Go to Sales</a>
                         </div>
@@ -40,79 +40,54 @@
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th>
-                                        </th>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Phone</th>
-                                        <th>Email</th>
-                                        <th>Address</th>
-                                        <th>Total Credit</th>
-                                        <th>Paid Amount</th>
-                                        <th>Outstanding Balance</th>
-                                        <th>Credit Giver</th>
+                                        <th>Customer ID</th>
+                                        <th>Customer Name</th>
+                                        <th>Created At</th>
+                                        <th>Created By</th>
+                                        <th>Branch</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Registered Customers -->
                                     @forelse($customers as $customer)
-                                        <?php
-                                        // Since credits relationship was removed, set credit values to 0 for registered customers
-                                        $totalCredits = 0;
-                                        $totalPaid = 0;
-                                        $outstandingBalance = 0;
-                                        $rowNumber = $loop->index + 1; // Start from 1
-                                        ?>
                                         <tr>
+                                            <td>{{ $customer->customer_id }}</td>
                                             <td>
-                                                <input type="checkbox" class="customer-checkbox" value="{{ $customer->id }}" data-customer='{{ json_encode($customer) }}'>
+                                                <strong>{{ $customer->full_name }}</strong>
+                                                @if($customer->outstanding_balance > 0)
+                                                    <span class="badge bg-warning ms-1">Has Balance</span>
+                                                @endif
                                             </td>
-                                            <td>{{ $rowNumber }}</td>
-                                            <td>{{ $customer->full_name }}</td>
-                                            <td>{{ $customer->phone ?? 'N/A' }}</td>
-                                            <td>{{ $customer->email ?? 'N/A' }}</td>
-                                            <td>{{ $customer->address ?? 'N/A' }}</td>
-                                            <td>₱{{ number_format($totalCredits, 2) }}</td>
-                                            <td>₱{{ number_format($totalPaid, 2) }}</td>
-                                            <td class="fw-bold {{ $outstandingBalance > 0 ? 'text-danger' : 'text-success' }}">
-                                                ₱{{ number_format($outstandingBalance, 2) }}
+                                            <td>{{ \Carbon\Carbon::parse($customer->created_at)->format('M d, Y') }}</td>
+                                            <td>{{ $customer->created_by }}</td>
+                                            <td>Main Branch</td>
+                                            <td>
+                                                <span class="badge bg-{{ $customer->status == 'active' ? 'success' : 'danger' }}">
+                                                    {{ ucfirst($customer->status) }}
+                                                </span>
                                             </td>
                                             <td>
-                                                No credits
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id) }}" class="btn btn-outline-primary" title="View Customer">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    @if($customer->status == 'active')
+                                                        <button type="button" class="btn btn-outline-danger" onclick="toggleCustomerStatus({{ $customer->customer_id }}, '{{ $customer->status }}')" title="Block Customer">
+                                                            <i class="fas fa-ban"></i>
+                                                        </button>
+                                                    @else
+                                                        <button type="button" class="btn btn-outline-success" onclick="toggleCustomerStatus({{ $customer->customer_id }}, '{{ $customer->status }}')" title="Unblock Customer">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    @endif
+                                                </div>
                                             </td>
                                         </tr>
                                     @empty
-                                        @if($walkInCredits->count() == 0)
-                                            <tr>
-                                                <td colspan="10" class="text-center">No customers found.</td>
-                                            </tr>
-                                        @endif
-                                    @endforelse
-                                    
-                                    <!-- All Credits (for debugging) -->
-                                    @forelse($walkInCredits as $credit)
-                                        <tr class="{{ $credit->customer_id ? 'table-info' : 'table-warning' }}">
-                                            <td>
-                                                <input type="checkbox" class="walk-in-checkbox" value="{{ $credit->id }}" data-credit='{{ json_encode($credit) }}'>
-                                            </td>
-                                            <td>{{ $credit->customer_id ? 'R-' . $loop->index + 1 : $loop->index + 1 }}</td>
-                                            <td>{{ $credit->customer_name ?? ($credit->customer->name ?? 'Walk-in Customer') }}</td>
-                                            <td>{{ $credit->phone ?? 'N/A' }}</td>
-                                            <td>{{ $credit->email ?? 'N/A' }}</td>
-                                            <td>{{ $credit->address ?? 'N/A' }}</td>
-                                            <td>₱{{ number_format($credit->credit_amount, 2) }}</td>
-                                            <td>₱{{ number_format($credit->paid_amount, 2) }}</td>
-                                            <td class="fw-bold {{ $credit->remaining_balance > 0 ? 'text-danger' : 'text-success' }}">
-                                                ₱{{ number_format($credit->remaining_balance, 2) }}
-                                            </td>
-                                            <td>{{ $credit->cashier->name ?? 'Unknown' }}</td>
+                                        <tr>
+                                            <td colspan="7" class="text-center">No customers found.</td>
                                         </tr>
-                                    @empty
-                                        @if($customers->count() == 0)
-                                            <tr>
-                                                <td colspan="10" class="text-center">No customers or credits found.</td>
-                                            </tr>
-                                        @endif
                                     @endforelse
                                 </tbody>
                             </table>
@@ -164,174 +139,96 @@ function toggleAllCheckboxes() {
     });
 }
 
-function editSelectedCustomer() {
-    const selectedCustomer = document.querySelector('.customer-checkbox:checked');
-    const selectedWalkIn = document.querySelector('.walk-in-checkbox:checked');
-    
-    if (!selectedCustomer && !selectedWalkIn) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'No Customer Selected',
-            text: 'Please select at least one customer to edit.',
-            confirmButtonColor: '#2563eb'
-        });
-        return;
-    }
-    
-    if (selectedCustomer && selectedWalkIn) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Multiple Customers Selected',
-            text: 'Please select only one customer to edit.',
-            confirmButtonColor: '#2563eb'
-        });
-        return;
-    }
-    
-    if (selectedWalkIn) {
-        // Handle walk-in customer editing
-        const creditData = JSON.parse(selectedWalkIn.dataset.credit);
-        
-        Swal.fire({
-            title: 'Edit Walk-in Customer',
-            html: `
-                <div class="text-start">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Credit ID:</label>
-                                <input type="text" class="form-control" value="${creditData.id}" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Customer Name:</label>
-                                <input type="text" class="form-control" id="edit_customer_name" value="${creditData.customer_name || ''}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Phone:</label>
-                                <input type="text" class="form-control" id="edit_phone" placeholder="Enter phone number">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Email:</label>
-                                <input type="email" class="form-control" id="edit_email" placeholder="Enter email address">
-                            </div>
+function addNewCustomer() {
+    Swal.fire({
+        title: 'Add New Customer',
+        html: `
+            <div class="text-start">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="new_full_name" required>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Address:</label>
-                                <textarea class="form-control" id="edit_address" rows="4" placeholder="Enter address"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Credit Amount:</label>
-                                <input type="text" class="form-control" value="₱${creditData.credit_amount}" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Outstanding Balance:</label>
-                                <input type="text" class="form-control" value="₱${creditData.remaining_balance}" readonly>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="new_phone" placeholder="Enter phone number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="new_email" placeholder="Enter email address">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" id="new_address" rows="3" placeholder="Enter address"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Max Credit Limit</label>
+                            <input type="number" class="form-control" id="new_max_credit_limit" step="0.01" min="0" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Account Status</label>
+                            <select class="form-control" id="new_status">
+                                <option value="active">Active</option>
+                                <option value="blocked">Blocked</option>
+                            </select>
                         </div>
                     </div>
                 </div>
-            `,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonText: 'Update Customer',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#2563eb'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Update walk-in customer with all fields
-                updateWalkInCustomer(creditData.id, {
-                    customer_name: document.getElementById('edit_customer_name').value,
-                    phone: document.getElementById('edit_phone').value,
-                    email: document.getElementById('edit_email').value,
-                    address: document.getElementById('edit_address').value
-                });
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Add Customer',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            const fullName = document.getElementById('new_full_name').value;
+            if (!fullName.trim()) {
+                Swal.showValidationMessage('Full name is required');
+                return false;
             }
-        });
-    } else {
-        // Handle regular customer editing
-        const customerData = JSON.parse(selectedCustomer.dataset.customer);
-        
-        Swal.fire({
-            title: 'Edit Customer',
-            html: `
-                <div class="text-start">
-                    <div class="mb-3">
-                        <label class="form-label">Customer ID:</label>
-                        <input type="text" class="form-control" id="edit_customer_id" value="${customerData.id}" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Full Name:</label>
-                        <input type="text" class="form-control" id="edit_full_name" value="${customerData.full_name || ''}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Phone:</label>
-                        <input type="text" class="form-control" id="edit_phone" value="${customerData.phone || ''}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email:</label>
-                        <input type="email" class="form-control" id="edit_email" value="${customerData.email || ''}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Address:</label>
-                        <textarea class="form-control" id="edit_address" rows="2">${customerData.address || ''}</textarea>
-                    </div>
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Save Changes',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#2563eb',
-            preConfirm: () => {
-                return {
-                    id: document.getElementById('edit_customer_id').value,
-                    full_name: document.getElementById('edit_full_name').value,
-                    phone: document.getElementById('edit_phone').value,
-                    email: document.getElementById('edit_email').value,
-                    address: document.getElementById('edit_address').value
-                };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Send AJAX request to update the customer
-                const customerData = result.value;
             
-            fetch(`{{ route('superadmin.admin.customers.update', ':customer') }}`.replace(':customer', customerData.id), {
-                method: 'PUT',
+            return {
+                full_name: fullName,
+                phone: document.getElementById('new_phone').value,
+                email: document.getElementById('new_email').value,
+                address: document.getElementById('new_address').value,
+                max_credit_limit: parseFloat(document.getElementById('new_max_credit_limit').value) || 0,
+                status: document.getElementById('new_status').value
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Send AJAX request to create the customer
+            const customerData = result.value;
+        
+            fetch('{{ route("superadmin.admin.customers.store") }}', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
                 body: JSON.stringify(customerData)
             })
-            .then(response => {
-                // Check if response is JSON
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
-                } else {
-                    // If not JSON, return error with response text
-                    return response.text().then(text => {
-                        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}...`);
-                    });
-                }
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Customer Updated',
-                        text: 'Customer information has been updated successfully.',
+                        title: 'Customer Added',
+                        text: 'New customer has been added successfully.',
                         confirmButtonColor: '#2563eb'
                     }).then(() => {
-                        // Reload the page to show updated data
                         location.reload();
                     });
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Update Failed',
-                        text: data.message || 'Failed to update customer.',
+                        title: 'Add Failed',
+                        text: data.message || 'Failed to add customer.',
                         confirmButtonColor: '#2563eb'
                     });
                 }
@@ -341,94 +238,78 @@ function editSelectedCustomer() {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'An error occurred while updating the customer.',
+                    text: 'An error occurred while adding the customer.',
                     confirmButtonColor: '#2563eb'
                 });
             });
         }
     });
-    }
 }
 
-function updateWalkInCustomerName(creditId, newName) {
-    fetch(`/superadmin/admin/credits/${creditId}/update-name`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            customer_name: newName
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Customer Name Updated',
-                text: 'Walk-in customer name has been updated successfully.',
-                confirmButtonColor: '#2563eb'
-            }).then(() => {
-                location.reload();
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Update Failed',
-                text: data.message || 'Failed to update customer name.',
-                confirmButtonColor: '#2563eb'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'An error occurred while updating the customer name.',
-            confirmButtonColor: '#2563eb'
-        });
+function viewCustomerDetails(customerId) {
+    // This would typically open a modal or navigate to a detail page
+    Swal.fire({
+        title: 'Customer Details',
+        text: 'Detailed customer view coming soon!',
+        icon: 'info',
+        confirmButtonColor: '#2563eb'
     });
 }
 
-function updateWalkInCustomer(creditId, customerData) {
-    fetch(`/superadmin/admin/credits/${creditId}/update-customer`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify(customerData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Customer Updated',
-                text: 'Walk-in customer information has been updated successfully.',
-                confirmButtonColor: '#2563eb'
-            }).then(() => {
-                location.reload();
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Update Failed',
-                text: data.message || 'Failed to update customer information.',
-                confirmButtonColor: '#2563eb'
+function toggleCustomerStatus(customerId, currentStatus) {
+    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'block';
+    
+    Swal.fire({
+        title: `Confirm ${action} customer?`,
+        text: `Are you sure you want to ${action} this customer?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: `Yes, ${action}`,
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/superadmin/admin/customers/${customerId}/toggle-status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Status Updated',
+                        text: `Customer has been ${action}d successfully.`,
+                        confirmButtonColor: '#2563eb'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        text: data.message || 'Failed to update customer status.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while updating customer status.',
+                    confirmButtonColor: '#2563eb'
+                });
             });
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'An error occurred while updating the customer information.',
-            confirmButtonColor: '#2563eb'
-        });
     });
 }
+
 </script>

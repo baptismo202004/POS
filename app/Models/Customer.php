@@ -15,5 +15,7 @@ class Customer extends Model
         'max_credit_limit',
         'phone',
         'address',
+        'status',
+        'created_by',
     ];
 }

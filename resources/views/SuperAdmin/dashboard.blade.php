@@ -1142,14 +1142,12 @@
 
 @section('content')
 <div class="p-3 p-lg-4">
-    
 
     <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
         <div>
             <div class="dash-header mb-1">Good Morning, {{ auth()->user()->name ?? 'User' }}</div>
             <div class="text-muted small">Your performance overview for today</div>
         </div>
-     
     </div>
 
     <!-- Static Dashboard Layout -->

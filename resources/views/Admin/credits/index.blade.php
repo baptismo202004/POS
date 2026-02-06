@@ -102,38 +102,38 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Credit Amount</th>
-                            <th>Paid Amount</th>
+                            <th>Customer Name</th>
+                            <th>Total Credits</th>
+                            <th>Total Credit Amount</th>
+                            <th>Total Paid Amount</th>
                             <th>Remaining Balance</th>
-                            <th>Credit Date</th>
+                            <th>Last Credit Date</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($credits as $credit)
+                        @forelse($customers as $customer)
                             <tr>
-                                <td>{{ $credit->created_at->format('M d, Y') }}</td>
-                                <td>{{ $credit->customer_name ?? 'Walk-in Customer' }}</td>
-                                <td>₱{{ number_format($credit->credit_amount, 2) }}</td>
-                                <td>₱{{ number_format($credit->paid_amount, 2) }}</td>
-                                <td>₱{{ number_format($credit->remaining_balance, 2) }}</td>
-                                <td>{{ $credit->date->format('M d, Y') }}</td>
+                                <td><strong>{{ $customer->full_name }}</strong></td>
+                                <td>{{ $customer->credit_giver_total }}</td>
+                                <td>₱{{ number_format($customer->total_credit, 2) }}</td>
+                                <td>₱{{ number_format($customer->total_paid, 2) }}</td>
+                                <td>₱{{ number_format($customer->outstanding_balance, 2) }}</td>
+                                <td>{{ \Carbon\Carbon::parse($customer->last_credit_date)->format('M d, Y') }}</td>
                                 <td>
-                                    <span class="badge bg-{{ $credit->status == 'active' ? 'primary' : ($credit->status == 'paid' ? 'success' : 'danger') }}">
-                                        {{ ucfirst($credit->status) }}
+                                    <span class="badge bg-{{ $customer->status == 'Fully Paid' ? 'success' : ($customer->status == 'Good Standing' ? 'warning' : 'danger') }}">
+                                        {{ $customer->status }}
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" onclick="viewCredit({{ $credit->id }})">
-                                            <i class="fas fa-eye"></i>
+                                        <button class="btn btn-outline-primary" onclick="viewCustomerCredits({{ $customer->customer_id }})">
+                                            <i class="fas fa-eye"></i> View Details
                                         </button>
-                                        @if($credit->remaining_balance > 0)
-                                            <button class="btn btn-outline-success" onclick="makePayment({{ $credit->id }}, {{ $credit->remaining_balance }})">
-                                                <i class="fas fa-money-bill-wave"></i>
+                                        @if($customer->outstanding_balance > 0)
+                                            <button class="btn btn-outline-success" onclick="makeCustomerPayment({{ $customer->customer_id }}, {{ $customer->outstanding_balance }})">
+                                                <i class="fas fa-money-bill-wave"></i> Payment
                                             </button>
                                         @endif
                                     </div>
@@ -141,16 +141,16 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center">No credits found.</td>
+                                <td colspan="8" class="text-center">No customers with credits found.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             
-            @if($credits->hasPages())
+            @if($customers->hasPages())
                 <div class="d-flex justify-content-center mt-3">
-                    {{ $credits->links() }}
+                    {{ $customers->links() }}
                 </div>
             @endif
         </div>
@@ -201,10 +201,68 @@
 <script>
     // Force refresh to avoid caching issues
     console.log('Credits index script loaded - v2');
+
+    // Add CSS for highlighting changed fields
+    const style = document.createElement('style');
+    style.textContent = `
+        .limit-input.changed {
+            border-color: #28a745;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+            font-weight: 500;
+        }
+        .limit-input.changed:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        .swal2-popup {
+            font-size: 14px;
+        }
+        .swal2-popup strong {
+            color: #333;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Global modal focus management to fix aria-hidden accessibility issues
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle all modal dismissals to prevent aria-hidden focus conflicts
+        document.addEventListener('click', function(e) {
+            if (e.target.hasAttribute('data-bs-dismiss') && e.target.getAttribute('data-bs-dismiss') === 'modal') {
+                // Remove focus from the button before dismissing modal
+                e.target.blur();
+                // Move focus to body to prevent focus trapping
+                document.body.focus();
+            }
+        });
+
+        // Handle Bootstrap modal hide events
+        document.addEventListener('hide.bs.modal', function(e) {
+            const modal = e.target;
+            const activeElement = document.activeElement;
+            
+            // If active element is within the modal, remove focus before hiding
+            if (activeElement && modal.contains(activeElement)) {
+                activeElement.blur();
+                document.body.focus();
+            }
+        });
+    });
     
     function viewCredit(creditId) {
         console.log('Viewing credit:', creditId);
-        window.open(`/superadmin/admin/credits/${creditId}`, '_blank');
+        window.location.href = `/superadmin/admin/credits/${creditId}`;
+    }
+    
+    function viewCustomerCredits(customerId) {
+        console.log('Viewing customer credits:', customerId);
+        window.location.href = `/superadmin/admin/credits/customer/${customerId}`;
+    }
+    
+    function makeCustomerPayment(customerId, remainingBalance) {
+        console.log('Making payment for customer:', customerId, 'Remaining:', remainingBalance);
+        // For now, redirect to customer details page where they can make payments
+        window.location.href = `/superadmin/admin/credits/customer/${customerId}`;
     }
     
     function makePayment(creditId, remainingBalance) {
@@ -303,15 +361,39 @@
         let customerHtml = '';
         if (data.creditsByCustomer && data.creditsByCustomer.length > 0) {
             data.creditsByCustomer.forEach((customer, index) => {
-                const progressPercentage = customer.total_credit_limit > 0 
-                    ? (customer.total_paid / customer.total_credit_limit) * 100 
-                    : 0;
-                const statusClass = customer.total_remaining <= 0 ? 'success' : 
-                    (progressPercentage >= 80 ? 'warning' : 'danger');
-                const statusText = customer.total_remaining <= 0 ? 'Fully Paid' : 
-                    (progressPercentage >= 80 ? 'Good Standing' : 'Outstanding');
-                
                 const maxCreditLimit = customer.max_credit_limit || 0;
+                
+                // Recalculate status based on max credit limit (or 0 if none)
+                const effectiveLimit = maxCreditLimit > 0 ? maxCreditLimit : customer.total_credit_limit;
+                const progressPercentage = effectiveLimit > 0 
+                    ? (customer.total_paid / effectiveLimit) * 100 
+                    : 0;
+                
+                // Enhanced status calculation considering max credit limit
+                let statusClass, statusText;
+                
+                if (customer.total_remaining <= 0) {
+                    statusClass = 'success';
+                    statusText = 'Fully Paid';
+                } else if (maxCreditLimit > 0) {
+                    // If max credit limit is set, use it for status calculation
+                    const maxLimitProgress = (customer.total_credit_limit / maxCreditLimit) * 100;
+                    if (maxLimitProgress >= 100) {
+                        statusClass = 'danger';
+                        statusText = 'Limit Reached';
+                    } else if (maxLimitProgress >= 80) {
+                        statusClass = 'warning';
+                        statusText = 'Near Limit';
+                    } else {
+                        statusClass = 'success';
+                        statusText = 'Available';
+                    }
+                } else {
+                    // If no max limit set, use traditional calculation
+                    statusClass = progressPercentage >= 80 ? 'warning' : 'danger';
+                    statusText = progressPercentage >= 80 ? 'Good Standing' : 'Outstanding';
+                }
+                
                 const canStillCredit = maxCreditLimit > 0 && (customer.total_credit_limit < maxCreditLimit);
                 const limitStatus = maxCreditLimit > 0 ? 
                     (customer.total_credit_limit >= maxCreditLimit ? 'Limit Reached' : 'Available') : 
@@ -335,6 +417,7 @@
                                        value="${maxCreditLimit}" 
                                        min="0" 
                                        step="100"
+                                       data-original-value="${maxCreditLimit}"
                                        data-customer="${customer.customer_name}"
                                        style="width: 120px;">
                             </div>
@@ -343,20 +426,14 @@
                         <td>₱${parseFloat(customer.total_remaining).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
                         <td>
                             <div class="progress" style="height: 8px;">
-                                <div class="progress-bar bg-${progressPercentage >= 80 ? 'success' : (progressPercentage >= 50 ? 'warning' : 'danger')}" 
+                                <div class="progress-bar bg-${statusClass}" 
                                      style="width: ${progressPercentage}%"></div>
                             </div>
-                            <small>${progressPercentage.toFixed(1)}% paid</small>
+                            <small>${progressPercentage.toFixed(1)}% of ${maxCreditLimit > 0 ? 'max limit' : 'total limit'}</small>
                         </td>
                         <td>
                             <span class="badge bg-${statusClass}">${statusText}</span>
                             ${maxCreditLimit > 0 ? `<br><small class="text-muted">${limitStatus}</small>` : ''}
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary edit-btn" 
-                                    onclick="editCustomerLimit('${customer.customer_name}', ${maxCreditLimit}, ${index})">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
                         </td>
                     </tr>
                 `;
@@ -419,21 +496,7 @@
                                 </div>
                             </div>
                             
-                            <!-- Bulk Actions -->
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <button class="btn btn-sm btn-success" id="updateSelectedBtn" disabled>
-                                        <i class="fas fa-save"></i> Update Selected
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary" id="resetSelectedBtn" disabled>
-                                        <i class="fas fa-undo"></i> Reset Selected
-                                    </button>
-                                </div>
-                                <small class="text-muted">
-                                    <span id="selectedCount">0</span> customers selected
-                                </small>
-                            </div>
-                            
+                                                        
                             <!-- Customer Credit Table -->
                             <div class="table-responsive">
                                 <table class="table table-hover">
@@ -448,7 +511,6 @@
                                             <th>Remaining</th>
                                             <th>Progress</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -458,7 +520,20 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <div>
+                                    <button class="btn btn-sm btn-success" id="updateSelectedBtn" disabled>
+                                        <i class="fas fa-save"></i> Update
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" id="resetSelectedBtn" disabled>
+                                        <i class="fas fa-undo"></i> Reset Selected
+                                    </button>
+                                    <small class="text-muted ms-3">
+                                        <span id="selectedCount">0</span> customers selected
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -481,6 +556,28 @@
         
         // Properly cleanup modal when hidden
         const modalElement = document.getElementById('creditLimitsModal');
+        
+        // Handle focus management before modal hides
+        modalElement.addEventListener('hide.bs.modal', function () {
+            // Remove focus from any focused element within the modal before hiding
+            const activeElement = document.activeElement;
+            if (activeElement && modalElement.contains(activeElement)) {
+                activeElement.blur();
+                // Move focus to body or a safe element
+                document.body.focus();
+            }
+        });
+        
+        // Handle all close buttons within this modal
+        const closeButtons = modalElement.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                // Remove focus before dismissing
+                this.blur();
+                document.body.focus();
+            });
+        });
+        
         modalElement.addEventListener('hidden.bs.modal', function () {
             modalElement.remove();
         });
@@ -505,7 +602,14 @@
             const selectedCustomers = document.querySelectorAll('.customer-checkbox:checked');
             const hasSelection = selectedCustomers.length > 0;
             
-            if (updateSelectedBtn) updateSelectedBtn.disabled = !hasSelection;
+            // Check if there are any changed inputs
+            const changedInputs = document.querySelectorAll('.limit-input.changed');
+            const hasChanges = changedInputs.length > 0;
+            
+            // Update button: enabled if there are any changes (regardless of checkbox selection)
+            if (updateSelectedBtn) updateSelectedBtn.disabled = !hasChanges;
+            
+            // Reset button: still requires checkbox selection
             if (resetSelectedBtn) resetSelectedBtn.disabled = !hasSelection;
             if (selectedCount) selectedCount.textContent = selectedCustomers.length;
         }
@@ -526,6 +630,102 @@
         
         // Initialize buttons state
         updateSelectedButtons();
+        
+        // Add change detection to all limit inputs
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('limit-input')) {
+                const originalValue = parseFloat(e.target.dataset.originalValue) || 0;
+                const currentValue = parseFloat(e.target.value) || 0;
+                
+                if (currentValue !== originalValue) {
+                    e.target.classList.add('changed');
+                } else {
+                    e.target.classList.remove('changed');
+                }
+                
+                // Recalculate status in real-time based on new limit
+                recalculateCustomerStatus(e.target);
+                
+                // Update button states
+                updateSelectedButtons();
+            }
+        });
+    }
+
+    function recalculateCustomerStatus(inputElement) {
+        const customerName = inputElement.dataset.customer;
+        const newMaxLimit = parseFloat(inputElement.value) || 0;
+        
+        // Find the row for this customer
+        const row = inputElement.closest('tr');
+        if (!row) return;
+        
+        // Get customer data from the row (we need to extract this from the existing data)
+        const customerData = findCustomerData(customerName);
+        if (!customerData) return;
+        
+        // Recalculate status based on new max limit
+        const effectiveLimit = newMaxLimit > 0 ? newMaxLimit : customerData.total_credit_limit;
+        const progressPercentage = effectiveLimit > 0 
+            ? (customerData.total_paid / effectiveLimit) * 100 
+            : 0;
+        
+        let statusClass, statusText;
+        
+        if (customerData.total_remaining <= 0) {
+            statusClass = 'success';
+            statusText = 'Fully Paid';
+        } else if (newMaxLimit > 0) {
+            // If max credit limit is set, use it for status calculation
+            const maxLimitProgress = (customerData.total_credit_limit / newMaxLimit) * 100;
+            if (maxLimitProgress >= 100) {
+                statusClass = 'danger';
+                statusText = 'Limit Reached';
+            } else if (maxLimitProgress >= 80) {
+                statusClass = 'warning';
+                statusText = 'Near Limit';
+            } else {
+                statusClass = 'success';
+                statusText = 'Available';
+            }
+        } else {
+            // If no max limit set, use traditional calculation
+            statusClass = progressPercentage >= 80 ? 'warning' : 'danger';
+            statusText = progressPercentage >= 80 ? 'Good Standing' : 'Outstanding';
+        }
+        
+        // Update the status badge in the row
+        const statusCell = row.querySelector('td:last-child .badge');
+        if (statusCell) {
+            statusCell.className = `badge bg-${statusClass}`;
+            statusCell.textContent = statusText;
+        }
+        
+        // Update the progress bar
+        const progressBar = row.querySelector('.progress-bar');
+        const progressText = row.querySelector('.progress small');
+        if (progressBar) {
+            progressBar.className = `progress-bar bg-${statusClass}`;
+            progressBar.style.width = `${progressPercentage}%`;
+        }
+        if (progressText) {
+            progressText.textContent = `${progressPercentage.toFixed(1)}% of ${newMaxLimit > 0 ? 'max limit' : 'total limit'}`;
+        }
+    }
+
+    function findCustomerData(customerName) {
+        // This function should find the customer data from the original data
+        // For now, we'll extract it from the current row
+        const row = document.querySelector(`[data-customer="${customerName}"]`).closest('tr');
+        if (!row) return null;
+        
+        const cells = row.querySelectorAll('td');
+        return {
+            total_credits: parseInt(cells[2].textContent) || 0,
+            total_credit_limit: parseFloat(cells[3].textContent.replace(/[₱,]/g, '')) || 0,
+            total_paid: parseFloat(cells[5].textContent.replace(/[₱,]/g, '')) || 0,
+            total_remaining: parseFloat(cells[6].textContent.replace(/[₱,]/g, '')) || 0
+        };
     }
 
     function editCustomerLimit(customerName, currentLimit, index) {
@@ -537,18 +737,27 @@
     }
 
     function updateSelectedLimits() {
-        const selectedCustomers = document.querySelectorAll('.customer-checkbox:checked');
+        // Get all changed inputs, not just selected ones
+        const allInputs = document.querySelectorAll('.limit-input');
         const updates = [];
+        const changes = [];
         
-        selectedCustomers.forEach(checkbox => {
-            const customerName = checkbox.dataset.customer;
-            const inputId = `limit_input_${checkbox.id.replace('customer_', '')}`;
-            const input = document.getElementById(inputId);
+        allInputs.forEach(input => {
+            const newLimit = parseFloat(input.value) || 0;
+            const originalLimit = parseFloat(input.dataset.originalValue) || 0;
+            const customerName = input.dataset.customer;
             
-            if (input) {
-                const newLimit = parseFloat(input.value) || 0;
-                if (newLimit >= 0) {
-                    updates.push({ customerName, newLimit });
+            if (newLimit >= 0) {
+                updates.push({ customerName, newLimit, originalLimit });
+                
+                // Track if there's actually a change
+                if (newLimit !== originalLimit) {
+                    changes.push({
+                        customerName,
+                        oldValue: originalLimit,
+                        newValue: newLimit,
+                        difference: newLimit - originalLimit
+                    });
                 }
             }
         });
@@ -557,40 +766,75 @@
             Swal.fire({
                 icon: 'warning',
                 title: 'No Valid Updates',
-                text: 'Please enter valid credit limits for selected customers.'
+                text: 'Please enter valid credit limits for customers.'
             });
             return;
         }
         
-        // Update each customer
-        let completed = 0;
-        let errors = 0;
-        
-        updates.forEach(update => {
-            updateCreditLimit(update.customerName, update.newLimit, function(success) {
-                completed++;
-                if (!success) errors++;
-                
-                if (completed === updates.length) {
-                    if (errors === 0) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: `Updated ${updates.length} customer credit limits.`,
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            showCreditLimits(); // Refresh the modal
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Partial Success',
-                            text: `Updated ${updates.length - errors} of ${updates.length} customer credit limits.`
-                        });
-                    }
-                }
+        // If no changes detected, show message
+        if (changes.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'No Changes Detected',
+                text: 'No changes were made to the credit limits.'
             });
+            return;
+        }
+        
+        // Show confirmation dialog with changes summary
+        let changesSummary = 'The following changes will be made:<br><br>';
+        changes.forEach(change => {
+            const changeText = change.difference > 0 ? 'increased' : 'decreased';
+            const changeColor = change.difference > 0 ? 'success' : 'danger';
+            changesSummary += `<strong>${change.customerName}:</strong> ₱${change.oldValue.toLocaleString()} → ₱${change.newValue.toLocaleString()} 
+                <span style="color: var(--bs-${changeColor});">(${changeText} by ₱${Math.abs(change.difference).toLocaleString()})</span><br>`;
+        });
+        
+        Swal.fire({
+            icon: 'question',
+            title: 'Confirm Credit Limit Changes',
+            html: changesSummary,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Update Limits',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            customClass: {
+                popup: 'swal2-popup'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Update each customer
+                let completed = 0;
+                let errors = 0;
+                
+                updates.forEach(update => {
+                    updateCreditLimit(update.customerName, update.newLimit, function(success) {
+                        completed++;
+                        if (!success) errors++;
+                        
+                        if (completed === updates.length) {
+                            if (errors === 0) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success!',
+                                    text: `Updated ${updates.length} customer credit limits.`,
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    showCreditLimits(); // Refresh the modal
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Partial Success',
+                                    text: `Updated ${updates.length - errors} of ${updates.length} customer credit limits.`
+                                });
+                            }
+                        }
+                    });
+                });
+            }
         });
     }
 
@@ -604,8 +848,12 @@
             
             if (input) {
                 input.value = currentLimit;
+                input.classList.remove('changed'); // Remove changed styling
             }
         });
+        
+        // Update button states after reset
+        updateSelectedButtons();
         
         Swal.fire({
             icon: 'info',

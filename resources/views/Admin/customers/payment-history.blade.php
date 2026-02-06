@@ -35,33 +35,35 @@
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
+                                        <th>Payment Date</th>
+                                        <th>Reference Number</th>
                                         <th>Customer</th>
-                                        <th>Credit Amount</th>
-                                        <th>Paid Amount</th>
+                                        <th>Payment Amount</th>
+                                        <th>Payment Method</th>
                                         <th>Remaining Balance</th>
-                                        <th>Status</th>
                                         <th>Cashier</th>
+                                        <th>Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($payments as $payment)
                                         <tr>
                                             <td>{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                            <td>{{ $payment->customer_name ?? 'Walk-in Customer' }}</td>
-                                            <td>₱{{ number_format($payment->credit_amount, 2) }}</td>
-                                            <td>₱{{ number_format($payment->paid_amount, 2) }}</td>
-                                            <td>₱{{ number_format($payment->remaining_balance, 2) }}</td>
+                                            <td>{{ $payment->credit->reference_number ?? 'N/A' }}</td>
+                                            <td>{{ $payment->credit->customer_name ?? 'Walk-in Customer' }}</td>
+                                            <td>₱{{ number_format($payment->payment_amount, 2) }}</td>
                                             <td>
-                                                <span class="badge bg-{{ $payment->status == 'active' ? 'primary' : ($payment->status == 'paid' ? 'success' : 'danger') }}">
-                                                    {{ ucfirst($payment->status) }}
+                                                <span class="badge bg-info text-dark">
+                                                    {{ ucfirst($payment->payment_method) }}
                                                 </span>
                                             </td>
+                                            <td>₱{{ number_format($payment->remaining_balance_after_payment, 2) }}</td>
                                             <td>{{ $payment->cashier->name ?? 'Unknown' }}</td>
+                                            <td>{{ $payment->notes ?? '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center">No payment history found.</td>
+                                            <td colspan="8" class="text-center">No payment history found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

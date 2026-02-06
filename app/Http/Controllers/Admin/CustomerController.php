@@ -5,58 +5,99 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Credit;
+use App\Models\CreditPayment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class CustomerController extends Controller
 {
     public function index()
     {
-        // Get customers without the problematic credits relationship
-        $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
-        
-        // Get all credits to see what's in the database
-        $walkInCredits = Credit::orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-        
-        // Debug logging
-        \Log::info('Customers count: ' . $customers->count());
-        \Log::info('Credits count: ' . $walkInCredits->count());
-        \Log::info('Total credits in DB: ' . Credit::count());
-        
-        // Check if credits table exists and has data
         try {
-            $creditTableExists = \Schema::hasTable('credits');
-            \Log::info('Credits table exists: ' . ($creditTableExists ? 'YES' : 'NO'));
+            // Get all customers with basic information for the simple table
+            $customers = DB::table('customers')
+                ->select([
+                    'customers.id as customer_id',
+                    'customers.full_name',
+                    'customers.status',
+                    'customers.created_at',
+                    DB::raw('COALESCE(users.name, "System") as created_by'),
+                    DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
+                    DB::raw('COALESCE(SUM(credits.remaining_balance), 0) as outstanding_balance')
+                ])
+                ->leftJoin('credits', 'customers.id', '=', 'credits.customer_id')
+                ->leftJoin('users', 'customers.created_by', '=', 'users.id')
+                ->groupBy('customers.id', 'customers.full_name', 'customers.status', 'customers.created_at', 'users.name')
+                ->orderBy('customers.created_at', 'desc')
+                ->paginate(20);
+
+            return view('Admin.customers.index', compact('customers'));
             
-            if ($creditTableExists) {
-                $totalCredits = \DB::table('credits')->count();
-                \Log::info('Total credits from DB::table: ' . $totalCredits);
-                
-                // Get some sample data
-                $sampleCredits = \DB::table('credits')->limit(3)->get();
-                foreach ($sampleCredits as $credit) {
-                    \Log::info('Sample credit: ' . json_encode($credit));
-                }
-            }
         } catch (\Exception $e) {
-            \Log::error('Error checking credits table: ' . $e->getMessage());
+            Log::error('Error loading customers: ' . $e->getMessage());
+            
+            // Fallback to basic customer list
+            $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
+            return view('Admin.customers.index', compact('customers'));
         }
-        
-        // Log first credit details for debugging
-        if ($walkInCredits->count() > 0) {
-            \Log::info('First credit from model: ' . json_encode($walkInCredits->first()));
+    }
+
+    public function show(Customer $customer)
+    {
+        try {
+            // Get customer details with credit information
+            $customerDetails = DB::table('customers')
+                ->select([
+                    'customers.id as customer_id',
+                    'customers.full_name',
+                    'customers.phone',
+                    'customers.email', 
+                    'customers.address',
+                    'customers.max_credit_limit',
+                    'customers.status',
+                    'customers.created_at',
+                    DB::raw('COALESCE(users.name, "System") as created_by'),
+                    DB::raw('COUNT(credits.id) as total_credits'),
+                    DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
+                    DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),
+                    DB::raw('COALESCE(SUM(credits.remaining_balance), 0) as outstanding_balance'),
+                    DB::raw('MAX(credits.created_at) as last_credit_date'),
+                    DB::raw('CASE 
+                        WHEN COALESCE(SUM(credits.remaining_balance), 0) <= 0 THEN "Fully Paid"
+                        WHEN COALESCE(SUM(credits.paid_amount), 0) / COALESCE(SUM(credits.credit_amount), 0) >= 0.8 THEN "Good Standing"
+                        ELSE "Outstanding"
+                    END as credit_status')
+                ])
+                ->leftJoin('credits', 'customers.id', '=', 'credits.customer_id')
+                ->leftJoin('users', 'customers.created_by', '=', 'users.id')
+                ->where('customers.id', $customer->id)
+                ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'customers.max_credit_limit', 'customers.status', 'customers.created_at', 'users.name')
+                ->first();
+
+            // Get recent credits for this customer
+            $recentCredits = Credit::where('customer_id', $customer->id)
+                ->with(['cashier'])
+                ->orderBy('created_at', 'desc')
+                ->limit(3)
+                ->get();
+
+            return view('Admin.customers.show', compact('customerDetails', 'recentCredits'));
+            
+        } catch (\Exception $e) {
+            Log::error('Error loading customer details: ' . $e->getMessage());
+            return back()->with('error', 'Unable to load customer details');
         }
-        
-        return view('admin.customers.index', compact('customers', 'walkInCredits'));
     }
     
     public function update(Request $request, Customer $customer)
     {
         try {
-            \Log::info('Customer update request:', [
+            Log::info('Customer update request:', [
                 'customer_id' => $customer->id,
                 'request_data' => $request->all()
             ]);
@@ -69,7 +110,7 @@ class CustomerController extends Controller
             ]);
 
             if ($validator->fails()) {
-                \Log::error('Validation failed:', $validator->errors()->toArray());
+                Log::error('Validation failed:', $validator->errors()->toArray());
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -84,7 +125,7 @@ class CustomerController extends Controller
                 'address' => $request->address,
             ]);
 
-            \Log::info('Customer updated successfully:', ['customer' => $customer]);
+            Log::info('Customer updated successfully:', ['customer' => $customer]);
 
             return response()->json([
                 'success' => true,
@@ -92,7 +133,7 @@ class CustomerController extends Controller
                 'customer' => $customer
             ]);
         } catch (\Exception $e) {
-            \Log::error('Customer update error:', [
+            Log::error('Customer update error:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -104,29 +145,108 @@ class CustomerController extends Controller
         }
     }
     
-    public function creditLimits()
+    public function store(Request $request)
     {
-        $customers = Customer::with(['credits' => function($query) {
-            $query->where('status', 'active');
-        }])->get();
-        
-        $totalCreditLimit = $customers->sum(function($customer) {
-            return $customer->credits->sum('credit_amount');
-        });
-        
-        $totalUsed = $customers->sum(function($customer) {
-            return $customer->credits->sum('paid_amount');
-        });
-        
-        return view('admin.customers.credit-limits', compact('customers', 'totalCreditLimit', 'totalUsed'));
+        try {
+            $validator = Validator::make($request->all(), [
+                'full_name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'address' => 'nullable|string|max:500',
+                'max_credit_limit' => 'required|numeric|min:0',
+                'status' => 'required|in:active,blocked',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $customer = Customer::create([
+                'full_name' => $request->full_name,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'address' => $request->address,
+                'max_credit_limit' => $request->max_credit_limit,
+                'status' => $request->status,
+                'created_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully',
+                'customer' => $customer
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Customer creation error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create customer: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function toggleStatus(Request $request, Customer $customer)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:active,blocked',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $customer->update(['status' => $request->status]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer status updated successfully',
+                'customer' => $customer
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Customer status toggle error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update customer status: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     public function paymentHistory()
     {
-        $payments = Credit::with(['sale', 'cashier', 'payments'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $paymentsQuery = CreditPayment::with(['credit', 'cashier'])
+            ->orderBy('created_at', 'desc');
             
-        return view('admin.customers.payment-history', compact('payments'));
+        $payments = $paymentsQuery->paginate(20);
+        
+        // Calculate remaining balance for each payment
+        $payments->getCollection()->map(function ($payment) {
+            // Calculate total payments made before this payment
+            $previousPayments = CreditPayment::where('credit_id', $payment->credit_id)
+                ->where('created_at', '<', $payment->created_at)
+                ->sum('payment_amount');
+            
+            // Calculate remaining balance after this payment
+            $remainingBalance = $payment->credit->credit_amount - ($previousPayments + $payment->payment_amount);
+            
+            $payment->remaining_balance_after_payment = max(0, $remainingBalance);
+            $payment->previous_payments_total = $previousPayments;
+            
+            return $payment;
+        });
+            
+        return view('Admin.customers.payment-history', compact('payments'));
     }
 }

@@ -1,16 +1,25 @@
 @extends('layouts.app')
 @section('title', 'Categories')
 
+@include('layouts.theme-base')
+
 @section('content')
 <div class="container-fluid">
-    <div class="p-4 card-rounded shadow-sm bg-white">
+    <div class="card-base">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="m-0">Categories</h4>
-            <div>
-                <button type="button" id="editBtn" class="btn btn-warning" disabled><i class="fas fa-edit"></i> Edit</button>
-                <button type="button" id="deleteBtn" class="btn btn-danger" disabled><i class="fas fa-trash"></i> Delete</button>
+            <div class="page-header">
+                <h3 class="m-0">Categories</h3>
+                <p class="text-muted mb-0">Manage product categories and classifications</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" id="editBtn" class="btn btn-outline-primary" disabled>
+                    <i class="fas fa-edit me-2"></i> Edit
+                </button>
+                <button type="button" id="deleteBtn" class="btn btn-outline-danger" disabled>
+                    <i class="fas fa-trash me-2"></i> Delete
+                </button>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openCategoryModal()">
-                    <i class="fas fa-plus"></i> Add Category
+                    <i class="fas fa-plus me-2"></i> Add Category
                 </button>
             </div>
         

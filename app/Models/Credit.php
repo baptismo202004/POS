@@ -8,10 +8,7 @@ class Credit extends Model
 {
     protected $fillable = [
         'reference_number',
-        'customer_name',
-        'phone',
-        'email',
-        'address',
+        'customer_id',
         'sale_id',
         'cashier_id',
         'credit_amount',
@@ -20,6 +17,7 @@ class Credit extends Model
         'status',
         'date',
         'notes',
+        'credit_type',
     ];
 
     protected $casts = [
@@ -37,6 +35,11 @@ class Credit extends Model
     public function cashier()
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function payments()

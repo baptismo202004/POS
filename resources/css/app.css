@@ -1,5 +1,6 @@
 @import "tailwindcss/preflight";
 @tailwind utilities;
+@import "./sidebar.css";
 
 /* ========================================
    PALETTE 5: ELECTRIC MODERN

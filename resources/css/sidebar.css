@@ -1,0 +1,237 @@
+/* ========================================
+   SIDEBAR LAYOUT SYSTEM
+   ======================================== */
+
+/* 1. UNIFIED SIDEBAR WIDTH */
+.sidebar {
+    width: 260px !important;
+}
+
+.sidebar-fixed {
+    width: 260px !important;
+}
+
+.main-content {
+    margin-left: 260px !important;
+}
+
+/* 2. CORE SIDEBAR STRUCTURE */
+.sidebar {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
+    border-radius: 0 16px 16px 0;
+    padding: 1rem 0.5rem;
+    color: #FFFFFF;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    box-shadow: 4px 0 20px rgba(13, 71, 161, 0.15);
+    box-sizing: border-box;
+}
+
+.sidebar-fixed {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.sidebar-fixed::-webkit-scrollbar {
+    display: none;
+}
+
+/* 3. NAVIGATION ITEMS */
+.sidebar nav {
+    padding-bottom: 16px;
+}
+
+.sidebar nav.d-flex.flex-column {
+    gap: 4px;
+}
+
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    letter-spacing: -0.01em;
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 0 6px;
+    gap: 6px;
+    cursor: pointer;
+    margin: 0;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-decoration: none;
+    transition: all 0.18s ease;
+    line-height: 1.4;
+}
+
+.sidebar nav a:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #FFFFFF;
+}
+
+.sidebar nav a.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+}
+
+/* 4. ICONS */
+.sidebar .sidebar-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    color: #FFFFFF;
+    flex-shrink: 0;
+}
+
+.sidebar .sidebar-icon path,
+.sidebar .sidebar-icon rect,
+.sidebar .sidebar-icon circle {
+    fill: currentColor !important;
+    stroke: none !important;
+}
+
+/* 5. TEXT */
+.sidebar nav a span:not(.sidebar-icon):not(.submenu-indicator) {
+    display: block;
+}
+
+/* 6. SUBMENU STRUCTURE */
+.sidebar .submenu {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sidebar .submenu.show {
+    display: block;
+}
+
+.sidebar .submenu li {
+    margin: 0;
+    padding: 0;
+}
+
+.sidebar .submenu a {
+    display: flex;
+    align-items: center;
+    padding-left: 44px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.sidebar .submenu a span {
+    display: block;
+}
+
+/* 7. USER DROPDOWN */
+.sidebar .dropend {
+    margin-top: auto;
+    margin-bottom: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 12px;
+    background: rgba(13, 71, 161, 0.05);
+}
+
+.sidebar .dropdown-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    transition: all 0.18s ease !important;
+    gap: 6px;
+    padding: 0 6px !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    line-height: 1.4;
+}
+
+.sidebar .dropdown-toggle:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.sidebar .dropdown-toggle::after {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+}
+
+.sidebar .dropdown-toggle span:not(.sidebar-icon) {
+    display: block;
+}
+
+/* 7. DROPDOWN MENU */
+.user-dropdown-menu {
+    min-width: 280px;
+    max-width: 320px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(13, 71, 161, 0.15);
+    background: #FFFFFF;
+    z-index: 1050;
+    position: relative;
+}
+
+/* 8. SECTION LABELS */
+.sidebar .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 16px 6px 8px;
+    padding: 4px 6px;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* 9. MOBILE RESPONSIVE */
+@media (max-width: 767.98px) {
+    .sidebar {
+        width: 320px !important;
+        padding: 1rem 0.5rem;
+        box-sizing: border-box;
+    }
+    
+    .sidebar-fixed {
+        width: 320px !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar-fixed.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+}
+
+/* 10. SUBMENU INDICATOR */
+.submenu-indicator {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    opacity: 0.6;
+    margin-left: auto;
+}
+
+.submenu-indicator.rotated {
+    transform: rotate(45deg);
+    opacity: 1;
+}

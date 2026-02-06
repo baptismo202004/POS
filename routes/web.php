@@ -968,7 +968,10 @@ Route::middleware('auth')->group(function () {
 
             // Customer routes
             Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+            Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
             Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+            Route::put('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
             Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
 
@@ -999,7 +1002,10 @@ Route::middleware('auth')->group(function () {
             Route::post('credits', [\App\Http\Controllers\Admin\CreditController::class, 'store'])->name('credits.store');
             Route::get('credits/credit-limits-data', [\App\Http\Controllers\Admin\CreditController::class, 'creditLimitsData'])->name('credits.credit-limits-data');
             Route::post('credits/update-credit-limit', [\App\Http\Controllers\Admin\CreditController::class, 'updateCreditLimit'])->name('credits.update-credit-limit');
+            Route::get('credits/customer/{customerId}/full-history', [\App\Http\Controllers\Admin\CreditController::class, 'fullCreditHistory'])->name('credits.full-history');
+            Route::get('credits/customer/{customerId}', [\App\Http\Controllers\Admin\CreditController::class, 'customerCreditDetails'])->name('credits.customer')->where('customerId', '[0-9]+');
             Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
+            Route::post('credits/{credit}/make-payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.make-payment');
             Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
             Route::post('credits/{credit}/update-name', [\App\Http\Controllers\Admin\CreditController::class, 'updateCustomerName'])->name('credits.update-name');

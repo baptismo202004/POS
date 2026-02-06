@@ -17,7 +17,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="customer_id" class="form-label">Customer</label>
-                            <select class="form-select" name="customer_id" id="customer_id">
+                            <select class="form-select" name="customer_id" id="customer_id" required>
                                 <option value="">Select Customer </option>
                                 
                                 @if($customers->isNotEmpty())
@@ -29,7 +29,7 @@
                                 @endif
                                 
                                 @if($walkInCustomers->isNotEmpty())
-                                    <optgroup label="Walk-in Customers (Previous Credits)">
+                                    <optgroup label="Previous Customers">
                                         @foreach($walkInCustomers as $customer)
                                             <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
                                         @endforeach
@@ -44,9 +44,30 @@
                         </div>
 
                         <div class="col-md-6">
+                            <label for="credit_type" class="form-label">Credit Type</label>
+                            <select class="form-select" name="credit_type" id="credit_type" required>
+                                <option value="">Select Credit Type</option>
+                                <option value="cash">Cash</option>
+                                <option value="grocery">Grocery (Requires Sale ID)</option>
+                                <option value="electronics">Electronics (Requires Sale ID)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6" id="sale_id_field" style="display: none;">
+                            <label for="sale_id" class="form-label">Sale ID *</label>
+                            <input type="number" class="form-control" name="sale_id" id="sale_id" placeholder="Enter Sale ID">
+                            <small class="text-muted">Required for Grocery and Electronics credits</small>
+                        </div>
+
+                        <div class="col-md-6">
                             <label for="date" class="form-label">Credit Date</label>
                             <input type="date" class="form-control" name="date" id="date" required>
-                        </div>  
+                        </div>
+
+                        <div class="col-12">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" name="notes" id="notes" rows="3" placeholder="Add any additional notes about this credit..."></textarea>
+                        </div>
                     </div>
 
                     <div class="mt-4 d-flex justify-content-end">
@@ -89,11 +110,28 @@
             }
         });
     });
+    
     // Set credit date to today
     document.addEventListener('DOMContentLoaded', function() {
         const today = new Date();
         document.getElementById('date').min = today.toISOString().split('T')[0];
         document.getElementById('date').value = today.toISOString().split('T')[0];
+    });
+
+    // Handle credit type change to show/hide sale_id field
+    document.getElementById('credit_type').addEventListener('change', function() {
+        const creditType = this.value;
+        const saleIdField = document.getElementById('sale_id_field');
+        const saleIdInput = document.getElementById('sale_id');
+        
+        if (creditType === 'grocery' || creditType === 'electronics') {
+            saleIdField.style.display = 'block';
+            saleIdInput.setAttribute('required', 'required');
+        } else {
+            saleIdField.style.display = 'none';
+            saleIdInput.removeAttribute('required');
+            saleIdInput.value = '';
+        }
     });
 
     document.getElementById('creditForm').addEventListener('submit', function(e) {
