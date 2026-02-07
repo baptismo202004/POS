@@ -34,6 +34,16 @@
                                         </svg>
                                         Add New Product
                                     </a>
+                                    <button type="button" id="ocr-button" class="btn btn-primary d-flex align-items-center gap-2">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <polyline points="10,9 9,9 8,9"/>
+                                        </svg>
+                                        OCR
+                                    </button>
                                     <button type="button" id="editSelectedBtn" class="btn btn-edit-selected d-flex align-items-center gap-2">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
@@ -105,6 +115,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <script>
     $(document).ready(function () {
@@ -235,5 +246,71 @@
             });
         @endif
     });
+
+    // ----------------- OCR FUNCTIONALITY -----------------
+    const ocrButton = document.getElementById('ocr-button');
+    const ocrFileInput = document.createElement('input');
+    ocrFileInput.type = 'file';
+    ocrFileInput.accept = 'image/*';
+
+    ocrButton.addEventListener('click', () => ocrFileInput.click());
+
+    ocrFileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        Swal.fire({
+            title: 'Processing OCR',
+            text: 'Please wait...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
+            .then(({ data: { text } }) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'OCR Complete',
+                    html: '<pre style="text-align: left; max-height: 300px; overflow-y: auto;">' + text + '</pre>',
+                    confirmButtonText: 'Process Data',
+                    showCancelButton: true,
+                    confirmButtonColor: '#2196F3'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Here you can process the OCR text
+                        // For example, parse product information and fill forms
+                        processOCRText(text);
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('OCR Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'OCR Failed',
+                    text: 'Failed to process image. Please try again.',
+                    confirmButtonColor: '#2196F3'
+                });
+            });
+    });
+
+    function processOCRText(text) {
+        // Function to process OCR text and extract product information
+        // This is a placeholder - you can customize based on your needs
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length > 0) {
+            // Example: redirect to create product page with pre-filled data
+            const productName = lines[0].trim();
+            window.location.href = `/superadmin/products/create?name=${encodeURIComponent(productName)}`;
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Text Found',
+                text: 'No readable text found in the image.',
+                confirmButtonColor: '#2196F3'
+            });
+        }
+    }
 </script>
 @endpush

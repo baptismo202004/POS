@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
     <div class="d-flex min-vh-100">
 
@@ -795,40 +796,142 @@
 
             Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
                 .then(({ data: { text } }) => {
-                    $.ajax({
-                        url: '{{ route("superadmin.purchases.ocr-product-match") }}',
-                        method: 'POST',
-                        data: { _token: '{{ csrf_token() }}', text: text },
-                        success: function(response) {
-                            Swal.close();
-                            if (response.reference_number) $('input[name="reference_number"]').val(response.reference_number);
-                            $('#items-container').empty();
-                            itemIndex = 0;
-                            let message = '';
-                            let icon = 'info';
+                    // Filter the raw text to show only product items and reference number
+                    const lines = text.split('\n');
+                    const filteredLines = [];
+                    let referenceNumber = null;
+                    
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (!line) return;
+                        
+                        // Check for reference number
+                        if (/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i.test(line)) {
+                            referenceNumber = line;
+                            filteredLines.push(line);
+                            return;
+                        }
+                        
+                        // Skip common receipt headers and footers
+                        if (/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT)/i.test(line)) {
+                            return;
+                        }
+                        
+                        // Skip lines with dates and times
+                        if (/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}:\d{2}\s*(AM|PM)/i.test(line)) {
+                            return;
+                        }
+                        
+                        // Skip lines with addresses
+                        if (/\d+\s+.*\s+(Road|St|Ave|City|Cebu)/i.test(line)) {
+                            return;
+                        }
+                        
+                        // Skip lines that are just numbers or reference numbers (except when part of product)
+                        if (/^\d+$/.test(line) || /^[A-Z0-9-]{6,}$/.test(line)) {
+                            return;
+                        }
+                        
+                        // Include lines that look like product items
+                        if (/^(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/.test(line) || // Qty + Name + Price + Total
+                            /^(\d+)\s+(.+?)\s+(\d+\.\d{2})$/.test(line) || // Qty + Name + Price
+                            /^(.+?)\s+(\d+\.\d{2})$/.test(line) || // Name + Price
+                            (line.length >= 3 && line.length <= 50 && /[a-zA-Z]/.test(line) && !/\d{2,}/.test(line))) { // Name only
+                            filteredLines.push(line);
+                        }
+                    });
+                    
+                    const filteredText = filteredLines.join('\n');
+                    
+                    // Show the filtered OCR text
+                    Swal.fire({
+                        title: 'OCR Text Extracted',
+                        html: '<div style="text-align: left;"><strong>Product Items Found:</strong><pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; font-size: 12px;">' + filteredText + '</pre></div>',
+                        confirmButtonText: 'Process Products',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2196F3',
+                        cancelButtonText: 'Cancel'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Process the original full text through backend
+                            $.ajax({
+                                url: '{{ route("superadmin.purchases.ocr-product-match") }}',
+                                method: 'POST',
+                                data: { _token: '{{ csrf_token() }}', text: text },
+                                success: function(response) {
+                                    console.log('OCR Response:', response);
+                                    Swal.close();
+                                    let message = '';
+                                    let icon = 'success';
 
-                            if (response.products && response.products.length > 0) {
-                                response.products.forEach(product => addItem(product));
-                                message += `${response.products.length} product(s) were matched and added.<br>`;
-                                icon = 'success';
-                            }
+                                    // Auto-fill reference number if found
+                                    if (response.reference_number) {
+                                        $('input[name="reference_number"]').val(response.reference_number);
+                                        console.log('Reference number filled:', response.reference_number);
+                                    }
 
-                            if (response.unmatched_products && response.unmatched_products.length > 0) {
-                                response.unmatched_products.forEach(product => addUnmatchedItem(product));
-                                message += `${response.unmatched_products.length} new product(s) were found and are ready to be added.`;
-                                icon = 'success';
-                            }
+                                    if (response.products && response.products.length > 0) {
+                                        message = '<div style="text-align: left;"><strong>Found Products:</strong><ul>';
+                                        response.products.forEach(function(product) {
+                                            message += `<li>${product.name} (Qty: ${product.quantity}, Cost: ${product.cost})</li>`;
+                                        });
+                                        message += '</ul></div>';
 
-                            if (!message) {
-                                message = 'Could not find any products from the scanned text.';
-                                icon = 'warning';
-                            }
+                                        // Add found products to the items list
+                                        response.products.forEach(function(product) {
+                                            console.log('Adding found product:', product);
+                                            addItem({
+                                                id: product.id,
+                                                quantity: product.quantity,
+                                                cost: product.cost
+                                            });
+                                        });
+                                    }
 
-                            Swal.fire({ title: 'OCR Scan Complete', html: message, icon: icon });
-                        },
-                        error: function() {
-                            Swal.close();
-                            Swal.fire('Error', 'An error occurred while matching products.', 'error');
+                                    if (response.unmatched_products && response.unmatched_products.length > 0) {
+                                        if (message) message += '<br>';
+                                        message += '<div style="text-align: left;"><strong>New Products Added:</strong><ul>';
+                                        response.unmatched_products.forEach(function(product) {
+                                            message += `<li>${product.name} (Qty: ${product.quantity}, Cost: ${product.cost})</li>`;
+                                        });
+                                        message += '</ul></div>';
+
+                                        // Add unmatched products as new items with OCR data
+                                        response.unmatched_products.forEach(function(product) {
+                                            console.log('Adding unmatched product:', product);
+                                            addUnmatchedItem({
+                                                name: product.name,
+                                                quantity: product.quantity,
+                                                cost: product.cost
+                                            });
+                                        });
+                                    }
+
+                                    if (!message) {
+                                        message = 'Could not find any products from the scanned text.';
+                                        icon = 'warning';
+                                    } else {
+                                        message += '<br><small>Products have been added to the purchase list below. You can edit their details before saving.</small>';
+                                    }
+
+                                    console.log('Final message:', message);
+                                    
+                                    // Add a small delay to ensure items are added before showing the message
+                                    setTimeout(() => {
+                                        Swal.fire({ 
+                                            title: 'OCR Scan Complete', 
+                                            html: message, 
+                                            icon: icon,
+                                            showConfirmButton: true,
+                                            confirmButtonText: 'OK'
+                                        });
+                                    }, 500);
+                                },
+                                error: function() {
+                                    Swal.close();
+                                    Swal.fire('Error', 'An error occurred while matching products.', 'error');
+                                }
+                            });
                         }
                     });
                 })
