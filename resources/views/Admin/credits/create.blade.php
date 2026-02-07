@@ -16,24 +16,35 @@
                     
                     <div class="row g-3">
                         <div class="col-md-6">
+                            <label for="branch_id" class="form-label">Branch</label>
+                            <select class="form-select" name="branch_id" id="branch_id" required>
+                                <option value="">Select Branch</option>
+                                @if($userBranch)
+                                    <option value="{{ $userBranch->id }}" selected>{{ $userBranch->branch_name }}</option>
+                                @endif
+                                @foreach(\App\Models\Branch::where('status', 'active')->get() as $branch)
+                                    @if(!$userBranch || $branch->id != $userBranch->id)
+                                        <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
                             <label for="customer_id" class="form-label">Customer</label>
                             <select class="form-select" name="customer_id" id="customer_id" required>
                                 <option value="">Select Customer </option>
                                 
                                 @if($customers->isNotEmpty())
-                                    <optgroup label="Registered Customers">
-                                        @foreach($customers as $customer)
-                                            <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                    @foreach($customers as $customer)
+                                        <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
+                                    @endforeach
                                 @endif
                                 
                                 @if($walkInCustomers->isNotEmpty())
-                                    <optgroup label="Previous Customers">
-                                        @foreach($walkInCustomers as $customer)
-                                            <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                    @foreach($walkInCustomers as $customer)
+                                        <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
+                                    @endforeach
                                 @endif
                             </select>
                         </div>

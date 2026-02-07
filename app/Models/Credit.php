@@ -11,6 +11,7 @@ class Credit extends Model
         'customer_name',
         'sale_id',
         'cashier_id',
+        'branch_id',
         'credit_amount',
         'paid_amount',
         'remaining_balance',
@@ -45,5 +46,10 @@ class Credit extends Model
     public function payments()
     {
         return $this->hasMany(CreditPayment::class);
+    }
+    
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

@@ -50,6 +50,7 @@ class CreditController extends Controller
                     'customers.phone',
                     'customers.email', 
                     'customers.address',
+                    'branches.branch_name',
                     DB::raw('COUNT(credits.id) as credit_giver_total'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                     DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),
@@ -63,7 +64,8 @@ class CreditController extends Controller
                     END as status')
                 ])
                 ->leftJoin('credits', 'customers.full_name', '=', 'credits.customer_name')
-                ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address')
+                ->leftJoin('branches', 'credits.branch_id', '=', 'branches.id')
+                ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'branches.branch_name')
                 ->orderByRaw('MAX(credits.created_at) DESC')
                 ->paginate(20);
             
@@ -103,7 +105,15 @@ class CreditController extends Controller
                 ];
             });
         
-        return view('Admin.credits.create', compact('customers', 'walkInCustomers'));
+        // Get current user's branch
+        $userBranch = Auth::user()->branch;
+        
+        if (!$userBranch) {
+            // If user has no branch, try to get the first available branch
+            $userBranch = \App\Models\Branch::first();
+        }
+        
+        return view('Admin.credits.create', compact('customers', 'walkInCustomers', 'userBranch'));
     }
 
     public function store(Request $request)
@@ -160,6 +170,7 @@ class CreditController extends Controller
                     'reference_number' => $referenceNumber,
                     'customer_name' => $customerName,
                     'cashier_id' => Auth::id(),
+                    'branch_id' => $request->branch_id ?? Auth::user()->branch_id,
                     'credit_amount' => $request->credit_amount,
                     'paid_amount' => 0,
                     'remaining_balance' => $request->credit_amount,
@@ -526,12 +537,100 @@ class CreditController extends Controller
                 'success' => false, 
                 'message' => 'Validation failed: ' . implode(', ', $e->errors())
             ], 422);
-        } catch (\Exception $e) {
-            Log::error('Credit limit update error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false, 
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
         }
     }
+
+public function getCustomerCreditDetails($customerId)
+{
+    try {
+        $credits = Credit::where('customer_name', function($query) use ($customerId) {
+            $query->select('full_name')->from('customers')->where('id', $customerId);
+        })
+        ->where('status', 'active')
+        ->where('remaining_balance', '>', 0)
+        ->orderBy('created_at', 'desc')
+        ->get(['id', 'credit_amount', 'remaining_balance', 'date', 'status']);
+        
+        return response()->json(['success' => true, 'credits' => $credits]);
+        
+    } catch (\Exception $e) {
+        Log::error('Error making payment: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'An error occurred while processing the payment.'], 500);
+    }
+}
+
+public function makeMultiCreditPayment(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'credit_ids' => 'required|string',
+        'payment_amount' => 'required|numeric|min:0.01',
+        'payment_method' => 'required|in:cash,card,bank_transfer,other',
+        'notes' => 'nullable|string|max:500',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+    }
+
+    try {
+        $creditIds = explode(',', $request->credit_ids);
+        $paymentAmount = $request->payment_amount;
+        
+        DB::transaction(function () use ($creditIds, $paymentAmount, $request) {
+            $credits = Credit::whereIn('id', $creditIds)
+                ->where('status', 'active')
+                ->where('remaining_balance', '>', 0)
+                ->orderBy('created_at', 'asc') // Pay older credits first
+                ->get();
+            
+            $remainingPayment = $paymentAmount;
+            $paymentsMade = [];
+            
+            foreach ($credits as $credit) {
+                if ($remainingPayment <= 0) break;
+                
+                $paymentForThisCredit = min($remainingPayment, $credit->remaining_balance);
+                
+                // Create payment record
+                $payment = CreditPayment::create([
+                    'credit_id' => $credit->id,
+                    'cashier_id' => Auth::id(),
+                    'payment_amount' => $paymentForThisCredit,
+                    'payment_method' => $request->payment_method,
+                    'notes' => $request->notes,
+                ]);
+                
+                // Update credit
+                $credit->paid_amount += $paymentForThisCredit;
+                $credit->remaining_balance -= $paymentForThisCredit;
+                
+                if ($credit->remaining_balance <= 0) {
+                    $credit->status = 'paid';
+                    $credit->remaining_balance = 0;
+                }
+                
+                $credit->save();
+                
+                $paymentsMade[] = [
+                    'credit_id' => $credit->id,
+                    'amount_paid' => $paymentForThisCredit,
+                    'remaining_balance' => $credit->remaining_balance
+                ];
+                
+                $remainingPayment -= $paymentForThisCredit;
+            }
+            
+            return $paymentsMade;
+        });
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Payment of ₱' . number_format($paymentAmount, 2) . ' has been recorded and distributed across credits.'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error making multi-credit payment: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'An error occurred while processing the payment.'], 500);
+    }
+}
 }

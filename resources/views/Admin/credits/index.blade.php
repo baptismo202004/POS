@@ -97,6 +97,7 @@
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
+                            <th>Branch</th>
                             <th>Customer Name</th>
                             <th>Total Credits</th>
                             <th>Total Credit Amount</th>
@@ -110,6 +111,7 @@
                     <tbody>
                         @forelse($customers as $customer)
                             <tr>
+                                <td>{{ $customer->branch_name ?? 'N/A' }}</td>
                                 <td><strong>{{ $customer->full_name }}</strong></td>
                                 <td>{{ $customer->credit_giver_total }}</td>
                                 <td>₱{{ number_format($customer->total_credit, 2) }}</td>
@@ -136,7 +138,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center">No customers with credits found.</td>
+                                <td colspan="9" class="text-center">No customers with credits found.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -256,18 +258,181 @@
     
     function makeCustomerPayment(customerId, remainingBalance) {
         console.log('Making payment for customer:', customerId, 'Remaining:', remainingBalance);
-        // For now, redirect to customer details page where they can make payments
-        window.location.href = `/superadmin/admin/credits/customer/${customerId}`;
+        
+        // Fetch customer's credits to show in modal
+        fetch(`/superadmin/admin/credits/customer/${customerId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showCreditPaymentModal(customerId, data.credits);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Unable to fetch customer credits'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Unable to fetch customer credits'
+                });
+            });
     }
     
     function makePayment(creditId, remainingBalance) {
+        console.log('Making payment for credit:', creditId, 'Remaining balance:', remainingBalance);
+        
+        // Ensure remainingBalance is a number
+        const paymentAmount = parseFloat(remainingBalance);
+        console.log('Parsed payment amount:', paymentAmount);
+        
+        // Set credit ID
         document.getElementById('payment_credit_id').value = creditId;
-        document.getElementById('remaining_balance_display').textContent = remainingBalance.toFixed(2);
-        document.getElementById('payment_amount').max = remainingBalance;
-        document.getElementById('payment_amount').value = remainingBalance.toFixed(2); // Auto-populate payment amount
+        
+        // Set remaining balance display
+        document.getElementById('remaining_balance_display').textContent = paymentAmount.toFixed(2);
+        
+        // Set payment amount input properties
+        const paymentInput = document.getElementById('payment_amount');
+        paymentInput.min = 0.01;
+        paymentInput.value = paymentAmount.toFixed(2); // Auto-populate payment amount
+        
+        // Remove max validation to allow any payment amount
+        paymentInput.removeAttribute('max');
+        paymentInput.removeAttribute('max'); // Double remove
+        
+        console.log('Payment input value set to:', paymentInput.value);
+        console.log('Payment input max removed');
+        console.log('Remaining balance display:', document.getElementById('remaining_balance_display').textContent);
+        
+        // Update modal title to indicate individual payment
+        document.getElementById('paymentModalLabel').textContent = 'Record Credit Payment';
         
         const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
         modal.show();
+    }
+    
+    function showCreditPaymentModal(customerId, credits) {
+        console.log('=== SHOW CREDIT PAYMENT MODAL DEBUG ===');
+        console.log('Customer ID:', customerId);
+        console.log('Credits received:', credits);
+        
+        let creditsHtml = '';
+        let totalOutstanding = 0;
+        
+        if (credits.length === 0) {
+            creditsHtml = '<p class="text-muted">No active credits found for this customer.</p>';
+        } else {
+            credits.forEach(credit => {
+                console.log('Processing credit:', credit);
+                console.log('Credit remaining balance:', credit.remaining_balance);
+                console.log('Type of remaining_balance:', typeof credit.remaining_balance);
+                
+                if (credit.remaining_balance > 0) {
+                    const balance = parseFloat(credit.remaining_balance);
+                    totalOutstanding += balance;
+                    console.log('Added to total:', balance, 'New total:', totalOutstanding);
+                    
+                    creditsHtml += `
+                        <div class="card mb-2">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Credit #${credit.id}</h6>
+                                        <small class="text-muted">Amount: ₱${credit.credit_amount}</small><br>
+                                        <small class="text-muted">Date: ${new Date(credit.date).toLocaleDateString()}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <strong class="text-danger">₱${credit.remaining_balance}</strong><br>
+                                        <small class="text-muted">Outstanding</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        console.log('Final total outstanding:', totalOutstanding);
+        console.log('Type of totalOutstanding:', typeof totalOutstanding);
+        
+        const modalHtml = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                ${creditsHtml || '<p class="text-muted">No outstanding credits found.</p>'}
+                ${totalOutstanding > 0 ? `
+                    <div class="alert alert-info mt-3">
+                        <strong>Total Outstanding Balance: ₱${totalOutstanding.toFixed(2)}</strong>
+                        <br><small>Payment will be automatically distributed across all outstanding credits.</small>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        console.log('=== END SHOW CREDIT PAYMENT MODAL DEBUG ===');
+        
+        Swal.fire({
+            title: 'Customer Credits Summary',
+            html: modalHtml,
+            showConfirmButton: totalOutstanding > 0,
+            showCancelButton: true,
+            confirmButtonText: totalOutstanding > 0 ? `Pay Total (₱${totalOutstanding.toFixed(2)})` : 'Close',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#28a745',
+            width: '600px'
+        }).then((result) => {
+            if (result.isConfirmed && totalOutstanding > 0) {
+                // Open payment modal with total outstanding balance
+                makeTotalPayment(customerId, totalOutstanding, credits);
+            }
+        });
+    }
+    
+    function makeTotalPayment(customerId, totalAmount, credits) {
+        // Create a summary for the payment
+        const creditIds = credits.filter(c => c.remaining_balance > 0).map(c => c.id);
+        
+        console.log('=== MAKE TOTAL PAYMENT DEBUG ===');
+        console.log('Customer ID:', customerId);
+        console.log('Total Amount:', totalAmount);
+        console.log('Credits to pay:', creditIds);
+        console.log('Type of totalAmount:', typeof totalAmount);
+        
+        // Ensure totalAmount is a number
+        const paymentAmount = parseFloat(totalAmount);
+        console.log('Parsed payment amount:', paymentAmount);
+        
+        // Set up payment modal for total payment
+        const creditIdInput = document.getElementById('payment_credit_id');
+        const remainingBalanceDisplay = document.getElementById('remaining_balance_display');
+        const paymentInput = document.getElementById('payment_amount');
+        
+        creditIdInput.value = creditIds.join(','); // Multiple credit IDs
+        remainingBalanceDisplay.textContent = paymentAmount.toFixed(2);
+        
+        // Set payment amount without max validation
+        paymentInput.min = 0.01;
+        paymentInput.value = paymentAmount.toFixed(2); // Auto-populate with total amount
+        
+        // Remove max validation to allow any payment amount
+        paymentInput.removeAttribute('max');
+        paymentInput.removeAttribute('max'); // Double remove
+        
+        console.log('Payment input value set to:', paymentInput.value);
+        console.log('Payment input max removed');
+        console.log('Remaining balance display:', remainingBalanceDisplay.textContent);
+        
+        // Update modal title to indicate total payment
+        document.getElementById('paymentModalLabel').textContent = 'Record Total Payment';
+        
+        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modal.show();
+        
+        console.log('=== END MAKE TOTAL PAYMENT DEBUG ===');
     }
     
     function openPaymentModal() {
@@ -284,7 +449,23 @@
         e.preventDefault();
         
         const creditId = document.getElementById('payment_credit_id').value;
+        const paymentAmount = document.getElementById('payment_amount').value;
+        const remainingBalanceDisplay = document.getElementById('remaining_balance_display').textContent;
+        
+        console.log('Submitting payment:');
+        console.log('Credit ID:', creditId);
+        console.log('Payment Amount:', paymentAmount);
+        console.log('Remaining Balance Display:', remainingBalanceDisplay);
+        
         const formData = new FormData(this);
+        
+        // Check if this is a multi-credit payment (credit IDs are comma-separated)
+        const isMultiCredit = creditId.includes(',');
+        
+        // Log form data
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ':', value);
+        }
         
         Swal.fire({
             title: 'Processing Payment...',
@@ -295,12 +476,23 @@
             }
         });
         
-        fetch(`/superadmin/admin/credits/${creditId}/payment`, {
+        // Choose the correct endpoint based on payment type
+        const endpoint = isMultiCredit ? '/superadmin/admin/credits/multi-payment' : `/superadmin/admin/credits/${creditId}/payment`;
+        
+        // For multi-credit payments, add the credit IDs to form data
+        if (isMultiCredit) {
+            formData.set('credit_ids', creditId);
+            // Remove credit_id field for multi-credit payments
+            formData.delete('credit_id');
+        }
+        
+        fetch(endpoint, {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
+            console.log('Payment response:', data);
             if (data.success) {
                 Swal.fire({
                     icon: 'success',
@@ -321,6 +513,7 @@
             }
         })
         .catch(error => {
+            console.error('Payment error:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',

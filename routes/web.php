@@ -1007,6 +1007,8 @@ Route::middleware('auth')->group(function () {
             Route::get('credits/{credit}', [\App\Http\Controllers\Admin\CreditController::class, 'show'])->name('credits.show');
             Route::post('credits/{credit}/make-payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.make-payment');
             Route::post('credits/{credit}/payment', [\App\Http\Controllers\Admin\CreditController::class, 'makePayment'])->name('credits.payment');
+            Route::post('credits/multi-payment', [\App\Http\Controllers\Admin\CreditController::class, 'makeMultiCreditPayment'])->name('credits.multi-payment');
+            Route::get('credits/customer/{customerId}/details', [\App\Http\Controllers\Admin\CreditController::class, 'getCustomerCreditDetails'])->name('credits.customer.details');
             Route::post('credits/{credit}/status', [\App\Http\Controllers\Admin\CreditController::class, 'updateStatus'])->name('credits.status');
             Route::post('credits/{credit}/update-name', [\App\Http\Controllers\Admin\CreditController::class, 'updateCustomerName'])->name('credits.update-name');
             Route::post('credits/{credit}/update-customer', [\App\Http\Controllers\Admin\CreditController::class, 'updateWalkInCustomer'])->name('credits.update-customer');

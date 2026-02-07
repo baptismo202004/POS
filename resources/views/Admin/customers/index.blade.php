@@ -52,15 +52,15 @@
                                 <tbody>
                                     @forelse($customers as $customer)
                                         <tr>
-                                            <td>{{ $customer->customer_id }}</td>
+                                            <td>{{ $customer->customer_id ?? $customer->id }}</td>
                                             <td>
                                                 <strong>{{ $customer->full_name }}</strong>
-                                                @if($customer->outstanding_balance > 0)
+                                                @if(($customer->outstanding_balance ?? 0) > 0)
                                                     <span class="badge bg-warning ms-1">Has Balance</span>
                                                 @endif
                                             </td>
                                             <td>{{ \Carbon\Carbon::parse($customer->created_at)->format('M d, Y') }}</td>
-                                            <td>{{ $customer->created_by }}</td>
+                                            <td>{{ $customer->user->name ?? $customer->created_by ?? 'System' }}</td>
                                             <td>Main Branch</td>
                                             <td>
                                                 <span class="badge bg-{{ $customer->status == 'active' ? 'success' : 'danger' }}">
@@ -69,15 +69,15 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
-                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id) }}" class="btn btn-outline-primary" title="View Customer">
+                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id ?? $customer->id) }}" class="btn btn-outline-primary" title="View Customer">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
                                                     @if($customer->status == 'active')
-                                                        <button type="button" class="btn btn-outline-danger" onclick="toggleCustomerStatus({{ $customer->customer_id }}, '{{ $customer->status }}')" title="Block Customer">
+                                                        <button type="button" class="btn btn-outline-danger" onclick="toggleCustomerStatus({{ $customer->customer_id ?? $customer->id }}, '{{ $customer->status }}')" title="Block Customer">
                                                             <i class="fas fa-ban"></i>
                                                         </button>
                                                     @else
-                                                        <button type="button" class="btn btn-outline-success" onclick="toggleCustomerStatus({{ $customer->customer_id }}, '{{ $customer->status }}')" title="Unblock Customer">
+                                                        <button type="button" class="btn btn-outline-success" onclick="toggleCustomerStatus({{ $customer->customer_id ?? $customer->id }}, '{{ $customer->status }}')" title="Unblock Customer">
                                                             <i class="fas fa-check"></i>
                                                         </button>
                                                     @endif

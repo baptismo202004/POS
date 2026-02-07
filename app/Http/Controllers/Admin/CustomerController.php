@@ -42,14 +42,16 @@ class CustomerController extends Controller
             Log::error('Error loading customers: ' . $e->getMessage());
             
             // Fallback to basic customer list
-            $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
+            $customers = Customer::with('user')->orderBy('created_at', 'desc')->paginate(20);
             return view('Admin.customers.index', compact('customers'));
         }
     }
 
-    public function show(Customer $customer)
+    public function show($customer)
     {
         try {
+            $customerModel = Customer::findOrFail($customer);
+            
             // Get customer details with credit information
             $customerDetails = DB::table('customers')
                 ->select([
@@ -75,12 +77,12 @@ class CustomerController extends Controller
                 ])
                 ->leftJoin('credits', 'customers.id', '=', 'credits.customer_id')
                 ->leftJoin('users', 'customers.created_by', '=', 'users.id')
-                ->where('customers.id', $customer->id)
+                ->where('customers.id', $customer)
                 ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'customers.max_credit_limit', 'customers.status', 'customers.created_at', 'users.name')
                 ->first();
 
             // Get recent credits for this customer
-            $recentCredits = Credit::where('customer_id', $customer->id)
+            $recentCredits = Credit::where('customer_id', $customer)
                 ->with(['cashier'])
                 ->orderBy('created_at', 'desc')
                 ->limit(3)
@@ -94,11 +96,13 @@ class CustomerController extends Controller
         }
     }
     
-    public function update(Request $request, Customer $customer)
+    public function update(Request $request, $customer)
     {
         try {
+            $customerModel = Customer::findOrFail($customer);
+            
             Log::info('Customer update request:', [
-                'customer_id' => $customer->id,
+                'customer_id' => $customerModel->id,
                 'request_data' => $request->all()
             ]);
 
@@ -118,19 +122,19 @@ class CustomerController extends Controller
                 ], 422);
             }
 
-            $customer->update([
+            $customerModel->update([
                 'full_name' => $request->full_name,
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'address' => $request->address,
             ]);
 
-            Log::info('Customer updated successfully:', ['customer' => $customer]);
+            Log::info('Customer updated successfully:', ['customer' => $customerModel]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Customer updated successfully',
-                'customer' => $customer
+                'customer' => $customerModel
             ]);
         } catch (\Exception $e) {
             Log::error('Customer update error:', [
@@ -191,9 +195,11 @@ class CustomerController extends Controller
         }
     }
 
-    public function toggleStatus(Request $request, Customer $customer)
+    public function toggleStatus(Request $request, $customer)
     {
         try {
+            $customerModel = Customer::findOrFail($customer);
+            
             $validator = Validator::make($request->all(), [
                 'status' => 'required|in:active,blocked',
             ]);
@@ -206,12 +212,12 @@ class CustomerController extends Controller
                 ], 422);
             }
 
-            $customer->update(['status' => $request->status]);
+            $customerModel->update(['status' => $request->status]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Customer status updated successfully',
-                'customer' => $customer
+                'customer' => $customerModel
             ]);
 
         } catch (\Exception $e) {
