@@ -342,13 +342,17 @@ function exportToPDF() {
     const lifetimePaidAmount = document.querySelector('[data-summary="lifetime-paid-amount"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
     const lifetimeOutstanding = document.querySelector('[data-summary="lifetime-outstanding"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
     
-    // Prepare data for export - get all credits, not just visible ones
+    // Get filter information
+    const activeFilters = getActiveFilters();
+    
+    // Prepare detailed credit data with complete information
     const credits = [];
     document.querySelectorAll('.credit-item').forEach(item => {
         const creditTarget = item.querySelector('button').getAttribute('data-bs-target');
         const creditId = creditTarget.replace('#credit-', '');
+        const expandedContent = document.querySelector(creditTarget);
         
-        // Get data from the main item
+        // Get basic credit information
         const amountElement = item.querySelector('strong');
         const amount = amountElement ? amountElement.textContent.replace(/[\u20b1\u00b1]/g, '').trim() : '0';
         
@@ -362,40 +366,72 @@ function exportToPDF() {
         let balance = '0';
         if (balanceElement) {
             const balanceText = balanceElement.textContent;
-            console.log('Balance text:', balanceText); // Debug log
-            
-            // Look specifically for "Balance:" followed by currency symbol and number
             const balanceMatch = balanceText.match(/Balance:\s*[\u20b1\u00b1]?\s*([\d.,]+)/);
             if (balanceMatch) {
                 balance = balanceMatch[1].replace(/,/g, '');
-                console.log('Extracted balance:', balance); // Debug log
             } else {
-                // Try a different pattern - look for any number after "Balance:"
                 const altMatch = balanceText.match(/Balance:\s*([\d.,]+)/);
                 if (altMatch) {
                     balance = altMatch[1].replace(/,/g, '');
-                    console.log('Alternative balance:', balance); // Debug log
                 } else {
-                    // Last resort: find the last number in the text (usually balance is last)
                     const allNumbers = balanceText.match(/([\d.,]+)/g);
                     if (allNumbers && allNumbers.length > 0) {
                         balance = allNumbers[allNumbers.length - 1].replace(/,/g, '');
-                        console.log('Last number as balance:', balance); // Debug log
-                    } else {
-                        console.log('No balance found'); // Debug log
                     }
                 }
             }
         }
         
-        // Try to get creator info from expanded content if available
+        // Get complete information from expanded content
         let createdBy = 'Unknown';
-        const expandedContent = document.querySelector(creditTarget);
+        let creditType = 'Unknown';
+        let dueDate = 'Unknown';
+        let notes = '';
+        let createdDate = 'Unknown';
+        let payments = [];
+        
         if (expandedContent) {
+            // Get creator info
             const creatorElement = expandedContent.querySelector('.small.text-muted');
             if (creatorElement) {
                 createdBy = creatorElement.textContent.replace('Created by: ', '').trim();
             }
+            
+            // Get credit creation date from the date group
+            const dateGroup = item.closest('.mb-3');
+            if (dateGroup) {
+                const dateElement = dateGroup.querySelector('.text-muted.small');
+                if (dateElement) {
+                    createdDate = dateElement.textContent.replace('📅 ', '').trim();
+                }
+            }
+            
+            // Extract complete payment details
+            const paymentElements = expandedContent.querySelectorAll('.border-start.border-success');
+            let runningBalance = parseFloat(balance.replace(/[^0-9.]/g, ''));
+            
+            paymentElements.forEach((paymentEl, index) => {
+                const paymentDate = paymentEl.querySelector('strong')?.textContent?.trim() || '';
+                const paymentMethod = paymentEl.querySelector('.badge')?.textContent?.trim() || '';
+                const paymentAmount = paymentEl.querySelector('.text-success')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0';
+                const paymentNotes = paymentEl.querySelector('.text-primary')?.textContent?.replace(/"/g, '').trim() || '';
+                const paymentBy = paymentEl.querySelector('.text-muted')?.textContent?.split('by ')[1]?.split('\n')[0]?.trim() || '';
+                
+                const amount = parseFloat(paymentAmount.replace(/[^0-9.]/g, ''));
+                const balanceAfter = runningBalance - amount;
+                
+                payments.push({
+                    date: paymentDate,
+                    method: paymentMethod,
+                    amount: amount,
+                    notes: paymentNotes,
+                    by: paymentBy,
+                    balanceAfter: balanceAfter,
+                    paymentNumber: index + 1
+                });
+                
+                runningBalance = balanceAfter;
+            });
         }
         
         credits.push({
@@ -403,85 +439,228 @@ function exportToPDF() {
             amount: amount.replace(/[^0-9.]/g, ''),
             status: status,
             balance: balance.replace(/[^0-9.]/g, ''),
-            createdBy: createdBy
+            createdBy: createdBy,
+            creditType: creditType,
+            dueDate: dueDate,
+            notes: notes,
+            createdDate: createdDate,
+            payments: payments
         });
     });
     
     // Create PDF
     const doc = new jsPDF();
     
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Full Credit History Report', 14, 20);
-    doc.setFontSize(12);
-    doc.text(`Customer: {{ $customer->full_name }}`, 14, 30);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 40);
-    
-    // Add lifetime summary
-    doc.setFontSize(14);
-    doc.text('Lifetime Summary', 14, 55);
-    doc.setFontSize(10);
-    doc.text(`Total Credits: ${totalCredits}`, 14, 65);
-    doc.text(`Lifetime Credit Amount: ₱${lifetimeCreditAmount}`, 14, 72);
-    doc.text(`Lifetime Paid Amount: ₱${lifetimePaidAmount}`, 14, 79);
-    doc.text(`Lifetime Outstanding Balance: ₱${lifetimeOutstanding}`, 14, 86);
-    
-    // Add line separator
-    doc.line(14, 92, 196, 92);
-    
-    // Add credit details header
-    doc.setFontSize(12);
-    doc.text('Credit Details', 14, 102);
-    
-    // Add table headers
-    let yPosition = 112;
-    doc.setFontSize(10);
-    
-    // Define column positions
-    const col1 = 14;
-    const col2 = 40;
-    const col3 = 80;
-    const col4 = 120;
-    const col5 = 160;
-    
-    // Draw table headers
-    doc.text('Credit ID', col1, yPosition);
-    doc.text('Amount', col2, yPosition);
-    doc.text('Status', col3, yPosition);
-    doc.text('Balance', col4, yPosition);
-    doc.text('Created By', col5, yPosition);
-    
-    // Draw header line
-    doc.line(col1, yPosition + 2, col5 + 40, yPosition + 2);
-    yPosition += 10;
-    
-    // Add credit data as table rows
-    credits.forEach(credit => {
-        if (yPosition > 270) { // Add new page if needed
+    // Helper function to add new page if needed
+    function checkPageBreak(yPosition, requiredSpace = 20) {
+        if (yPosition > 270 - requiredSpace) {
             doc.addPage();
-            yPosition = 20;
-            
-            // Redraw headers on new page
-            doc.text('Credit ID', col1, yPosition);
-            doc.text('Amount', col2, yPosition);
-            doc.text('Status', col3, yPosition);
-            doc.text('Balance', col4, yPosition);
-            doc.text('Created By', col5, yPosition);
-            doc.line(col1, yPosition + 2, col5 + 40, yPosition + 2);
-            yPosition += 10;
+            return 20;
         }
+        return yPosition;
+    }
+    
+    // Helper function to draw bordered cell
+    function drawBorderedCell(x, y, width, height, text, fillColor = null, textColor = [0, 0, 0]) {
+        if (fillColor) {
+            doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+            doc.rect(x, y, width, height, 'FD');
+        } else {
+            doc.rect(x, y, width, height);
+        }
+        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+        doc.text(text, x + 2, y + height - 2);
+    }
+    
+    // Helper function to draw table row
+    function drawTableRow(x, y, colWidths, data, isHeader = false, bgColor = null) {
+        let currentX = x;
+        const rowHeight = 8;
+        const textColor = isHeader ? [60, 60, 60] : [0, 0, 0];
         
-        // Draw row data
-        doc.text(credit.id.toString(), col1, yPosition);
-        doc.text('₱' + credit.amount, col2, yPosition);
-        doc.text(credit.status, col3, yPosition);
-        doc.text('₱' + credit.balance, col4, yPosition);
-        doc.text(credit.createdBy, col5, yPosition);
-        yPosition += 8;
+        data.forEach((text, index) => {
+            if (isHeader) {
+                drawBorderedCell(currentX, y, colWidths[index], rowHeight, text, [240, 240, 240], textColor);
+            } else {
+                drawBorderedCell(currentX, y, colWidths[index], rowHeight, text, bgColor, textColor);
+            }
+            currentX += colWidths[index];
+        });
+        
+        return y + rowHeight;
+    }
+    
+    // Company Header with Logo - Synchronous approach
+    let yPosition = 15;
+    
+    // Try to add logo synchronously
+    try {
+        // Create a simple approach - add logo directly without async loading
+        const logoPath = '{{ asset("images/BGH LOGO.png") }}';
+        doc.addImage(logoPath, 'PNG', 14, 15, 30, 20);
+    } catch (error) {
+        console.log('Logo loading failed, using text-only header');
+    }
+    
+    // Company Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('BGH IT SOLUTIONS', 50, 25);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text('Credit History Report', 50, 32);
+    
+    // Contact Information (right aligned)
+    doc.setFontSize(9);
+    doc.text('📞 0997-384-9783', 140, 20);
+    doc.text('✒ bghitsolutiona@gmail.com', 140, 26);
+    doc.text('http://web.facebook.com/bgh.iis.1', 140, 32);
+    
+    yPosition = 45;
+    
+    // Customer Information Box
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Customer Information:', 14, yPosition);
+    yPosition += 8;
+    
+    const customerInfoY = yPosition;
+    const customerInfoHeight = 25;
+    
+    // Customer info labels and values
+    drawBorderedCell(14, customerInfoY, 60, customerInfoHeight, 'Customer Name:', null, [60, 60, 60]);
+    drawBorderedCell(74, customerInfoY, 120, customerInfoHeight, '{{ $customer->full_name }}', null, [0, 0, 0]);
+    
+    drawBorderedCell(14, customerInfoY + 8, 60, customerInfoHeight, 'Customer ID:', null, [60, 60, 60]);
+    drawBorderedCell(74, customerInfoY + 8, 120, customerInfoHeight, '#{{ $customer->id }}', null, [0, 0, 0]);
+    
+    drawBorderedCell(14, customerInfoY + 16, 60, customerInfoHeight, 'Generated On:', null, [60, 60, 60]);
+    drawBorderedCell(74, customerInfoY + 16, 120, customerInfoHeight, new Date().toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    }).replace(',', ' -'), null, [0, 0, 0]);
+    
+    yPosition = customerInfoY + 45;
+    
+    // Active Filters (if any)
+    const filters = getActiveFilters();
+    if (filters.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Active Filters:', 14, yPosition);
+        yPosition += 6;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        filters.forEach(filter => {
+            doc.text(`• ${filter}`, 20, yPosition);
+            yPosition += 5;
+        });
+        yPosition += 5;
+    }
+    
+    // Lifetime Credit Summary Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Lifetime Credit Summary', 14, yPosition);
+    yPosition += 8;
+    
+    const summaryColWidths = [50, 50, 50, 50];
+    const summaryHeaders = ['Total Credits', 'Lifetime Credit Amount', 'Total Paid', 'Outstanding Balance'];
+    const summaryData = [
+        totalCredits,
+        `PHP ${parseFloat(lifetimeCreditAmount).toLocaleString()}`,
+        `PHP ${parseFloat(lifetimePaidAmount).toLocaleString()}`,
+        `PHP ${parseFloat(lifetimeOutstanding).toLocaleString()}`
+    ];
+    
+    // Draw summary table
+    yPosition = drawTableRow(14, yPosition, summaryColWidths, summaryHeaders, true);
+    yPosition = drawTableRow(14, yPosition, summaryColWidths, summaryData, false);
+    
+    yPosition += 15;
+    
+    // Credit Transaction Details Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Credit Transaction Details', 14, yPosition);
+    yPosition += 8;
+    
+    const transactionColWidths = [25, 35, 35, 40, 35, 35, 30];
+    const transactionHeaders = ['Ref #', 'Type', 'Date', 'Credit Amount', 'Paid', 'Balance', 'Status'];
+    
+    // Draw transaction table headers
+    yPosition = drawTableRow(14, yPosition, transactionColWidths, transactionHeaders, true);
+    
+    // Draw transaction data rows
+    doc.setFont('helvetica', 'normal');
+    credits.forEach((credit, index) => {
+        yPosition = checkPageBreak(yPosition, 15);
+        
+        // Get credit type from the data or default to 'Unknown'
+        const creditType = credit.creditType || 'Unknown';
+        const creditDate = credit.createdDate || 'Unknown';
+        const paidAmount = (parseFloat(credit.amount) - parseFloat(credit.balance)).toLocaleString();
+        
+        const transactionData = [
+            `CR-${credit.id.padStart(4, '0')}`,
+            creditType,
+            creditDate,
+            `PHP ${parseFloat(credit.amount).toLocaleString()}`,
+            `PHP ${paidAmount}`,
+            `PHP ${parseFloat(credit.balance).toLocaleString()}`,
+            credit.status.toUpperCase()
+        ];
+        
+        // Alternate row colors for better readability
+        const bgColor = index % 2 === 0 ? [250, 250, 250] : null;
+        yPosition = drawTableRow(14, yPosition, transactionColWidths, transactionData, false, bgColor);
     });
     
+    // Add footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Page ${i} of ${pageCount}`, 196 - 20, 287, { align: 'right' });
+        doc.text('Generated by POS System', 14, 287);
+        doc.setTextColor(0, 0, 0);
+    }
+    
     // Save PDF
-    doc.save('credit-history-{{ $customer->id }}-' + Date.now() + '.pdf');
+    const filename = filters.length > 0 
+        ? `credit-history-filtered-{{ $customer->id }}-${Date.now()}.pdf`
+        : `credit-history-full-{{ $customer->id }}-${Date.now()}.pdf`;
+    doc.save(filename);
+}
+
+function getActiveFilters() {
+    const filters = [];
+    
+    // Get date filters
+    const dateFrom = document.querySelector('input[name="date_from"]')?.value;
+    const dateTo = document.querySelector('input[name="date_to"]')?.value;
+    if (dateFrom) filters.push(`Date from: ${dateFrom}`);
+    if (dateTo) filters.push(`Date to: ${dateTo}`);
+    
+    // Get status filter
+    const status = document.querySelector('select[name="status"]')?.value;
+    if (status) filters.push(`Status: ${status}`);
+    
+    // Get credit ID filter
+    const creditId = document.querySelector('input[name="credit_id"]')?.value;
+    if (creditId) filters.push(`Credit ID: ${creditId}`);
+    
+    // Get created by filter
+    const createdBy = document.querySelector('select[name="created_by"]')?.value;
+    if (createdBy) filters.push(`Created by: ${createdBy}`);
+    
+    return filters;
 }
 
 function exportToCSV() {
