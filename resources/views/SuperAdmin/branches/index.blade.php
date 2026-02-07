@@ -59,7 +59,7 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#branchModal" onclick="editBranch({{ $branch->id }}, '{{ $branch->branch_name }}', '{{ $branch->address ?? '' }}', '{{ $branch->assign_to ?? '' }}', '{{ $branch->status }}')">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#branchModal" onclick="editBranch({{ $branch->id }}, '{{ $branch->branch_name }}', '{{ $branch->address ?? '' }}', '{{ $branch->status }}')">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <form method="POST" action="{{ route('superadmin.branches.destroy', $branch) }}" class="d-inline">
@@ -112,15 +112,6 @@
                         <input type="text" class="form-control" id="address" name="address">
                     </div>
                     <div class="mb-3">
-                        <label for="assign_to" class="form-label">Assign To</label>
-                        <select class="form-select" id="assign_to" name="assign_to">
-                            <option value="">Select User</option>
-                            @foreach($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-control" id="status" name="status" required>
                             <option value="active">Active</option>
@@ -146,11 +137,10 @@ function openBranchModal() {
     document.getElementById('branchModalLabel').textContent = 'Add Branch';
     document.getElementById('branch_name').value = '';
     document.getElementById('address').value = '';
-    document.getElementById('assign_to').value = '';
     document.getElementById('status').value = 'active';
 }
 
-function editBranch(id, name, address, assignTo, status) {
+function editBranch(id, name, address, status) {
     document.getElementById('branchForm').action = '/superadmin/branches/' + id;
     if (!document.getElementById('branchForm').querySelector('input[name="_method"]')) {
         const methodInput = document.createElement('input');
@@ -162,7 +152,6 @@ function editBranch(id, name, address, assignTo, status) {
     document.getElementById('branchModalLabel').textContent = 'Edit Branch';
     document.getElementById('branch_name').value = name;
     document.getElementById('address').value = address;
-    document.getElementById('assign_to').value = assignTo;
     document.getElementById('status').value = status;
 }
 </script>

@@ -69,8 +69,8 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
-                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id ?? $customer->id) }}" class="btn btn-outline-primary" title="View Customer">
-                                                        <i class="fas fa-eye"></i>
+                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id ?? $customer->id) }}" class="btn btn-outline-primary" title="View Customer" style="text-decoration: none;">
+                                                        <i class="fas fa-eye"></i> View
                                                     </a>
                                                     @if($customer->status == 'active')
                                                         <button type="button" class="btn btn-outline-danger" onclick="toggleCustomerStatus({{ $customer->customer_id ?? $customer->id }}, '{{ $customer->status }}')" title="Block Customer">

@@ -37,7 +37,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">Employee ID</label>
-                            <input type="text" name="employee_id" id="employee_id" class="form-control" readonly value="{{ old('employee_id') ?? 'EMP' . str_pad(\App\Models\User::count() + 1, 5, '0', STR_PAD_LEFT) }}">
+                            <input type="text" id="employee_id_display" class="form-control" readonly value="{{ 'EMP' . str_pad(\App\Models\User::max('id') + 1, 5, '0', STR_PAD_LEFT) }}">
                             <small class="text-muted">Automatically generated</small>
                         </div>
 
@@ -76,13 +76,9 @@
                             </div>
                         </div>
 
-                        <!-- Branch Assignment - Only show for Cashier role -->
-                        <div class="mt-3" id="branch_field" style="display: none;">
-                            <label class="form-label">
-                                Branch Assignment 
-                                <span class="text-danger">*</span>
-                                <small class="text-muted">(Required for Cashier role)</small>
-                            </label>
+                        <!-- Branch Assignment -->
+                        <div class="mt-3">
+                            <label class="form-label">Branch Assignment</label>
                             <select name="branch_id" id="branch_id" class="form-select">
                                 <option value="">-- Select Branch --</option>
                                 @foreach($branches as $branch)
@@ -112,31 +108,6 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const userTypeIdSelect = document.getElementById('user_type_id');
-    const branchField = document.getElementById('branch_field');
-    const branchIdSelect = document.getElementById('branch_id');
-    
-    // Function to toggle branch field visibility
-    function toggleBranchField() {
-        const selectedOption = userTypeIdSelect.options[userTypeIdSelect.selectedIndex];
-        const selectedRole = selectedOption.text;
-        
-        if (selectedRole === 'Cashier') {
-            branchField.style.display = 'block';
-            branchIdSelect.setAttribute('required', 'required');
-        } else {
-            branchField.style.display = 'none';
-            branchIdSelect.removeAttribute('required');
-            branchIdSelect.value = ''; // Clear selection when hidden
-        }
-    }
-    
-    // Check on page load (for form resubmission with errors)
-    toggleBranchField();
-    
-    // Check on role change
-    userTypeIdSelect.addEventListener('change', toggleBranchField);
-});
+// Branch field is now always visible - no need for toggle logic
 </script>
 @endpush

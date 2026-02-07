@@ -50,7 +50,10 @@ class CustomerController extends Controller
     public function show($customer)
     {
         try {
+            Log::info('Loading customer details for ID: ' . $customer);
+            
             $customerModel = Customer::findOrFail($customer);
+            Log::info('Customer model found: ' . $customerModel->full_name);
             
             // Get customer details with credit information
             $customerDetails = DB::table('customers')
@@ -80,6 +83,8 @@ class CustomerController extends Controller
                 ->where('customers.id', $customer)
                 ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'customers.max_credit_limit', 'customers.status', 'customers.created_at', 'users.name')
                 ->first();
+            
+            Log::info('Customer details query result: ', (array)$customerDetails);
 
             // Get recent credits for this customer
             $recentCredits = Credit::where('customer_id', $customer)
@@ -87,12 +92,15 @@ class CustomerController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->limit(3)
                 ->get();
+            
+            Log::info('Recent credits count: ' . $recentCredits->count());
 
             return view('Admin.customers.show', compact('customerDetails', 'recentCredits'));
             
         } catch (\Exception $e) {
             Log::error('Error loading customer details: ' . $e->getMessage());
-            return back()->with('error', 'Unable to load customer details');
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->with('error', 'Unable to load customer details: ' . $e->getMessage());
         }
     }
     
