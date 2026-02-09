@@ -780,84 +780,93 @@
         const ocrFileInput = document.createElement('input');
         ocrFileInput.type = 'file';
         ocrFileInput.accept = 'image/*';
+        ocrFileInput.multiple = true; // Allow multiple file selection
 
         ocrButton.addEventListener('click', () => ocrFileInput.click());
 
         ocrFileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
 
+            // Show loading with proper animation
             Swal.fire({
-                title: 'Processing OCR',
-                text: 'Please wait...',
+                title: 'Processing Receipt Images',
+                html: '<div style="display: flex; justify-content: center; margin: 20px 0;"><div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3085d6; border-radius: 50%; animation: spin 1s linear infinite;"></div></div><p>Scanning ' + files.length + ' image(s)... Please wait.</p><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>',
                 allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
+                showConfirmButton: false
             });
 
-            Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
-                .then(({ data: { text } }) => {
-                    // Filter the raw text to show only product items and reference number
-                    const lines = text.split('\n');
-                    const filteredLines = [];
-                    let referenceNumber = null;
-                    
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (!line) return;
+            // Process all images
+            const allTexts = [];
+            let processedCount = 0;
+
+            files.forEach((file, index) => {
+                Tesseract.recognize(file, 'eng', { logger: m => console.log(`File ${index + 1}:`, m) })
+                    .then(({ data: { text } }) => {
+                        allTexts[index] = text;
+                        processedCount++;
                         
-                        // Check for reference number
-                        if (/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i.test(line)) {
-                            referenceNumber = line;
-                            filteredLines.push(line);
-                            return;
-                        }
-                        
-                        // Skip common receipt headers and footers
-                        if (/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT)/i.test(line)) {
-                            return;
-                        }
-                        
-                        // Skip lines with dates and times
-                        if (/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}:\d{2}\s*(AM|PM)/i.test(line)) {
-                            return;
-                        }
-                        
-                        // Skip lines with addresses
-                        if (/\d+\s+.*\s+(Road|St|Ave|City|Cebu)/i.test(line)) {
-                            return;
-                        }
-                        
-                        // Skip lines that are just numbers or reference numbers (except when part of product)
-                        if (/^\d+$/.test(line) || /^[A-Z0-9-]{6,}$/.test(line)) {
-                            return;
-                        }
-                        
-                        // Include lines that look like product items
-                        if (/^(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/.test(line) || // Qty + Name + Price + Total
-                            /^(\d+)\s+(.+?)\s+(\d+\.\d{2})$/.test(line) || // Qty + Name + Price
-                            /^(.+?)\s+(\d+\.\d{2})$/.test(line) || // Name + Price
-                            (line.length >= 3 && line.length <= 50 && /[a-zA-Z]/.test(line) && !/\d{2,}/.test(line))) { // Name only
-                            filteredLines.push(line);
-                        }
-                    });
-                    
-                    const filteredText = filteredLines.join('\n');
-                    
-                    // Show the filtered OCR text
-                    Swal.fire({
-                        title: 'OCR Text Extracted',
-                        html: '<div style="text-align: left;"><strong>Product Items Found:</strong><pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; font-size: 12px;">' + filteredText + '</pre></div>',
-                        confirmButtonText: 'Process Products',
-                        showCancelButton: true,
-                        confirmButtonColor: '#2196F3',
-                        cancelButtonText: 'Cancel'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            // Process the original full text through backend
+                        // Update loading message
+                        Swal.update({
+                            html: '<div style="display: flex; justify-content: center; margin: 20px 0;"><div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3085d6; border-radius: 50%; animation: spin 1s linear infinite;"></div></div><p>Processed ' + processedCount + '/' + files.length + ' image(s)... Please wait.</p><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>'
+                        });
+
+                        // When all images are processed
+                        if (processedCount === files.length) {
+                            // Combine all texts
+                            const combinedText = allTexts.filter(text => text).join('\n');
+                            
+                            // Filter the combined text to show only product items and reference number
+                            const lines = combinedText.split('\n');
+                            const filteredLines = [];
+                            let referenceNumber = null;
+                            
+                            lines.forEach(line => {
+                                line = line.trim();
+                                if (!line) return;
+                                
+                                // Check for reference number
+                                if (/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i.test(line)) {
+                                    referenceNumber = line;
+                                    filteredLines.push(line);
+                                    return;
+                                }
+                                
+                                // Less restrictive filtering - capture more potential products
+                                // Skip only obvious non-product lines
+                                if (/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT|X|TAX|SERVICE|CHARGE|DRIVER|HELLO|GROSS|LESS)$/i.test(line)) {
+                                    return;
+                                }
+                                
+                                // Skip lines that are just dates
+                                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(line) || /^\d{1,2}:\d{2}\s*(AM|PM)$/.test(line)) {
+                                    return;
+                                }
+                                
+                                // Skip lines that are just numbers
+                                if (/^\d+(\.\d{2})?$/.test(line)) {
+                                    return;
+                                }
+                                
+                                // Skip very short lines (likely OCR noise)
+                                if (line.length < 3) {
+                                    return;
+                                }
+                                
+                                // Include more lines - be less restrictive
+                                // Accept lines that contain letters and are reasonable length
+                                if (/[a-zA-Z]/.test(line) && line.length >= 3 && line.length <= 100) {
+                                    filteredLines.push(line);
+                                }
+                            });
+                            
+                            const filteredText = filteredLines.join('\n');
+
+                            // Auto-process the combined full text through backend (no preview modal)
                             $.ajax({
                                 url: '{{ route("superadmin.purchases.ocr-product-match") }}',
                                 method: 'POST',
-                                data: { _token: '{{ csrf_token() }}', text: text },
+                                data: { _token: '{{ csrf_token() }}', text: combinedText },
                                 success: function(response) {
                                     console.log('OCR Response:', response);
                                     Swal.close();
@@ -914,18 +923,19 @@
                                         message += '<br><small>Products have been added to the purchase list below. You can edit their details before saving.</small>';
                                     }
 
+                                    console.log('Filtered text (debug):', filteredText);
                                     console.log('Final message:', message);
-                                    
+
                                     // Add a small delay to ensure items are added before showing the message
                                     setTimeout(() => {
-                                        Swal.fire({ 
-                                            title: 'OCR Scan Complete', 
-                                            html: message, 
+                                        Swal.fire({
+                                            title: 'OCR Scan Complete',
+                                            html: message,
                                             icon: icon,
                                             showConfirmButton: true,
                                             confirmButtonText: 'OK'
                                         });
-                                    }, 500);
+                                    }, 300);
                                 },
                                 error: function() {
                                     Swal.close();
@@ -933,13 +943,17 @@
                                 }
                             });
                         }
+                    })
+                    .catch(err => {
+                        Swal.close();
+                        console.error('OCR Error for file', file.name, ':', err);
+                        Swal.fire({ 
+                            title: 'OCR Error', 
+                            text: 'Could not recognize text from ' + file.name, 
+                            icon: 'error' 
+                        });
                     });
-                })
-                .catch(err => {
-                    Swal.close();
-                    console.error(err);
-                    Swal.fire({ title: 'OCR Error', text: 'Could not recognize text from the image.', icon: 'error' });
-                });
+            });
         });
 
     });
