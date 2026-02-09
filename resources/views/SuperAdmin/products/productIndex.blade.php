@@ -6,6 +6,175 @@
 @extends('layouts.app')
 @section('title', 'Products')
 
+@push('styles')
+<style>
+/* CSS-only fix without !important */
+.product-image {
+    width: 25px;
+    height: 25px;
+    max-width: none; /* Remove Bootstrap's constraint */
+    max-height: none; /* Remove Bootstrap's constraint */
+    aspect-ratio: 1/1; /* Force square aspect ratio */
+    object-fit: cover;
+    display: block;
+    margin: auto;
+    border-radius: 2px;
+    border: 1px solid #e0e0e0;
+}
+
+
+.product-image-placeholder {
+    width: 25px;
+    height: 25px;
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image-placeholder svg {
+    width: 8px;
+    height: 8px;
+}
+
+.image-container {
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+/* HTML wrapper solution - Bootstrap immune */
+.image-wrapper {
+    width: 25px;
+    height: 25px;
+    overflow: hidden;
+    border-radius: 2px;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.image-wrapper .product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    max-width: none; /* Allow image to fill wrapper */
+    max-height: none;
+}
+
+/* Stable header layout that resists zoom repositioning */
+.products-header-card {
+    min-height: 80px;
+    overflow: visible; /* Allow content to be visible */
+}
+
+.products-header-card > div {
+    min-width: 100%; /* Prevent shrinking during zoom */
+    flex-wrap: nowrap !important; /* Prevent wrapping during zoom */
+}
+
+.products-header-card .d-flex:first-child {
+    gap: 1rem !important; /* Reduced gap for more space */
+    flex: 1; /* Allow title section to grow */
+    min-width: 0; /* Allow shrinking if needed */
+}
+
+.products-header-card .d-flex:last-child {
+    gap: 0.5rem !important; /* Fixed gap for buttons */
+    flex-shrink: 0; /* Prevent button container from shrinking */
+    min-width: fit-content; /* Ensure buttons don't get compressed */
+}
+
+.products-header-card h2 {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.products-header-card p {
+    font-size: 0.875rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.search-wrapper {
+    min-width: 200px; /* Reduced from 250px */
+    flex-shrink: 0;
+}
+
+.search-wrapper input {
+    min-width: 150px; /* Reduced from 200px */
+}
+
+.btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Ensure proper alignment at all screen sizes */
+@media (min-width: 1200px) {
+    .products-header-card .d-flex:first-child {
+        gap: 2rem !important;
+    }
+    
+    .search-wrapper {
+        min-width: 250px;
+    }
+    
+    .search-wrapper input {
+        min-width: 200px;
+    }
+}
+
+/* Bootstrap-safe override with higher specificity */
+.table .product-image {
+    width: 15px !important;
+    height: 15px !important;
+    max-width: 15px !important;
+    max-height: 15px !important;
+    min-width: 15px !important;
+    min-height: 15px !important;
+    object-fit: cover;
+    display: block;
+    border-radius: 2px;
+    border: 1px solid #e0e0e0;
+}
+
+.products-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.products-table td {
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.products-table th:nth-child(1) { width: 40px; } /* Checkbox */
+.products-table th:nth-child(2) { width: 60px; } /* ID */
+.products-table td:nth-child(3),
+.products-table th:nth-child(3) { width: 50px; text-align: center; } /* Image */
+.products-table th:nth-child(4) { width: 250px; } /* Product Name */
+.products-table th:nth-child(5) { width: 100px; } /* Brand */
+.products-table th:nth-child(6) { width: 100px; } /* Category */
+.products-table th:nth-child(7) { width: 100px; } /* Product Type */
+.products-table th:nth-child(8) { width: 120px; } /* Unit Type */
+.products-table th:nth-child(9) { width: 80px; } /* Status */
+</style>
+@endpush
+
 @include('layouts.theme-base')
 
 @section('content')
@@ -15,10 +184,10 @@
                 <div class="row mb-6">
                     <div class="col-12">
                         <div class="products-header-card">
-                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                                <div>
-                                    <h2 class="m-0 mb-1">Product List</h2>
-                                    <p class="mb-0">Manage your product inventory</p>
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div class="d-flex align-items-center gap-4">
+                                    <h2 class="m-0">Product List</h2>
+                                    <p class="mb-0 text-muted">Manage your product inventory</p>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="search-wrapper">
@@ -73,8 +242,8 @@
                                                         @endif
                                                     </a>
                                                 </th>
+                                                <th>Image</th>
                                                 <th>Product Name</th>
-                                                <th>Barcode</th>
                                                 <th>Brand</th>
                                                 <th>Category</th>
                                                 <th>Product Type</th>
@@ -238,50 +407,53 @@
 
     // ----------------- OCR FUNCTIONALITY -----------------
     const ocrButton = document.getElementById('ocr-button');
-    const ocrFileInput = document.createElement('input');
-    ocrFileInput.type = 'file';
-    ocrFileInput.accept = 'image/*';
+    
+    if (ocrButton) {
+        const ocrFileInput = document.createElement('input');
+        ocrFileInput.type = 'file';
+        ocrFileInput.accept = 'image/*';
 
-    ocrButton.addEventListener('click', () => ocrFileInput.click());
+        ocrButton.addEventListener('click', () => ocrFileInput.click());
 
-    ocrFileInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        ocrFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-        Swal.fire({
-            title: 'Processing OCR',
-            text: 'Please wait...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-
-        Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
-            .then(({ data: { text } }) => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'OCR Complete',
-                    html: '<pre style="text-align: left; max-height: 300px; overflow-y: auto;">' + text + '</pre>',
-                    confirmButtonText: 'Process Data',
-                    showCancelButton: true,
-                    confirmButtonColor: '#2196F3'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Here you can process the OCR text
-                        // For example, parse product information and fill forms
-                        processOCRText(text);
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('OCR Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'OCR Failed',
-                    text: 'Failed to process image. Please try again.',
-                    confirmButtonColor: '#2196F3'
-                });
+            Swal.fire({
+                title: 'Processing OCR',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
             });
-    });
+
+            Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
+                .then(({ data: { text } }) => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'OCR Complete',
+                        html: '<pre style="text-align: left; max-height: 300px; overflow-y: auto;">' + text + '</pre>',
+                        confirmButtonText: 'Process Data',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2196F3'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Here you can process the OCR text
+                            // For example, parse product information and fill forms
+                            processOCRText(text);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('OCR Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'OCR Failed',
+                        text: 'Failed to process image. Please try again.',
+                        confirmButtonColor: '#2196F3'
+                    });
+                });
+        });
+    }
 
     function processOCRText(text) {
         // Function to process OCR text and extract product information

@@ -7,24 +7,26 @@
             <span style="color: #7f8c8d; font-family: monospace; font-weight: 600;">#{{ $product->id }}</span>
         </td>
         <td>
-            <div class="d-flex align-items-center gap-2">
+            <div class="image-wrapper">
                 @if($product->image)
-                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->product_name }}" class="product-image">
+                    <img src="{{ asset('storage/' . $product->image) }}" 
+                         alt="{{ $product->product_name }}" 
+                         class="product-image"
+                         style="width: 25px !important; height: 25px !important; max-width: none !important; max-height: none !important; object-fit: cover !important;">
                 @else
                     <div class="product-image-placeholder">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#95a5a6" stroke-width="2">
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#95a5a6" stroke-width="2">
                             <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
                 @endif
-                <div>
-                    <div class="product-name">{{ $product->product_name }}</div>
-                    <small style="color: #7f8c8d; font-size: 0.75rem;">{{ $product->barcode }}</small>
-                </div>
             </div>
         </td>
         <td>
-            <span class="badge-barcode">{{ $product->barcode }}</span>
+            <div>
+                <div class="product-name">{{ $product->product_name }}</div>
+                <small style="color: #7f8c8d; font-size: 0.75rem;">{{ $product->barcode }}</small>
+            </div>
         </td>
         <td style="color: #34495e;">
             {{ $product->brand->name ?? 'N/A' }}
@@ -33,7 +35,7 @@
             {{ $product->category->name ?? 'N/A' }}
         </td>
         <td style="color: #34495e;">
-            {{ $product->productType->name ?? 'N/A' }}
+            {{ $product->product_type_id ?? 'N/A' }}
         </td>
         <td>
             @if($product->unitTypes->isNotEmpty())
@@ -52,7 +54,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="9" class="text-center py-5">
+        <td colspan="8" class="text-center py-5">
             <div class="empty-state">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#95a5a6" stroke-width="1.5">
                     <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
