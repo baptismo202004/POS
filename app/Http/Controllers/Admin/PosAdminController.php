@@ -292,6 +292,7 @@ class PosAdminController extends Controller
                     'customer_name' => $customerName,
                     'sale_id' => $sale->id,
                     'cashier_id' => auth()->id(),
+                    'branch_id' => $branchId,
                     'credit_amount' => $total,
                     'paid_amount' => 0,
                     'remaining_balance' => $total,

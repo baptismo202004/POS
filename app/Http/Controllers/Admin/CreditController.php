@@ -41,15 +41,17 @@ class CreditController extends Controller
                 ->selectRaw('COUNT(*) as total_overdue, COALESCE(SUM(remaining_balance), 0) as total_overdue_amount')
                 ->first();
             
-            // Get unique customers with their total credit information
-            Log::info('Querying unique customers with total credit info');
-            $customers = DB::table('customers')
+            // Get all customers with credits (both registered and walk-in)
+            Log::info('Querying all customers with credits (registered and walk-in)');
+            
+            // Get all unique customer names from credits
+            $creditCustomers = DB::table('credits')
                 ->select([
-                    'customers.id as customer_id',
-                    'customers.full_name',
-                    'customers.phone',
-                    'customers.email', 
-                    'customers.address',
+                    DB::raw('NULL as customer_id'),
+                    'credits.customer_name as full_name',
+                    'credits.phone',
+                    'credits.email', 
+                    'credits.address',
                     'branches.branch_name',
                     DB::raw('COUNT(credits.id) as credit_giver_total'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
@@ -63,11 +65,14 @@ class CreditController extends Controller
                         ELSE "Outstanding"
                     END as status')
                 ])
-                ->leftJoin('credits', 'customers.full_name', '=', 'credits.customer_name')
                 ->leftJoin('branches', 'credits.branch_id', '=', 'branches.id')
-                ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'branches.branch_name')
+                ->whereNotNull('credits.customer_name')
+                ->where('credits.customer_name', '!=', '')
+                ->groupBy('credits.customer_name', 'credits.phone', 'credits.email', 'credits.address', 'branches.branch_name')
                 ->orderByRaw('MAX(credits.created_at) DESC')
                 ->paginate(20);
+            
+            $customers = $creditCustomers;
             
             Log::info('Credits loaded successfully, returning view');
             

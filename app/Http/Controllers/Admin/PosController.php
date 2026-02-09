@@ -25,8 +25,8 @@ class PosController extends Controller
             'total' => 'required|numeric|min:0',
             'payment_method' => 'required|in:cash,credit',
             'customer_name' => 'nullable|string|max:255',
-            'due_date' => 'nullable|required_if:payment_method,credit|date',
-            'notes' => 'nullable|string|max:1000',
+            'credit_due_date' => 'nullable|required_if:payment_method,credit|date',
+            'credit_notes' => 'nullable|string|max:1000',
         ]);
 
         if ($validator->fails()) {
@@ -44,6 +44,10 @@ class PosController extends Controller
                 \Log::info('Items structure:', $request->items);
                 
                 $branchId = $request->items[0]['branch_id'] ?? 1; // Default to 1 if not provided
+                
+                // Debug: Log branch info
+                \Log::info('Branch ID from first item: ' . $branchId);
+                \Log::info('First item data: ', $request->items[0] ?? []);
 
                 $sale = Sale::create([
                     'cashier_id' => auth()->id() ?? 1,
@@ -85,16 +89,22 @@ class PosController extends Controller
 
                 // If credit payment, create credit record
                 if ($request->payment_method === 'credit') {
+                    \Log::info('Creating credit record with branch_id: ' . $branchId);
+                    
                     Credit::create([
                         'sale_id' => $sale->id,
                         'cashier_id' => auth()->id() ?? 1,
+                        'branch_id' => $branchId,
+                        'customer_name' => $request->customer_name,
                         'credit_amount' => $request->total,
                         'paid_amount' => 0,
                         'remaining_balance' => $request->total,
                         'status' => 'active',
-                        'due_date' => $request->due_date ?? date('Y-m-d', strtotime('+30 days')),
-                        'notes' => $request->notes ?? '',
+                        'date' => $request->credit_due_date ?? date('Y-m-d', strtotime('+30 days')),
+                        'notes' => $request->credit_notes ?? '',
                     ]);
+                    
+                    \Log::info('Credit record created successfully');
                 }
             });
 
