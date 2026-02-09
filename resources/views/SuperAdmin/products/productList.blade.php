@@ -58,7 +58,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Brand</label>
-                                        <select name="brand_id" id="brandSelect" class="form-select select2-tags" style="width:100%">
+                                        <select name="brand_id" id="brandSelect" class="form-control select2-tags" style="width:100%">
                                             <option value="">-- Select Brand --</option>
                                             @foreach($brands ?? [] as $brand)
                                                 <option value="{{ $brand->id }}" {{ $isEdit && $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
@@ -68,7 +68,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Category</label>
-                                        <select name="category_id" id="categorySelect" class="form-select select2-tags" style="width:100%">
+                                        <select name="category_id" id="categorySelect" class="form-control select2-tags" style="width:100%">
                                             <option value="">-- Select Category --</option>
                                             @foreach($categories ?? [] as $cat)
                                                 <option value="{{ $cat->id }}" {{ $isEdit && $product->category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -78,16 +78,16 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Product Type</label>
-                                        <select name="product_type_id" id="productType" class="form-select select2-tags" style="width:100%">
+                                        <select name="product_type_id" id="productType" class="form-control select2-tags" style="width:100%">
                                             <option value="">-- Select Type --</option>
-                                            <option value="1" data-electronic="1" {{ $isEdit && $product->product_type_id == 1 ? 'selected' : '' }}>Electronic</option>
-                                            <option value="2" data-electronic="0" {{ ($isEdit && $product->product_type_id == 2) || !$isEdit ? 'selected' : '' }}>Non-Electronic</option>
+                                            <option value="electronic" data-electronic="1" {{ $isEdit && $product->product_type_id == 'electronic' ? 'selected' : '' }}>Electronic</option>
+                                            <option value="non-electronic" data-electronic="0" {{ ($isEdit && $product->product_type_id == 'non-electronic') || !$isEdit ? 'selected' : '' }}>Non-Electronic</option>
                                         </select>
                                     </div>
 
                                     <div class="col-md-3">
                                         <label class="form-label">Unit Types</label>
-                                        <select name="unit_type_ids[]" id="unitTypeSelect" class="form-select" style="width:100%" multiple>
+                                        <select name="unit_type_ids[]" id="unitTypeSelect" class="form-control" style="width:100%" multiple>
                                             @php
                                                 $selectedUnitTypes = old('unit_type_ids', $isEdit ? $product->unitTypes->pluck('id')->all() : []);
                                             @endphp
@@ -111,17 +111,8 @@
                                     </div>
 
                                     <div class="col-md-4 electronic-field d-none">
-                                        <label class="form-label">Tracking Type</label>
-                                        <select name="tracking_type" class="form-select">
-                                            <option value="none" {{ $isEdit && $product->tracking_type == 'none' ? 'selected' : '' }}>None</option>
-                                            <option value="serial" {{ $isEdit && $product->tracking_type == 'serial' ? 'selected' : '' }}>Serial</option>
-                                            <option value="imei" {{ $isEdit && $product->tracking_type == 'imei' ? 'selected' : '' }}>IMEI</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Warranty Type</label>
-                                        <select name="warranty_type" class="form-select">
+                                        <select name="warranty_type" class="form-control">
                                             <option value="none" {{ $isEdit && $product->warranty_type == 'none' ? 'selected' : '' }}>None</option>
                                             <option value="shop" {{ $isEdit && $product->warranty_type == 'shop' ? 'selected' : '' }}>Shop</option>
                                             <option value="manufacturer" {{ $isEdit && $product->warranty_type == 'manufacturer' ? 'selected' : '' }}>Manufacturer</option>
@@ -138,14 +129,9 @@
                                         <input type="text" name="voltage_specs" class="form-control" value="{{ $isEdit ? $product->voltage_specs : '' }}" placeholder="e.g. 110-220V">
                                     </div>
 
-                                    <div class="col-md-3 electronic-field d-none">
-                                        <label class="form-label">Serial Number</label>
-                                        <input type="text" name="serial_number" class="form-control" value="{{ $isEdit ? ($product->serial_number ?? '') : '' }}" placeholder="Enter serial number">
-                                    </div>
-
-                                    <div class="col-md-3 electronic-field d-none">
+                                    <div class="col-md-3 non-electronic-field">
                                         <label class="form-label">Branch</label>
-                                        <select name="branch_id" id="branchSelect" class="form-select">
+                                        <select name="branch_id" id="branchSelect" class="form-control">
                                             <option value="">-- Select Branch --</option>
                                             @foreach($branches ?? [] as $branch)
                                                 <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
@@ -155,7 +141,7 @@
 
                                     <div class="col-md-3">
                                         <label class="form-label">Status</label>
-                                        <select name="status" class="form-select">
+                                        <select name="status" class="form-control">
                                             <option value="active" {{ $isEdit && $product->status == 'active' ? 'selected' : '' }}>Active</option>
                                             <option value="inactive" {{ $isEdit && $product->status == 'inactive' ? 'selected' : '' }}>Inactive</option>
                                         </select>
@@ -212,10 +198,11 @@
             // --- Conditional Visibility Logic ---
             const productType = $('#productType');
             const electronicFields = $('.electronic-field');
+            const nonElectronicFields = $('.non-electronic-field');
 
             function toggleElectronicFields() {
                 const selectedOption = productType.find('option:selected');
-                const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === '1';
+                const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === 'electronic';
                 
                 console.log('Product type changed:', {
                     value: productType.val(),
@@ -223,10 +210,14 @@
                     selectedOption: selectedOption.text()
                 });
                 
+                // Show electronic fields for electronic products
                 electronicFields.toggleClass('d-none', !isElectronic);
                 
-                // Re-initialize branch select2 when electronic fields are shown
-                if (isElectronic) {
+                // Show non-electronic fields (Branch) for non-electronic products only
+                nonElectronicFields.toggleClass('d-none', isElectronic);
+                
+                // Re-initialize branch select2 when non-electronic fields are shown
+                if (!isElectronic) {
                     // Only initialize select2 if not already initialized
                     if (!$('#branchSelect').hasClass('select2-hidden-accessible')) {
                         console.log('Initializing branch select2 with HTML:', $('#branchSelect').html());
@@ -237,7 +228,7 @@
                         });
                     }
                 } else {
-                    // If electronic fields are hidden, destroy select2 for branchSelect
+                    // If electronic fields are shown, destroy select2 for branchSelect
                     if ($('#branchSelect').hasClass('select2-hidden-accessible')) {
                         $('#branchSelect').select2('destroy');
                     }
@@ -245,7 +236,10 @@
                 
                 // Log field visibility for debugging
                 electronicFields.each(function() {
-                    console.log('Field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
+                    console.log('Electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
+                });
+                nonElectronicFields.each(function() {
+                    console.log('Non-electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
                 });
             }
 
@@ -281,6 +275,15 @@
                     const formData = new FormData(form);
                     const url = form.action;
 
+                    // Log form data for debugging
+                    console.log('=== FORM SUBMISSION DEBUG ===');
+                    console.log('Form action URL:', url);
+                    console.log('Form data entries:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(`${key}: ${value}`);
+                    }
+                    console.log('==============================');
+
                     // Clear previous errors
                     document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
                     document.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
@@ -295,12 +298,18 @@
                         },
                     })
                     .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => { throw err; });
-                        }
-                        return response.json();
+                        console.log('Response status:', response.status);
+                        console.log('Response headers:', response.headers);
+                        return response.json().then(data => {
+                            console.log('Response data:', data);
+                            if (!response.ok) {
+                                throw data;
+                            }
+                            return data;
+                        });
                     })
                     .then(data => {
+                        console.log('Success response:', data);
                         if (data.success) {
                             Swal.fire({
                                 icon: 'success',
@@ -312,6 +321,7 @@
                                 window.location.href = '{{ route("superadmin.products.index") }}';
                             });
                         } else if (data.errors) {
+                            console.error('Validation errors:', data.errors);
                             Object.keys(data.errors).forEach(key => {
                                 const field = document.querySelector(`[name="${key}"]`);
                                 if (field) {
@@ -320,6 +330,9 @@
                                     error.className = 'invalid-feedback';
                                     error.innerText = data.errors[key][0];
                                     field.parentNode.appendChild(error);
+                                    console.error(`Field error for ${key}:`, data.errors[key][0]);
+                                } else {
+                                    console.error(`Field not found for error key: ${key}`);
                                 }
                             });
                             Swal.fire({
@@ -332,10 +345,14 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Fetch error:', error);
                         let errorMessage = 'Something went wrong. Please try again.';
                         if (error.message) {
                             errorMessage = error.message;
+                        }
+                        if (error.errors) {
+                            console.error('Server validation errors:', error.errors);
+                            errorMessage = 'Validation failed. Check console for details.';
                         }
                         Swal.fire({
                             icon: 'error',

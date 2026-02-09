@@ -71,25 +71,43 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Log incoming request data for debugging
+        Log::info('Product creation attempt', [
+            'request_data' => $request->all(),
+            'files' => $request->files->all()
+        ]);
+
+        $rules = [
             'product_name' => 'required|string|max:255|unique:products,product_name',
             'barcode' => 'required|string|unique:products,barcode',
             'unit_type_ids' => 'required|array|min:1',
             'unit_type_ids.*' => 'exists:unit_types,id',
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
-            'product_type_id' => 'nullable',
+            'product_type_id' => 'required|in:electronic,non-electronic',
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
-            'warranty_type' => 'required|in:none,shop,manufacturer',
+            'warranty_type' => 'required_if:product_type_id,electronic|in:none,shop,manufacturer',
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
-            'serial_number' => 'required_if:product_type_id,1|string|unique:product_serials,serial_number',
-            'branch_id' => 'required_if:product_type_id,1|exists:branches,id',
-        ]);
+        ];
+
+        // Only add branch validation for non-electronic products
+        if ($request->input('product_type_id') === 'non-electronic') {
+            $rules['branch_id'] = 'required|exists:branches,id';
+        } else {
+            $rules['branch_id'] = 'nullable';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
+            Log::error('Product validation failed', [
+                'errors' => $validator->errors()->toArray(),
+                'request_data' => $request->all(),
+                'product_type' => $request->input('product_type_id')
+            ]);
             return response()->json(['success' => false, 'errors' => $validator->errors()]);
         }
 
@@ -99,22 +117,15 @@ class ProductController extends Controller
             $debugInfo = [];
             DB::transaction(function () use ($request, $validated, &$debugInfo) {
                 // Check if product type is electronic
-                $isElectronic = false;
-                if (!empty($validated['product_type_id'])) {
-                    $productType = ProductType::find($validated['product_type_id']);
-                    $isElectronic = $productType && $productType->is_electronic;
+                $isElectronic = $validated['product_type_id'] === 'electronic';
 
-                    $debugInfo = [
-                        'product_type_id' => $validated['product_type_id'],
-                        'product_type_found' => !!$productType,
-                        'is_electronic_flag' => $productType ? $productType->is_electronic : 'N/A',
-                        'result' => $isElectronic
-                    ];
-                }
+                $debugInfo = [
+                    'product_type_id' => $validated['product_type_id'],
+                    'is_electronic' => $isElectronic
+                ];
 
                 if ($isElectronic) {
-                    // For electronic products, store in product_serials table
-                    // First create the base product record
+                    // For electronic products, store in products table with electronic-specific fields
                     $productData = [
                         'product_name' => $validated['product_name'],
                         'barcode' => $validated['barcode'],
@@ -145,17 +156,8 @@ class ProductController extends Controller
                     $product = Product::create($productData);
                     $product->unitTypes()->sync($validated['unit_type_ids']);
 
-                    // Create product serial record
-                    ProductSerial::create([
-                        'product_id' => $product->id,
-                        'branch_id' => $validated['branch_id'],
-                        'serial_number' => $validated['serial_number'],
-                        'status' => 'in_stock',
-                        'warranty_expiry_date' => $this->calculateWarrantyExpiry($validated['warranty_type'], $validated['warranty_coverage_months'] ?? null),
-                    ]);
-
                 } else {
-                    // For non-electronic products, store normally in products table
+                    // For non-electronic products, store in products table with branch
                     if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
                         $b = Brand::create(['brand_name' => $request->input('brand_id'), 'status' => 'active']);
                         $validated['brand_id'] = $b->id;

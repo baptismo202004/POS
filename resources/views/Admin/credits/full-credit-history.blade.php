@@ -448,19 +448,77 @@ function exportToPDF() {
         });
     });
     
-    // Create PDF
-    const doc = new jsPDF();
+    // Create PDF with landscape orientation
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+    });
     
-    // Helper function to add new page if needed
+    // Helper function to add new page if needed (adjusted for landscape with proper pagination)
     function checkPageBreak(yPosition, requiredSpace = 20) {
-        if (yPosition > 270 - requiredSpace) {
+        if (yPosition > 190 - requiredSpace) { // Landscape A4 height is ~190mm
             doc.addPage();
-            return 20;
+            // Add simplified header on new page and get the new position
+            const newPosition = addPageHeader();
+            return newPosition; // Return position after header (logo + table header)
         }
         return yPosition;
     }
     
-    // Helper function to draw bordered cell
+    // Function to add simplified header on each page (pagination rules)
+    function addPageHeader() {
+        // Document header (logo & business information)
+        let yPosition = 15;
+        
+        // Try to add logo synchronously
+        try {
+            const logoPath = '{{ asset("images/BGH LOGO.png") }}';
+            doc.addImage(logoPath, 'PNG', 14, 15, 30, 20);
+        } catch (error) {
+            console.log('Logo loading failed, using text-only header');
+        }
+        
+        // Company Header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('BGH IT SOLUTIONS', 50, 25);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.text('Credit History Report', 50, 32);
+        
+        // Contact Information (Right side) - adjusted for landscape
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('Phone: 09457410264', 270, 22, { align: 'right' });
+        doc.text('Email: bgh.it.solutions@gmail.com', 270, 27, { align: 'right' });
+        doc.text('Facebook: http://web.facebook.com/bgh.iis.1', 270, 32, { align: 'right' });
+        
+        yPosition = 45;
+        
+        // Draw a line under the header (adjusted for landscape)
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.line(14, yPosition, 276, yPosition); // Landscape width is ~276mm
+        yPosition += 8;
+        
+        // Table header - MUST be printed before any data (consistent font)
+        doc.setFont('helvetica', 'normal'); // Changed from bold to normal
+        doc.setFontSize(9);
+        doc.text('Credit Transaction Details', 14, yPosition);
+        yPosition += 8;
+        
+        // Draw transaction table headers
+        const transactionColWidths = [28, 28, 25, 28, 28, 26, 24, 28, 24, 27]; // Total: 236mm
+        const transactionHeaders = ['Category', 'Ref No.', 'Type', 'Credit Amt', 'Rem. Balance', 'Pay Amount', 'Method', 'Transaction', 'Cashier', 'Date'];
+        drawTableRow(14, yPosition, transactionColWidths, transactionHeaders, true);
+        
+        // Return the position after table header (no data should appear above this)
+        return yPosition + 8; // Position after table header
+    }
+    
+    // Helper function to draw bordered cell with improved text positioning
     function drawBorderedCell(x, y, width, height, text, fillColor = null, textColor = [0, 0, 0]) {
         if (fillColor) {
             doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
@@ -469,7 +527,32 @@ function exportToPDF() {
             doc.rect(x, y, width, height);
         }
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(text, x + 2, y + height - 2);
+        
+        // Improved text positioning and wrapping
+        let textX = x + 2;
+        let textY = y + height - 2; // Better vertical positioning
+        
+        // Handle special characters - simplified for payment rows
+        if (text.includes('PAY')) {
+            textX = x + 4; // Simple indentation for payment rows
+        }
+        
+        // Split text into lines if too long
+        const maxWidth = width - 4;
+        const lines = doc.splitTextToSize(text, maxWidth);
+        
+        // Adjust starting position for multiple lines
+        if (lines.length > 1) {
+            textY = y + 4; // Start higher for wrapped text
+        }
+        
+        // Draw each line with proper spacing
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                textY += 3; // Tighter line spacing for better fit
+            }
+            doc.text(line, textX, textY);
+        });
     }
     
     // Helper function to draw table row
@@ -490,7 +573,7 @@ function exportToPDF() {
         return y + rowHeight;
     }
     
-    // Company Header with Logo - Synchronous approach
+    // Company Header with Logo - Synchronous approach (adjusted for landscape)
     let yPosition = 15;
     
     // Try to add logo synchronously
@@ -511,40 +594,62 @@ function exportToPDF() {
     doc.setFontSize(12);
     doc.text('Credit History Report', 50, 32);
     
-    // Contact Information (right aligned)
+    // Contact Information (Right side) - adjusted for landscape
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('📞 0997-384-9783', 140, 20);
-    doc.text('✒ bghitsolutiona@gmail.com', 140, 26);
-    doc.text('http://web.facebook.com/bgh.iis.1', 140, 32);
+    doc.text('Phone: 09457410264', 270, 22, { align: 'right' });
+    doc.text('Email: bgh.it.solutions@gmail.com', 270, 27, { align: 'right' });
+    doc.text('Facebook: http://web.facebook.com/bgh.iis.1', 270, 32, { align: 'right' });
     
     yPosition = 45;
     
-    // Customer Information Box
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('Customer Information:', 14, yPosition);
+    // Draw a line under the header (adjusted for landscape)
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(14, yPosition, 276, yPosition); // Landscape width is ~276mm
     yPosition += 8;
     
-    const customerInfoY = yPosition;
-    const customerInfoHeight = 25;
+    // Customer Information Box (adjusted for landscape)
+    const customerBoxX = 14;
+    const customerBoxY = yPosition;
+    const customerBoxWidth = 262; // Adjusted for landscape
+    const customerBoxHeight = 35;
     
-    // Customer info labels and values
-    drawBorderedCell(14, customerInfoY, 60, customerInfoHeight, 'Customer Name:', null, [60, 60, 60]);
-    drawBorderedCell(74, customerInfoY, 120, customerInfoHeight, '{{ $customer->full_name }}', null, [0, 0, 0]);
+    // Draw customer info box border
+    doc.rect(customerBoxX, customerBoxY, customerBoxWidth, customerBoxHeight);
     
-    drawBorderedCell(14, customerInfoY + 8, 60, customerInfoHeight, 'Customer ID:', null, [60, 60, 60]);
-    drawBorderedCell(74, customerInfoY + 8, 120, customerInfoHeight, '#{{ $customer->id }}', null, [0, 0, 0]);
+    // Customer information labels and values
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
     
-    drawBorderedCell(14, customerInfoY + 16, 60, customerInfoHeight, 'Generated On:', null, [60, 60, 60]);
-    drawBorderedCell(74, customerInfoY + 16, 120, customerInfoHeight, new Date().toLocaleString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    }).replace(',', ' -'), null, [0, 0, 0]);
+    // Left column labels
+    doc.text('Customer Name:', customerBoxX + 4, customerBoxY + 8);
+    doc.text('Customer ID:', customerBoxX + 4, customerBoxY + 15);
+    doc.text('Phone:', customerBoxX + 4, customerBoxY + 22);
+    doc.text('Email:', customerBoxX + 94, customerBoxY + 8);
+    doc.text('Address:', customerBoxX + 94, customerBoxY + 15);
+    doc.text('Status:', customerBoxX + 94, customerBoxY + 22);
     
-    yPosition = customerInfoY + 45;
+    // Right column values
+    doc.setFont('helvetica', 'normal');
+    doc.text('{{ $customer->full_name }}', customerBoxX + 35, customerBoxY + 8);
+    doc.text('#{{ $customer->id }}', customerBoxX + 35, customerBoxY + 15);
+    doc.text('{{ $customer->phone ?? "N/A" }}', customerBoxX + 35, customerBoxY + 22);
+    doc.text('{{ $customer->email ?? "N/A" }}', customerBoxX + 120, customerBoxY + 8);
+    doc.text('{{ $customer->address ?? "N/A" }}', customerBoxX + 120, customerBoxY + 15);
+    
+    // Status with color
+    const customerStatus = '{{ $customer->status ?? "active" }}';
+    if (customerStatus.toLowerCase() === 'active') {
+        doc.setTextColor(0, 128, 0);
+        doc.text('Active', customerBoxX + 120, customerBoxY + 22);
+    } else {
+        doc.setTextColor(255, 128, 0);
+        doc.text('Inactive', customerBoxX + 120, customerBoxY + 22);
+    }
+    doc.setTextColor(0, 0, 0);
+    
+    yPosition = customerBoxY + customerBoxHeight + 8;
     
     // Active Filters (if any)
     const filters = getActiveFilters();
@@ -563,13 +668,13 @@ function exportToPDF() {
         yPosition += 5;
     }
     
-    // Lifetime Credit Summary Table
+    // Lifetime Credit Summary Table - Adjusted for landscape
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Lifetime Credit Summary', 14, yPosition);
     yPosition += 8;
     
-    const summaryColWidths = [50, 50, 50, 50];
+    const summaryColWidths = [65, 65, 65, 67]; // Adjusted for landscape
     const summaryHeaders = ['Total Credits', 'Lifetime Credit Amount', 'Total Paid', 'Outstanding Balance'];
     const summaryData = [
         totalCredits,
@@ -584,51 +689,89 @@ function exportToPDF() {
     
     yPosition += 15;
     
-    // Credit Transaction Details Table
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    // Credit Transaction Details Table - Adjusted for bond paper
+    doc.setFont('helvetica', 'normal'); // Changed from bold to normal
+    doc.setFontSize(9);
     doc.text('Credit Transaction Details', 14, yPosition);
     yPosition += 8;
     
-    const transactionColWidths = [25, 35, 35, 40, 35, 35, 30];
-    const transactionHeaders = ['Ref #', 'Type', 'Date', 'Credit Amount', 'Paid', 'Balance', 'Status'];
+    // Optimized table column widths for bond paper
+    const transactionColWidths = [28, 28, 25, 28, 28, 26, 24, 28, 24, 27]; // Total: 236mm
+    const transactionHeaders = ['Category', 'Ref No.', 'Type', 'Credit Amt', 'Rem. Balance', 'Pay Amount', 'Method', 'Transaction', 'Cashier', 'Date'];
     
     // Draw transaction table headers
     yPosition = drawTableRow(14, yPosition, transactionColWidths, transactionHeaders, true);
     
-    // Draw transaction data rows
+    // Draw transaction data rows with new structure
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8); // Reduced font size for better fit
+    
     credits.forEach((credit, index) => {
-        yPosition = checkPageBreak(yPosition, 15);
+        yPosition = checkPageBreak(yPosition, 25);
         
-        // Get credit type from the data or default to 'Unknown'
-        const creditType = credit.creditType || 'Unknown';
+        // Get credit details
+        const creditType = credit.creditType || 'Cash';
         const creditDate = credit.createdDate || 'Unknown';
-        const paidAmount = (parseFloat(credit.amount) - parseFloat(credit.balance)).toLocaleString();
+        const creditAmount = parseFloat(credit.amount).toLocaleString();
+        const remainingBalance = parseFloat(credit.balance).toLocaleString();
+        const cashierId = credit.createdBy === 'Admin User' ? 'EMP-001' : credit.createdBy;
         
-        const transactionData = [
+        // Credit row
+        const creditData = [
+            'CREDIT',
             `CR-${credit.id.padStart(4, '0')}`,
             creditType,
-            creditDate,
-            `PHP ${parseFloat(credit.amount).toLocaleString()}`,
-            `PHP ${paidAmount}`,
-            `PHP ${parseFloat(credit.balance).toLocaleString()}`,
-            credit.status.toUpperCase()
+            `PHP ${creditAmount}`,
+            `PHP ${remainingBalance}`,
+            '—',
+            '—',
+            '—',
+            cashierId,
+            creditDate // Include full date with time
         ];
         
-        // Alternate row colors for better readability
-        const bgColor = index % 2 === 0 ? [250, 250, 250] : null;
-        yPosition = drawTableRow(14, yPosition, transactionColWidths, transactionData, false, bgColor);
+        // Draw credit row
+        yPosition = drawTableRow(14, yPosition, transactionColWidths, creditData, false);
+        
+        // Payment rows (simplified without arrow)
+        if (credit.payments && credit.payments.length > 0) {
+            credit.payments.forEach(payment => {
+                yPosition = checkPageBreak(yPosition, 15);
+                
+                const paymentAmount = parseFloat(payment.amount).toLocaleString();
+                const paymentDate = payment.date || 'Unknown'; // Include full date with time
+                const paymentCashier = payment.by === 'Admin User' ? 'EMP-001' : payment.by;
+                
+                const paymentData = [
+                    'Payment', // Simple text instead of arrow
+                    '',
+                    '',
+                    '',
+                    '',
+                    `PHP ${paymentAmount}`,
+                    payment.method || 'Cash',
+                    `OR-${Math.floor(Math.random() * 90000) + 10000}`, // Generate OR number
+                    paymentCashier,
+                    paymentDate // Include full date with time
+                ];
+                
+                // Draw payment row
+                yPosition = drawTableRow(14, yPosition, transactionColWidths, paymentData, false);
+            });
+        }
+        
+        // Remove separator line - all rows are now connected continuously
+        // No separator lines between credits for continuous flow
     });
     
-    // Add footer
+    // Add footer (adjusted for landscape)
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
-        doc.text(`Page ${i} of ${pageCount}`, 196 - 20, 287, { align: 'right' });
-        doc.text('Generated by POS System', 14, 287);
+        doc.text(`Page ${i} of ${pageCount}`, 276 - 20, 190, { align: 'right' }); // Landscape dimensions
+        doc.text('Generated by POS System', 14, 190);
         doc.setTextColor(0, 0, 0);
     }
     
@@ -664,44 +807,187 @@ function getActiveFilters() {
 }
 
 function exportToCSV() {
-    // Prepare data for export
+    // Get lifetime summary data
+    const totalCredits = document.querySelector('[data-summary="total-credits"]')?.textContent?.trim() || '0';
+    const lifetimeCreditAmount = document.querySelector('[data-summary="lifetime-credit-amount"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    const lifetimePaidAmount = document.querySelector('[data-summary="lifetime-paid-amount"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    const lifetimeOutstanding = document.querySelector('[data-summary="lifetime-outstanding"]')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0.00';
+    
+    // Prepare detailed credit data with complete information
     const credits = [];
     document.querySelectorAll('.credit-item').forEach(item => {
-        const creditId = item.querySelector('button').getAttribute('data-bs-target').replace('#credit-', '');
-        const expanded = item.querySelector('.collapse');
+        const creditTarget = item.querySelector('button').getAttribute('data-bs-target');
+        const creditId = creditTarget.replace('#credit-', '');
+        const expandedContent = document.querySelector(creditTarget);
         
-        if (expanded) {
-            const amount = expanded.querySelector('strong:nth-child(1)')?.textContent?.trim() || '0';
-            const status = expanded.querySelector('.badge')?.textContent?.trim() || 'Unknown';
-            const creditNum = expanded.querySelector('.text-muted small')?.textContent?.trim() || 'Unknown';
-            const balance = expanded.querySelector('strong:nth-child(3)')?.textContent?.trim() || '0';
-            const createdByElement = expanded.querySelector('.small.text-muted');
-            const createdBy = createdByElement ? createdByElement.textContent.replace('Created by: ', '').trim() : 'Unknown';
+        // Get basic credit information
+        const amountElement = item.querySelector('strong');
+        const amount = amountElement ? amountElement.textContent.replace(/[\u20b1\u00b1]/g, '').trim() : '0';
+        
+        const statusElement = item.querySelector('.badge');
+        const status = statusElement ? statusElement.textContent.trim() : 'Unknown';
+        
+        const creditNumElement = item.querySelector('.text-muted.small');
+        const creditNum = creditNumElement ? creditNumElement.textContent.replace('Credit #', '').trim() : 'Unknown';
+        
+        const balanceElement = item.querySelector('.small');
+        let balance = '0';
+        if (balanceElement) {
+            const balanceText = balanceElement.textContent;
+            const balanceMatch = balanceText.match(/Balance:\s*[\u20b1\u00b1]?\s*([\d.,]+)/);
+            if (balanceMatch) {
+                balance = balanceMatch[1].replace(/,/g, '');
+            } else {
+                const altMatch = balanceText.match(/Balance:\s*([\d.,]+)/);
+                if (altMatch) {
+                    balance = altMatch[1].replace(/,/g, '');
+                } else {
+                    const allNumbers = balanceText.match(/([\d.,]+)/g);
+                    if (allNumbers && allNumbers.length > 0) {
+                        balance = allNumbers[allNumbers.length - 1].replace(/,/g, '');
+                    }
+                }
+            }
+        }
+        
+        // Get complete information from expanded content
+        let createdBy = 'Unknown';
+        let creditType = 'Cash';
+        let createdDate = 'Unknown';
+        let payments = [];
+        
+        if (expandedContent) {
+            // Get creator info
+            const creatorElement = expandedContent.querySelector('.small.text-muted');
+            if (creatorElement) {
+                createdBy = creatorElement.textContent.replace('Created by: ', '').trim();
+            }
             
-            credits.push({
-                id: creditNum,
-                amount: amount,
-                status: status,
-                balance: balance,
-                createdBy: createdBy
+            // Get credit creation date from date group
+            const dateGroup = item.closest('.mb-3');
+            if (dateGroup) {
+                const dateElement = dateGroup.querySelector('.text-muted.small');
+                if (dateElement) {
+                    createdDate = dateElement.textContent.replace('📅 ', '').trim();
+                }
+            }
+            
+            // Extract complete payment details
+            const paymentElements = expandedContent.querySelectorAll('.border-start.border-success');
+            let runningBalance = parseFloat(balance.replace(/[^0-9.]/g, ''));
+            
+            paymentElements.forEach((paymentEl, index) => {
+                const paymentDate = paymentEl.querySelector('strong')?.textContent?.trim() || '';
+                const paymentMethod = paymentEl.querySelector('.badge')?.textContent?.trim() || '';
+                const paymentAmount = paymentEl.querySelector('.text-success')?.textContent?.replace(/[\u20b1\u00b1]/g, '').trim() || '0';
+                const paymentNotes = paymentEl.querySelector('.text-primary')?.textContent?.replace(/"/g, '').trim() || '';
+                const paymentBy = paymentEl.querySelector('.text-muted')?.textContent?.split('by ')[1]?.split('\n')[0]?.trim() || '';
+                
+                const amount = parseFloat(paymentAmount.replace(/[^0-9.]/g, ''));
+                const balanceAfter = runningBalance - amount;
+                
+                payments.push({
+                    date: paymentDate,
+                    method: paymentMethod,
+                    amount: amount,
+                    notes: paymentNotes,
+                    by: paymentBy,
+                    balanceAfter: balanceAfter,
+                    paymentNumber: index + 1
+                });
+                
+                runningBalance = balanceAfter;
             });
+        }
+        
+        credits.push({
+            id: creditNum,
+            amount: amount.replace(/[^0-9.]/g, ''),
+            status: status,
+            balance: balance.replace(/[^0-9.]/g, ''),
+            createdBy: createdBy,
+            creditType: creditType,
+            createdDate: createdDate,
+            payments: payments
+        });
+    });
+    
+    // Create enhanced CSV content with better structure
+    let csvContent = '='.repeat(80) + '\n';
+    csvContent += 'BGH IT SOLUTIONS - CREDIT HISTORY REPORT\n';
+    csvContent += '='.repeat(80) + '\n';
+    csvContent += `Customer: {{ $customer->full_name }} (ID: #{{ $customer->id }})\n`;
+    csvContent += `Generated: ${new Date().toLocaleString()}\n`;
+    csvContent += '='.repeat(80) + '\n\n';
+    
+    // Add customer information with better formatting
+    csvContent += 'CUSTOMER INFORMATION\n';
+    csvContent += '-'.repeat(40) + '\n';
+    csvContent += `Name,{{ $customer->full_name }}\n`;
+    csvContent += `ID,#{{ $customer->id }}\n`;
+    csvContent += `Phone,{{ $customer->phone ?? "N/A" }}\n`;
+    csvContent += `Email,{{ $customer->email ?? "N/A" }}\n`;
+    csvContent += `Address,{{ $customer->address ?? "N/A" }}\n`;
+    csvContent += `Status,{{ $customer->status ?? "active" }}\n\n`;
+    
+    // Add lifetime credit summary with emphasis
+    csvContent += 'LIFETIME CREDIT SUMMARY\n';
+    csvContent += '-'.repeat(40) + '\n';
+    csvContent += `Total Credits,${totalCredits}\n`;
+    csvContent += `Lifetime Credit Amount,${lifetimeCreditAmount}\n`;
+    csvContent += `Total Paid,${lifetimePaidAmount}\n`;
+    csvContent += `Outstanding Balance,${lifetimeOutstanding}\n\n`;
+    
+    // Add transaction details with clear headers
+    csvContent += 'CREDIT TRANSACTION DETAILS\n';
+    csvContent += '-'.repeat(100) + '\n';
+    csvContent += 'CATEGORY,REF NO.,TYPE,CREDIT AMT,REM. BALANCE,PAY AMOUNT,METHOD,TRANSACTION,CASHIER,DATE\n';
+    csvContent += '-'.repeat(100) + '\n';
+    
+    // Add transaction data with better formatting
+    credits.forEach((credit, index) => {
+        // Credit row
+        const creditType = credit.creditType || 'Cash';
+        const creditDate = credit.createdDate || 'Unknown';
+        const creditAmount = parseFloat(credit.amount).toLocaleString();
+        const remainingBalance = parseFloat(credit.balance).toLocaleString();
+        const cashierId = credit.createdBy === 'Admin User' ? 'EMP-001' : credit.createdBy;
+        
+        csvContent += `CREDIT,CR-${credit.id.padStart(4, '0')},${creditType},PHP ${creditAmount},PHP ${remainingBalance},---,---,---,${cashierId},${creditDate}\n`;
+        
+        // Payment rows with clear indication
+        if (credit.payments && credit.payments.length > 0) {
+            credit.payments.forEach(payment => {
+                const paymentAmount = parseFloat(payment.amount).toLocaleString();
+                const paymentDate = payment.date || 'Unknown';
+                const paymentCashier = payment.by === 'Admin User' ? 'EMP-001' : payment.by;
+                
+                csvContent += `PAYMENT,,,,,,PHP ${paymentAmount},${payment.method || 'Cash'},OR-${Math.floor(Math.random() * 90000) + 10000},${paymentCashier},${paymentDate}\n`;
+            });
+        }
+        
+        // Add separator between credits (except last one)
+        if (index < credits.length - 1) {
+            csvContent += '-'.repeat(100) + '\n';
         }
     });
     
-    // Create CSV content
-    let csvContent = 'Credit ID,Amount,Status,Balance,Created By\n';
-    
-    credits.forEach(credit => {
-        csvContent += `"${credit.id}","${credit.amount}","${credit.status}","${credit.createdBy}"\n`;
-    });
+    csvContent += '='.repeat(100) + '\n';
+    csvContent += 'END OF REPORT\n';
+    csvContent += '='.repeat(100) + '\n';
     
     // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
+    const filters = getActiveFilters();
+    const filename = filters.length > 0 
+        ? `credit-history-filtered-{{ $customer->id }}-${Date.now()}.csv`
+        : `credit-history-full-{{ $customer->id }}-${Date.now()}.csv`;
+    
     link.setAttribute('href', url);
-    link.setAttribute('download', 'credit-history-{{ $customer->id }}-' + Date.now() + '.csv');
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
