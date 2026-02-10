@@ -28,6 +28,11 @@ class Product extends Model
         'branch_id',
     ];
 
+    // Cast product_type_id to string since we changed it to varchar
+    protected $casts = [
+        'product_type_id' => 'string',
+    ];
+
     // Relationships
     public function brand()
     {

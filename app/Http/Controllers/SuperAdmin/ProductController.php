@@ -158,28 +158,58 @@ class ProductController extends Controller
 
                 } else {
                     // For non-electronic products, store in products table with branch
-                    if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
-                        $b = Brand::create(['brand_name' => $request->input('brand_id'), 'status' => 'active']);
-                        $validated['brand_id'] = $b->id;
+                    Log::info('Processing non-electronic product', [
+                        'brand_id' => $validated['brand_id'] ?? 'null',
+                        'category_id' => $validated['category_id'] ?? 'null',
+                        'branch_id' => $validated['branch_id'] ?? 'null'
+                    ]);
+                    
+                    // Handle brand_id - check if it's numeric or text
+                    if (!empty($validated['brand_id'])) {
+                        if (!is_numeric($validated['brand_id'])) {
+                            Log::info('Creating new brand', ['brand_name' => $validated['brand_id']]);
+                            $b = Brand::create(['brand_name' => $validated['brand_id'], 'status' => 'active']);
+                            $validated['brand_id'] = $b->id;
+                            Log::info('New brand created with ID', ['brand_id' => $b->id]);
+                        }
+                    } else {
+                        $validated['brand_id'] = null;
                     }
 
-                    if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
-                        $c = Category::create(['category_name' => $request->input('category_id'), 'status' => 'active']);
-                        $validated['category_id'] = $c->id;
+                    // Handle category_id - check if it's numeric or text
+                    if (!empty($validated['category_id'])) {
+                        if (!is_numeric($validated['category_id'])) {
+                            Log::info('Creating new category', ['category_name' => $validated['category_id']]);
+                            $c = Category::create(['category_name' => $validated['category_id'], 'status' => 'active']);
+                            $validated['category_id'] = $c->id;
+                            Log::info('New category created with ID', ['category_id' => $c->id]);
+                        }
+                    } else {
+                        $validated['category_id'] = null;
                     }
 
                     if ($request->hasFile('image')) {
                         $validated['image'] = $request->file('image')->store('products', 'public');
+                        Log::info('Image stored', ['path' => $validated['image']]);
                     }
 
+                    Log::info('Creating product with data', ['validated' => $validated]);
                     $product = Product::create($validated);
+                    Log::info('Product created successfully', ['product_id' => $product->id]);
                     $product->unitTypes()->sync($validated['unit_type_ids']);
+                    Log::info('Unit types synced');
                 }
             });
 
             return response()->json(['success' => true, 'debug' => $debugInfo]);
 
         } catch (\Exception $e) {
+            Log::error('Product creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+                'validated_data' => $validated ?? 'none'
+            ]);
             return response()->json(['success' => false, 'message' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
