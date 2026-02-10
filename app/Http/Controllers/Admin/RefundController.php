@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Product;
 use App\Models\StockOut;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -61,7 +62,7 @@ class RefundController extends Controller
     public function store(Request $request)
     {
         try {
-            // Debug: Log the incoming request data
+            // Debug: Log incoming request data
             \Log::info('Refund request data: ' . json_encode($request->all()));
             
             $validator = Validator::make($request->all(), [
@@ -118,31 +119,30 @@ class RefundController extends Controller
                 
                 \Log::info('Refund created with ID: ' . $refund->id);
 
-                // Update sale total amount by deducting the refund amount
+                // Update sale total amount by deducting refund amount
                 $sale = \App\Models\Sale::find($request->sale_id);
                 if ($sale) {
                     $currentTotal = $sale->total_amount;
                     $newTotal = $currentTotal - $request->refund_amount;
                     
-                    // Ensure the total doesn't go below zero
                     $sale->total_amount = max(0, $newTotal);
                     $sale->save();
                     
                     \Log::info('Sale total updated: ' . $currentTotal . ' -> ' . $sale->total_amount . ' (Refund: ' . $request->refund_amount . ')');
                 }
 
-                // Update inventory - add back the refunded items
+                // Update inventory - add back refunded items
                 $product = Product::find($request->product_id);
                 if ($product) {
                     \Log::info('Updating inventory for product: ' . $product->id);
                     
                     // Try to find and update StockIn record (primary method)
-                    $stockIn = StockIn::where('product_id', $product->id)
+                    $stockIn = \App\Models\StockIn::where('product_id', $product->id)
                         ->where('branch_id', auth()->user()->branch_id ?? 1)
                         ->first();
                         
                     if ($stockIn) {
-                        // Reduce the sold count (add back to inventory)
+                        // Reduce sold count (add back to inventory)
                         $newSold = max(0, $stockIn->sold - $request->quantity_refunded);
                         $stockIn->sold = $newSold;
                         $stockIn->save();
@@ -151,7 +151,7 @@ class RefundController extends Controller
                         \Log::warning('No StockIn record found for product: ' . $product->id . ', creating new record');
                         
                         // Create new StockIn record if none exists
-                        StockIn::create([
+                        \App\Models\StockIn::create([
                             'product_id' => $product->id,
                             'branch_id' => auth()->user()->branch_id ?? 1,
                             'quantity' => $request->quantity_refunded,

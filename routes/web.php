@@ -132,6 +132,10 @@ Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboard
 
 // Dashboard chart data (JSON)
 Route::get('/dashboard/chart', [DashboardController::class, 'chartData'])->middleware('auth')->name('dashboard.chart');
+Route::get('/dashboard/monthly-sales', [DashboardController::class, 'monthlySales'])->middleware('auth')->name('dashboard.monthly-sales');
+Route::get('/dashboard/monthly-expenses', [DashboardController::class, 'monthlyExpenses'])->middleware('auth')->name('dashboard.monthly-expenses');
+Route::get('/dashboard/monthly-profit', [DashboardController::class, 'monthlyProfit'])->middleware('auth')->name('dashboard.monthly-profit');
+Route::get('/dashboard/monthly-returns', [DashboardController::class, 'monthlyReturns'])->middleware('auth')->name('dashboard.monthly-returns');
 Route::get('/dashboard/chart-data', function (Illuminate\Http\Request $request) {
     $end = $request->query('end') ? Carbon::parse($request->query('end')) : Carbon::today();
     $start = $request->query('start') ? Carbon::parse($request->query('start')) : $end->copy()->subDays(6);
@@ -540,17 +544,21 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $criticalStock = 0;
     }
     
-    // 5. Cash on Hand / Expected Cash
+    // 5. Cash on Hand / Expected Cash (Yearly)
     try {
-        $todayCashSales = DB::table('sales')
-            ->whereDate('created_at', $today)
+        // Get cash on hand for the entire year
+        $startOfYear = Carbon::now()->startOfYear();
+        $endOfYear = Carbon::now()->endOfYear();
+        
+        $yearlyCashSales = DB::table('sales')
+            ->whereBetween('created_at', [$startOfYear, $endOfYear])
             ->where('payment_method', 'cash')
             ->sum('total_amount') ?? 0;
         
-        Log::info('Cash sales calculated', ['amount' => $todayCashSales]);
+        Log::info('Yearly cash sales calculated', ['amount' => $yearlyCashSales]);
     } catch (\Exception $e) {
-        Log::error('Error calculating cash sales: ' . $e->getMessage());
-        $todayCashSales = 0;
+        Log::error('Error calculating yearly cash sales: ' . $e->getMessage());
+        $yearlyCashSales = 0;
     }
     
     // ROW 2: PERFORMANCE & ALERTS
@@ -785,7 +793,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'count' => $criticalStock
             ],
             'cashOnHand' => [
-                'amount' => (float) $todayCashSales
+                'amount' => (float) $yearlyCashSales
             ]
         ],
         

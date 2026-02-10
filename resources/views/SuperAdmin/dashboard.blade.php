@@ -493,6 +493,46 @@
             transform: scale(1.1);
         }
         
+        /* Monthly Returns Widget - Warning Orange */
+        .kpi-card[data-widget="monthly-returns"] {
+            border-top: 4px solid #ff9800;
+        }
+        
+        .kpi-card[data-widget="monthly-returns"] .kpi-icon {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.15));
+            color: #ff9800;
+        }
+
+        /* Monthly Profit Widget - Success Green */
+        .kpi-card[data-widget="monthly-profit"] {
+            border-top: 4px solid var(--success-teal);
+        }
+        
+        .kpi-card[data-widget="monthly-profit"] .kpi-icon {
+            background: linear-gradient(135deg, rgba(67, 160, 71, 0.15), rgba(102, 187, 106, 0.15));
+            color: var(--success-teal);
+        }
+
+        /* Monthly Sales Widget - Magenta */
+        .kpi-card[data-widget="monthly-sales"] {
+            border-top: 4px solid var(--magenta);
+        }
+        
+        .kpi-card[data-widget="monthly-sales"] .kpi-icon {
+            background: linear-gradient(135deg, rgba(233, 30, 99, 0.15), rgba(156, 39, 176, 0.15));
+            color: var(--magenta);
+        }
+
+        /* Monthly Expenses Widget - Orange */
+        .kpi-card[data-widget="monthly-expenses"] {
+            border-top: 4px solid var(--warning-yellow);
+        }
+        
+        .kpi-card[data-widget="monthly-expenses"] .kpi-icon {
+            background: linear-gradient(135deg, rgba(198, 255, 0, 0.15), rgba(174, 234, 0, 0.15));
+            color: #827717;
+        }
+
         /* Sales Widget - Neon Blue */
         .kpi-card[data-widget="today-sales"] {
             border-top: 4px solid var(--neon-blue);
@@ -585,6 +625,10 @@
         }
         
         /* Value color variants */
+        .kpi-card[data-widget="monthly-sales"] .kpi-value { color: var(--magenta); }
+        .kpi-card[data-widget="monthly-expenses"] .kpi-value { color: #827717; }
+        .kpi-card[data-widget="monthly-profit"] .kpi-value { color: var(--success-teal); }
+        .kpi-card[data-widget="monthly-returns"] .kpi-value { color: #ff9800; }
         .kpi-card[data-widget="today-sales"] .kpi-value { color: var(--neon-blue); }
         .kpi-card[data-widget="today-profit"] .kpi-value.profit-positive { color: var(--profit-positive); }
         .kpi-card[data-widget="today-profit"] .kpi-value.profit-negative { color: var(--profit-negative); }
@@ -1189,15 +1233,15 @@
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="4" width="20" height="16" rx="2"/>
+                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/>
                             <path d="M7 15h.01M12 15h.01M17 15h.01"/>
                         </svg>
                     </div>
-                    <div class="kpi-title">Cash on Hand</div>
+                    <div class="kpi-title"> Cash on Hand</div>
                 </div>
                 <div class="kpi-content">
                     <div class="kpi-value" id="cashOnHandAmount">₱0.00</div>
-                    <div class="kpi-subtitle">Available cash</div>
+                    <div class="kpi-subtitle">Total cash sales this year</div>
                 </div>
             </div>
 
@@ -1214,6 +1258,77 @@
                 <div class="kpi-content">
                     <div class="kpi-value" id="todayProfitAmount">₱0.00</div>
                     <div class="kpi-subtitle">Net profit margin</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Monthly KPI Cards -->
+        <div class="dashboard-row kpi-row">
+            <div class="kpi-card" data-widget="monthly-sales">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="9" x2="15" y2="9"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Monthly Sales</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="monthlySalesAmount">₱0.00</div>
+                    <div class="kpi-subtitle" id="monthlySalesChange">No change</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="monthly-expenses">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Monthly Expenses</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="monthlyExpensesAmount">₱0.00</div>
+                    <div class="kpi-subtitle">Operating costs</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="monthly-returns">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 4v10a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1z"/>
+                            <path d="M7 4v10a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/>
+                            <path d="M13 4v10a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1z"/>
+                            <path d="M19 4v10a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1z"/>
+                            <path d="M3 20h18"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Returns/Refunds</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="monthlyReturnsAmount">₱0.00</div>
+                    <div class="kpi-subtitle" id="monthlyReturnsChange">No change</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" data-widget="monthly-profit">
+                <div class="kpi-header">
+                    <div class="kpi-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="2" x2="12" y2="22"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="kpi-title">Monthly Profit</div>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="monthlyProfitAmount">₱0.00</div>
+                    <div class="kpi-subtitle" id="monthlyProfitChange">No change</div>
                 </div>
             </div>
         </div>
@@ -1365,8 +1480,16 @@
     debugLog('🚀 Initializing electric dashboard...');
     initTrendChart();
     fetchDashboardData().then(updateDashboardUI);
+    fetchMonthlySalesData().then(updateMonthlySalesUI);
+    fetchMonthlyExpensesData().then(updateMonthlyExpensesUI);
+    fetchMonthlyProfitData().then(updateMonthlyProfitUI);
+    fetchMonthlyReturnsData().then(updateMonthlyReturnsUI);
     dashboardRefreshInterval = setInterval(() => {
       fetchDashboardData().then(updateDashboardUI);
+      fetchMonthlySalesData().then(updateMonthlySalesUI);
+      fetchMonthlyExpensesData().then(updateMonthlyExpensesUI);
+      fetchMonthlyProfitData().then(updateMonthlyProfitUI);
+      fetchMonthlyReturnsData().then(updateMonthlyReturnsUI);
     }, 60000);
     debugLog('✅ Electric dashboard initialized');
   }
@@ -1387,6 +1510,45 @@
     })
     .catch(error => {
       debugError('❌ Error fetching dashboard data:', error);
+      return null;
+    });
+  }
+
+  function fetchMonthlyExpensesData() {
+    debugLog('📈 Fetching monthly expenses data...');
+    return fetch('/dashboard/monthly-expenses', {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly expenses data received:', data);
+      return data;
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly expenses data:', error);
+      return null;
+    });
+  }
+    function fetchMonthlySalesData() {
+    debugLog('📈 Fetching monthly sales data...');
+    return fetch('/dashboard/monthly-sales', {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly sales data received:', data);
+      return data;
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly sales data:', error);
       return null;
     });
   }
@@ -1430,6 +1592,144 @@
 
     fetchChartData().then(chartData => { if (chartData) updateTrendChart(chartData); });
     debugLog('✅ Dashboard UI updated');
+  }
+
+  function fetchMonthlyProfitData() {
+    debugLog('📈 Fetching monthly profit data...');
+    return fetch('/dashboard/monthly-profit', {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly profit data received:', data);
+      return data;
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly profit data:', error);
+      return null;
+    });
+  }
+
+  function fetchMonthlyReturnsData() {
+    debugLog('📈 Fetching returns/refunds data...');
+    return fetch('/dashboard/monthly-returns', {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Returns/Refunds data received:', data);
+      return data;
+    })
+    .catch(error => {
+      debugError('❌ Error fetching returns/refunds data:', error);
+      return null;
+    });
+  }
+
+  function updateMonthlyReturnsUI(data) {
+    if (!data) { debugLog('⚠️ No returns/refunds data to update UI'); return; }
+    debugLog('🔄 Updating returns/refunds UI...');
+
+    const monthlyReturnsElement = document.getElementById('monthlyReturnsAmount');
+    const monthlyReturnsChangeElement = document.getElementById('monthlyReturnsChange');
+
+    if (monthlyReturnsElement) {
+      monthlyReturnsElement.textContent = `₱${data.total_returns.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    if (monthlyReturnsChangeElement) {
+      const changePercent = data.returns_change_percentage;
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+                        'No change from last month';
+      monthlyReturnsChangeElement.textContent = changeText;
+      monthlyReturnsChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
+                                          changePercent < 0 ? 'var(--profit-negative)' : 
+                                          'var(--inactive-text)';
+    }
+
+    debugLog('✅ Returns/Refunds UI updated');
+  }
+
+  function updateMonthlyProfitUI(data) {
+    if (!data) { debugLog('⚠️ No monthly profit data to update UI'); return; }
+    debugLog('🔄 Updating monthly profit UI...');
+
+    const monthlyProfitElement = document.getElementById('monthlyProfitAmount');
+    const monthlyProfitChangeElement = document.getElementById('monthlyProfitChange');
+
+    if (monthlyProfitElement) {
+      monthlyProfitElement.textContent = `₱${data.net_profit.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      monthlyProfitElement.className = data.net_profit >= 0 ? 'kpi-value profit-positive' : 'kpi-value profit-negative';
+    }
+
+    if (monthlyProfitChangeElement) {
+      const changePercent = data.profit_change_percentage;
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+                        'No change from last month';
+      monthlyProfitChangeElement.textContent = changeText;
+      monthlyProfitChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
+                                          changePercent < 0 ? 'var(--profit-negative)' : 
+                                          'var(--inactive-text)';
+    }
+
+    // Debug: Log profit breakdown
+    debugLog('📊 Monthly Profit Breakdown:', {
+      'Total Sales': `₱${data.total_sales.toFixed(2)}`,
+      'COGS': `₱${data.cogs.toFixed(2)}`,
+      'Gross Profit': `₱${data.gross_profit.toFixed(2)}`,
+      'Operating Expenses': `₱${data.total_expenses.toFixed(2)}`,
+      'Net Profit': `₱${data.net_profit.toFixed(2)}`
+    });
+
+    debugLog('✅ Monthly profit UI updated');
+  }
+
+  function updateMonthlyExpensesUI(data) {
+    if (!data) { debugLog('⚠️ No monthly expenses data to update UI'); return; }
+    debugLog('🔄 Updating monthly expenses UI...');
+
+    const monthlyExpensesElement = document.getElementById('monthlyExpensesAmount');
+
+    if (monthlyExpensesElement) {
+      monthlyExpensesElement.textContent = `₱${data.total_expenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    debugLog('✅ Monthly expenses UI updated');
+  }
+
+  function updateMonthlySalesUI(data) {
+    if (!data) { debugLog('⚠️ No monthly sales data to update UI'); return; }
+    debugLog('🔄 Updating monthly sales UI...');
+
+    const monthlySalesElement = document.getElementById('monthlySalesAmount');
+    const monthlyChangeElement = document.getElementById('monthlySalesChange');
+
+    if (monthlySalesElement) {
+      monthlySalesElement.textContent = `₱${data.total_sales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    if (monthlyChangeElement) {
+      const changePercent = data.sales_change_percentage;
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+                        'No change from last month';
+      monthlyChangeElement.textContent = changeText;
+      monthlyChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
+                                          changePercent < 0 ? 'var(--danger-red)' : 
+                                          'var(--inactive-text)';
+    }
+
+    debugLog('✅ Monthly sales UI updated');
   }
   
   function initTrendChart() {

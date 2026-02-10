@@ -124,11 +124,24 @@
                                             <td>{{ $sale->saleItems->sum('quantity') }} items</td>
                                             <td>₱{{ number_format($sale->total_amount, 2) }}</td>
                                             <td>{{ $sale->created_at->format('M d, Y h:i A') }}</td>
-                                            <td><span class="badge bg-success">{{ ucfirst($sale->payment_method) }}</span></td>
                                             <td>
-                                                <button class="btn btn-sm btn-warning" onclick="openRefundModal({{ $sale->id }})">
-                                                    <i class="fas fa-undo"></i> Refund
-                                                </button>
+                                            @php
+                                                $hasRefunds = $sale->refunds()->where('status', 'approved')->exists();
+                                                $paymentDisplay = $hasRefunds ? 'Refunded' : ucfirst($sale->payment_method);
+                                                $badgeClass = $hasRefunds ? 'bg-warning' : 'bg-success';
+                                            @endphp
+                                            <span class="badge {{ $badgeClass }}">{{ $paymentDisplay }}</span>
+                                        </td>
+                                            <td>
+                                                @if($hasRefunds)
+                                                    <button class="btn btn-sm btn-secondary" disabled title="Already refunded">
+                                                        <i class="fas fa-undo"></i> Refunded
+                                                    </button>
+                                                @else
+                                                    <button class="btn btn-sm btn-warning" onclick="openRefundModal({{ $sale->id }})">
+                                                        <i class="fas fa-undo"></i> Refund
+                                                    </button>
+                                                @endif
                                             </td>
                                         </tr>
                                     @empty
