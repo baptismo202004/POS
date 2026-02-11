@@ -26,7 +26,7 @@ class CustomerController extends Controller
                     'customers.full_name',
                     'customers.status',
                     'customers.created_at',
-                    DB::raw('COALESCE(users.name, "System") as created_by'),
+                    DB::raw('COALESCE(users.name, "Admin") as created_by'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                     DB::raw('COALESCE(SUM(credits.remaining_balance), 0) as outstanding_balance')
                 ])
@@ -66,7 +66,7 @@ class CustomerController extends Controller
                     'customers.max_credit_limit',
                     'customers.status',
                     'customers.created_at',
-                    DB::raw('COALESCE(users.name, "System") as created_by'),
+                    DB::raw('COALESCE(users.name, "Admin") as created_by'),
                     DB::raw('COUNT(credits.id) as total_credits'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                     DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),
@@ -119,6 +119,7 @@ class CustomerController extends Controller
                 'phone' => 'nullable|string|max:20',
                 'email' => 'nullable|email|max:255',
                 'address' => 'nullable|string|max:500',
+                'max_credit_limit' => 'nullable|numeric|min:0',
             ]);
 
             if ($validator->fails()) {
@@ -135,6 +136,7 @@ class CustomerController extends Controller
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'address' => $request->address,
+                'max_credit_limit' => $request->max_credit_limit ?? 0,
             ]);
 
             Log::info('Customer updated successfully:', ['customer' => $customerModel]);
@@ -262,5 +264,93 @@ class CustomerController extends Controller
         });
             
         return view('Admin.customers.payment-history', compact('payments'));
+    }
+    
+    public function makePayment(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'customer_id' => 'required|exists:customers,id',
+                'payment_amount' => 'required|numeric|min:0.01',
+                'payment_method' => 'required|in:cash,card,bank_transfer,other',
+                'notes' => 'nullable|string|max:500',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::transaction(function () use ($request) {
+                $customer = Customer::findOrFail($request->customer_id);
+                
+                // Get customer's active credits (oldest first)
+                $credits = Credit::where('customer_id', $customer->id)
+                    ->where('status', 'active')
+                    ->where('remaining_balance', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+
+                $remainingPayment = $request->payment_amount;
+                $paymentsMade = [];
+
+                foreach ($credits as $credit) {
+                    if ($remainingPayment <= 0) break;
+                    
+                    $paymentForThisCredit = min($remainingPayment, $credit->remaining_balance);
+                    
+                    // Create payment record
+                    $payment = CreditPayment::create([
+                        'credit_id' => $credit->id,
+                        'cashier_id' => Auth::id(),
+                        'payment_amount' => $paymentForThisCredit,
+                        'payment_method' => $request->payment_method,
+                        'notes' => $request->notes,
+                    ]);
+
+                    // Update credit
+                    $credit->paid_amount += $paymentForThisCredit;
+                    $credit->remaining_balance -= $paymentForThisCredit;
+                    
+                    if ($credit->remaining_balance <= 0) {
+                        $credit->status = 'paid';
+                        $credit->remaining_balance = 0;
+                    }
+                    
+                    $credit->save();
+                    
+                    $paymentsMade[] = [
+                        'credit_id' => $credit->id,
+                        'amount_paid' => $paymentForThisCredit,
+                        'remaining_balance' => $credit->remaining_balance
+                    ];
+                    
+                    $remainingPayment -= $paymentForThisCredit;
+                }
+
+                // Log the payment distribution
+                Log::info('Payment processed for customer ' . $customer->id, [
+                    'total_payment' => $request->payment_amount,
+                    'payments_made' => $paymentsMade
+                ]);
+
+                return $paymentsMade;
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment of ₱' . number_format($request->payment_amount, 2) . ' has been recorded successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error making payment: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while processing the payment.'
+            ], 500);
+        }
     }
 }

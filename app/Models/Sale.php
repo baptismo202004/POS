@@ -14,7 +14,6 @@ class Sale extends Model
         'total_amount',
         'tax',
         'payment_method',
-        'customer_name',
     ];
 
     public function saleItems()

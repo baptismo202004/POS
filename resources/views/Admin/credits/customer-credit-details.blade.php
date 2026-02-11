@@ -127,7 +127,7 @@
                                                             <h6 class="mb-2">Credit #{{ $credit->id }}</h6>
                                                             <div class="row">
                                                                 <div class="col-md-6">
-                                                                    <p class="mb-1"><strong>Created by:</strong> {{ $credit->cashier->name ?? 'Unknown' }}</p>
+                                                                    <p class="mb-1"><strong>Created by:</strong> {{ $credit->cashier->name ?? 'Admin' }}</p>
                                                                     <p class="mb-1"><strong>Credit Amount:</strong> ₱{{ number_format($credit->credit_amount, 2) }}</p>
                                                                     <p class="mb-1"><strong>Total Paid:</strong> ₱{{ number_format($credit->paid_amount, 2) }}</p>
                                                                 </div>
@@ -161,7 +161,7 @@
                                                                                     <div class="d-flex justify-content-between align-items-center">
                                                                                         <div>
                                                                                             <strong>{{ \Carbon\Carbon::parse($payment->created_at)->format('M d, Y h:i A') }}</strong>
-                                                                                            <span class="text-muted ms-2">by {{ $payment->cashier->name ?? 'Unknown' }}</span>
+                                                                                            <span class="text-muted ms-2">by {{ $payment->cashier->name ?? 'Admin' }}</span>
                                                                                             @if($payment->notes)
                                                                                                 <br><small class="text-muted">{{ $payment->notes }}</small>
                                                                                             @endif
@@ -251,7 +251,7 @@
                                                                 <h6 class="mb-2">Credit #{{ $credit->id }}</h6>
                                                                 <div class="row">
                                                                     <div class="col-md-6">
-                                                                        <p class="mb-1"><strong>Created by:</strong> {{ $credit->cashier->name ?? 'Unknown' }}</p>
+                                                                        <p class="mb-1"><strong>Created by:</strong> {{ $credit->cashier->name ?? 'Admin' }}</p>
                                                                         <p class="mb-1"><strong>Credit Amount:</strong> ₱{{ number_format($credit->credit_amount, 2) }}</p>
                                                                         <p class="mb-1"><strong>Total Paid:</strong> ₱{{ number_format($credit->paid_amount, 2) }}</p>
                                                                     </div>

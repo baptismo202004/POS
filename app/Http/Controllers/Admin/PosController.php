@@ -11,6 +11,8 @@ use App\Models\Product;
 use App\Models\StockOut;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class PosController extends Controller
 {
@@ -41,26 +43,25 @@ class PosController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 // Debug: Log the items structure
-                \Log::info('Items structure:', $request->items);
+                Log::info('Items structure:', $request->items);
                 
                 $branchId = $request->items[0]['branch_id'] ?? 1; // Default to 1 if not provided
                 
                 // Debug: Log branch info
-                \Log::info('Branch ID from first item: ' . $branchId);
-                \Log::info('First item data: ', $request->items[0] ?? []);
+                Log::info('Branch ID from first item: ' . $branchId);
+                Log::info('First item data: ', $request->items[0] ?? []);
 
                 $sale = Sale::create([
-                    'cashier_id' => auth()->id() ?? 1,
-                    'employee_id' => auth()->id() ?? 1,
+                    'cashier_id' => Auth::id() ?? 1,
+                    'employee_id' => Auth::id() ?? 1,
                     'branch_id' => $branchId,
                     'total_amount' => $request->total,
                     'payment_method' => $request->payment_method,
-                    'product_names' => 'POS Sale',
                 ]);
 
                 foreach ($request->items as $item) {
                     // Debug: Log each item
-                    \Log::info('Processing item:', $item);
+                    Log::info('Processing item:', $item);
                     
                     $productId = $item['product_id'] ?? null;
                     
@@ -83,19 +84,18 @@ class PosController extends Controller
                             'branch_id' => $item['branch_id'] ?? $branchId,
                         ]);
                         
-                        \Log::info('StockOut created for product ' . $productId . ': ' . $item['quantity'] . ' units, sale_id: ' . $sale->id);
+                        Log::info('StockOut created for product ' . $productId . ': ' . $item['quantity'] . ' units, sale_id: ' . $sale->id);
                     }
                 }
 
                 // If credit payment, create credit record
                 if ($request->payment_method === 'credit') {
-                    \Log::info('Creating credit record with branch_id: ' . $branchId);
+                    Log::info('Creating credit record with branch_id: ' . $branchId);
                     
                     Credit::create([
                         'sale_id' => $sale->id,
-                        'cashier_id' => auth()->id() ?? 1,
+                        'cashier_id' => Auth::id() ?? 1,
                         'branch_id' => $branchId,
-                        'customer_name' => $request->customer_name,
                         'credit_amount' => $request->total,
                         'paid_amount' => 0,
                         'remaining_balance' => $request->total,
@@ -104,14 +104,14 @@ class PosController extends Controller
                         'notes' => $request->credit_notes ?? '',
                     ]);
                     
-                    \Log::info('Credit record created successfully');
+                    Log::info('Credit record created successfully');
                 }
             });
 
             return response()->json(['success' => true, 'message' => 'Order processed successfully']);
 
         } catch (\Exception $e) {
-            \Log::error('POS Checkout Error: ' . $e->getMessage());
+            Log::error('POS Checkout Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }

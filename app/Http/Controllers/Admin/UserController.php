@@ -23,6 +23,14 @@ class UserController extends Controller
         $branches = Branch::where('status', 'active')->orderBy('branch_name')->get();
         return view('Admin.users.create', compact('userTypes', 'branches'));
     }
+    
+    public function show(User $user)
+    {
+        // Load user with relationships
+        $user->load(['branch', 'userType']);
+        
+        return view('Admin.users.show', compact('user'));
+    }
 
     public function store(StoreUserRequest $request): RedirectResponse
     {

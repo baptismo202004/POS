@@ -242,10 +242,118 @@
 <script>
 function editCustomer() {
     Swal.fire({
-        title: 'Edit Customer',
-        text: 'Customer editing functionality coming soon!',
+        title: 'Edit Customer Information',
+        html: `
+            <div class="text-start">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="edit_full_name" value="{{ $customerDetails->full_name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="edit_phone" value="{{ $customerDetails->phone ?? '' }}" placeholder="Enter phone number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_email" value="{{ $customerDetails->email ?? '' }}" placeholder="Enter email address">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" id="edit_address" rows="3" placeholder="Enter address">{{ $customerDetails->address ?? '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Max Credit Limit</label>
+                            <input type="number" class="form-control" id="edit_max_credit_limit" value="{{ $customerDetails->max_credit_limit ?? 0 }}" step="0.01" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
         icon: 'info',
-        confirmButtonColor: '#2563eb'
+        showCancelButton: true,
+        confirmButtonText: 'Save Changes',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            const fullName = document.getElementById('edit_full_name').value.trim();
+            const phone = document.getElementById('edit_phone').value.trim();
+            const email = document.getElementById('edit_email').value.trim();
+            const address = document.getElementById('edit_address').value.trim();
+            const maxCreditLimit = parseFloat(document.getElementById('edit_max_credit_limit').value) || 0;
+            
+            if (!fullName) {
+                Swal.showValidationMessage('Full name is required');
+                return false;
+            }
+            
+            return {
+                full_name: fullName,
+                phone: phone || null,
+                email: email || null,
+                address: address || null,
+                max_credit_limit: maxCreditLimit
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const updateUrl = `{{ route('superadmin.admin.customers.update', $customerDetails->customer_id) }}`;
+            console.log('Update URL:', updateUrl);
+            
+            fetch(updateUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => {
+                // Check if response is ok and is JSON
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Response text:', text);
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Customer Updated',
+                        text: 'Customer information has been updated successfully.',
+                        confirmButtonColor: '#2563eb'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        text: data.message || 'Failed to update customer information.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while updating customer information.',
+                    confirmButtonColor: '#2563eb'
+                });
+            });
+        }
     });
 }
 
@@ -308,18 +416,255 @@ function toggleCustomerStatus(customerId, currentStatus) {
 function addCredit() {
     Swal.fire({
         title: 'Add Credit',
-        text: 'Credit addition functionality coming soon!',
+        html: `
+            <div class="text-start">
+                <div class="mb-3">
+                    <label class="form-label">Credit Amount</label>
+                    <input type="number" class="form-control" id="credit_amount" step="0.01" min="0.01" placeholder="Enter credit amount" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Credit Type</label>
+                    <select class="form-control" id="credit_type" required>
+                        <option value="">Select credit type</option>
+                        <option value="cash">Cash</option>
+                        <option value="grocery">Grocery</option>
+                        <option value="electronics">Electronics</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" class="form-control" id="credit_date" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="form-control" id="credit_notes" rows="3" placeholder="Add any notes about this credit"></textarea>
+                </div>
+            </div>
+        `,
         icon: 'info',
-        confirmButtonColor: '#2563eb'
+        showCancelButton: true,
+        confirmButtonText: 'Add Credit',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            const amount = parseFloat(document.getElementById('credit_amount').value);
+            const creditType = document.getElementById('credit_type').value;
+            const creditDate = document.getElementById('credit_date').value;
+            const notes = document.getElementById('credit_notes').value.trim();
+            
+            if (!amount || amount <= 0) {
+                Swal.showValidationMessage('Please enter a valid amount');
+                return false;
+            }
+            
+            if (!creditType) {
+                Swal.showValidationMessage('Please select a credit type');
+                return false;
+            }
+            
+            if (!creditDate) {
+                Swal.showValidationMessage('Please select a due date');
+                return false;
+            }
+            
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            if (creditDate < today) {
+                Swal.showValidationMessage('Due date cannot be in the past');
+                return false;
+            }
+            
+            return {
+                customer_id: '{{ $customerDetails->customer_id }}',
+                credit_amount: amount,
+                credit_type: creditType,
+                date: creditDate,
+                notes: notes || null,
+                sale_id: null // Direct credits don't have sale_id
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/superadmin/admin/credits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => {
+                // Log the response status and text for debugging
+                console.log('Add Credit - Response status:', response.status);
+                console.log('Add Credit - Request data:', result.value);
+                
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Add Credit - Error response text:', text);
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Add Credit - Response text:', text);
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Credit Added',
+                        text: 'Credit has been added successfully.',
+                        confirmButtonColor: '#2563eb'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    let errorMessage = data.message || 'Failed to add credit.';
+                    
+                    // Show validation errors if they exist
+                    if (data.errors) {
+                        const errorMessages = Object.values(data.errors).flat();
+                        errorMessage = errorMessages.join('\n');
+                    }
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Add Failed',
+                        text: errorMessage,
+                        confirmButtonColor: '#2563eb'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while adding credit.',
+                    confirmButtonColor: '#2563eb'
+                });
+            });
+        }
     });
 }
 
 function makePayment() {
+    const outstandingBalance = {{ $customerDetails->outstanding_balance }};
+    
     Swal.fire({
         title: 'Make Payment',
-        text: 'Payment functionality coming soon!',
+        html: `
+            <div class="text-start">
+                <div class="mb-3">
+                    <label class="form-label">Payment Amount</label>
+                    <input type="number" class="form-control" id="payment_amount" step="0.01" min="0.01" max="${outstandingBalance}" placeholder="Enter payment amount" required>
+                    <small class="text-muted">Outstanding Balance: ₱${outstandingBalance.toFixed(2)}</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-control" id="payment_method" required>
+                        <option value="">Select payment method</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="form-control" id="payment_notes" rows="3" placeholder="Add any notes about this payment"></textarea>
+                </div>
+            </div>
+        `,
         icon: 'info',
-        confirmButtonColor: '#2563eb'
+        showCancelButton: true,
+        confirmButtonText: 'Make Payment',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            const amount = parseFloat(document.getElementById('payment_amount').value);
+            const paymentMethod = document.getElementById('payment_method').value;
+            const notes = document.getElementById('payment_notes').value.trim();
+            
+            if (!amount || amount <= 0) {
+                Swal.showValidationMessage('Please enter a valid amount');
+                return false;
+            }
+            
+            if (amount > outstandingBalance) {
+                Swal.showValidationMessage('Payment amount cannot exceed outstanding balance');
+                return false;
+            }
+            
+            if (!paymentMethod) {
+                Swal.showValidationMessage('Please select a payment method');
+                return false;
+            }
+            
+            return {
+                customer_id: {{ $customerDetails->customer_id }},
+                payment_amount: amount,
+                payment_method: paymentMethod,
+                notes: notes || null
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/superadmin/admin/customers/make-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Response text:', text);
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Payment Recorded',
+                        text: 'Payment has been recorded successfully.',
+                        confirmButtonColor: '#2563eb'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Payment Failed',
+                        text: data.message || 'Failed to record payment.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while recording payment.',
+                    confirmButtonColor: '#2563eb'
+                });
+            });
+        }
     });
 }
 

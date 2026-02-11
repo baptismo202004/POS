@@ -659,7 +659,6 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'products.product_name',
                 DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) as current_stock')
             )
-            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) = 0')
             ->count();
         
         Log::info('Out of stock items calculated', ['count' => $outOfStockItems]);
@@ -676,7 +675,6 @@ Route::get('/dashboard/widgets', function (Request $request) {
                      ->on('sales.branch_id', '=', 'stock_ins.branch_id');
             })
             ->whereDate('sales.created_at', $today)
-            ->havingRaw('sale_items.unit_price <= stock_ins.price')
             ->count();
         
         Log::info('Negative profit items calculated', ['count' => $negativeProfitItems]);
@@ -688,7 +686,6 @@ Route::get('/dashboard/widgets', function (Request $request) {
     try {
         $voidedSalesToday = DB::table('sales')
             ->whereDate('created_at', $today)
-            ->where('status', 'voided') // Assuming there's a status field
             ->count();
         
         Log::info('Voided sales calculated', ['count' => $voidedSalesToday]);
@@ -699,14 +696,14 @@ Route::get('/dashboard/widgets', function (Request $request) {
     
     // 10. Unusual Activity
     try {
-        $belowCostSales = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+        $belowCostSales = DB::table('sales')
+            ->join('sale_items', 'sales.id', '=', 'sales.id')
             ->join('stock_ins', function($join) {
                 $join->on('sale_items.product_id', '=', 'stock_ins.product_id')
                      ->on('sales.branch_id', '=', 'stock_ins.branch_id');
             })
             ->whereDate('sales.created_at', $today)
-            ->whereRaw('sale_items.unit_price < stock_ins.price')
+            ->where('discount_percentage', '>', 20)
             ->count();
         
         Log::info('Below cost sales calculated', ['count' => $belowCostSales]);
@@ -932,6 +929,8 @@ Route::middleware('auth')->group(function () {
             Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
             Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
             Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
+            Route::resource('sales', \App\Http\Controllers\Admin\SalesController::class);
+            Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
             Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
             Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
             
@@ -980,6 +979,7 @@ Route::middleware('auth')->group(function () {
             Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
             Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
             Route::put('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
+            Route::post('customers/make-payment', [CustomerController::class, 'makePayment'])->name('customers.make-payment');
             Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
 

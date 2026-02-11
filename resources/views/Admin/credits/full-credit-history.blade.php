@@ -253,7 +253,7 @@
                                         <div id="credit-{{ $credit->id }}" class="collapse mt-2">
                                             <div class="p-3 border rounded bg-light">
                                                 <div class="small text-muted mb-2">
-                                                    Created by: {{ $credit->cashier->name ?? 'Unknown' }}
+                                                    Created by: {{ $credit->cashier->name ?? 'Admin' }}
                                                 </div>
 
                                                 <div class="row mb-2">

@@ -35,14 +35,8 @@
                             <select class="form-select" name="customer_id" id="customer_id" required>
                                 <option value="">Select Customer </option>
                                 
-                                @if($customers->isNotEmpty())
-                                    @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
-                                    @endforeach
-                                @endif
-                                
-                                @if($walkInCustomers->isNotEmpty())
-                                    @foreach($walkInCustomers as $customer)
+                                @if($allCustomers->isNotEmpty())
+                                    @foreach($allCustomers as $customer)
                                         <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
                                     @endforeach
                                 @endif

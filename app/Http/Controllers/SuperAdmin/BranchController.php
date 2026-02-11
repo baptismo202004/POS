@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BranchController extends Controller
 {
@@ -38,6 +39,44 @@ class BranchController extends Controller
     public function create()
     {
         return view('SuperAdmin.branches.index');
+    }
+
+    public function show(Branch $branch)
+    {
+        // Get branch statistics
+        $todaySales = DB::table('sales')
+            ->where('branch_id', $branch->id)
+            ->whereDate('created_at', \Carbon\Carbon::today())
+            ->sum('total_amount') ?? 0;
+            
+        $monthlySales = DB::table('sales')
+            ->where('branch_id', $branch->id)
+            ->whereBetween('created_at', [\Carbon\Carbon::now()->startOfMonth(), \Carbon\Carbon::now()->endOfMonth()])
+            ->sum('total_amount') ?? 0;
+            
+        $totalTransactions = DB::table('sales')
+            ->where('branch_id', $branch->id)
+            ->count() ?? 0;
+            
+        // Get today's sales for this branch
+        $todaySalesData = DB::table('sales')
+            ->join('users', 'sales.cashier_id', '=', 'users.id')
+            ->where('sales.branch_id', $branch->id)
+            ->whereDate('sales.created_at', \Carbon\Carbon::today())
+            ->select('sales.*', 'users.name as cashier_name')
+            ->orderBy('sales.created_at', 'desc')
+            ->get();
+            
+        // Get all sales for this branch (last 30 days)
+        $allSalesData = DB::table('sales')
+            ->join('users', 'sales.cashier_id', '=', 'users.id')
+            ->where('sales.branch_id', $branch->id)
+            ->whereBetween('sales.created_at', [\Carbon\Carbon::now()->subDays(30), \Carbon\Carbon::now()])
+            ->select('sales.*', 'users.name as cashier_name')
+            ->orderBy('sales.created_at', 'desc')
+            ->get();
+            
+        return view('SuperAdmin.branches.show', compact('branch', 'todaySales', 'monthlySales', 'totalTransactions', 'todaySalesData', 'allSalesData'));
     }
 
     public function edit(Branch $branch)

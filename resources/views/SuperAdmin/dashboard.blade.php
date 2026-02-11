@@ -381,6 +381,18 @@
         }
         
         /* POS Widget specific styles */
+        function viewCashierDetails(cashierId) {
+        window.location.href = '/superadmin/users/' + cashierId;
+    }
+        
+        function getInitials(name) {
+            return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
+        }
+        
+        function peso(amount) {
+            return '₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        }
+    </script>    
         .widget-item { 
             transition: all 0.2s ease;
         }
@@ -668,6 +680,27 @@
             overflow-y: auto;
         }
         
+        /* Clickable elements */
+        .clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .alert-item.clickable:hover {
+            background: rgba(33, 150, 243, 0.1);
+            transform: translateX(4px);
+        }
+        
+        .top-item.clickable:hover {
+            background: rgba(0, 229, 255, 0.1);
+            transform: translateX(4px);
+        }
+        
+        .performance-item.clickable:hover {
+            background: rgba(67, 160, 71, 0.1);
+            transform: translateX(4px);
+        }
+        
         .alert-item {
             display: flex;
             align-items: center;
@@ -824,15 +857,15 @@
         }
         
         .performance-avatar {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
-            color: var(--electric-blue);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 14px;
             margin-right: 12px;
         }
@@ -841,27 +874,28 @@
         
         .performance-name {
             font-weight: 600;
-            font-size: 13px;
-            margin-bottom: 2px;
-            color: var(--text-primary);
+            margin-bottom: 4px;
         }
         
         .performance-stats {
-            font-size: 11px;
-            color: var(--inactive-text);
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
         }
         
-        .performance-value { text-align: right; }
+        .performance-value {
+            text-align: right;
+        }
         
         .performance-amount {
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--neon-blue);
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-primary);
         }
         
         .performance-transactions {
-            font-size: 10px;
-            color: var(--inactive-text);
+            font-size: 11px;
+            color: var(--text-secondary);
         }
         
         /* Transaction Summary */
@@ -1830,23 +1864,23 @@
       const alertItems = [];
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(`<div class="alert-item critical"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
+        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/admin/inventory'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
       
       if (alerts.negativeProfit > 0) {
-        alertItems.push(`<div class="alert-item warning"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
       }
       
       if (alerts.voidedSales > 0) {
-        alertItems.push(`<div class="alert-item info"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
       }
       
       if (alerts.belowCostSales > 0) {
-        alertItems.push(`<div class="alert-item warning"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
       }
       
       if (alerts.highDiscountUsage > 0) {
-        alertItems.push(`<div class="alert-item info"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';
@@ -1906,6 +1940,7 @@
   
   function updateTopBranches(branches) {
     debugLog('🏢 Updating top branches with data:', branches);
+    console.log('Branches data:', branches);
     const branchesList = $('topBranchesList');
     if (!branchesList) return;
     if (!branches || branches.length === 0) {
@@ -1913,9 +1948,12 @@
       return;
     }
     branchesList.innerHTML = branches.map((branch, index) => {
+      console.log('Branch item:', branch);
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
+      const branchId = branch.branch_id || branch.id || 'unknown';
+      console.log('Branch ID:', branchId, 'Branch Name:', branch.branch_name);
       return `
-        <div class="top-item">
+        <div class="top-item clickable" data-branch-id="${branchId}">
           <div class="top-rank ${rankClass}">${index + 1}</div>
           <div class="top-content">
             <div class="top-name">${branch.branch_name}</div>
@@ -1925,38 +1963,84 @@
             </div>
           </div>
         </div>
-      `;
-    }).join('');
+      </div>
+    `;
+  }).join('');
+}
+
+function updateTopBranches(branches) {
+  debugLog('🏢 Updating top branches with data:', branches);
+  console.log('Branches data:', branches);
+  const branchesList = $('topBranchesList');
+  if (!branchesList) return;
+  if (!branches || branches.length === 0) {
+    branchesList.innerHTML = '<div class="text-center text-muted py-4">No branch data available</div>';
+    return;
   }
-  
-  function updateCashierPerformance(cashiers) {
-    debugLog('💰 Updating cashier performance with data:', cashiers);
-    const performanceList = $('cashierPerformanceList');
-    if (!performanceList) return;
-    if (!cashiers || cashiers.length === 0) {
-      performanceList.innerHTML = '<div class="text-center text-muted py-4">No cashier data available</div>';
-      return;
-    }
-    performanceList.innerHTML = cashiers.map(cashier => `
-      <div class="performance-item">
-        <div class="performance-avatar">${getInitials(cashier.name)}</div>
-        <div class="performance-content">
-          <div class="performance-name">${cashier.name}</div>
-          <div class="performance-stats">${cashier.transaction_count} transactions • Avg: ${peso(cashier.avg_transaction)}</div>
-        </div>
-        <div class="performance-value">
-          <div class="performance-amount">${peso(cashier.total_sales)}</div>
-          <div class="performance-transactions">Total sales</div>
+  branchesList.innerHTML = branches.map((branch, index) => {
+    console.log('Branch item:', branch);
+    const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
+    const branchId = branch.branch_id || branch.id || 'unknown';
+    console.log('Branch ID:', branchId, 'Branch Name:', branch.branch_name);
+    return `
+      <div class="top-item clickable" data-branch-id="${branchId}">
+        <div class="top-rank ${rankClass}">${index + 1}</div>
+        <div class="top-content">
+          <div class="top-name">${branch.branch_name}</div>
+          <div class="top-metrics">
+            <div class="top-value">${peso(branch.revenue)}</div>
+            <div class="top-subtitle">${branch.profit_margin}% margin</div>
+          </div>
         </div>
       </div>
-    `).join('');
+    `;
+  }).join('');
+
+  // Add event listeners to branch items
+  document.querySelectorAll('.top-item[data-branch-id]').forEach(item => {
+    item.addEventListener('click', function() {
+      const branchId = this.getAttribute('data-branch-id');
+      console.log('Clicked branch ID:', branchId);
+      window.location.href = '/superadmin/branches/' + branchId;
+    });
+  });
+}
+
+function updateCashierPerformance(cashiers) {
+  debugLog('💰 Updating cashier performance with data:', cashiers);
+  const performanceList = $('cashierPerformanceList');
+  if (!performanceList) return;
+  if (!cashiers || cashiers.length === 0) {
+    performanceList.innerHTML = '<div class="text-center text-muted py-4">No cashier data available</div>';
+    return;
   }
-  
-  function updateTransactionSummary(summary) {
-    debugLog('📋 Updating transaction summary with data:', summary);
-    const totalTransactionsEl = $('totalTransactions');
-    const avgTransactionEl = $('avgTransactionValue');
-    const highestSaleEl = $('highestSaleToday');
+  performanceList.innerHTML = cashiers.map(cashier => `
+    <div class="performance-item clickable" onclick="viewCashierDetails(${cashier.id})">
+      <div class="performance-avatar">${getInitials(cashier.name)}</div>
+      <div class="performance-content">
+        <div class="performance-name">${cashier.name}</div>
+        <div class="performance-stats">${cashier.transaction_count} transactions • Avg: ${peso(cashier.avg_transaction)}</div>
+      </div>
+      <div class="performance-value">
+        <div class="performance-amount">${peso(cashier.total_sales)}</div>
+        <div class="performance-transactions">Total sales</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Add event listeners to make items clickable
+  try {
+    document.querySelectorAll('.performance-item[data-cashier-id]').forEach(item => {
+      item.addEventListener('click', function() {
+        const cashierId = this.getAttribute('data-cashier-id');
+        console.log('Clicked cashier ID:', cashierId);
+        viewCashierDetails(cashierId);
+      });
+    });
+  } catch (e) {
+    console.error('Error adding click listeners:', e);
+  }
+}
     
     if (totalTransactionsEl) totalTransactionsEl.textContent = summary.totalTransactions;
     if (avgTransactionEl) avgTransactionEl.textContent = peso(summary.avgTransactionValue);

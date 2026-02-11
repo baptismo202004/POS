@@ -99,6 +99,7 @@
                         <tr>
                             <th>Branch</th>
                             <th>Customer Name</th>
+                            <th>Source</th>
                             <th>Total Credits</th>
                             <th>Total Credit Amount</th>
                             <th>Total Paid Amount</th>
@@ -113,6 +114,14 @@
                             <tr>
                                 <td>{{ $customer->branch_name ?? 'N/A' }}</td>
                                 <td><strong>{{ $customer->full_name }}</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 
+                                        $customer->credit_source == 'Sales' ? 'info' : 
+                                        ($customer->credit_source == 'Cash' ? 'success' : 'secondary') 
+                                    }}">
+                                        {{ $customer->credit_source }}
+                                    </span>
+                                </td>
                                 <td>{{ $customer->credit_giver_total }}</td>
                                 <td>₱{{ number_format($customer->total_credit, 2) }}</td>
                                 <td>₱{{ number_format($customer->total_paid, 2) }}</td>
@@ -138,7 +147,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center">No customers with credits found.</td>
+                                <td colspan="10" class="text-center">No customers with credits found.</td>
                             </tr>
                         @endforelse
                     </tbody>

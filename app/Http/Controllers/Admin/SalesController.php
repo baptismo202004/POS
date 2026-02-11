@@ -184,4 +184,16 @@ class SalesController extends Controller
             'daily_sales' => $dailySales
         ]);
     }
+    
+    public function show(Sale $sale)
+    {
+        // Get sale details with related data
+        $sale->load(['saleItems.product', 'cashier', 'branch']);
+        
+        // Calculate totals
+        $totalQuantity = $sale->saleItems->sum('quantity');
+        $totalRefunds = $sale->refunds()->where('status', 'approved')->sum('refund_amount');
+        
+        return view('Admin.sales.show', compact('sale', 'totalQuantity', 'totalRefunds'));
+    }
 }

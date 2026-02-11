@@ -44,14 +44,14 @@ class CreditController extends Controller
             // Get all customers with credits (both registered and walk-in)
             Log::info('Querying all customers with credits (registered and walk-in)');
             
-            // Get all unique customer names from credits
+            // Get all unique customer names from credits with source information
             $creditCustomers = DB::table('credits')
                 ->select([
-                    DB::raw('NULL as customer_id'),
-                    'credits.customer_name as full_name',
-                    'credits.phone',
-                    'credits.email', 
-                    'credits.address',
+                    'customers.id as customer_id',
+                    'customers.full_name',
+                    'customers.phone',
+                    'customers.email', 
+                    'customers.address',
                     'branches.branch_name',
                     DB::raw('COUNT(credits.id) as credit_giver_total'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
@@ -63,12 +63,25 @@ class CreditController extends Controller
                         WHEN COALESCE(SUM(credits.remaining_balance), 0) <= 0 THEN "Fully Paid"
                         WHEN COALESCE(SUM(credits.paid_amount), 0) / COALESCE(SUM(credits.credit_amount), 0) >= 0.8 THEN "Good Standing"
                         ELSE "Outstanding"
-                    END as status')
+                    END as status'),
+                    DB::raw('CASE 
+                        WHEN COUNT(DISTINCT CASE WHEN credits.sale_id IS NOT NULL THEN credits.id END) > 0 
+                             AND COUNT(DISTINCT CASE WHEN credits.sale_id IS NULL THEN credits.id END) > 0 
+                        THEN "Mixed"
+                        WHEN COUNT(DISTINCT CASE WHEN credits.sale_id IS NOT NULL THEN credits.id END) > 0 
+                        THEN "Sales"
+                        WHEN COUNT(DISTINCT CASE WHEN credits.sale_id IS NULL AND credits.credit_type = "cash" THEN credits.id END) > 0 
+                             AND COUNT(DISTINCT CASE WHEN credits.sale_id IS NULL THEN credits.id END) = 
+                                COUNT(DISTINCT CASE WHEN credits.sale_id IS NULL AND credits.credit_type = "cash" THEN credits.id END)
+                        THEN "Cash"
+                        ELSE "Other"
+                    END as credit_source')
                 ])
+                ->leftJoin('customers', 'credits.customer_id', '=', 'customers.id')
                 ->leftJoin('branches', 'credits.branch_id', '=', 'branches.id')
-                ->whereNotNull('credits.customer_name')
-                ->where('credits.customer_name', '!=', '')
-                ->groupBy('credits.customer_name', 'credits.phone', 'credits.email', 'credits.address', 'branches.branch_name')
+                ->whereNotNull('customers.full_name')
+                ->where('customers.full_name', '!=', '')
+                ->groupBy('customers.id', 'customers.full_name', 'customers.phone', 'customers.email', 'customers.address', 'branches.branch_name')
                 ->orderByRaw('MAX(credits.created_at) DESC')
                 ->paginate(20);
             
@@ -94,21 +107,14 @@ class CreditController extends Controller
 
     public function create()
     {
-        // Get all registered customers for selection
-        $customers = \App\Models\Customer::orderBy('full_name')->get();
-        
-        // Get walk-in customers who have credits
-        $walkInCustomers = Credit::whereNotNull('customer_name')
-            ->with('customer')
-            ->distinct('customer_name')
-            ->get(['customer_name'])
-            ->map(function ($credit) {
-                return (object) [
-                    'id' => $credit->customer_name,
-                    'full_name' => $credit->customer_name,
-                    'is_walk_in' => true
-                ];
-            });
+        // Get all unique customers (both registered and walk-in)
+        $allCustomers = DB::table('customers')
+            ->select('customers.id', 'customers.full_name')
+            ->whereNotNull('customers.full_name')
+            ->where('customers.full_name', '!=', '')
+            ->distinct('customers.id')
+            ->orderBy('customers.full_name')
+            ->get();
         
         // Get current user's branch
         $userBranch = Auth::user()->branch;
@@ -118,7 +124,7 @@ class CreditController extends Controller
             $userBranch = \App\Models\Branch::first();
         }
         
-        return view('Admin.credits.create', compact('customers', 'walkInCustomers', 'userBranch'));
+        return view('Admin.credits.create', compact('allCustomers', 'userBranch'));
     }
 
     public function store(Request $request)
@@ -139,6 +145,7 @@ class CreditController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 $customerName = null;
+                $customerId = null;
                 
                 // Check if it's a new customer (starts with 'new-')
                 if (strpos($request->customer_id, 'new-') === 0) {
@@ -149,21 +156,26 @@ class CreditController extends Controller
                     $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
                     if (!$existingCustomer) {
                         // Only create customer record if it doesn't exist
-                        DB::table('customers')->insert([
+                        $customerId = DB::table('customers')->insertGetId([
                             'full_name' => $customerName,
                             'email' => null,
                             'phone' => null,
                             'address' => null,
                             'max_credit_limit' => 0,
+                            'status' => 'active',
+                            'created_by' => Auth::id(),
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
+                    } else {
+                        $customerId = $existingCustomer->id;
                     }
                     
                 } else {
                     // Existing customer - get the name from customers table
                     $customer = DB::table('customers')->where('id', $request->customer_id)->first();
                     $customerName = $customer ? $customer->full_name : $request->customer_id;
+                    $customerId = $request->customer_id;
                 }
                 
                 // Generate unique reference number
@@ -173,7 +185,7 @@ class CreditController extends Controller
                 
                 $credit = Credit::create([
                     'reference_number' => $referenceNumber,
-                    'customer_name' => $customerName,
+                    'customer_id' => $customerId,
                     'cashier_id' => Auth::id(),
                     'branch_id' => $request->branch_id ?? Auth::user()->branch_id,
                     'credit_amount' => $request->credit_amount,
@@ -216,7 +228,7 @@ class CreditController extends Controller
             
             // Get ACTIVE credits summary for header (operational view only)
             $activeSummary = DB::table('credits')
-                ->where('customer_name', $customer->full_name)
+                ->where('customer_id', $customer->id)
                 ->where('status', '!=', 'paid')
                 ->selectRaw('
                     COUNT(*) as active_credits,
@@ -230,7 +242,7 @@ class CreditController extends Controller
             $status = $activeSummary->outstanding_balance > 0 ? 'Outstanding' : 'Good Standing';
             
             // Get ACTIVE credits (operational view)
-            $activeCredits = Credit::where('customer_name', $customer->full_name)
+            $activeCredits = Credit::where('customer_id', $customer->id)
                 ->where('status', '!=', 'paid')
                 ->with(['cashier', 'payments' => function($query) {
                     $query->orderBy('created_at', 'desc');
@@ -242,7 +254,7 @@ class CreditController extends Controller
                 });
             
             // Get RECENTLY PAID credits (context only, limited to 3)
-            $recentlyPaidCredits = Credit::where('customer_name', $customer->full_name)
+            $recentlyPaidCredits = Credit::where('customer_id', $customer->id)
                 ->where('status', 'paid')
                 ->with(['cashier'])
                 ->orderBy('updated_at', 'desc') // When they were marked as paid
@@ -252,7 +264,7 @@ class CreditController extends Controller
                     return \Carbon\Carbon::parse($credit->created_at)->format('Y-m-d');
                 });
             
-            return view('admin.credits.customer-credit-details', compact(
+            return view('Admin.credits.customer-credit-details', compact(
                 'customer',
                 'activeSummary',
                 'status',
@@ -277,7 +289,7 @@ class CreditController extends Controller
             
             // Get LIFETIME summary (ALL credits)
             $lifetimeSummary = DB::table('credits')
-                ->where('customer_name', $customer->full_name)
+                ->where('customer_id', $customer->id)
                 ->selectRaw('
                     COUNT(*) as total_credits_all_time,
                     COALESCE(SUM(credit_amount), 0) as lifetime_credit_amount,
@@ -287,7 +299,7 @@ class CreditController extends Controller
                 ->first();
             
             // Get ALL credits for history (no status filtering)
-            $allCredits = Credit::where('customer_name', $customer->full_name)
+            $allCredits = Credit::where('customer_id', $customer->id)
                 ->with(['cashier', 'payments' => function($query) {
                     $query->orderBy('created_at', 'desc');
                 }])
@@ -298,7 +310,7 @@ class CreditController extends Controller
             $filters = request()->only(['date_from', 'date_to', 'status', 'credit_id', 'created_by']);
             
             if (!empty($filters)) {
-                $query = Credit::where('customer_name', $customer->full_name)
+                $query = Credit::where('customer_id', $customer->id)
                     ->with(['cashier', 'payments' => function($query) {
                         $query->orderBy('created_at', 'desc');
                     }]);
@@ -346,10 +358,10 @@ class CreditController extends Controller
             
             // Get unique cashiers for filter dropdown
             $cashiers = \App\Models\User::join('credits', 'users.id', '=', 'credits.cashier_id')
-                ->where('credits.customer_name', $customer->full_name)
+                ->where('credits.customer_id', $customer->id)
                 ->pluck('users.name')->unique()->sort();
             
-            return view('admin.credits.full-credit-history', compact(
+            return view('Admin.credits.full-credit-history', compact(
                 'customer',
                 'lifetimeSummary',
                 'groupedCredits',
@@ -426,7 +438,7 @@ class CreditController extends Controller
     public function updateCustomerName(Request $request, Credit $credit)
     {
         $validator = Validator::make($request->all(), [
-            'customer_name' => 'required|string|max:255',
+            'customer_id' => 'required|exists:customers,id',
         ]);
 
         if ($validator->fails()) {
@@ -434,9 +446,9 @@ class CreditController extends Controller
         }
 
         try {
-            $credit->update(['customer_name' => $request->customer_name]);
+            $credit->update(['customer_id' => $request->customer_id]);
             
-            return response()->json(['success' => true, 'message' => 'Customer name updated successfully']);
+            return response()->json(['success' => true, 'message' => 'Customer updated successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -445,10 +457,7 @@ class CreditController extends Controller
     public function updateWalkInCustomer(Request $request, Credit $credit)
     {
         $validator = Validator::make($request->all(), [
-            'customer_name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string|max:500',
+            'customer_id' => 'required|exists:customers,id',
         ]);
 
         if ($validator->fails()) {
@@ -457,10 +466,7 @@ class CreditController extends Controller
 
         try {
             $credit->update([
-                'customer_name' => $request->customer_name,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'address' => $request->address,
+                'customer_id' => $request->customer_id,
             ]);
             
             return response()->json(['success' => true, 'message' => 'Customer information updated successfully']);
@@ -473,12 +479,13 @@ class CreditController extends Controller
     {
         try {
             // Get all credits with customer names grouped by customer
-            $creditsByCustomer = Credit::selectRaw('credits.customer_name, COUNT(*) as total_credits, SUM(credits.credit_amount) as total_credit_limit, SUM(credits.paid_amount) as total_paid, SUM(credits.remaining_balance) as total_remaining, COALESCE(customers.max_credit_limit, 0) as max_credit_limit')
-                ->leftJoin('customers', 'customers.full_name', '=', 'credits.customer_name')
-                ->whereNotNull('credits.customer_name')
-                ->where('credits.customer_name', '!=', '')
-                ->groupBy('credits.customer_name', 'customers.max_credit_limit')
-                ->orderBy('credits.customer_name')
+            $creditsByCustomer = DB::table('credits')
+                ->selectRaw('customers.full_name, customers.id as customer_id, COUNT(*) as total_credits, SUM(credits.credit_amount) as total_credit_limit, SUM(credits.paid_amount) as total_paid, SUM(credits.remaining_balance) as total_remaining, COALESCE(customers.max_credit_limit, 0) as max_credit_limit')
+                ->leftJoin('customers', 'credits.customer_id', '=', 'customers.id')
+                ->whereNotNull('customers.full_name')
+                ->where('customers.full_name', '!=', '')
+                ->groupBy('customers.id', 'customers.full_name', 'customers.max_credit_limit')
+                ->orderBy('customers.full_name')
                 ->get();
                 
             // Get overall statistics
@@ -504,37 +511,23 @@ class CreditController extends Controller
     {
         try {
             $request->validate([
-                'customer_name' => 'required|string',
+                'customer_id' => 'required|exists:customers,id',
                 'max_credit_limit' => 'required|numeric|min:0'
             ]);
             
-            $customerName = $request->customer_name;
+            $customerId = $request->customer_id;
             $maxCreditLimit = $request->max_credit_limit;
             
-            // Use DB::table for more reliable update/insert
-            $existing = DB::table('customers')->where('full_name', $customerName)->first();
+            // Use DB::table for more reliable update
+            DB::table('customers')
+                ->where('id', $customerId)
+                ->update(['max_credit_limit' => $maxCreditLimit, 'updated_at' => now()]);
             
-            if ($existing) {
-                // Update existing customer
-                DB::table('customers')
-                    ->where('full_name', $customerName)
-                    ->update(['max_credit_limit' => $maxCreditLimit, 'updated_at' => now()]);
-            } else {
-                // Insert new customer record
-                DB::table('customers')->insert([
-                    'full_name' => $customerName,
-                    'max_credit_limit' => $maxCreditLimit,
-                    'email' => null,
-                    'phone' => null,
-                    'address' => null,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
+            $customer = DB::table('customers')->where('id', $customerId)->first();
             
             return response()->json([
                 'success' => true,
-                'message' => "Credit limit for {$customerName} has been set to ₱" . number_format($maxCreditLimit, 2)
+                'message' => "Credit limit for {$customer->full_name} has been set to ₱" . number_format($maxCreditLimit, 2)
             ]);
             
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -548,9 +541,7 @@ class CreditController extends Controller
 public function getCustomerCreditDetails($customerId)
 {
     try {
-        $credits = Credit::where('customer_name', function($query) use ($customerId) {
-            $query->select('full_name')->from('customers')->where('id', $customerId);
-        })
+        $credits = Credit::where('customer_id', $customerId)
         ->where('status', 'active')
         ->where('remaining_balance', '>', 0)
         ->orderBy('created_at', 'desc')

@@ -184,17 +184,19 @@ class PosAdminController extends Controller
             $items = $data['items'] ?? [];
             $total = $data['total'] ?? 0;
             $paymentMethod = $data['payment_method'] ?? 'cash';
+            $customerId = !empty($data['customer_id']) ? $data['customer_id'] : null;
             $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
             Log::info("[POS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
-            Log::info("[POS_STORE] Customer name: '" . $customerName . "'");
+            Log::info("[POS_STORE] Customer ID: '{$customerId}'");
+            Log::info("[POS_STORE] Customer name: '{$customerName}'");
 
             DB::beginTransaction();
 
             // Determine the branch from the first item, assuming all items are from the same branch for a single transaction
-            $branchId = auth()->user()->branch_id; // Default to cashier's branch
+            $branchId = Auth::user()->branch_id; // Default to cashier's branch
             if (!empty($items)) {
                 $firstItem = reset($items);
                 $branchId = $firstItem['branch_id'] ?? $branchId;
@@ -202,17 +204,17 @@ class PosAdminController extends Controller
 
             // Create sale record with all required fields
             $saleData = [
-                'cashier_id' => auth()->id(),
-                'employee_id' => auth()->id(), // Use the numeric user ID
+                'cashier_id' => Auth::id(),
+                'employee_id' => Auth::id(), // Use the numeric user ID
                 'branch_id' => $branchId,
                 'total_amount' => $total,
                 'tax' => 0, // No tax for now
                 'payment_method' => $paymentMethod // Use payment method from request
             ];
             
-            // Only include customer_name if it's not null
-            if ($customerName !== null) {
-                $saleData['customer_name'] = $customerName;
+            // Only include customer_id if it's not null
+            if ($customerId !== null) {
+                $saleData['customer_id'] = $customerId;
             }
             
             $sale = Sale::create($saleData);
@@ -287,11 +289,33 @@ class PosAdminController extends Controller
                 $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
                 $referenceNumber = 'CR-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
                 
+                // Determine customer_id for credit
+                $creditCustomerId = $customerId;
+                if (!$creditCustomerId && $customerName) {
+                    // Try to find existing customer by name
+                    $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
+                    if ($existingCustomer) {
+                        $creditCustomerId = $existingCustomer->id;
+                    } else {
+                        // Create new customer record
+                        $creditCustomerId = DB::table('customers')->insertGetId([
+                            'full_name' => $customerName,
+                            'email' => null,
+                            'phone' => null,
+                            'address' => null,
+                            'max_credit_limit' => 0,
+                            'status' => 'active',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+                
                 Credit::create([
                     'reference_number' => $referenceNumber,
-                    'customer_name' => $customerName,
+                    'customer_id' => $creditCustomerId,
                     'sale_id' => $sale->id,
-                    'cashier_id' => auth()->id(),
+                    'cashier_id' => Auth::id(),
                     'branch_id' => $branchId,
                     'credit_amount' => $total,
                     'paid_amount' => 0,
