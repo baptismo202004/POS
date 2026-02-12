@@ -46,7 +46,6 @@
                                             <th>Date</th>
                                             <th>Cashier</th>
                                             <th>Total Amount</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -56,16 +55,11 @@
                                                     <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}</td>
                                                     <td>{{ $sale->cashier_name }}</td>
                                                     <td>₱{{ number_format($sale->total_amount, 2) }}</td>
-                                                    <td>
-                                                        <a href="/superadmin/sales/{{ $sale->id }}" class="btn btn-sm btn-primary">
-                                                            <i class="fas fa-eye"></i> View
-                                                        </a>
-                                                    </td>
                                                 </tr>
                                             @endforeach
                                         @else
                                             <tr>
-                                                <td colspan="5" class="text-center text-muted">No sales in the last 30 days</td>
+                                                <td colspan="3" class="text-center text-muted">No sales in the last 30 days</td>
                                             </tr>
                                         @endif
                                     </tbody>

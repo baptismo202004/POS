@@ -13,19 +13,18 @@ class SaleController extends Controller
 {
     public function show(Sale $sale)
     {
-        return view('admin.sales.show', compact('sale'));
+        return view('Admin.sales.show', compact('sale'));
     }
 
     public function receipt(Sale $sale)
     {
         $sale->load('saleItems.product');
-        $generator = new BarcodeGeneratorHTML();
-        $barcode = $generator->getBarcode($sale->id, $generator::TYPE_CODE_128);
-
+        
+        // Simple barcode generation using HTML5 canvas or image
+        $barcode = $sale->id;
+        
         $receiptUrl = route('superadmin.admin.sales.receipt', $sale);
-        // QR Code generation is disabled due to GD extension issues
-        $qrCodeBase64 = null;
-
-        return view('admin.sales.receipt', compact('sale', 'barcode', 'qrCodeBase64'));
+        
+        return view('Admin.sales.receipt', compact('sale', 'barcode'));
     }
 }

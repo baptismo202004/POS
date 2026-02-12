@@ -133,9 +133,82 @@ Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboard
 // Dashboard chart data (JSON)
 Route::get('/dashboard/chart', [DashboardController::class, 'chartData'])->middleware('auth')->name('dashboard.chart');
 Route::get('/dashboard/monthly-sales', [DashboardController::class, 'monthlySales'])->middleware('auth')->name('dashboard.monthly-sales');
+Route::get('/dashboard/monthly-sales-breakdown', [DashboardController::class, 'monthlySalesBreakdown'])->middleware('auth')->name('dashboard.monthly-sales-breakdown');
 Route::get('/dashboard/monthly-expenses', [DashboardController::class, 'monthlyExpenses'])->middleware('auth')->name('dashboard.monthly-expenses');
+Route::get('/dashboard/monthly-expenses-breakdown', [DashboardController::class, 'monthlyExpensesBreakdown'])->middleware('auth')->name('dashboard.monthly-expenses-breakdown');
 Route::get('/dashboard/monthly-profit', [DashboardController::class, 'monthlyProfit'])->middleware('auth')->name('dashboard.monthly-profit');
+Route::get('/dashboard/monthly-profit-breakdown', [DashboardController::class, 'monthlyProfitBreakdown'])->middleware('auth')->name('dashboard.monthly-profit-breakdown');
 Route::get('/dashboard/monthly-returns', [DashboardController::class, 'monthlyReturns'])->middleware('auth')->name('dashboard.monthly-returns');
+Route::get('/dashboard/monthly-returns-breakdown', [DashboardController::class, 'monthlyReturnsBreakdown'])->middleware('auth')->name('dashboard.monthly-returns-breakdown');
+Route::get('/dashboard/branch-sales-today', [DashboardController::class, 'branchSalesToday'])->middleware('auth')->name('dashboard.branch-sales-today');
+Route::get('/dashboard/expenses-today', [DashboardController::class, 'expensesToday'])->middleware('auth')->name('dashboard.expenses-today');
+Route::get('/debug/expenses-table', function () {
+    try {
+        $columns = DB::select('DESCRIBE expenses');
+        $sample = DB::table('expenses')->limit(3)->get();
+        
+        return response()->json([
+            'columns' => $columns,
+            'sample_data' => $sample,
+            'table_exists' => true
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'table_exists' => false
+        ]);
+    }
+})->middleware('auth');
+Route::get('/debug/expenses-simple', function () {
+    try {
+        $today = \Carbon\Carbon::today('Asia/Manila');
+        
+        // Simple test query
+        $allExpenses = DB::table('expenses')
+            ->whereDate('expense_date', $today)
+            ->get();
+            
+        $total = $allExpenses->sum('amount');
+        
+        return response()->json([
+            'date' => $today->format('Y-m-d'),
+            'total_expenses' => $total,
+            'count' => $allExpenses->count(),
+            'sample_expenses' => $allExpenses->take(3),
+            'success' => true
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'success' => false
+        ]);
+    }
+})->middleware('auth');
+Route::get('/debug/view-logs', function () {
+    try {
+        $logFile = storage_path('logs/laravel.log');
+        if (file_exists($logFile)) {
+            $logs = file_get_contents($logFile);
+            $lines = array_slice(explode("\n", $logs), -50); // Last 50 lines
+            return response()->json([
+                'success' => true,
+                'logs' => $lines,
+                'file_path' => $logFile
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'error' => 'Log file not found',
+                'file_path' => $logFile
+            ]);
+        }
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+})->middleware('auth');
 Route::get('/dashboard/chart-data', function (Illuminate\Http\Request $request) {
     $end = $request->query('end') ? Carbon::parse($request->query('end')) : Carbon::today();
     $start = $request->query('start') ? Carbon::parse($request->query('start')) : $end->copy()->subDays(6);
@@ -941,6 +1014,55 @@ Route::middleware('auth')->group(function () {
 
         // Separate Suppliers routes with proper abilities
         Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class);
+        
+        // Test route for debugging
+        Route::get('test-supplier', function() {
+            try {
+                \App\Models\Supplier::create([
+                    'supplier_name' => 'Test Supplier ' . date('Y-m-d H:i:s'),
+                    'contact_person' => 'Test Contact',
+                    'email' => 'test' . time() . '@example.com',
+                    'phone' => '123456789',
+                    'address' => 'Test Address',
+                    'status' => 'active'
+                ]);
+                return 'Supplier created successfully! Count: ' . \App\Models\Supplier::count();
+            } catch (\Exception $e) {
+                return 'Error creating supplier: ' . $e->getMessage();
+            }
+        });
+        
+        // Test POST route
+        Route::post('test-supplier-post', function(\Illuminate\Http\Request $request) {
+            \Illuminate\Support\Facades\Log::info('=== TEST POST ROUTE STARTED ===');
+            \Illuminate\Support\Facades\Log::info('Request data:', $request->all());
+            
+            try {
+                $supplier = \App\Models\Supplier::create([
+                    'supplier_name' => $request->supplier_name,
+                    'contact_person' => $request->contact_person ?? null,
+                    'email' => $request->email ?? null,
+                    'phone' => $request->phone ?? null,
+                    'address' => $request->address ?? null,
+                    'status' => 'active'
+                ]);
+                
+                \Illuminate\Support\Facades\Log::info('✅ Test supplier created successfully');
+                
+                return response()->json([
+                    'success' => true,
+                    'supplier' => $supplier,
+                    'message' => 'Supplier created successfully!'
+                ]);
+                
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('❌ Test route error: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        });
 
         // Admin-only user management (account creation, access control)
         Route::prefix('admin')->name('admin.')->group(function () {

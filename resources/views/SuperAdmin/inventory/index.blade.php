@@ -13,6 +13,11 @@
                         <input type="text" id="searchInput" class="form-control w-25" placeholder="Search products..." value="{{ request('search') }}">
                     </div>
                     <div class="card-body">
+                        @if(request('filter') == 'out-of-stock')
+                            <div class="alert alert-info" role="alert">
+                                <strong>Filter Applied:</strong> Showing only out of stock items (≤ 10 units)
+                            </div>
+                        @endif
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead>
@@ -28,11 +33,11 @@
                                 </thead>
                                 <tbody>
                                     @forelse($products as $product)
-                                        <tr>
+                                        <tr class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 10 ? 'table-danger' : '' }}">
                                             <td><a href="{{ route('superadmin.products.show', $product->id) }}">{{ $product->product_name }}</a></td>
                                             <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
                                             <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                            <td class="{{ $product->current_stock < 10 ? 'text-danger' : '' }}">{{ $product->current_stock }}</td>
+                                            <td class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 10 ? 'text-danger font-weight-bold' : '' }}">{{ $product->current_stock }}</td>
                                             <td>{{ $product->total_sold }}</td>
                                             <td>{{ number_format($product->total_revenue, 2) }}</td>
                                             <td>

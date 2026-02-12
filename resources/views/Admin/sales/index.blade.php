@@ -21,6 +21,11 @@
                                             Overview of your sales performance
                                         @endif
                                     </p>
+                                    @if($filter !== 'all')
+                                        <div class="alert alert-info" role="alert">
+                                            <strong>Filter Applied:</strong> Showing {{ ucfirst(str_replace('-', ' ', $filter)) }} sales only
+                                        </div>
+                                    @endif
                                 </div>
                                 <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
                             </div>
@@ -118,7 +123,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse($recentSales as $sale)
-                                        <tr>
+                                        <tr class="{{ $filter !== 'all' ? 'table-warning' : '' }}">
                                             <td>{{ $sale->product_names ?: 'No products' }}</td>
                                             <td>{{ $sale->cashier->name ?? 'Unknown' }}</td>
                                             <td>{{ $sale->saleItems->sum('quantity') }} items</td>

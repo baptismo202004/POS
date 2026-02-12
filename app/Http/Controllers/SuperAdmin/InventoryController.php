@@ -15,13 +15,14 @@ class InventoryController extends Controller
         $sortBy = $request->query('sort_by', 'product_name');
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
-
+        $filter = $request->query('filter', 'all');
+        
         if (!in_array($sortBy, ['product_name', 'current_stock', 'total_sold', 'total_revenue'])) {
             $sortBy = 'product_name';
         }
-
+        
         $productsQuery = Product::with(['brand', 'category', 'stockIns', 'stockOuts', 'saleItems']);
-
+        
         if ($search) {
             $productsQuery->where('product_name', 'like', "%{$search}%")
                           ->orWhereHas('brand', function ($q) use ($search) {
@@ -31,11 +32,27 @@ class InventoryController extends Controller
                               $q->where('category_name', 'like', "%{$search}%");
                           });
         }
-
+        
+        // Apply filter based on parameter
+        if ($filter !== 'all') {
+            switch ($filter) {
+                case 'out-of-stock':
+                    // Filter will be applied after getting results using the accessor
+                    break;
+            }
+        }
+        
         $products = $productsQuery->get()->sortBy([
             [$sortBy, $sortDirection]
         ]);
-
+        
+        // Apply out-of-stock filter if needed
+        if ($filter === 'out-of-stock') {
+            $products = $products->filter(function($product) {
+                return $product->current_stock <= 10;
+            });
+        }
+        
         $products = new \Illuminate\Pagination\LengthAwarePaginator(
             $products->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 15),
             $products->count(),
@@ -43,12 +60,13 @@ class InventoryController extends Controller
             \Illuminate\Pagination\Paginator::resolveCurrentPage(),
             ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
         );
-
+        
         return view('SuperAdmin.inventory.index', [
             'products' => $products->appends($request->query()),
             'branches' => $branches,
             'sortBy' => $sortBy,
-            'sortDirection' => $sortDirection
+            'sortDirection' => $sortDirection,
+            'filter' => $filter
         ])->with('branchesJson', $branches->toJson());
     }
 
