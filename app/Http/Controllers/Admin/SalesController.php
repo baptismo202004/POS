@@ -43,15 +43,18 @@ class SalesController extends Controller
 
     public function index(Request $request)
     {
-        // Get the date from request or default to today
+        // Get date from request or default to today
         $selectedDate = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
         
-        // Get sales data for the selected date
+        // Get filter type from request
+        $filter = $request->get('filter', 'all');
+        
+        // Get sales data for selected date
         $todaySales = Sale::whereDate('created_at', $selectedDate)
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
-        // Get sales items count for the selected date
+        // Get sales items count for selected date
         $todayItems = SaleItem::whereHas('sale', function($query) use ($selectedDate) {
             $query->whereDate('created_at', $selectedDate);
         })->sum('quantity');
@@ -62,7 +65,7 @@ class SalesController extends Controller
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
-        // Get recent sales for the table (showing yesterday, today, and tomorrow)
+        // Get recent sales for table (showing yesterday, today, and tomorrow)
         $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
             ->orderBy('created_at', 'desc');
             
@@ -79,6 +82,28 @@ class SalesController extends Controller
         
         $recentSalesQuery->whereBetween('created_at', [$startDate, $endDate]);
         
+        // Apply filter based on alert type
+        if ($filter !== 'all') {
+            switch ($filter) {
+                case 'below-price':
+                    $recentSalesQuery->whereHas('saleItems', function($query) {
+                        $query->whereRaw('(sale_items.unit_price * sale_items.quantity) < (SELECT AVG(stock_ins.price) FROM stock_ins JOIN sale_items ON stock_ins.product_id = sale_items.product_id WHERE stock_ins.created_at <= sales.created_at LIMIT 1)');
+                    });
+                    break;
+                case 'below-cost':
+                    $recentSalesQuery->whereHas('saleItems', function($query) {
+                        $query->whereRaw('(sale_items.unit_price * sale_items.quantity) < (SELECT AVG(stock_ins.price) FROM stock_ins JOIN sale_items ON stock_ins.product_id = sale_items.product_id WHERE stock_ins.created_at <= sales.created_at LIMIT 1)');
+                    });
+                    break;
+                case 'voided':
+                    $recentSalesQuery->where('voided', true);
+                    break;
+                case 'high-discount':
+                    $recentSalesQuery->where('discount_percentage', '>', 20);
+                    break;
+            }
+        }
+        
         $recentSales = $recentSalesQuery->get()
             ->map(function ($sale) {
                 // Ensure product names are properly loaded
@@ -93,7 +118,8 @@ class SalesController extends Controller
             'todayItems', 
             'monthlySales',
             'recentSales',
-            'selectedDate'
+            'selectedDate',
+            'filter'
         ));
     }
     
@@ -185,15 +211,4 @@ class SalesController extends Controller
         ]);
     }
     
-    public function show(Sale $sale)
-    {
-        // Get sale details with related data
-        $sale->load(['saleItems.product', 'cashier', 'branch']);
-        
-        // Calculate totals
-        $totalQuantity = $sale->saleItems->sum('quantity');
-        $totalRefunds = $sale->refunds()->where('status', 'approved')->sum('refund_amount');
-        
-        return view('Admin.sales.show', compact('sale', 'totalQuantity', 'totalRefunds'));
     }
-}

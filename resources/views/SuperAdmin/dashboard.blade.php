@@ -5,11 +5,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@7.2.1/dist/gridstack.min.css"/>
     <style>
-        /* ========================================
-           ELECTRIC MODERN PALETTE - DASHBOARD
-           High-tech futuristic color scheme
-           ======================================== */
-        
         :root {
             /* Electric Modern Palette */
             --electric-blue: #0D47A1;
@@ -381,18 +376,6 @@
         }
         
         /* POS Widget specific styles */
-        function viewCashierDetails(cashierId) {
-        window.location.href = '/superadmin/users/' + cashierId;
-    }
-        
-        function getInitials(name) {
-            return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
-        }
-        
-        function peso(amount) {
-            return '₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 });
-        }
-    </script>    
         .widget-item { 
             transition: all 0.2s ease;
         }
@@ -1180,6 +1163,314 @@
             .transaction-summary-card { height: 280px; }
             .chart-container { height: 200px; }
         }
+        
+        /* Branch Sales List Styles */
+        .branch-sales-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .branch-sales-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--color-divider);
+            transition: background-color 0.2s ease;
+        }
+        
+        .branch-sales-item:hover {
+            background-color: var(--teal-hover);
+        }
+        
+        .branch-sales-item:last-child {
+            border-bottom: none;
+        }
+        
+        .branch-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .branch-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--teal);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .branch-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .branch-amount {
+            font-weight: 600;
+            color: var(--teal);
+        }
+        
+        /* Expense Categories List Styles */
+        .expense-categories-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .expense-category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--color-divider);
+            transition: background-color 0.2s ease;
+        }
+        
+        .expense-category-item:hover {
+            background-color: var(--teal-hover);
+        }
+        
+        .expense-category-item:last-child {
+            border-bottom: none;
+        }
+        
+        .expense-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .expense-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--error);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .expense-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .expense-amount {
+            font-weight: 600;
+            color: var(--error);
+        }
+        
+        /* Monthly Sales List Styles */
+        .monthly-sales-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .monthly-sales-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.2s ease;
+        }
+        
+        .monthly-sales-item:hover {
+            background-color: var(--teal-hover);
+        }
+        
+        .monthly-sales-item:last-child {
+            border-bottom: none;
+        }
+        
+        .monthly-sales-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .monthly-sales-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
+            color: var(--electric-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .monthly-sales-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .monthly-sales-amount {
+            font-weight: 600;
+            color: var(--magenta);
+        }
+
+        /* Monthly Profit List Styles */
+        .monthly-profit-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .monthly-profit-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.2s ease;
+        }
+        
+        .monthly-profit-item:hover {
+            background-color: var(--success-hover);
+        }
+        
+        .monthly-profit-item:last-child {
+            border-bottom: none;
+        }
+        
+        .monthly-profit-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .monthly-profit-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(67, 160, 71, 0.15), rgba(102, 187, 106, 0.15));
+            color: var(--success-teal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .monthly-profit-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .monthly-profit-amount {
+            font-weight: 600;
+            color: var(--success-teal);
+        }
+
+        /* Monthly Returns List Styles */
+        .monthly-returns-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .monthly-returns-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.2s ease;
+        }
+        
+        .monthly-returns-item:hover {
+            background-color: var(--warning-hover);
+        }
+        
+        .monthly-returns-item:last-child {
+            border-bottom: none;
+        }
+        
+        .monthly-returns-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .monthly-returns-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.15));
+            color: #ff9800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .monthly-returns-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .monthly-returns-amount {
+            font-weight: 600;
+            color: #ff9800;
+        }
+
+        /* Monthly Expenses List Styles */
+        .monthly-expenses-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .monthly-expenses-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background-color 0.2s ease;
+        }
+        
+        .monthly-expenses-item:hover {
+            background-color: var(--warning-hover);
+        }
+        
+        .monthly-expenses-item:last-child {
+            border-bottom: none;
+        }
+        
+        .monthly-expenses-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .monthly-expenses-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.15));
+            color: #ff9800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .monthly-expenses-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        .monthly-expenses-amount {
+            font-weight: 600;
+            color: #827717;
+        }
     </style>
 @endpush
 
@@ -1232,7 +1523,7 @@
     <div class="dashboard-container">
         <!-- Row 1: Top KPI Cards -->
         <div class="dashboard-row kpi-row">
-            <div class="kpi-card" data-widget="today-sales">
+            <div class="kpi-card clickable" data-widget="today-sales" onclick="showTodaySalesModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1247,7 +1538,7 @@
                 </div>
             </div>
 
-            <div class="kpi-card" data-widget="today-expenses">
+            <div class="kpi-card clickable" data-widget="today-expenses" onclick="showTodayExpensesModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1298,7 +1589,7 @@
 
         <!-- Row 2: Monthly KPI Cards -->
         <div class="dashboard-row kpi-row">
-            <div class="kpi-card" data-widget="monthly-sales">
+            <div class="kpi-card clickable" data-widget="monthly-sales" onclick="showMonthlySalesModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1315,7 +1606,7 @@
                 </div>
             </div>
 
-            <div class="kpi-card" data-widget="monthly-expenses">
+            <div class="kpi-card clickable" data-widget="monthly-expenses" onclick="showMonthlyExpensesModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1331,7 +1622,7 @@
                 </div>
             </div>
 
-            <div class="kpi-card" data-widget="monthly-returns">
+            <div class="kpi-card clickable" data-widget="monthly-returns" onclick="showMonthlyReturnsModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1350,7 +1641,7 @@
                 </div>
             </div>
 
-            <div class="kpi-card" data-widget="monthly-profit">
+            <div class="kpi-card clickable" data-widget="monthly-profit" onclick="showMonthlyProfitModal()">
                 <div class="kpi-header">
                     <div class="kpi-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1463,8 +1754,22 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  // Utility functions
+  function viewCashierDetails(cashierId) {
+    window.location.href = '/superadmin/users/' + cashierId;
+  }
+  
+  function getInitials(name) {
+    return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
+  }
+  
+  function peso(amount) {
+    return '₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  }
+
   const isDebug = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   function debugLog(...args) { if (isDebug) console.log(...args); }
   function debugError(...args) { if (isDebug) console.error(...args); }
@@ -1575,7 +1880,8 @@
       return null;
     });
   }
-    function fetchMonthlySalesData() {
+  
+  function fetchMonthlySalesData() {
     debugLog('📈 Fetching monthly sales data...');
     return fetch('/dashboard/monthly-sales', {
       method: 'GET',
@@ -1591,6 +1897,7 @@
     })
     .then(data => {
       debugLog('✅ Monthly sales data received:', data);
+      debugLog('🔢 Total sales value:', data.total_sales);
       return data;
     })
     .catch(error => {
@@ -1666,7 +1973,7 @@
 
   function fetchMonthlyReturnsData() {
     debugLog('📈 Fetching returns/refunds data...');
-    return fetch('/dashboard/monthly-returns', {
+    return fetch('/dashboard/monthly-returns', {      
       method: 'GET',
       headers: { 
         'X-Requested-With': 'XMLHttpRequest', 
@@ -1696,7 +2003,7 @@
     const monthlyReturnsChangeElement = document.getElementById('monthlyReturnsChange');
 
     if (monthlyReturnsElement) {
-      monthlyReturnsElement.textContent = ₱${data.total_returns.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
+      monthlyReturnsElement.textContent = '₱' + data.total_returns.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     if (monthlyReturnsChangeElement) {
@@ -1721,7 +2028,7 @@
     const monthlyProfitChangeElement = document.getElementById('monthlyProfitChange');
 
     if (monthlyProfitElement) {
-      monthlyProfitElement.textContent = ₱${data.net_profit.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
+      monthlyProfitElement.textContent = '₱' + data.net_profit.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       monthlyProfitElement.className = data.net_profit >= 0 ? 'kpi-value profit-positive' : 'kpi-value profit-negative';
     }
 
@@ -1738,11 +2045,11 @@
 
     // Debug: Log profit breakdown
     debugLog('📊 Monthly Profit Breakdown:', {
-      'Total Sales': ₱${data.total_sales.toFixed(2)},
-      'COGS': ₱${data.cogs.toFixed(2)},
-      'Gross Profit': ₱${data.gross_profit.toFixed(2)},
-      'Operating Expenses': ₱${data.total_expenses.toFixed(2)},
-      'Net Profit': ₱${data.net_profit.toFixed(2)}
+      'Total Sales': '₱' + data.total_sales.toFixed(2),
+      'COGS': '₱' + data.cogs.toFixed(2),
+      'Gross Profit': '₱' + data.gross_profit.toFixed(2),
+      'Operating Expenses': '₱' + data.total_expenses.toFixed(2),
+      'Net Profit': '₱' + data.net_profit.toFixed(2)
     });
 
     debugLog('✅ Monthly profit UI updated');
@@ -1755,7 +2062,7 @@
     const monthlyExpensesElement = document.getElementById('monthlyExpensesAmount');
 
     if (monthlyExpensesElement) {
-      monthlyExpensesElement.textContent = ₱${data.total_expenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
+      monthlyExpensesElement.textContent = '₱' + data.total_expenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     debugLog('✅ Monthly expenses UI updated');
@@ -1763,13 +2070,23 @@
 
   function updateMonthlySalesUI(data) {
     if (!data) { debugLog('⚠️ No monthly sales data to update UI'); return; }
-    debugLog('🔄 Updating monthly sales UI...');
+    debugLog('🔄 Updating monthly sales UI...', data);
 
     const monthlySalesElement = document.getElementById('monthlySalesAmount');
     const monthlyChangeElement = document.getElementById('monthlySalesChange');
 
+    debugLog('🔍 Found elements:', {
+      monthlySalesElement: !!monthlySalesElement,
+      monthlyChangeElement: !!monthlyChangeElement,
+      total_sales: data.total_sales
+    });
+
     if (monthlySalesElement) {
-      monthlySalesElement.textContent = ₱${data.total_sales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
+      const newValue = '₱' + data.total_sales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      monthlySalesElement.textContent = newValue;
+      debugLog('✅ Updated monthly sales amount to:', newValue);
+    } else {
+      debugLog('❌ monthlySalesAmount element not found');
     }
 
     if (monthlyChangeElement) {
@@ -1781,6 +2098,9 @@
       monthlyChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
                                           changePercent < 0 ? 'var(--danger-red)' : 
                                           'var(--inactive-text)';
+      debugLog('✅ Updated monthly sales change to:', changeText);
+    } else {
+      debugLog('❌ monthlySalesChange element not found');
     }
 
     debugLog('✅ Monthly sales UI updated');
@@ -1846,9 +2166,9 @@
     }).catch(() => {});
   }
 
-  async function fetchChartData(type = (currentTrendType || 'sales')) {
+  async function fetchChartData(type = currentTrendType || 'sales') {
     try {
-      const res = await fetch(/dashboard/chart?type=${encodeURIComponent(type)}, {
+      const res = await fetch(`/dashboard/chart-data?type=${encodeURIComponent(type)}`, {
         method: 'GET', 
         headers: { 
           'Accept': 'application/json', 
@@ -1889,23 +2209,27 @@
       const alertItems = [];
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/admin/inventory'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>);
+        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory?filter=out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
       
       if (alerts.negativeProfit > 0) {
-        alertItems.push(<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>);
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
       }
       
       if (alerts.voidedSales > 0) {
-        alertItems.push(<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
       }
       
       if (alerts.belowCostSales > 0) {
-        alertItems.push(<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>);
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
       }
       
       if (alerts.highDiscountUsage > 0) {
-        alertItems.push(<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/sales?filter=below-price'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
+      }
+      
+      if (alerts.belowPrice > 0) {
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales?filter=below-price'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowPrice} products sold below cost</div><div class="alert-description">Review pricing strategy</div></div></div>`);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';
@@ -1919,12 +2243,12 @@
     if (salesAmount) salesAmount.textContent = peso(kpis.sales.amount);
     
     const salesTransactions = $('todaySalesTransactions');
-    if (salesTransactions) salesTransactions.textContent = ${kpis.sales.transactions} transactions;
+    if (salesTransactions) salesTransactions.textContent = kpis.sales.transactions + ' transactions';
     
     const profitElement = $('todayProfitAmount');
     if (profitElement) {
       profitElement.textContent = peso(kpis.profit.amount);
-      profitElement.className = kpi-value ${kpis.profit.isPositive ? 'profit-positive' : 'profit-negative'};
+      profitElement.className = 'kpi-value ' + (kpis.profit.isPositive ? 'profit-positive' : 'profit-negative');
     }
     
     const expensesAmount = $('todayExpensesAmount');
@@ -1948,18 +2272,16 @@
     }
     productsList.innerHTML = products.map((product, index) => {
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
-      return `
-        <div class="top-item">
-          <div class="top-rank ${rankClass}">${index + 1}</div>
-          <div class="top-content">
-            <div class="top-name">${product.product_name}</div>
-            <div class="top-metrics">
-              <div class="top-value">${peso(product.revenue)}</div>
-              <div class="top-subtitle">${product.contribution_percent}% of total</div>
-            </div>
-          </div>
-        </div>
-      `;
+      return '<div class="top-item clickable" onclick="window.location.href=\'/superadmin/products/' + product.id + '\'">' +
+          '<div class="top-rank ' + rankClass + '">' + (index + 1) + '</div>' +
+          '<div class="top-content">' +
+            '<div class="top-name">' + product.product_name + '</div>' +
+            '<div class="top-metrics">' +
+              '<div class="top-value">' + peso(product.revenue) + '</div>' +
+              '<div class="top-subtitle">' + product.contribution_percent + '% of total</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
     }).join('');
   }
   
@@ -1977,20 +2299,26 @@
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
       const branchId = branch.branch_id || branch.id || 'unknown';
       console.log('Branch ID:', branchId, 'Branch Name:', branch.branch_name);
-      return `
-        <div class="top-item clickable" data-branch-id="${branchId}">
-          <div class="top-rank ${rankClass}">${index + 1}</div>
-          <div class="top-content">
-            <div class="top-name">${branch.branch_name}</div>
-            <div class="top-metrics">
-              <div class="top-value">${peso(branch.revenue)}</div>
-              <div class="top-subtitle">${branch.profit_margin}% margin</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+      return '<div class="top-item clickable" data-branch-id="' + branchId + '">' +
+          '<div class="top-rank ' + rankClass + '">' + (index + 1) + '</div>' +
+          '<div class="top-content">' +
+            '<div class="top-name">' + branch.branch_name + '</div>' +
+            '<div class="top-metrics">' +
+              '<div class="top-value">' + peso(branch.revenue) + '</div>' +
+              '<div class="top-subtitle">' + branch.profit_margin + '% margin</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
   }).join('');
+
+  // Add event listeners to branch items
+  document.querySelectorAll('.top-item[data-branch-id]').forEach(item => {
+    item.addEventListener('click', function() {
+      const branchId = this.getAttribute('data-branch-id');
+      console.log('Clicked branch ID:', branchId);
+      window.location.href = '/superadmin/branches/' + branchId;
+    });
+  });
 }
 
 function updateCashierPerformance(cashiers) {
@@ -2002,7 +2330,7 @@ function updateCashierPerformance(cashiers) {
     return;
   }
   performanceList.innerHTML = cashiers.map(cashier => `
-    <div class="performance-item clickable" onclick="viewCashierDetails(${cashier.id})">
+    <div class="performance-item clickable" onclick="viewCashierDetails('${cashier.id}')">
       <div class="performance-avatar">${getInitials(cashier.name)}</div>
       <div class="performance-content">
         <div class="performance-name">${cashier.name}</div>
@@ -2027,6 +2355,19 @@ function updateCashierPerformance(cashiers) {
   } catch (e) {
     console.error('Error adding click listeners:', e);
   }
+}
+
+function updateTransactionSummary(summary) {
+  debugLog('📋 Updating transaction summary with data:', summary);
+  if (!summary) return;
+  
+  const totalTransactionsEl = $('totalTransactions');
+  const avgTransactionEl = $('avgTransactionValue');
+  const highestSaleEl = $('highestSaleToday');
+  
+  if (totalTransactionsEl) totalTransactionsEl.textContent = summary.totalTransactions;
+  if (avgTransactionEl) avgTransactionEl.textContent = peso(summary.avgTransactionValue);
+  if (highestSaleEl) highestSaleEl.textContent = peso(summary.highestSaleToday);
 }
   
   function updateUnusualActivities(alerts) {
@@ -2067,15 +2408,1244 @@ function updateCashierPerformance(cashiers) {
           if (chartData) updateTrendChart(chartData);
         });
       });
-    });
   });
 
-  function peso(n) {
-    return new Intl.NumberFormat('en-PH', {style: 'currency', currency: 'PHP'}).format(n || 0);
+  });
+
+  let branchSalesPieChartInstance = null;
+
+  function showTodaySalesModal() {
+    debugLog('📊 Opening today\'s sales modal...');
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('todaySalesModal'));
+    modal.show();
+    
+    // Fetch branch sales data
+    fetchBranchSalesData();
   }
-  
-  function getInitials(name) {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  function fetchBranchSalesData() {
+    debugLog('📈 Fetching branch sales data...');
+    
+    return fetch('/dashboard/branch-sales-today', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Branch sales data received:', data);
+      updateBranchSalesModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching branch sales data:', error);
+      document.getElementById('branchSalesList').innerHTML = 
+        '<div class="text-center text-danger">Error loading branch sales data</div>';
+    });
+  }
+
+  function updateBranchSalesModal(data) {
+    if (!data || !data.branches) {
+      document.getElementById('branchSalesList').innerHTML = 
+        '<div class="text-center text-muted">No branch sales data available</div>';
+      return;
+    }
+
+    // Update branch list
+    const branchListHtml = data.branches.map((branch, index) => {
+      const initials = getInitials(branch.branch_name || 'Unknown');
+      return `
+        <div class="branch-sales-item">
+          <div class="branch-info">
+            <div class="branch-icon">${initials}</div>
+            <div class="branch-name">${branch.branch_name}</div>
+          </div>
+          <div class="branch-amount">${peso(branch.total_sales)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('branchSalesList').innerHTML = branchListHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalSales').textContent = peso(data.total_sales || 0);
+    document.getElementById('modalTotalTransactions').textContent = data.total_transactions || 0;
+    document.getElementById('modalTotalBranches').textContent = data.branch_count || 0;
+    
+    // Create pie chart
+    createBranchSalesPieChart(data.branches);
+  }
+
+  function createBranchSalesPieChart(branches) {
+    const ctx = document.getElementById('branchSalesPieChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (branchSalesPieChartInstance) {
+      branchSalesPieChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: branches.map(b => b.branch_name),
+      datasets: [{
+        data: branches.map(b => parseFloat(b.total_sales || 0)),
+        backgroundColor: [
+          '#00A896', // Teal
+          '#028090', // Blue-Teal  
+          '#05668D', // Deep Blue
+          '#02C39A', // Mint Green
+          '#F0F3BD', // Soft Yellow
+          '#E63946', // Red
+          '#2196F3', // Blue
+          '#4CAF50', // Green
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    };
+
+    branchSalesPieChartInstance = new Chart(ctx, {
+      type: 'pie',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 15,
+              usePointStyle: true,
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((value / total) * 100).toFixed(1);
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + ' (' + percentage + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  let monthlyExpensesChartInstance = null;
+
+  function showMonthlyExpensesModal() {
+    debugLog('📊 Opening monthly expenses modal...');
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('monthlyExpensesModal'));
+    modal.show();
+    
+    // Fetch monthly expenses data
+    fetchMonthlyExpensesModalData();
+  }
+
+  function fetchMonthlyExpensesModalData() {
+    debugLog('📈 Fetching monthly expenses data...');
+    
+    return fetch('/dashboard/monthly-expenses-breakdown', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly expenses data received:', data);
+      updateMonthlyExpensesModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly expenses data:', error);
+      document.getElementById('monthlyExpensesList').innerHTML = 
+        '<div class="text-center text-danger">Error loading monthly expenses data</div>';
+    });
+  }
+
+  function updateMonthlyExpensesModal(data) {
+    if (!data || !data.monthly_expenses) {
+      document.getElementById('monthlyExpensesList').innerHTML = 
+        '<div class="text-center text-muted">No monthly expenses data available</div>';
+      return;
+    }
+
+    // Update monthly expenses list
+    const monthlyExpensesHtml = data.monthly_expenses.map((month, index) => {
+      const initials = getInitials(month.month_name || 'Unknown');
+      return `
+        <div class="monthly-expenses-item">
+          <div class="monthly-expenses-info">
+            <div class="monthly-expenses-icon">${initials}</div>
+            <div class="monthly-expenses-name">${month.month_name}</div>
+          </div>
+          <div class="monthly-expenses-amount">${peso(month.total_expenses)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('monthlyExpensesList').innerHTML = monthlyExpensesHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalMonthlyExpenses').textContent = peso(data.total_expenses || 0);
+    document.getElementById('modalAverageMonthlyExpenses').textContent = peso(data.average_monthly_expenses || 0);
+    document.getElementById('modalHighestMonthExpenses').textContent = peso(data.highest_month_expenses || 0);
+    
+    // Create pie chart
+    createMonthlyExpensesChart(data.monthly_expenses);
+  }
+
+  function createMonthlyExpensesChart(monthlyData) {
+    const ctx = document.getElementById('monthlyExpensesChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (monthlyExpensesChartInstance) {
+      monthlyExpensesChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: monthlyData.map(m => m.month_name),
+      datasets: [{
+        label: 'Monthly Expenses',
+        data: monthlyData.map(m => parseFloat(m.total_expenses || 0)),
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        borderColor: '#ff9800',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#ff9800',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    };
+
+    monthlyExpensesChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₱' + value.toLocaleString('en-PH');
+              },
+              color: '#546E7A'
+            },
+            grid: {
+              color: 'rgba(255, 152, 0, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#546E7A',
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: {
+              color: 'rgba(255, 152, 0, 0.1)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  let monthlyProfitChartInstance = null;
+
+  function showMonthlyProfitModal() {
+    debugLog('📊 Opening monthly profit modal...');
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('monthlyProfitModal'));
+    modal.show();
+    
+    // Fetch monthly profit data
+    fetchMonthlyProfitModalData();
+  }
+
+  function fetchMonthlyProfitModalData() {
+    debugLog('📈 Fetching monthly profit data...');
+    
+    return fetch('/dashboard/monthly-profit-breakdown', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly profit data received:', data);
+      updateMonthlyProfitModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly profit data:', error);
+      document.getElementById('monthlyProfitList').innerHTML = 
+        '<div class="text-center text-danger">Error loading monthly profit data</div>';
+    });
+  }
+
+  function updateMonthlyProfitModal(data) {
+    if (!data || !data.monthly_profit) {
+      document.getElementById('monthlyProfitList').innerHTML = 
+        '<div class="text-center text-muted">No monthly profit data available</div>';
+      return;
+    }
+
+    // Update monthly profit list
+    const monthlyProfitHtml = data.monthly_profit.map((month, index) => {
+      const initials = getInitials(month.month_name || 'Unknown');
+      return `
+        <div class="monthly-profit-item">
+          <div class="monthly-profit-info">
+            <div class="monthly-profit-icon">${initials}</div>
+            <div class="monthly-profit-name">${month.month_name}</div>
+          </div>
+          <div class="monthly-profit-amount">${peso(month.net_profit)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('monthlyProfitList').innerHTML = monthlyProfitHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalProfit').textContent = peso(data.total_profit || 0);
+    document.getElementById('modalAverageProfit').textContent = peso(data.average_monthly_profit || 0);
+    document.getElementById('modalBestProfit').textContent = peso(data.best_month_profit || 0);
+    
+    // Create line chart
+    createMonthlyProfitChart(data.monthly_profit);
+  }
+
+  function createMonthlyProfitChart(monthlyData) {
+    const ctx = document.getElementById('monthlyProfitChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (monthlyProfitChartInstance) {
+      monthlyProfitChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: monthlyData.map(m => m.month_name),
+      datasets: [{
+        label: 'Monthly Profit',
+        data: monthlyData.map(m => parseFloat(m.net_profit || 0)),
+        backgroundColor: 'rgba(67, 160, 71, 0.1)',
+        borderColor: 'var(--success-teal)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'var(--success-teal)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    };
+
+    monthlyProfitChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₱' + value.toLocaleString('en-PH');
+              },
+              color: '#546E7A'
+            },
+            grid: {
+              color: 'rgba(67, 160, 71, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#546E7A',
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: {
+              color: 'rgba(67, 160, 71, 0.1)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  let monthlyReturnsChartInstance = null;
+
+  function showMonthlyReturnsModal() {
+    debugLog('📊 Opening monthly returns modal...');
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('monthlyReturnsModal'));
+    modal.show();
+    
+    // Fetch monthly returns data
+    fetchMonthlyReturnsModalData();
+  }
+
+  function fetchMonthlyReturnsModalData() {
+    debugLog('📈 Fetching monthly returns data...');
+    
+    return fetch('/dashboard/monthly-returns-breakdown', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly returns data received:', data);
+      updateMonthlyReturnsModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly returns data:', error);
+      document.getElementById('monthlyReturnsList').innerHTML = 
+        '<div class="text-center text-danger">Error loading monthly returns data</div>';
+    });
+  }
+
+  function updateMonthlyReturnsModal(data) {
+    if (!data || !data.monthly_returns) {
+      document.getElementById('monthlyReturnsList').innerHTML = 
+        '<div class="text-center text-muted">No monthly returns data available</div>';
+      return;
+    }
+
+    // Update monthly returns list
+    const monthlyReturnsHtml = data.monthly_returns.map((month, index) => {
+      const initials = getInitials(month.month_name || 'Unknown');
+      return `
+        <div class="monthly-returns-item">
+          <div class="monthly-returns-info">
+            <div class="monthly-returns-icon">${initials}</div>
+            <div class="monthly-returns-name">${month.month_name}</div>
+          </div>
+          <div class="monthly-returns-amount">${peso(month.total_returns)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('monthlyReturnsList').innerHTML = monthlyReturnsHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalReturns').textContent = peso(data.total_returns || 0);
+    document.getElementById('modalAverageReturns').textContent = peso(data.average_monthly_returns || 0);
+    document.getElementById('modalHighestReturns').textContent = peso(data.highest_month_returns || 0);
+    
+    // Create line chart
+    createMonthlyReturnsChart(data.monthly_returns);
+  }
+
+  function createMonthlyReturnsChart(monthlyData) {
+    const ctx = document.getElementById('monthlyReturnsChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (monthlyReturnsChartInstance) {
+      monthlyReturnsChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: monthlyData.map(m => m.month_name),
+      datasets: [{
+        label: 'Monthly Returns',
+        data: monthlyData.map(m => parseFloat(m.total_returns || 0)),
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        borderColor: '#ff9800',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#ff9800',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    };
+
+    monthlyReturnsChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₱' + value.toLocaleString('en-PH');
+              },
+              color: '#546E7A'
+            },
+            grid: {
+              color: 'rgba(255, 152, 0, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#546E7A',
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: {
+              color: 'rgba(255, 152, 0, 0.1)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  let expensesPieChartInstance = null;
+
+  function showTodayExpensesModal() {
+    debugLog('📊 Opening today\'s expenses modal...');
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('todayExpensesModal'));
+    modal.show();
+    
+    // Fetch expense data
+    fetchExpenseData();
+  }
+
+  function fetchExpenseData() {
+    debugLog('📈 Fetching expense data...');
+    
+    return fetch('/dashboard/expenses-today', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Expense data received:', data);
+      updateExpensesModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching expense data:', error);
+      document.getElementById('expenseCategoriesList').innerHTML = 
+        '<div class="text-center text-danger">Error loading expense data</div>';
+    });
+  }
+
+  function updateExpensesModal(data) {
+    if (!data || !data.categories) {
+      document.getElementById('expenseCategoriesList').innerHTML = 
+        '<div class="text-center text-muted">No expense data available</div>';
+      return;
+    }
+
+    // Update expense categories list
+    const categoryListHtml = data.categories.map((category, index) => {
+      const initials = getInitials(category.category_name || 'Unknown');
+      return `
+        <div class="expense-category-item">
+          <div class="expense-info">
+            <div class="expense-icon">${initials}</div>
+            <div class="expense-name">${category.category_name}</div>
+          </div>
+          <div class="expense-amount">${peso(category.total_amount)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('expenseCategoriesList').innerHTML = categoryListHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalExpenses').textContent = peso(data.total_expenses || 0);
+    document.getElementById('modalTotalCategories').textContent = data.category_count || 0;
+    document.getElementById('modalTotalExpenseTransactions').textContent = data.transaction_count || 0;
+    
+    // Create pie chart
+    createExpensesPieChart(data.categories);
+  }
+
+  function createExpensesPieChart(categories) {
+    const ctx = document.getElementById('expensesPieChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (expensesPieChartInstance) {
+      expensesPieChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: categories.map(c => c.category_name),
+      datasets: [{
+        data: categories.map(c => parseFloat(c.total_amount || 0)),
+        backgroundColor: [
+          '#E63946', // Red
+          '#F0F3BD', // Soft Yellow
+          '#05668D', // Deep Blue
+          '#028090', // Blue-Teal  
+          '#00A896', // Teal
+          '#02C39A', // Mint Green
+          '#2196F3', // Blue
+          '#4CAF50', // Green
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    };
+
+    expensesPieChartInstance = new Chart(ctx, {
+      type: 'pie',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 15,
+              usePointStyle: true,
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((value / total) * 100).toFixed(1);
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + ' (' + percentage + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  let monthlySalesChartInstance = null;
+
+  function showMonthlySalesModal() {
+    debugLog('📊 Opening monthly sales modal...');
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('monthlySalesModal'));
+    modal.show();
+    
+    // Fetch monthly sales data
+    fetchMonthlySalesModalData();
+  }
+
+  function fetchMonthlySalesModalData() {
+    debugLog('📈 Fetching monthly sales data...');
+    
+    return fetch('/dashboard/monthly-sales-breakdown', {
+      method: 'GET',
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      debugLog('✅ Monthly sales data received:', data);
+      updateMonthlySalesModal(data);
+    })
+    .catch(error => {
+      debugError('❌ Error fetching monthly sales data:', error);
+      document.getElementById('monthlySalesList').innerHTML = 
+        '<div class="text-center text-danger">Error loading monthly sales data</div>';
+    });
+  }
+
+  function updateMonthlySalesModal(data) {
+    if (!data || !data.monthly_sales) {
+      document.getElementById('monthlySalesList').innerHTML = 
+        '<div class="text-center text-muted">No monthly sales data available</div>';
+      return;
+    }
+
+    // Update monthly sales list
+    const monthlySalesHtml = data.monthly_sales.map((month, index) => {
+      const initials = getInitials(month.month_name || 'Unknown');
+      return `
+        <div class="monthly-sales-item">
+          <div class="monthly-sales-info">
+            <div class="monthly-sales-icon">${initials}</div>
+            <div class="monthly-sales-name">${month.month_name}</div>
+          </div>
+          <div class="monthly-sales-amount">${peso(month.total_sales)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('monthlySalesList').innerHTML = monthlySalesHtml;
+    
+    // Update summary
+    document.getElementById('modalTotalMonthlySales').textContent = peso(data.total_sales || 0);
+    document.getElementById('modalAverageMonthlySales').textContent = peso(data.average_monthly_sales || 0);
+    document.getElementById('modalBestMonthSales').textContent = peso(data.best_month_sales || 0);
+    
+    // Create bar chart
+    createMonthlySalesChart(data.monthly_sales);
+  }
+
+  function createMonthlySalesChart(monthlyData) {
+    const ctx = document.getElementById('monthlySalesChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (monthlySalesChartInstance) {
+      monthlySalesChartInstance.destroy();
+    }
+
+    const chartData = {
+      labels: monthlyData.map(m => m.month_name),
+      datasets: [{
+        label: 'Monthly Sales',
+        data: monthlyData.map(m => parseFloat(m.total_sales || 0)),
+        backgroundColor: '#00A896', // Teal
+        borderColor: '#00A896',
+        borderWidth: 2
+      }]
+    };
+
+    monthlySalesChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                return label + ': ₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₱' + value.toLocaleString('en-PH');
+              },
+              color: '#546E7A'
+            },
+            grid: {
+              color: 'rgba(13, 71, 161, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#546E7A'
+            },
+            grid: {
+              color: 'rgba(13, 71, 161, 0.1)'
+            }
+          }
+        }
+      }
+    });
   }
 </script>
+
+<!-- Today's Sales Modal -->
+<div class="modal fade" id="todaySalesModal" tabindex="-1" aria-labelledby="todaySalesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="todaySalesModalLabel">
+          <i class="fas fa-chart-line me-2"></i>Today's Sales by Branch
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Branch Sales List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-store me-2"></i>Branch Sales</h6>
+            <div id="branchSalesList" class="branch-sales-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading branch sales data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Pie Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Sales Distribution</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="branchSalesPieChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Sales</small>
+                    <div class="h5 mb-0 text-primary" id="modalTotalSales">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Transactions</small>
+                    <div class="h5 mb-0 text-info" id="modalTotalTransactions">0</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Branches</small>
+                    <div class="h5 mb-0 text-success" id="modalTotalBranches">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/sales'">
+          <i class="fas fa-arrow-right me-2"></i>View All Sales
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Today's Expenses Modal -->
+<div class="modal fade" id="todayExpensesModal" tabindex="-1" aria-labelledby="todayExpensesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="todayExpensesModalLabel">
+          <i class="fas fa-receipt me-2"></i>Today's Expenses by Category
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Expense Categories List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-list me-2"></i>Expense Categories</h6>
+            <div id="expenseCategoriesList" class="expense-categories-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading expense data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Pie Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Expense Distribution</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="expensesPieChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Expenses</small>
+                    <div class="h5 mb-0 text-danger" id="modalTotalExpenses">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Categories</small>
+                    <div class="h5 mb-0 text-info" id="modalTotalCategories">0</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Transactions</small>
+                    <div class="h5 mb-0 text-warning" id="modalTotalExpenseTransactions">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/expenses'">
+          <i class="fas fa-arrow-right me-2"></i>View All Expenses
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Sales Modal -->
+<div class="modal fade" id="monthlySalesModal" tabindex="-1" aria-labelledby="monthlySalesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="monthlySalesModalLabel">
+          <i class="fas fa-chart-line me-2"></i>Monthly Sales Breakdown
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Monthly Sales List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-calendar me-2"></i>Monthly Sales by Month</h6>
+            <div id="monthlySalesList" class="monthly-sales-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading monthly sales data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Bar Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Sales Trend</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="monthlySalesChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Sales</small>
+                    <div class="h5 mb-0 text-primary" id="modalTotalMonthlySales">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Average Monthly</small>
+                    <div class="h5 mb-0 text-info" id="modalAverageMonthlySales">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Best Month</small>
+                    <div class="h5 mb-0 text-success" id="modalBestMonthSales">₱0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/sales'">
+          <i class="fas fa-arrow-right me-2"></i>View All Sales
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Expenses Modal -->
+<div class="modal fade" id="monthlyExpensesModal" tabindex="-1" aria-labelledby="monthlyExpensesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="monthlyExpensesModalLabel">
+          <i class="fas fa-receipt me-2"></i>Monthly Expenses Breakdown
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Monthly Expenses List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-calendar me-2"></i>Monthly Expenses by Month</h6>
+            <div id="monthlyExpensesList" class="monthly-expenses-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading monthly expenses data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Line Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Expense Trend</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="monthlyExpensesChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Expenses</small>
+                    <div class="h5 mb-0 text-danger" id="modalTotalMonthlyExpenses">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Average Monthly</small>
+                    <div class="h5 mb-0 text-warning" id="modalAverageMonthlyExpenses">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Highest Month</small>
+                    <div class="h5 mb-0 text-info" id="modalHighestMonthExpenses">₱0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/expenses'">
+          <i class="fas fa-arrow-right me-2"></i>View All Expenses
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Returns Modal -->
+<div class="modal fade" id="monthlyReturnsModal" tabindex="-1" aria-labelledby="monthlyReturnsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="monthlyReturnsModalLabel">
+          <i class="fas fa-undo me-2"></i>Monthly Returns/Refunds Breakdown
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Monthly Returns List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-calendar me-2"></i>Monthly Returns by Month</h6>
+            <div id="monthlyReturnsList" class="monthly-returns-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading monthly returns data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Line Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Returns Trend</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="monthlyReturnsChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Returns</small>
+                    <div class="h5 mb-0 text-warning" id="modalTotalReturns">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Average Monthly</small>
+                    <div class="h5 mb-0 text-info" id="modalAverageReturns">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Highest Month</small>
+                    <div class="h5 mb-0 text-danger" id="modalHighestReturns">₱0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/refunds'">
+          <i class="fas fa-arrow-right me-2"></i>View All Returns
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Profit Modal -->
+<div class="modal fade" id="monthlyProfitModal" tabindex="-1" aria-labelledby="monthlyProfitModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="monthlyProfitModalLabel">
+          <i class="fas fa-chart-line me-2"></i>Monthly Profit Breakdown
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Monthly Profit List -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-calendar me-2"></i>Monthly Profit by Month</h6>
+            <div id="monthlyProfitList" class="monthly-profit-list">
+              <div class="text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading monthly profit data...
+              </div>
+            </div>
+          </div>
+          
+          <!-- Line Chart -->
+          <div class="col-md-6">
+            <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Profit Trend</h6>
+            <div class="chart-container" style="position: relative; height: 300px;">
+              <canvas id="monthlyProfitChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-md-4">
+                    <small class="text-muted">Total Profit</small>
+                    <div class="h5 mb-0 text-success" id="modalTotalProfit">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Average Monthly</small>
+                    <div class="h5 mb-0 text-info" id="modalAverageProfit">₱0.00</div>
+                  </div>
+                  <div class="col-md-4">
+                    <small class="text-muted">Best Month</small>
+                    <div class="h5 mb-0 text-primary" id="modalBestProfit">₱0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/superadmin/reports'">
+          <i class="fas fa-arrow-right me-2"></i>View All Reports
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endpush

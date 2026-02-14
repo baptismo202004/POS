@@ -641,6 +641,16 @@
                 <span>Expenses</span>
             </a>
 
+            {{-- Suppliers Link --}}
+            <a href="{{ route('superadmin.suppliers.index') }}" class="{{ request()->routeIs('superadmin.suppliers.*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                </span>
+                <span>Suppliers</span>
+            </a>
+
             @php $isCustomerActive = false; @endphp
             <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isCustomerActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('customerMenu', event); return false;">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
