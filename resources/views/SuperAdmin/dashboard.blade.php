@@ -1486,7 +1486,7 @@
     const root = qsById(widgetId);
     if (!root) return null;
     if (!selectorOrId) return null;
-    const sel = selectorOrId.startsWith('#') || selectorOrId.startsWith('.') ? selectorOrId : `#${selectorOrId}`;
+    const sel = selectorOrId.startsWith('#') || selectorOrId.startsWith('.') ? selectorOrId : '#${selectorOrId}';
     return qs(root, sel);
   }
   
@@ -1498,7 +1498,7 @@
       const check = () => {
         const el = root.querySelector(selector);
         if (el) return resolve(el);
-        if (performance.now() - start > timeout) return reject(new Error(`Timeout waiting for ${selector}`));
+        if (performance.now() - start > timeout) return reject(new Error(Timeout waiting for ${selector}));
         requestAnimationFrame(check);
       };
       check();
@@ -1532,10 +1532,14 @@
     debugLog('📊 Fetching dashboard data...');
     return fetch('/dashboard/widgets', {
       method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
     })
     .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
       return response.json();
     })
     .then(data => {
@@ -1552,10 +1556,14 @@
     debugLog('📈 Fetching monthly expenses data...');
     return fetch('/dashboard/monthly-expenses', {
       method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
     })
     .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
       return response.json();
     })
     .then(data => {
@@ -1571,10 +1579,14 @@
     debugLog('📈 Fetching monthly sales data...');
     return fetch('/dashboard/monthly-sales', {
       method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
     })
     .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
       return response.json();
     })
     .then(data => {
@@ -1632,10 +1644,14 @@
     debugLog('📈 Fetching monthly profit data...');
     return fetch('/dashboard/monthly-profit', {
       method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
     })
     .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
       return response.json();
     })
     .then(data => {
@@ -1652,10 +1668,14 @@
     debugLog('📈 Fetching returns/refunds data...');
     return fetch('/dashboard/monthly-returns', {
       method: 'GET',
-      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      headers: { 
+        'X-Requested-With': 'XMLHttpRequest', 
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      }
     })
     .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
       return response.json();
     })
     .then(data => {
@@ -1676,13 +1696,13 @@
     const monthlyReturnsChangeElement = document.getElementById('monthlyReturnsChange');
 
     if (monthlyReturnsElement) {
-      monthlyReturnsElement.textContent = `₱${data.total_returns.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      monthlyReturnsElement.textContent = ₱${data.total_returns.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
     }
 
     if (monthlyReturnsChangeElement) {
       const changePercent = data.returns_change_percentage;
-      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
-                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
+                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
                         'No change from last month';
       monthlyReturnsChangeElement.textContent = changeText;
       monthlyReturnsChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -1701,14 +1721,14 @@
     const monthlyProfitChangeElement = document.getElementById('monthlyProfitChange');
 
     if (monthlyProfitElement) {
-      monthlyProfitElement.textContent = `₱${data.net_profit.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      monthlyProfitElement.textContent = ₱${data.net_profit.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
       monthlyProfitElement.className = data.net_profit >= 0 ? 'kpi-value profit-positive' : 'kpi-value profit-negative';
     }
 
     if (monthlyProfitChangeElement) {
       const changePercent = data.profit_change_percentage;
-      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
-                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
+                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
                         'No change from last month';
       monthlyProfitChangeElement.textContent = changeText;
       monthlyProfitChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -1718,11 +1738,11 @@
 
     // Debug: Log profit breakdown
     debugLog('📊 Monthly Profit Breakdown:', {
-      'Total Sales': `₱${data.total_sales.toFixed(2)}`,
-      'COGS': `₱${data.cogs.toFixed(2)}`,
-      'Gross Profit': `₱${data.gross_profit.toFixed(2)}`,
-      'Operating Expenses': `₱${data.total_expenses.toFixed(2)}`,
-      'Net Profit': `₱${data.net_profit.toFixed(2)}`
+      'Total Sales': ₱${data.total_sales.toFixed(2)},
+      'COGS': ₱${data.cogs.toFixed(2)},
+      'Gross Profit': ₱${data.gross_profit.toFixed(2)},
+      'Operating Expenses': ₱${data.total_expenses.toFixed(2)},
+      'Net Profit': ₱${data.net_profit.toFixed(2)}
     });
 
     debugLog('✅ Monthly profit UI updated');
@@ -1735,7 +1755,7 @@
     const monthlyExpensesElement = document.getElementById('monthlyExpensesAmount');
 
     if (monthlyExpensesElement) {
-      monthlyExpensesElement.textContent = `₱${data.total_expenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      monthlyExpensesElement.textContent = ₱${data.total_expenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
     }
 
     debugLog('✅ Monthly expenses UI updated');
@@ -1749,13 +1769,13 @@
     const monthlyChangeElement = document.getElementById('monthlySalesChange');
 
     if (monthlySalesElement) {
-      monthlySalesElement.textContent = `₱${data.total_sales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      monthlySalesElement.textContent = ₱${data.total_sales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })};
     }
 
     if (monthlyChangeElement) {
       const changePercent = data.sales_change_percentage;
-      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
-                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
+      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
+                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
                         'No change from last month';
       monthlyChangeElement.textContent = changeText;
       monthlyChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -1828,10 +1848,15 @@
 
   async function fetchChartData(type = (currentTrendType || 'sales')) {
     try {
-      const res = await fetch(`/dashboard/chart?type=${encodeURIComponent(type)}`, {
-        method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      const res = await fetch(/dashboard/chart?type=${encodeURIComponent(type)}, {
+        method: 'GET', 
+        headers: { 
+          'Accept': 'application/json', 
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        }
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(HTTP ${res.status});
       return await res.json();
     } catch (err) {
       console.warn('Chart data fetch failed:', err);
@@ -1864,23 +1889,23 @@
       const alertItems = [];
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/admin/inventory'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
+        alertItems.push(<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/admin/inventory'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>);
       }
       
       if (alerts.negativeProfit > 0) {
-        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
+        alertItems.push(<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>);
       }
       
       if (alerts.voidedSales > 0) {
-        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
+        alertItems.push(<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>);
       }
       
       if (alerts.belowCostSales > 0) {
-        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
+        alertItems.push(<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>);
       }
       
       if (alerts.highDiscountUsage > 0) {
-        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
+        alertItems.push(<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/sales'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';
@@ -1894,12 +1919,12 @@
     if (salesAmount) salesAmount.textContent = peso(kpis.sales.amount);
     
     const salesTransactions = $('todaySalesTransactions');
-    if (salesTransactions) salesTransactions.textContent = `${kpis.sales.transactions} transactions`;
+    if (salesTransactions) salesTransactions.textContent = ${kpis.sales.transactions} transactions;
     
     const profitElement = $('todayProfitAmount');
     if (profitElement) {
       profitElement.textContent = peso(kpis.profit.amount);
-      profitElement.className = `kpi-value ${kpis.profit.isPositive ? 'profit-positive' : 'profit-negative'}`;
+      profitElement.className = kpi-value ${kpis.profit.isPositive ? 'profit-positive' : 'profit-negative'};
     }
     
     const expensesAmount = $('todayExpensesAmount');
@@ -1968,44 +1993,6 @@
   }).join('');
 }
 
-function updateTopBranches(branches) {
-  debugLog('🏢 Updating top branches with data:', branches);
-  console.log('Branches data:', branches);
-  const branchesList = $('topBranchesList');
-  if (!branchesList) return;
-  if (!branches || branches.length === 0) {
-    branchesList.innerHTML = '<div class="text-center text-muted py-4">No branch data available</div>';
-    return;
-  }
-  branchesList.innerHTML = branches.map((branch, index) => {
-    console.log('Branch item:', branch);
-    const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
-    const branchId = branch.branch_id || branch.id || 'unknown';
-    console.log('Branch ID:', branchId, 'Branch Name:', branch.branch_name);
-    return `
-      <div class="top-item clickable" data-branch-id="${branchId}">
-        <div class="top-rank ${rankClass}">${index + 1}</div>
-        <div class="top-content">
-          <div class="top-name">${branch.branch_name}</div>
-          <div class="top-metrics">
-            <div class="top-value">${peso(branch.revenue)}</div>
-            <div class="top-subtitle">${branch.profit_margin}% margin</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Add event listeners to branch items
-  document.querySelectorAll('.top-item[data-branch-id]').forEach(item => {
-    item.addEventListener('click', function() {
-      const branchId = this.getAttribute('data-branch-id');
-      console.log('Clicked branch ID:', branchId);
-      window.location.href = '/superadmin/branches/' + branchId;
-    });
-  });
-}
-
 function updateCashierPerformance(cashiers) {
   debugLog('💰 Updating cashier performance with data:', cashiers);
   const performanceList = $('cashierPerformanceList');
@@ -2041,11 +2028,6 @@ function updateCashierPerformance(cashiers) {
     console.error('Error adding click listeners:', e);
   }
 }
-    
-    if (totalTransactionsEl) totalTransactionsEl.textContent = summary.totalTransactions;
-    if (avgTransactionEl) avgTransactionEl.textContent = peso(summary.avgTransactionValue);
-    if (highestSaleEl) highestSaleEl.textContent = peso(summary.highestSaleToday);
-  }
   
   function updateUnusualActivities(alerts) {
     debugLog('⚠️ Updating unusual activities with data:', alerts);

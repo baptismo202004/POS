@@ -265,11 +265,31 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // Make loading functions globally accessible
+        function showLoading() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+        }
+
+        function hideLoading() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '{{ $isEdit ? "Update Product" : "Create Product" }}';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const productForm = document.getElementById('productForm');
             if (productForm) {
                 productForm.addEventListener('submit', function(e) {
                     e.preventDefault();
+
+                    // Show loading state immediately
+                    showLoading();
 
                     const form = this;
                     const formData = new FormData(form);
@@ -359,9 +379,13 @@
                             title: 'An Error Occurred',
                             text: errorMessage,
                         });
+                    })
+                    .finally(() => {
+                        // Always hide loading state
+                        hideLoading();
                     });
                 });
-            }
+            });
         });
     </script>
 
