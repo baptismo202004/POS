@@ -82,8 +82,8 @@ class Product extends Model
     public function getCurrentStockAttribute()
     {
         $stockIn = $this->stockIns()->sum('quantity');
-        $stockOut = $this->stockOuts()->sum('quantity');
-        return $stockIn - $stockOut;
+        $sold = $this->stockIns()->sum('sold');
+        return $stockIn - $sold;
     }
 
     public function getTotalSoldAttribute()
@@ -99,7 +99,7 @@ class Product extends Model
     public function getStockAtBranch($branchId)
     {
         $stockIn = $this->stockIns()->where('branch_id', $branchId)->sum('quantity');
-        $stockOut = $this->stockOuts()->where('branch_id', $branchId)->sum('quantity');
-        return $stockIn - $stockOut;
+        $sold = $this->stockIns()->where('branch_id', $branchId)->sum('sold');
+        return $stockIn - $sold;
     }
 }

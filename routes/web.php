@@ -585,7 +585,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
     
     // 4. Low Stock / Critical Stock Count
     try {
-        $criticalStock = DB::table('products')
+        $subquery = DB::table('products')
             ->leftJoinSub(
                 DB::table('stock_ins')
                     ->select('product_id', DB::raw('SUM(quantity) as total_in'))
@@ -596,19 +596,22 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'stock_in_totals.product_id'
             )
             ->leftJoinSub(
-                DB::table('stock_ins')
-                    ->select('product_id', DB::raw('SUM(sold) as total_sold'))
+                DB::table('stock_outs')
+                    ->select('product_id', DB::raw('SUM(quantity) as total_out'))
                     ->groupBy('product_id'),
-                'stock_sold_totals',
+                'stock_out_totals',
                 'products.id',
                 '=',
-                'stock_sold_totals.product_id'
+                'stock_out_totals.product_id'
             )
             ->select(
+                'products.id',
                 'products.product_name',
-                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) as current_stock')
-            )
-            ->havingRaw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) <= 10')
+                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
+            );
+        
+        $criticalStock = DB::table(DB::raw('(' . $subquery->toSql() . ') as product_stocks'))
+            ->whereRaw('current_stock <= 15')
             ->count();
         
         Log::info('Critical stock calculated', ['count' => $criticalStock]);
@@ -707,9 +710,9 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $topBranches = collect([]);
     }
     
-    // 9. Alerts Panel
+    // 9. Alerts Panel - Out of Stock Items
     try {
-        $outOfStockItems = DB::table('products')
+        $subquery = DB::table('products')
             ->leftJoinSub(
                 DB::table('stock_ins')
                     ->select('product_id', DB::raw('SUM(quantity) as total_in'))
@@ -720,18 +723,22 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'stock_in_totals.product_id'
             )
             ->leftJoinSub(
-                DB::table('stock_ins')
-                    ->select('product_id', DB::raw('SUM(sold) as total_sold'))
+                DB::table('stock_outs')
+                    ->select('product_id', DB::raw('SUM(quantity) as total_out'))
                     ->groupBy('product_id'),
-                'stock_sold_totals',
+                'stock_out_totals',
                 'products.id',
                 '=',
-                'stock_sold_totals.product_id'
+                'stock_out_totals.product_id'
             )
             ->select(
+                'products.id',
                 'products.product_name',
-                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_sold_totals.total_sold, 0)) as current_stock')
-            )
+                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
+            );
+        
+        $outOfStockItems = DB::table(DB::raw('(' . $subquery->toSql() . ') as product_stocks'))
+            ->whereRaw('current_stock <= 15')
             ->count();
         
         Log::info('Out of stock items calculated', ['count' => $outOfStockItems]);
@@ -740,6 +747,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $outOfStockItems = 0;
     }
     
+    // 10. Negative Profit Items (items sold below cost)
     try {
         $negativeProfitItems = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -748,6 +756,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
                      ->on('sales.branch_id', '=', 'stock_ins.branch_id');
             })
             ->whereDate('sales.created_at', $today)
+            ->whereRaw('sale_items.quantity * stock_ins.price > sale_items.subtotal')
             ->count();
         
         Log::info('Negative profit items calculated', ['count' => $negativeProfitItems]);
@@ -756,6 +765,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $negativeProfitItems = 0;
     }
     
+    // 14. Voided Sales Today (simplified - count all sales for now)
     try {
         $voidedSalesToday = DB::table('sales')
             ->whereDate('created_at', $today)
@@ -767,16 +777,16 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $voidedSalesToday = 0;
     }
     
-    // 10. Unusual Activity
+    // 11. Below Cost Sales (items sold below cost)
     try {
-        $belowCostSales = DB::table('sales')
-            ->join('sale_items', 'sales.id', '=', 'sales.id')
+        $belowCostSales = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('stock_ins', function($join) {
                 $join->on('sale_items.product_id', '=', 'stock_ins.product_id')
                      ->on('sales.branch_id', '=', 'stock_ins.branch_id');
             })
             ->whereDate('sales.created_at', $today)
-            ->where('discount_percentage', '>', 20)
+            ->whereRaw('sale_items.quantity * stock_ins.price > sale_items.subtotal')
             ->count();
         
         Log::info('Below cost sales calculated', ['count' => $belowCostSales]);
@@ -785,16 +795,29 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $belowCostSales = 0;
     }
     
+    // 12. High Discount Usage (transactions with high discounts)
     try {
         $highDiscountUsage = DB::table('sales')
             ->whereDate('created_at', $today)
-            ->where('discount_percentage', '>', 20) // Assuming discount field
+            ->where('discount_percentage', '>', 15) // More reasonable threshold
             ->count();
         
         Log::info('High discount usage calculated', ['count' => $highDiscountUsage]);
     } catch (\Exception $e) {
         Log::error('Error calculating high discount usage: ' . $e->getMessage());
         $highDiscountUsage = 0;
+    }
+    
+    // 13. Refunds Today
+    try {
+        $refundsToday = DB::table('refunds')
+            ->whereDate('created_at', $today)
+            ->count();
+        
+        Log::info('Refunds calculated', ['count' => $refundsToday]);
+    } catch (\Exception $e) {
+        Log::error('Error calculating refunds: ' . $e->getMessage());
+        $refundsToday = 0;
     }
     
     // ROW 3: OPERATIONS SNAPSHOT
@@ -878,7 +901,8 @@ Route::get('/dashboard/widgets', function (Request $request) {
             'negativeProfit' => $negativeProfitItems,
             'voidedSales' => $voidedSalesToday,
             'belowCostSales' => $belowCostSales,
-            'highDiscountUsage' => $highDiscountUsage
+            'highDiscountUsage' => $highDiscountUsage,
+            'refunds' => $refundsToday
         ],
         
         // Row 3: Operations
@@ -915,7 +939,8 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'negativeProfit' => 0,
                 'voidedSales' => 0,
                 'belowCostSales' => 0,
-                'highDiscountUsage' => 0
+                'highDiscountUsage' => 0,
+                'refunds' => 0
             ],
             'operations' => [
                 'cashierPerformance' => [],
@@ -979,34 +1004,28 @@ Route::middleware('auth')->group(function () {
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->middleware('ability:purchases,edit')->name('purchases.store');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->middleware('ability:purchases,view')->name('purchases.show');
 
-        // Stock In routes
-        // DEBUG: Temporarily removed middleware to test for permissions issue.
-        Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->name('stockin.index');
-        Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'create'])->name('stockin.create');
-        Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'store'])->name('stockin.store');
-        Route::get('/stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'getProductsByPurchase'])->name('stockin.products-by-purchase');
-
         // Inventory routes
         Route::get('/inventory', [InventoryController::class, 'index'])->middleware('ability:inventory,view')->name('inventory.index');
+        Route::get('/inventory/out-of-stock', [InventoryController::class, 'outOfStock'])->middleware('ability:inventory,view')->name('inventory.out-of-stock');
+        Route::get('/inventory/out-of-stock/export', [InventoryController::class, 'exportOutOfStockPDF'])->middleware('ability:inventory,view')->name('inventory.out-of-stock.export');
         Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('inventory.stock-in');
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
+    });
 
-        // Stock Transfer routes
-        Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
-        Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('stocktransfer.store');
-        Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
+    // Stock Transfer routes
+    Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
+    Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
-        // Settings routes (guard at least with view-level ability)
-        Route::middleware('ability:settings,view')->group(function () {
-            Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
-            Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
-            Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
-            Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
-            Route::resource('sales', \App\Http\Controllers\Admin\SalesController::class);
-            Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
-            Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
-            Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
-            
+    // Settings routes (guard at least with view-level ability)
+    Route::middleware('ability:settings,view')->group(function () {
+        Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
+        Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
+        Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
+        Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
+        Route::resource('sales', \App\Http\Controllers\Admin\SalesController::class);
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
+        Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
             // Custom receipt template routes
             Route::get('receipt-templates/{receiptTemplate}/preview', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'preview'])->name('receipt-templates.preview');
             Route::post('receipt-templates/{receiptTemplate}/set-default', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'setDefault'])->name('receipt-templates.set-default');
@@ -1149,16 +1168,14 @@ Route::middleware('auth')->group(function () {
             Route::get('customers/payment-history', [\App\Http\Controllers\Admin\CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
         });
     });
-});
+{
+}
 
-Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])
-    ->name('ui.sidebar.user-mgmt');
+            Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])->name('ui.sidebar.user-mgmt');
 
-Route::get('/password/reset', function () {
-    return view('auth.passwords.email');
-})->name('password.request');
+            Route::get('/password/reset', function () {return view('auth.passwords.email');})->name('password.request');
 
-Route::post('/password/email', function (Request $request) {
+            Route::post('/password/email', function (Request $request) {
     $request->validate(['email' => 'required|email']);
     $user = \App\Models\User::where('email', $request->input('email'))->first();
     if ($user) {

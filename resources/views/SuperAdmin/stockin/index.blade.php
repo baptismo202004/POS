@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Purchase')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+@endpush
+
 @section('content')
     <div class="p-3 p-lg-4">
 
@@ -71,8 +75,28 @@
                 icon: 'success',
                 title: 'Success!',
                 text: '{{ session('success') }}',
-                timer: 3000,
-                showConfirmButton: false
+                showConfirmButton: true,
+                confirmButtonText: 'Great!',
+                confirmButtonColor: '#10b981',
+                backdrop: `
+                    rgba(16, 185, 129, 0.1)
+                    left top
+                    no-repeat
+                `,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                },
+                position: 'top-center',
+                toast: false,
+                timer: 4000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
             });
             @endif
         });

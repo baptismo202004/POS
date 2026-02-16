@@ -7,6 +7,7 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
     <style>
         :root{ --theme-color: #2563eb; }
@@ -85,7 +86,19 @@
                 title: 'Stock-in Error',
                 html: '{!! session('error') !!}',
                 confirmButtonText: 'Okay',
-                confirmButtonColor: '#3085d6',
+                confirmButtonColor: '#ef4444',
+                backdrop: `
+                    rgba(239, 68, 68, 0.1)
+                    left top
+                    no-repeat
+                `,
+                showClass: {
+                    popup: 'animate__animated animate__shakeX'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                },
+                position: 'top-center'
             });
             @endif
 
@@ -169,6 +182,20 @@
                                 icon: 'error',
                                 title: 'Error Fetching Items',
                                 text: 'Could not retrieve items for the selected purchase. Please check the console for details.',
+                                confirmButtonText: 'Understood',
+                                confirmButtonColor: '#ef4444',
+                                backdrop: `
+                                    rgba(239, 68, 68, 0.1)
+                                    left top
+                                    no-repeat
+                                `,
+                                showClass: {
+                                    popup: 'animate__animated animate__shakeX'
+                                },
+                                hideClass: {
+                                    popup: 'animate__animated animate__fadeOutUp'
+                                },
+                                position: 'top-center'
                             });
                         }
                     });
