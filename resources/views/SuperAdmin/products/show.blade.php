@@ -11,7 +11,7 @@
                 <button class="btn btn-success" onclick="addImage()">
                     <i class="bi bi-plus-circle"></i> Add Image
                 </button>
-                <a href="{{ route('superadmin.stockin.index') }}" class="btn btn-primary">Back to stock in</a>
+                <a href="{{ route('superadmin.products.index') }}" class="btn btn-primary">Back to Products</a>
             </div>
         </div>
 
@@ -96,8 +96,8 @@
                 
                 // Show loading state
                 Swal.showLoading();
-                Swal.update({
-                    title: 'Uploading...',
+                Swal.fire({
+                    title: '<div style="display: flex; align-items: center; gap: 10px;"><div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem;"><span class="visually-hidden">Loading...</span></div> Uploading...</div>',
                     html: 'Please wait while we upload your image.',
                     showConfirmButton: false,
                     showCancelButton: false

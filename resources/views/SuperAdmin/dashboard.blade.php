@@ -1791,7 +1791,7 @@
     const root = qsById(widgetId);
     if (!root) return null;
     if (!selectorOrId) return null;
-    const sel = selectorOrId.startsWith('#') || selectorOrId.startsWith('.') ? selectorOrId : '#${selectorOrId}';
+    const sel = selectorOrId.startsWith('#') || selectorOrId.startsWith('.') ? selectorOrId : `#${selectorOrId}`;
     return qs(root, sel);
   }
   
@@ -1803,7 +1803,7 @@
       const check = () => {
         const el = root.querySelector(selector);
         if (el) return resolve(el);
-        if (performance.now() - start > timeout) return reject(new Error(Timeout waiting for ${selector}));
+        if (performance.now() - start > timeout) return reject(new Error(`Timeout waiting for ${selector}`));
         requestAnimationFrame(check);
       };
       check();
@@ -1844,7 +1844,7 @@
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
@@ -1868,7 +1868,7 @@
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
@@ -1892,7 +1892,7 @@
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
@@ -1958,7 +1958,7 @@
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
@@ -1982,7 +1982,7 @@
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error(HTTP error! status: ${response.status});
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then(data => {
@@ -2008,8 +2008,8 @@
 
     if (monthlyReturnsChangeElement) {
       const changePercent = data.returns_change_percentage;
-      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
-                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
                         'No change from last month';
       monthlyReturnsChangeElement.textContent = changeText;
       monthlyReturnsChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -2034,8 +2034,8 @@
 
     if (monthlyProfitChangeElement) {
       const changePercent = data.profit_change_percentage;
-      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
-                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
                         'No change from last month';
       monthlyProfitChangeElement.textContent = changeText;
       monthlyProfitChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -2091,8 +2091,8 @@
 
     if (monthlyChangeElement) {
       const changePercent = data.sales_change_percentage;
-      const changeText = changePercent > 0 ? ↑ ${changePercent}% from last month : 
-                        changePercent < 0 ? ↓ ${Math.abs(changePercent)}% from last month : 
+      const changeText = changePercent > 0 ? `↑ ${changePercent}% from last month` : 
+                        changePercent < 0 ? `↓ ${Math.abs(changePercent)}% from last month` : 
                         'No change from last month';
       monthlyChangeElement.textContent = changeText;
       monthlyChangeElement.style.color = changePercent > 0 ? 'var(--profit-positive)' : 
@@ -2176,7 +2176,7 @@
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
         }
       });
-      if (!res.ok) throw new Error(HTTP ${res.status});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (err) {
       console.warn('Chart data fetch failed:', err);
@@ -2201,7 +2201,7 @@
     const totalAlertsElement = $('totalAlertsCount');
     
     if (totalAlertsElement) {
-      const totalAlerts = alerts.outOfStock + alerts.negativeProfit + alerts.voidedSales + alerts.belowCostSales + alerts.highDiscountUsage;
+      const totalAlerts = alerts.outOfStock + alerts.negativeProfit + alerts.voidedSales + alerts.belowCostSales + alerts.highDiscountUsage + alerts.refunds;
       totalAlertsElement.textContent = totalAlerts;
     }
     
@@ -2209,7 +2209,7 @@
       const alertItems = [];
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory?filter=out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
+        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory/out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
       
       if (alerts.negativeProfit > 0) {
@@ -2228,8 +2228,8 @@
         alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/sales?filter=below-price'"><i class="fas fa-percentage alert-icon" style="color:#2196F3"></i><div class="alert-content"><div class="alert-title">${alerts.highDiscountUsage} high discount transactions</div><div class="alert-description">Review approvals</div></div></div>`);
       }
       
-      if (alerts.belowPrice > 0) {
-        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales?filter=below-price'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowPrice} products sold below cost</div><div class="alert-description">Review pricing strategy</div></div></div>`);
+      if (alerts.refunds > 0) {
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/refunds'"><i class="fas fa-undo alert-icon" style="color:#FF9800"></i><div class="alert-content"><div class="alert-title">${alerts.refunds} refunds today</div><div class="alert-description">Review returns</div></div></div>`);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';

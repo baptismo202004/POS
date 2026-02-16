@@ -10,7 +10,7 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::latest()->get();
+        $categories = Category::orderBy('id', 'asc')->get();
         return view('SuperAdmin.categories.index', compact('categories'));
     }
 
@@ -22,6 +22,10 @@ class CategoryController extends Controller
         ]);
 
         Category::create(['category_name' => $request->category_name, 'status' => $request->status]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Category added successfully']);
+        }
 
         return back()->with('success', 'Category added');
     }
@@ -45,6 +49,10 @@ class CategoryController extends Controller
 
         $category->update(['category_name' => $request->category_name, 'status' => $request->status]);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Category updated successfully']);
+        }
+
         return redirect()->route('superadmin.categories.index')->with('success', 'Category updated successfully');
     }
 
@@ -62,6 +70,10 @@ class CategoryController extends Controller
         ]);
 
         Category::whereIn('id', $request->ids)->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Categories deleted successfully']);
+        }
 
         return back()->with('success', 'Selected categories deleted successfully');
     }

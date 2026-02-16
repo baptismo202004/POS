@@ -1,6 +1,191 @@
 @extends('layouts.app')
 @section('title', 'Categories')
 
+@push('styles')
+<style>
+.card-base .card-header {
+    background: #12dcc4 !important;
+    background: linear-gradient(135deg, #12dcc4 0%, #0ea5e9 100%) !important;
+    border: none !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 4px 6px rgba(18, 220, 148, 0.3);
+}
+
+.page-header h3 {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    color: #ffffff !important;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.btn-outline-primary {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-outline-danger {
+    background-color: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-danger:hover {
+    background-color: #c82333;
+    border-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border: none;
+    padding: 1rem;
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.badge {
+    padding: 0.4rem 0.8rem;
+    font-weight: 500;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+.bg-success {
+    background-color: #28a745;
+}
+
+.bg-secondary {
+    background-color: #6c757d;
+}
+
+.row-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Modal Improvements */
+.modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 12px 12px 0 0;
+    padding: 1.5rem;
+}
+
+.modal-title {
+    color: white;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    border: none;
+    padding: 1.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+</style>
+@endpush
+
 @include('layouts.theme-base')
 
 @section('content')
@@ -9,13 +194,13 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <div class="page-header">
                 <h3 class="m-0">Categories</h3>
-                <p class="text-muted mb-0">Manage product categories and classifications</p>
+                <p class="text-white mb-0">Manage product categories and classifications</p>
             </div>
             <div class="d-flex gap-2">
-                <button type="button" id="editBtn" class="btn btn-outline-primary" disabled>
+                <button type="button" id="editBtn" class="btn btn-primary" disabled>
                     <i class="fas fa-edit me-2"></i> Edit
                 </button>
-                <button type="button" id="deleteBtn" class="btn btn-outline-danger" disabled>
+                <button type="button" id="deleteBtn" class="btn btn-danger" disabled>
                     <i class="fas fa-trash me-2"></i> Delete
                 </button>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openCategoryModal()">
@@ -196,40 +381,190 @@
         deleteBtn.addEventListener('click', function () {
             const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
             if (selectedCheckboxes.length > 0) {
-                if (confirm('Are you sure you want to delete the selected categories?')) {
-                    const ids = Array.from(selectedCheckboxes).map(cb => cb.closest('tr').dataset.id);
-                    
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '{{ route("superadmin.categories.bulkDestroy") }}';
-                    
-                    const methodInput = document.createElement('input');
-                    methodInput.type = 'hidden';
-                    methodInput.name = '_method';
-                    methodInput.value = 'DELETE';
-                    form.appendChild(methodInput);
-                    
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = '{{ csrf_token() }}';
-                    form.appendChild(csrfInput);
-                    
-                    ids.forEach(id => {
-                        const idInput = document.createElement('input');
-                        idInput.type = 'hidden';
-                        idInput.name = 'ids[]';
-                        idInput.value = id;
-                        form.appendChild(idInput);
-                    });
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                const categoryCount = selectedCheckboxes.length;
+                const message = categoryCount === 1 
+                    ? 'Are you sure you want to delete this category?' 
+                    : `Are you sure you want to delete the selected ${categoryCount} categories?`;
+                
+                Swal.fire({
+                    title: 'Confirm Delete',
+                    text: message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const ids = Array.from(selectedCheckboxes).map(cb => cb.closest('tr').dataset.id);
+                        
+                        // Show loading SweetAlert
+                        Swal.fire({
+                            title: 'Deleting...',
+                            html: 'Please wait while we delete the selected categories.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+                        
+                        // Submit form via AJAX for better UX
+                        const formData = new FormData();
+                        formData.append('_method', 'DELETE');
+                        formData.append('_token', '{{ csrf_token() }}');
+                        
+                        ids.forEach(id => {
+                            formData.append('ids[]', id);
+                        });
+                        
+                        fetch('{{ route("superadmin.categories.bulkDestroy") }}', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => {
+                            console.log('Response status:', response.status);
+                            console.log('Response headers:', response.headers);
+                            
+                            if (!response.ok) {
+                                if (response.status === 403) {
+                                    throw new Error('Permission denied. You may not have the required permissions to delete categories.');
+                                }
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Response data:', data);
+                            if (data.success) {
+                                // Success notification
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: 'Categories deleted successfully!',
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    position: 'top-end',
+                                    toast: true
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                // Error notification
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: data.message || 'Something went wrong. Please try again.',
+                                    confirmButtonColor: '#dc3545'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            // Fallback to form submission if AJAX fails
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = '{{ route("superadmin.categories.bulkDestroy") }}';
+                            
+                            const methodInput = document.createElement('input');
+                            methodInput.type = 'hidden';
+                            methodInput.name = '_method';
+                            methodInput.value = 'DELETE';
+                            form.appendChild(methodInput);
+                            
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = '_token';
+                            csrfInput.value = '{{ csrf_token() }}';
+                            form.appendChild(csrfInput);
+                            
+                            ids.forEach(id => {
+                                const idInput = document.createElement('input');
+                                idInput.type = 'hidden';
+                                idInput.name = 'ids[]';
+                                idInput.value = id;
+                                form.appendChild(idInput);
+                            });
+                            
+                            document.body.appendChild(form);
+                            form.submit();
+                        });
+                    }
+                });
             }
         });
 
         updateButtonStates();
+    });
+
+    // Handle category form submission with AJAX and SweetAlert
+    document.getElementById('categoryForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const formData = new FormData(form);
+        const isEdit = form.querySelector('input[name="_method"]')?.value === 'PUT';
+        
+        // Show loading SweetAlert
+        Swal.fire({
+            title: 'Processing...',
+            html: 'Please wait while we save the category.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Submit form via AJAX
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Success notification
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: isEdit ? 'Category updated successfully!' : 'Category added successfully!',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    position: 'top-end',
+                    toast: true
+                }).then(() => {
+                    // Close modal and reload page
+                    bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+                    location.reload();
+                });
+            } else {
+                // Error notification
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: data.message || 'Something went wrong. Please try again.',
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Network error. Please try again.',
+                confirmButtonColor: '#dc3545'
+            });
+        });
     });
 
     function openCategoryModal() {

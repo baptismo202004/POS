@@ -188,6 +188,18 @@ class ProductController extends Controller
                         $validated['category_id'] = null;
                     }
 
+                    // Handle branch_id - check if it's numeric or text
+                    if (!empty($validated['branch_id'])) {
+                        if (!is_numeric($validated['branch_id'])) {
+                            Log::info('Creating new branch', ['branch_name' => $validated['branch_id']]);
+                            $b = Branch::create(['branch_name' => $validated['branch_id'], 'status' => 'active']);
+                            $validated['branch_id'] = $b->id;
+                            Log::info('New branch created with ID', ['branch_id' => $b->id]);
+                        }
+                    } else {
+                        $validated['branch_id'] = null;
+                    }
+
                     if ($request->hasFile('image')) {
                         $validated['image'] = $request->file('image')->store('products', 'public');
                         Log::info('Image stored', ['path' => $validated['image']]);
@@ -282,6 +294,11 @@ class ProductController extends Controller
                 if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
                     $c = Category::create(['category_name' => $request->input('category_id'), 'status' => 'active']);
                     $validated['category_id'] = $c->id;
+                }
+
+                if (!empty($request->input('branch_id')) && !is_numeric($request->input('branch_id'))) {
+                    $b = Branch::create(['branch_name' => $request->input('branch_id'), 'status' => 'active']);
+                    $validated['branch_id'] = $b->id;
                 }
 
                 if ($request->hasFile('image')) {

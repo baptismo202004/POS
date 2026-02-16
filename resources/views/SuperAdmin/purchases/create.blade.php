@@ -226,7 +226,7 @@
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="addSupplierForm" action="{{ route('superadmin.suppliers.store') }}" method="POST">
+                    <form id="addSupplierForm" action="{{ route('suppliers.store') }}" method="POST">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label">Supplier Name</label>

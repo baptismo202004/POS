@@ -108,12 +108,27 @@
 }
 
 .search-wrapper {
-    min-width: 200px; /* Reduced from 250px */
+    min-width: 180px; /* Further reduced from 200px */
     flex-shrink: 0;
 }
 
+.search-wrapper .input-group {
+    position: relative;
+}
+
+.search-wrapper .input-group-text {
+    background: transparent;
+    border-right: none;
+    padding: 0.375rem 0.75rem;
+}
+
 .search-wrapper input {
-    min-width: 150px; /* Reduced from 200px */
+    min-width: 130px; /* Further reduced from 150px */
+    border-left: none;
+}
+
+.search-wrapper .input-group:focus-within .input-group-text {
+    border-color: #86b7fe;
 }
 
 .btn {
@@ -128,11 +143,11 @@
     }
     
     .search-wrapper {
-        min-width: 250px;
+        min-width: 200px; /* Slightly larger for desktop */
     }
     
     .search-wrapper input {
-        min-width: 200px;
+        min-width: 150px; /* Slightly larger for desktop */
     }
 }
 
@@ -187,15 +202,18 @@
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                 <div class="d-flex align-items-center gap-4">
                                     <h2 class="m-0">Product List</h2>
-                                    <p class="mb-0 text-muted">Manage your product inventory</p>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="search-wrapper">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <path d="m21 21-4.35-4.35"></path>
-                                        </svg>
-                                        <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="11" cy="11" r="8"></circle>
+                                                    <path d="m21 21-4.35-4.35"></path>
+                                                </svg>
+                                            </span>
+                                            <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
+                                        </div>
                                     </div>
                                     <a href="{{ route('superadmin.products.create') }}" class="btn btn-add-product d-flex align-items-center gap-2">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -249,6 +267,7 @@
                                                 <th>Product Type</th>
                                                 <th>Unit Type</th>
                                                 <th>Status</th>
+                                                <th>View</th>
                                             </tr>
                                         </thead>
                                         <tbody id="product-table-body">

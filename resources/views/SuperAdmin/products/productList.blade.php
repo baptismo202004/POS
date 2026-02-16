@@ -131,7 +131,7 @@
 
                                     <div class="col-md-3 non-electronic-field">
                                         <label class="form-label">Branch</label>
-                                        <select name="branch_id" id="branchSelect" class="form-control">
+                                        <select name="branch_id" id="branchSelect" class="form-control select2-tags" style="width:100%">
                                             <option value="">-- Select Branch --</option>
                                             @foreach($branches ?? [] as $branch)
                                                 <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
@@ -175,7 +175,7 @@
             console.log('jQuery and Select2 loaded successfully');
             
             // Initialize all select2 dropdowns
-            $('#brandSelect, #categorySelect').select2({
+            $('#brandSelect, #categorySelect, #branchSelect').select2({
                 tags: true,
                 placeholder: '-- Select or create --',
                 allowClear: true,
@@ -222,7 +222,8 @@
                     if (!$('#branchSelect').hasClass('select2-hidden-accessible')) {
                         console.log('Initializing branch select2 with HTML:', $('#branchSelect').html());
                         $('#branchSelect').select2({
-                            placeholder: '-- Select Branch --',
+                            tags: true,
+                            placeholder: '-- Select or create --',
                             allowClear: true,
                             width: 'resolve'
                         });

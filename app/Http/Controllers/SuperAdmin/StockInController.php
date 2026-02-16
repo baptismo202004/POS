@@ -120,7 +120,7 @@ class StockInController extends Controller
 
         if ($stockInCount > 0) {
             return redirect()->route('superadmin.stockin.index')
-                             ->with('success', $stockInCount . ' item(s) have been successfully stocked in.');
+                             ->with('success', 'Stock adjusted successfully.');
         }
 
         return back()->withInput()->with('error', 'No items were stocked in. Please provide a quantity for at least one item.');
