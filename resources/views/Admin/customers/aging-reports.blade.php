@@ -28,7 +28,7 @@
                             <h4 class="m-0">Aging Reports</h4>
                             <p class="mb-0 text-muted">Overdue accounts and aging analysis</p>
                         </div>
-                        <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-primary">Go to Sales</a>
+                        <a href="{{ route('admin.sales.management.index') }}" class="btn btn-primary">Go to Sales</a>
                     </div>
                     <div class="card-body">
                         @forelse($agingReport as $category => $data)

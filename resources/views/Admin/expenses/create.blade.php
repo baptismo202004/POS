@@ -6,20 +6,13 @@
     <div class="p-4 card-rounded shadow-sm bg-white">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="m-0">Add New Expenses</h4>
-            <a href="{{ route('superadmin.admin.expenses.index') }}" class="btn btn-light border">Back to Expenses</a>
+            <a href="{{ route('admin.expenses.index') }}" class="btn btn-light border">Back to Expenses</a>
         </div>
         <div class="card-body">
-            <form action="{{ route('superadmin.admin.expenses.store') }}" method="POST" enctype="multipart/form-data">
-                @csrf            
-
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-body">
-                        <form action="{{ route('superadmin.admin.expenses.store') }}" method="POST" enctype="multipart/form-data">
-                            @csrf
-                            
-                            <div class="row">
+            <form action="{{ route('admin.expenses.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                
+                <div class="row">
                                 <!-- Section A: Expense Information -->
                                 <div class="col-md-6">
                                     <h5>Expense Information</h5>
@@ -34,7 +27,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="expense_date" class="form-label">Expense Date <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control" name="expense_date" id="expense_date" required>
+                                        <input type="date" class="form-control" name="expense_date" id="expense_date" value="{{ now()->format('Y-m-d') }}" required>
                                     </div>
                                     <div class="mb-3">
                                         <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
@@ -59,13 +52,14 @@
                                         <textarea class="form-control" name="description" id="description" rows="3" placeholder="Enter a short description..."></textarea>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="supplier_id" class="form-label">Supplier</label>
-                                        <select class="form-select" name="supplier_id" id="supplier_id">
-                                            <option value="" selected>Select a supplier (optional)</option>
+                                        <label for="supplier_name" class="form-label">Supplier</label>
+                                        <select class="form-select" name="supplier_name" id="supplier_name">
+                                            <option value="">Select a supplier or type new name (optional)</option>
                                             @foreach($suppliers as $supplier)
-                                                <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                                <option value="{{ $supplier->supplier_name }}">{{ $supplier->supplier_name }}</option>
                                             @endforeach
                                         </select>
+                                        <small class="text-muted">Select existing supplier or type to create new one</small>
                                     </div>
                                     <div class="mb-3">
                                         <label for="reference_number" class="form-label">Reference Number</label>
@@ -99,7 +93,21 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
     $(document).ready(function() {
-        $('#expense_category_id, #supplier_id').select2();
+        $('#expense_category_id').select2();
+        $('#supplier_name').select2({
+            tags: true,
+            createTag: function (params) {
+                // Don't create empty tags
+                if ($.trim(params.term) === '') {
+                    return null;
+                }
+                return {
+                    id: params.term,
+                    text: params.term,
+                    newOption: true
+                };
+            }
+        });
         
         // Auto-select payment method based on amount
         $('#amount').on('input change keyup paste', function() {

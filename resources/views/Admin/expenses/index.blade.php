@@ -10,7 +10,37 @@
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2 class="m-0">Expenses</h2>
-                                <a href="{{ route('superadmin.admin.expenses.create') }}" class="btn btn-primary">Add New Expense</a>
+                                <a href="{{ route('admin.expenses.create') }}" class="btn btn-primary">Add New Expense</a>
+                            </div>
+
+                            <!-- Search and Filter Section -->
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="input-group">
+                                        <input type="text" id="expenseSearch" class="form-control" placeholder="Search expenses..." onkeyup="searchExpenses()">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="categoryFilter" class="form-select" onchange="filterExpenses()">
+                                        <option value="">All Categories</option>
+                                        @foreach ($categories ?? [] as $category)
+                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="paymentMethodFilter" class="form-select" onchange="filterExpenses()">
+                                        <option value="">All Payment Methods</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="purchase_order">Purchase Order</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" id="dateFilter" class="form-control" onchange="filterExpenses()">
+                                </div>
                             </div>
 
                             <!-- Summary Cards -->
@@ -73,7 +103,6 @@
                                             <th>Description</th>
                                             <th>Amount</th>
                                             <th>Payment Method</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -85,22 +114,10 @@
                                             <td>{{ $expense->description }}</td>
                                             <td>₱{{ number_format($expense->amount, 2) }}</td>
                                             <td>{{ $expense->payment_method }}</td>
-                                            <td>
-                                                @can('update-expense', $expense)
-                                                    <a href="{{ route('superadmin.admin.expenses.edit', $expense) }}" class="btn btn-sm btn-warning">Edit</a>
-                                                @endcan
-                                                @can('delete-expense', $expense)
-                                                    <form action="{{ route('superadmin.admin.expenses.destroy', $expense) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this expense?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                                    </form>
-                                                @endcan
-                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center py-5">
+                                            <td colspan="6" class="text-center py-5">
                                                 <h5 class="mb-0">No expenses recorded yet</h5>
                                             </td>
                                         </tr>
@@ -112,3 +129,69 @@
                 </div>
             </div>
 @endsection
+
+<script>
+function searchExpenses() {
+    const searchTerm = document.getElementById('expenseSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const description = row.cells[3]?.textContent.toLowerCase() || '';
+        const category = row.cells[2]?.textContent.toLowerCase() || '';
+        const paymentMethod = row.cells[5]?.textContent.toLowerCase() || '';
+        const amount = row.cells[4]?.textContent.toLowerCase() || '';
+        
+        const matchesSearch = description.includes(searchTerm) || 
+                           category.includes(searchTerm) || 
+                           paymentMethod.includes(searchTerm) || 
+                           amount.includes(searchTerm);
+        
+        row.style.display = matchesSearch ? '' : 'none';
+    });
+}
+
+function filterExpenses() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const paymentMethodFilter = document.getElementById('paymentMethodFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        let showRow = true;
+        
+        // Category filter
+        if (categoryFilter && row.cells[2]?.textContent.trim() !== '') {
+            const categoryText = row.cells[2].textContent.trim();
+            const categoryOption = document.querySelector(`#categoryFilter option[value="${categoryFilter}"]`);
+            if (categoryOption && categoryText !== categoryOption.textContent) {
+                showRow = false;
+            }
+        }
+        
+        // Payment method filter
+        if (paymentMethodFilter && row.cells[5]?.textContent.trim() !== '') {
+            const paymentMethodText = row.cells[5].textContent.trim().toLowerCase().replace(' ', '_');
+            if (paymentMethodText !== paymentMethodFilter) {
+                showRow = false;
+            }
+        }
+        
+        // Date filter
+        if (dateFilter && row.cells[1]?.textContent.trim() !== '') {
+            const rowDate = row.cells[1].textContent.trim();
+            const formattedDate = new Date(rowDate).toISOString().split('T')[0];
+            if (formattedDate !== dateFilter) {
+                showRow = false;
+            }
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Apply any existing filters
+    filterExpenses();
+});
+</script>

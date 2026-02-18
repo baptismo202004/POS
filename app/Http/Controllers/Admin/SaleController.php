@@ -23,7 +23,7 @@ class SaleController extends Controller
         // Simple barcode generation using HTML5 canvas or image
         $barcode = $sale->id;
         
-        $receiptUrl = route('superadmin.admin.sales.receipt', $sale);
+        $receiptUrl = route('admin.sales.receipt', $sale);
         
         return view('Admin.sales.receipt', compact('sale', 'barcode'));
     }

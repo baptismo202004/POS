@@ -90,7 +90,7 @@
             <div class="container-fluid">
                 <!-- Back Button -->
                 <div class="mb-3">
-                    <a href="{{ route('superadmin.admin.credits.customer', $customer->id) }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('admin.credits.customer', $customer->id) }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Back to Active Credits
                     </a>
                 </div>
@@ -159,7 +159,7 @@
                         <h5 class="mb-3">
                             <i class="fas fa-filter me-2"></i>Filters
                         </h5>
-                        <form method="GET" action="{{ route('superadmin.admin.credits.full-history', $customer->id) }}">
+                        <form method="GET" action="{{ route('admin.credits.full-history', $customer->id) }}">
                             <div class="row">
                                 <div class="col-md-3">
                                     <label class="form-label">Date From</label>
@@ -199,7 +199,7 @@
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-search me-1"></i> Apply Filters
                                     </button>
-                                    <a href="{{ route('superadmin.admin.credits.full-history', $customer->id) }}" class="btn btn-outline-secondary">
+                                    <a href="{{ route('admin.credits.full-history', $customer->id) }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i> Clear Filters
                                     </a>
                                 </div>

@@ -886,15 +886,33 @@
                                         });
                                         message += '</ul></div>';
 
-                                        // Add found products to the items list
+                                        let newProductsCount = 0;
+                                        let existingProductsCount = 0;
+                                        
                                         response.products.forEach(function(product) {
-                                            console.log('Adding found product:', product);
+                                            console.log('Adding product:', product);
+                                            if (product.is_new) {
+                                                newProductsCount++;
+                                            } else {
+                                                existingProductsCount++;
+                                            }
+                                            
                                             addItem({
                                                 id: product.id,
                                                 quantity: product.quantity,
                                                 cost: product.cost
                                             });
                                         });
+                                        
+                                        if (existingProductsCount > 0) {
+                                            if (message) message += '<br>';
+                                            message += `<strong>${existingProductsCount} existing product(s) matched</strong>`;
+                                        }
+                                        
+                                        if (newProductsCount > 0) {
+                                            if (message) message += '<br>';
+                                            message += `<strong>${newProductsCount} new product(s) created</strong>`;
+                                        }
                                     }
 
                                     if (response.unmatched_products && response.unmatched_products.length > 0) {

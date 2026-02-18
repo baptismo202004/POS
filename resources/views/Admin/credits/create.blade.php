@@ -6,7 +6,7 @@
     <div class="p-4 card-rounded shadow-sm bg-white">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="m-0">Create New Credit</h2>
-            <a href="{{ route('superadmin.admin.credits.index') }}" class="btn btn-outline-primary">Back to Credits</a>
+            <a href="{{ route('admin.credits.index') }}" class="btn btn-outline-primary">Back to Credits</a>
         </div>
 
         <div class="card">
@@ -153,7 +153,7 @@
             }
         });
         
-        fetch('/superadmin/admin/credits', {
+        fetch('/admin/credits', {
             method: 'POST',
             body: formData
         })
@@ -167,7 +167,7 @@
                     timer: 2000,
                     showConfirmButton: false
                 }).then(() => {
-                    window.location.href = '/superadmin/admin/credits';
+                    window.location.href = '/admin/credits';
                 });
             } else {
                 Swal.fire({

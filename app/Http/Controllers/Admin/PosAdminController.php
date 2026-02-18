@@ -340,7 +340,7 @@ class PosAdminController extends Controller
             
             // If payment method is cash, include receipt URL for automatic display
             if ($paymentMethod === 'cash') {
-                $response['receipt_url'] = route('superadmin.admin.sales.receipt', $sale);
+                $response['receipt_url'] = route('admin.sales.receipt', $sale);
                 $response['auto_receipt'] = true;
             }
             
@@ -361,5 +361,133 @@ class PosAdminController extends Controller
     {
         // Placeholder for validateCashier method
         return response()->json(['message' => 'Cashier validation not implemented yet']);
+    }
+
+    // Stock In methods for Admin
+    public function stockInIndex()
+    {
+        $stockIns = StockIn::with(['product', 'purchase', 'branch'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+            
+        return view('Admin.stockin.index', compact('stockIns'));
+    }
+
+    public function stockInCreate()
+    {
+        $purchases = \App\Models\Purchase::with(['branch'])
+            ->orderBy('purchase_date', 'desc')
+            ->get();
+            
+        $branches = \App\Models\Branch::orderBy('branch_name')->get();
+            
+        return view('Admin.stockin.create', compact('purchases', 'branches'));
+    }
+
+    public function stockInProductsByPurchase(\App\Models\Purchase $purchase)
+    {
+        try {
+            $purchaseItems = $purchase->items()->with(['product.unitTypes', 'unitType'])->get();
+            
+            $items = $purchaseItems->map(function ($item) {
+                // Debug: Log the unit types data
+                Log::info("Product ID: {$item->product_id}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
+                
+                $unitTypes = $item->product->unitTypes ?? [];
+                
+                // If no unit types, get all unit types as fallback
+                if (empty($unitTypes)) {
+                    $unitTypes = \App\Models\UnitType::all();
+                }
+                
+                $result = [
+                    'product_id' => $item->product_id,
+                    'product' => $item->product,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_cost, // Fixed: use unit_cost instead of unit_price
+                    'unit_types' => $unitTypes,
+                    'unit_type' => $item->unitType
+                ];
+                
+                Log::info("Result for item {$item->product_id}: " . json_encode($result));
+                return $result;
+            });
+
+            Log::info("Final items data: " . json_encode($items->toArray()));
+            
+            // For debugging: Return raw data
+            return response()->json([
+                'items' => $items,
+                'debug' => [
+                    'purchase_id' => $purchase->id,
+                    'items_count' => $items->count(),
+                    'raw_items' => $items->toArray()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: " . $e->getMessage());
+            return response()->json(['items' => [], 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function stockInStore(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.unit_type_id' => 'required|exists:unit_types,id',
+                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.new_price' => 'required|numeric|min:0',
+                'items.*.branch_id' => 'required|exists:branches,id',
+            ]);
+
+            $items = $data['items'];
+            $stockIns = [];
+
+            foreach ($items as $item) {
+                Log::info("[STOCK_IN] Processing item", [
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $item['branch_id'],
+                    'quantity' => $item['quantity'],
+                    'new_price' => $item['new_price']
+                ]);
+
+                // Create stock in record
+                $stockIn = StockIn::create([
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $item['branch_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['new_price'],
+                    'user_id' => Auth::id()
+                ]);
+
+                $stockIns[] = $stockIn->id;
+
+                Log::info("[STOCK_IN] Stock added successfully", [
+                    'stock_in_id' => $stockIn->id,
+                    'product_id' => $item['product_id'],
+                    'quantity_added' => $item['quantity']
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($stockIns) . ' items added successfully',
+                'stock_in_ids' => $stockIns
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("[STOCK_IN] Error adding stock", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error adding stock: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -1,6 +1,36 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+.modal-body {
+    position: relative;
+    min-height: 200px;
+}
+
+#revenueLoading, #itemsLoading, #monthlyLoading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 10;
+}
+
+#revenueContent, #itemsContent, #monthlyContent {
+    position: relative;
+    z-index: 1;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+</style>
     <div class="d-flex min-vh-100">
 
         <main class="flex-fill p-4">
@@ -14,7 +44,7 @@
                                     <p class="mb-0 text-muted">
                                         @if(isset($selectedDate))
                                             Sales for {{ $selectedDate->format('F d, Y') }}
-                                            <a href="{{ route('superadmin.admin.sales.index') }}" class="text-primary text-decoration-none">
+                                            <a href="{{ route('admin.sales.index') }}" class="text-primary text-decoration-none">
                                                 <small>(Show Today)</small>
                                             </a>
                                         @else
@@ -27,7 +57,7 @@
                                         </div>
                                     @endif
                                 </div>
-                                <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
+                                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-primary">Go to Sales Management</a>
                             </div>
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
@@ -102,8 +132,9 @@
                 <!-- Recent Sales Table -->
                 <div class="card shadow mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Recent Sales</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Recent Sales</h6>
                         <div class="d-flex align-items-center gap-2">
+                            <input type="text" id="salesSearchInput" class="form-control form-control-sm" placeholder="Search sales..." onkeyup="searchSales()">
                             <input type="date" id="salesDateFilter" class="form-control form-control-sm" value="{{ isset($selectedDate) ? $selectedDate->format('Y-m-d') : '' }}" placeholder="Filter by date" onchange="filterSalesByDate()">
                         </div>
                     </div>
@@ -121,7 +152,7 @@
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="salesTableBody">
                                     @forelse($recentSales as $sale)
                                         <tr class="{{ $filter !== 'all' ? 'table-warning' : '' }}">
                                             <td>{{ $sale->product_names ?: 'No products' }}</td>
@@ -155,6 +186,14 @@
                                         </tr>
                                     @endforelse
                                 </tbody>
+                                <tfoot>
+                                    <tr class="table-primary">
+                                        <th colspan="3" class="text-right">Grand Total:</th>
+                                        <th>₱{{ number_format($recentSales->sum('total_amount'), 2) }}</th>
+                                        <th colspan="2">{{ $recentSales->count() }} Sales</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                         </div>
@@ -223,7 +262,7 @@
         
         // Function to refresh sale items for a sale
         function refreshSaleItems(saleId) {
-            fetch(`/superadmin/admin/sales/${saleId}/items`)
+            fetch(`/admin/sales/${saleId}/items`)
                 .then(response => {
                     console.log('Response status:', response.status);
                     if (!response.ok) {
@@ -317,7 +356,7 @@
             document.getElementById('sale_id').value = saleId;
             
             // Load sale items for this sale
-            fetch(`/superadmin/admin/sales/${saleId}/items`)
+            fetch(`/admin/sales/${saleId}/items`)
                 .then(response => {
                     console.log('Response status:', response.status);
                     if (!response.ok) {
@@ -456,7 +495,7 @@
                 }
             });
             
-            fetch('/superadmin/admin/refunds', {
+            fetch('/admin/refunds', {
                 method: 'POST',
                 body: formData
             })
@@ -513,8 +552,15 @@
             document.getElementById('revenueContent').style.display = 'none';
             
             // Fetch today's revenue data
-            fetch(`/superadmin/admin/sales/todays-revenue`)
-                .then(response => response.json())
+            const revenueUrl = "{{ route('admin.sales.todays-revenue') }}?t=" + Date.now();
+            console.log('Revenue URL:', revenueUrl);
+            fetch(revenueUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     document.getElementById('revenueLoading').style.display = 'none';
                     document.getElementById('revenueContent').style.display = 'block';
@@ -536,14 +582,15 @@
                             tbody.innerHTML += row;
                         });
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No sales today.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No sales today.</td></tr>';
                     }
                 })
                 .catch(error => {
+                    console.error('Error fetching revenue data:', error);
                     document.getElementById('revenueLoading').style.display = 'none';
                     document.getElementById('revenueContent').style.display = 'block';
                     document.getElementById('revenueTableBody').innerHTML = 
-                        '<tr><td colspan="4" class="text-center text-danger">Error loading revenue data. Please try again.</td></tr>';
+                        '<tr><td colspan="4" class="text-center text-danger">Error loading data. Please try again.</td></tr>';
                 });
         }
         
@@ -556,7 +603,7 @@
             document.getElementById('monthlyContent').style.display = 'none';
             
             // Fetch this month's sales data
-            fetch(`/superadmin/admin/sales/this-month-sales`)
+            fetch("{{ route('admin.sales.this-month-sales') }}?t=" + Date.now())
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('monthlyLoading').style.display = 'none';
@@ -591,20 +638,34 @@
         }
         
         function viewTodaysSales() {
-            window.location.href = "{{ route('superadmin.admin.reports.index', ['date' => now()->format('Y-m-d')]) }}";
+            window.location.href = "{{ route('admin.reports.index', ['date' => now()->format('Y-m-d')]) }}";
         }
         
         function viewTodaysRevenueReports() {
-            window.location.href = "{{ route('superadmin.admin.reports.index', ['date' => now()->format('Y-m-d')]) }}";
+            window.location.href = "{{ route('admin.reports.index', ['date' => now()->format('Y-m-d')]) }}";
         }
         
         function filterSalesByDate() {
             const dateFilter = document.getElementById('salesDateFilter').value;
             if (dateFilter) {
-                window.location.href = "{{ route('superadmin.admin.sales.index') }}?date=" + dateFilter;
+                window.location.href = "{{ route('admin.sales.index') }}?date=" + dateFilter;
             } else {
-                window.location.href = "{{ route('superadmin.admin.sales.index') }}";
+                window.location.href = "{{ route('admin.sales.index') }}";
             }
+        }
+        
+        function searchSales() {
+            const searchInput = document.getElementById('salesSearchInput').value.toLowerCase();
+            const tableRows = document.querySelectorAll('#salesTableBody tr');
+            
+            tableRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchInput)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         }
     </script>
 </div>
@@ -754,7 +815,7 @@
             document.getElementById('itemsContent').style.display = 'none';
             
             // Fetch today's items
-            fetch(`/superadmin/admin/sales/items-today`)
+            fetch("{{ route('admin.sales.items-today') }}?t=" + Date.now())
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('itemsLoading').style.display = 'none';

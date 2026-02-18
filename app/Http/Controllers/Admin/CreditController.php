@@ -480,7 +480,7 @@ class CreditController extends Controller
         try {
             // Get all credits with customer names grouped by customer
             $creditsByCustomer = DB::table('credits')
-                ->selectRaw('customers.full_name, customers.id as customer_id, COUNT(*) as total_credits, SUM(credits.credit_amount) as total_credit_limit, SUM(credits.paid_amount) as total_paid, SUM(credits.remaining_balance) as total_remaining, COALESCE(customers.max_credit_limit, 0) as max_credit_limit')
+                ->selectRaw('customers.full_name as customer_name, customers.id as customer_id, COUNT(*) as total_credits, SUM(credits.credit_amount) as total_credit_limit, SUM(credits.paid_amount) as total_paid, SUM(credits.remaining_balance) as total_remaining, COALESCE(customers.max_credit_limit, 0) as max_credit_limit')
                 ->leftJoin('customers', 'credits.customer_id', '=', 'customers.id')
                 ->whereNotNull('customers.full_name')
                 ->where('customers.full_name', '!=', '')

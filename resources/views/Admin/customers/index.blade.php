@@ -32,7 +32,7 @@
                             <button class="btn btn-success me-2" onclick="addNewCustomer()">
                                 <i class="fas fa-plus me-1"></i>Add Customer
                             </button>
-                            <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-primary">Go to Sales</a>
+                            <a href="{{ route('admin.sales.management.index') }}" class="btn btn-primary">Go to Sales</a>
                         </div>
                     </div>
                     <div class="card-body">

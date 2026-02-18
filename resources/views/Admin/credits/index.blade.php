@@ -9,13 +9,13 @@
                 <p class="mb-0 text-muted">Overview of your credit transactions and outstanding balances</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ route('superadmin.admin.credits.create') }}" class="btn btn-primary">
+                <a href="{{ route('admin.credits.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus"></i> New Credit
                 </a>
                 <button class="btn btn-info" onclick="showCreditLimits()">
                     <i class="fas fa-chart-bar"></i> Credit Limits
                 </button>
-                <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-outline-primary">Go to Sales</a>
+                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-primary">Go to Sales</a>
             </div>
         </div>
         <div class="card-body">
@@ -257,19 +257,19 @@
     
     function viewCredit(creditId) {
         console.log('Viewing credit:', creditId);
-        window.location.href = `/superadmin/admin/credits/${creditId}`;
+        window.location.href = `/admin/credits/${creditId}`;
     }
     
     function viewCustomerCredits(customerId) {
         console.log('Viewing customer credits:', customerId);
-        window.location.href = `/superadmin/admin/credits/customer/${customerId}`;
+        window.location.href = `/admin/credits/customer/${customerId}`;
     }
     
     function makeCustomerPayment(customerId, remainingBalance) {
         console.log('Making payment for customer:', customerId, 'Remaining:', remainingBalance);
         
         // Fetch customer's credits to show in modal
-        fetch(`/superadmin/admin/credits/customer/${customerId}/details`)
+        fetch(`/admin/credits/customer/${customerId}/details`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -486,7 +486,7 @@
         });
         
         // Choose the correct endpoint based on payment type
-        const endpoint = isMultiCredit ? '/superadmin/admin/credits/multi-payment' : `/superadmin/admin/credits/${creditId}/payment`;
+        const endpoint = isMultiCredit ? '/admin/credits/multi-payment' : `/admin/credits/${creditId}/payment`;
         
         // For multi-credit payments, add the credit IDs to form data
         if (isMultiCredit) {
@@ -532,7 +532,7 @@
     });
 
     function showCreditLimits() {
-        fetch('/superadmin/admin/credits/credit-limits-data')
+        fetch('/admin/credits/credit-limits-data')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -601,6 +601,7 @@
                         <td>
                             <input type="checkbox" class="form-check-input customer-checkbox" 
                                    id="customer_${index}" data-customer="${customer.customer_name}" 
+                                   data-customer-id="${customer.customer_id}"
                                    data-current-limit="${maxCreditLimit}">
                         </td>
                         <td><strong>${customer.customer_name}</strong></td>
@@ -616,6 +617,7 @@
                                        step="100"
                                        data-original-value="${maxCreditLimit}"
                                        data-customer="${customer.customer_name}"
+                                       data-customer-id="${customer.customer_id}"
                                        style="width: 120px;">
                             </div>
                         </td>
@@ -803,8 +805,8 @@
             const changedInputs = document.querySelectorAll('.limit-input.changed');
             const hasChanges = changedInputs.length > 0;
             
-            // Update button: enabled if there are any changes (regardless of checkbox selection)
-            if (updateSelectedBtn) updateSelectedBtn.disabled = !hasChanges;
+            // Update button: enabled if there are any selected customers or changes
+            if (updateSelectedBtn) updateSelectedBtn.disabled = !hasSelection;
             
             // Reset button: still requires checkbox selection
             if (resetSelectedBtn) resetSelectedBtn.disabled = !hasSelection;
@@ -1001,6 +1003,12 @@
             }
         }).then((result) => {
             if (result.isConfirmed) {
+                // Show loading state
+                const updateBtn = document.getElementById('updateSelectedBtn');
+                const originalBtnContent = updateBtn.innerHTML;
+                updateBtn.disabled = true;
+                updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+                
                 // Update each customer
                 let completed = 0;
                 let errors = 0;
@@ -1011,11 +1019,15 @@
                         if (!success) errors++;
                         
                         if (completed === updates.length) {
+                            // Restore button state
+                            updateBtn.disabled = false;
+                            updateBtn.innerHTML = originalBtnContent;
+                            
                             if (errors === 0) {
                                 Swal.fire({
                                     icon: 'success',
-                                    title: 'Success!',
-                                    text: `Updated ${updates.length} customer credit limits.`,
+                                    title: 'Updated Successfully!',
+                                    text: `Successfully updated ${updates.length} customer credit limits.`,
                                     timer: 2000,
                                     showConfirmButton: false
                                 }).then(() => {
@@ -1062,11 +1074,21 @@
     }
 
     function updateCreditLimit(customerName, newLimit, callback) {
+        // Find the customer ID from the checkbox data
+        const checkbox = document.querySelector(`[data-customer="${customerName}"]`);
+        const customerId = checkbox ? checkbox.getAttribute('data-customer-id') : null;
+        
+        if (!customerId) {
+            console.error('Customer ID not found for:', customerName);
+            if (typeof callback === 'function') callback(false);
+            return;
+        }
+        
         const formData = new FormData();
-        formData.append('customer_name', customerName);
+        formData.append('customer_id', customerId);
         formData.append('max_credit_limit', newLimit);
 
-        fetch('/superadmin/admin/credits/update-credit-limit', {
+        fetch('/admin/credits/update-credit-limit', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')

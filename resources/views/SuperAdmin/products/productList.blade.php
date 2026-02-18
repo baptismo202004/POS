@@ -130,11 +130,13 @@
                                     </div>
 
                                     <div class="col-md-3 non-electronic-field">
-                                        <label class="form-label">Branch</label>
-                                        <select name="branch_id" id="branchSelect" class="form-control select2-tags" style="width:100%">
-                                            <option value="">-- Select Branch --</option>
+                                        <label class="form-label">Branches</label>
+                                        <select name="branch_ids[]" id="branchSelect" class="form-control" style="width:100%" multiple>
+                                            @php
+                                                $selectedBranches = old('branch_ids', $isEdit ? $product->branches->pluck('id')->all() : []);
+                                            @endphp
                                             @foreach($branches ?? [] as $branch)
-                                                <option value="{{ $branch->id }}" {{ $isEdit && isset($product->branch_id) && $product->branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
+                                                <option value="{{ $branch->id }}" {{ in_array($branch->id, $selectedBranches) ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -175,7 +177,7 @@
             console.log('jQuery and Select2 loaded successfully');
             
             // Initialize all select2 dropdowns
-            $('#brandSelect, #categorySelect, #branchSelect').select2({
+            $('#brandSelect, #categorySelect').select2({
                 tags: true,
                 placeholder: '-- Select or create --',
                 allowClear: true,
@@ -189,8 +191,8 @@
                 minimumResultsForSearch: Infinity
             });
 
-            $('#unitTypeSelect').select2({
-                placeholder: '-- Select unit types --',
+            $('#unitTypeSelect, #branchSelect').select2({
+                placeholder: '-- Select items --',
                 allowClear: true,
                 width: 'resolve'
             });
@@ -213,27 +215,8 @@
                 // Show electronic fields for electronic products
                 electronicFields.toggleClass('d-none', !isElectronic);
                 
-                // Show non-electronic fields (Branch) for non-electronic products only
+                // Show non-electronic fields (Branches) for non-electronic products only
                 nonElectronicFields.toggleClass('d-none', isElectronic);
-                
-                // Re-initialize branch select2 when non-electronic fields are shown
-                if (!isElectronic) {
-                    // Only initialize select2 if not already initialized
-                    if (!$('#branchSelect').hasClass('select2-hidden-accessible')) {
-                        console.log('Initializing branch select2 with HTML:', $('#branchSelect').html());
-                        $('#branchSelect').select2({
-                            tags: true,
-                            placeholder: '-- Select or create --',
-                            allowClear: true,
-                            width: 'resolve'
-                        });
-                    }
-                } else {
-                    // If electronic fields are shown, destroy select2 for branchSelect
-                    if ($('#branchSelect').hasClass('select2-hidden-accessible')) {
-                        $('#branchSelect').select2('destroy');
-                    }
-                }
                 
                 // Log field visibility for debugging
                 electronicFields.each(function() {
@@ -279,15 +262,19 @@
             const submitBtn = document.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '{{ $isEdit ? "Update Product" : "Create Product" }}';
+                submitBtn.innerHTML = '{{ $isEdit ? 'Update Product' : 'Save Product' }}';
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up form handler');
             const productForm = document.getElementById('productForm');
             if (productForm) {
+                console.log('Product form found, attaching submit handler');
                 productForm.addEventListener('submit', function(e) {
+                    console.log('Form submit event triggered');
                     e.preventDefault();
+                    e.stopPropagation();
 
                     // Show loading state immediately
                     showLoading();
@@ -335,11 +322,11 @@
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Success!',
-                                text: '{{ $isEdit ? "Product updated successfully." : "Product created successfully." }}',
+                                text: '{{ $isEdit ? 'Product updated successfully.' : 'Product created successfully.' }}',
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
-                                window.location.href = '{{ route("superadmin.products.index") }}';
+                                window.location.href = '{{ route('superadmin.products.index') }}';
                             });
                         } else if (data.errors) {
                             console.error('Validation errors:', data.errors);
@@ -386,7 +373,7 @@
                         hideLoading();
                     });
                 });
-            });
+            }
         });
     </script>
 

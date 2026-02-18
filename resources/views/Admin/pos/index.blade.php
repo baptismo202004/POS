@@ -315,7 +315,7 @@
                 <p class="text-muted mb-0">Fast sales processing with barcode scanning support</p>
             </div>
             <div>
-                <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-outline-primary">
+                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-primary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>
             </div>

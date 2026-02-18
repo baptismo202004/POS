@@ -54,6 +54,11 @@ class Product extends Model
         return $this->belongsToMany(UnitType::class, 'product_unit_type');
     }
 
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'product_branch');
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

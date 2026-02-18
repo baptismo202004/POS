@@ -32,6 +32,7 @@ class StoreExpenseRequest extends FormRequest
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'supplier_name' => 'nullable|string|max:255|unique:suppliers,supplier_name',
             'reference_number' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',

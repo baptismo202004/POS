@@ -550,7 +550,7 @@
                     <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">All Products</span>
                     </a>
-                    <a href="{{ route('cashier.stockin.index') }}" class="{{ request()->routeIs('cashier.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('admin.stockin.index') }}" class="{{ request()->routeIs('stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
                     </a>
                     <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
@@ -573,7 +573,7 @@
             
             @canAccess('inventory','view')
             @php
-                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('superadmin.stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock');
+                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('stockin.*') || request()->routeIs('superadmin.stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock');
             @endphp
             <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
@@ -594,7 +594,7 @@
                     <a href="{{ route('superadmin.inventory.out-of-stock') }}" class="{{ request()->routeIs('superadmin.inventory.out-of-stock') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Out of Stock Alert ({{ session('out_of_stock_count', 0) }}/{{ session('out_of_stock_total', 0) }})</span>
                     </a>
-                    <a href="{{ route('cashier.stockin.index') }}" class="{{ request()->routeIs('cashier.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('admin.stockin.index') }}" class="{{ request()->routeIs('stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
                     </a>
                     <a href="{{ route('stocktransfer.index') }}" class="{{ request()->routeIs('stocktransfer.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
@@ -621,7 +621,7 @@
             </a>
             <div class="submenu {{ $isSalesActive ? 'show' : '' }}" id="salesMenu">
                 <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('admin.sales.index') }}" class="{{ request()->routeIs('admin.sales.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('admin.sales.management.index') }}" class="{{ request()->routeIs('admin.sales.management.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Sales</span>
                     </a>
                     <a href="{{ route('admin.refunds.index') }}" class="{{ request()->routeIs('admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">

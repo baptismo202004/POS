@@ -1012,6 +1012,30 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
     });
 
+    // Admin routes
+    Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+        // Stock In routes
+        Route::get('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInIndex'])->name('stockin.index');
+        Route::get('stockin/create', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.create');
+        Route::post('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInStore'])->name('stockin.store');
+        Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
+
+        // Sales route
+        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+        Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
+        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+        Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
+        Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
+        Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
+        Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
+        Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
+
+        // Reports routes - unified in index page
+        Route::get('reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
+        Route::post('reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
+        Route::post('reports/export', [\App\Http\Controllers\Admin\ReportsController::class, 'export'])->name('reports.export');
+    });
+
     // Stock Transfer routes
     Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
     Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
@@ -1168,10 +1192,8 @@ Route::middleware('auth')->group(function () {
             Route::get('customers/payment-history', [\App\Http\Controllers\Admin\CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
         });
     });
-{
-}
 
-            Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])->name('ui.sidebar.user-mgmt');
+    Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])->name('ui.sidebar.user-mgmt');
 
             Route::get('/password/reset', function () {return view('auth.passwords.email');})->name('password.request');
 

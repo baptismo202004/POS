@@ -8,7 +8,7 @@
                 <h4 class="m-0">Refunds & Returns</h4>
                 <p class="mb-0 text-muted">Overview of your refund and return transactions</p>
             </div>
-            <a href="{{ route('superadmin.admin.sales.index') }}" class="btn btn-primary">Go to Sales</a>
+            <a href="{{ route('admin.sales.management.index') }}" class="btn btn-primary">Go to Sales</a>
         </div>
         <div class="card-body">
             <div class="row">

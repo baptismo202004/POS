@@ -58,7 +58,7 @@
             <div class="container-fluid">
                 <!-- Back Button -->
                 <div class="mb-3">
-                    <a href="{{ route('superadmin.admin.credits.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('admin.credits.index') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Back to Credit Management
                     </a>
                 </div>
@@ -356,7 +356,7 @@ function addPayment(creditId, maxAmount) {
         if (result.isConfirmed) {
             const paymentData = result.value;
             
-            fetch(`/superadmin/admin/credits/${creditId}/make-payment`, {
+            fetch(`/admin/credits/${creditId}/make-payment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -398,11 +398,11 @@ function addPayment(creditId, maxAmount) {
 }
 
 function viewCreditDetails(creditId) {
-    window.location.href = `/superadmin/admin/credits/${creditId}`;
+    window.location.href = `/admin/credits/${creditId}`;
 }
 
 function viewFullHistory(customerId) {
-    window.location.href = `/superadmin/admin/credits/customer/${customerId}/full-history`;
+    window.location.href = `/admin/credits/customer/${customerId}/full-history`;
 }
 </script>
 

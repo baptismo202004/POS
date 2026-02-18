@@ -95,9 +95,10 @@ class ProductController extends Controller
 
         // Only add branch validation for non-electronic products
         if ($request->input('product_type_id') === 'non-electronic') {
-            $rules['branch_id'] = 'required|exists:branches,id';
+            $rules['branch_ids'] = 'required|array|min:1';
+            $rules['branch_ids.*'] = 'exists:branches,id';
         } else {
-            $rules['branch_id'] = 'nullable';
+            $rules['branch_ids'] = 'nullable|array';
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -157,11 +158,11 @@ class ProductController extends Controller
                     $product->unitTypes()->sync($validated['unit_type_ids']);
 
                 } else {
-                    // For non-electronic products, store in products table with branch
+                    // For non-electronic products, store in products table and sync branches
                     Log::info('Processing non-electronic product', [
                         'brand_id' => $validated['brand_id'] ?? 'null',
                         'category_id' => $validated['category_id'] ?? 'null',
-                        'branch_id' => $validated['branch_id'] ?? 'null'
+                        'branch_ids' => $validated['branch_ids'] ?? 'null'
                     ]);
                     
                     // Handle brand_id - check if it's numeric or text
@@ -188,18 +189,6 @@ class ProductController extends Controller
                         $validated['category_id'] = null;
                     }
 
-                    // Handle branch_id - check if it's numeric or text
-                    if (!empty($validated['branch_id'])) {
-                        if (!is_numeric($validated['branch_id'])) {
-                            Log::info('Creating new branch', ['branch_name' => $validated['branch_id']]);
-                            $b = Branch::create(['branch_name' => $validated['branch_id'], 'status' => 'active']);
-                            $validated['branch_id'] = $b->id;
-                            Log::info('New branch created with ID', ['branch_id' => $b->id]);
-                        }
-                    } else {
-                        $validated['branch_id'] = null;
-                    }
-
                     if ($request->hasFile('image')) {
                         $validated['image'] = $request->file('image')->store('products', 'public');
                         Log::info('Image stored', ['path' => $validated['image']]);
@@ -210,6 +199,12 @@ class ProductController extends Controller
                     Log::info('Product created successfully', ['product_id' => $product->id]);
                     $product->unitTypes()->sync($validated['unit_type_ids']);
                     Log::info('Unit types synced');
+                    
+                    // Sync branches for non-electronic products
+                    if (isset($validated['branch_ids'])) {
+                        $product->branches()->sync($validated['branch_ids']);
+                        Log::info('Branches synced', ['branch_ids' => $validated['branch_ids']]);
+                    }
                 }
             });
 
@@ -244,7 +239,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load('unitTypes');
+        $product->load(['unitTypes', 'branches']);
 
         return view('SuperAdmin.products.productList', [
             'product'      => $product,
@@ -270,6 +265,8 @@ class ProductController extends Controller
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
             'product_type_id' => 'nullable',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'exists:branches,id',
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
             'warranty_type' => 'required|in:none,shop,manufacturer',
@@ -296,11 +293,6 @@ class ProductController extends Controller
                     $validated['category_id'] = $c->id;
                 }
 
-                if (!empty($request->input('branch_id')) && !is_numeric($request->input('branch_id'))) {
-                    $b = Branch::create(['branch_name' => $request->input('branch_id'), 'status' => 'active']);
-                    $validated['branch_id'] = $b->id;
-                }
-
                 if ($request->hasFile('image')) {
                     if ($product->image) {
                         Storage::disk('public')->delete($product->image);
@@ -310,6 +302,11 @@ class ProductController extends Controller
 
                 $product->update($validated);
                 $product->unitTypes()->sync($validated['unit_type_ids']);
+                
+                // Sync branches for non-electronic products
+                if ($product->product_type_id === 'non-electronic' && isset($validated['branch_ids'])) {
+                    $product->branches()->sync($validated['branch_ids']);
+                }
             });
 
             return response()->json(['success' => true]);

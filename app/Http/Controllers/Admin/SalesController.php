@@ -211,4 +211,68 @@ class SalesController extends Controller
         ]);
     }
     
+    public function management(Request $request)
+    {
+        // Get date from request or default to today
+        $selectedDate = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
+        
+        // Get sales data for selected date
+        $todaySales = Sale::whereDate('created_at', $selectedDate)
+            ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
+            ->first();
+        
+        // Get sales items count for selected date
+        $todayItems = SaleItem::whereHas('sale', function($query) use ($selectedDate) {
+            $query->whereDate('created_at', $selectedDate);
+        })->sum('quantity');
+        
+        // Get this month's sales
+        $thisMonth = Carbon::now()->startOfMonth();
+        $monthlySales = Sale::whereDate('created_at', '>=', $thisMonth)
+            ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
+            ->first();
+        
+        // Get recent sales for table (showing yesterday, today, and tomorrow)
+        $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
+            ->orderBy('created_at', 'desc');
+            
+        // Default: show sales from yesterday, today, and tomorrow
+        $startDate = Carbon::yesterday()->startOfDay();
+        $endDate = Carbon::tomorrow()->endOfDay();
+        
+        if ($request->get('date')) {
+            // If date is specified, show sales for that date
+            $selectedDate = Carbon::parse($request->get('date'));
+            $startDate = $selectedDate->copy()->startOfDay();
+            $endDate = $selectedDate->copy()->endOfDay();
+        }
+        
+        $recentSalesQuery->whereBetween('created_at', [$startDate, $endDate]);
+        
+        $recentSales = $recentSalesQuery->get()
+            ->map(function ($sale) {
+                // Ensure product names are properly loaded
+                $productNames = $sale->saleItems->map(function ($item) {
+                    return $item->product ? $item->product->product_name : 'Unknown Product';
+                })->filter();
+                
+                $sale->product_names = $productNames->isNotEmpty() ? $productNames->join(', ') : 'No products';
+                return $sale;
+            });
+        
+        // Get all branches today's sales
+        $allBranchesTodaySales = Sale::whereDate('created_at', Carbon::today())
+            ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
+            ->first();
+        
+        return view('Admin.sales.management', compact(
+            'todaySales',
+            'todayItems', 
+            'monthlySales',
+            'allBranchesTodaySales',
+            'recentSales',
+            'selectedDate'
+        ));
+    }
+    
     }

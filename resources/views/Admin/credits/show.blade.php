@@ -10,7 +10,7 @@
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2 class="m-0">Credit Details</h2>
-                                <a href="{{ route('superadmin.admin.credits.index') }}" class="btn btn-outline-primary">Back to Credits</a>
+                                <a href="{{ route('admin.credits.index') }}" class="btn btn-outline-primary">Back to Credits</a>
                             </div>
 
                             <div class="row mb-4">

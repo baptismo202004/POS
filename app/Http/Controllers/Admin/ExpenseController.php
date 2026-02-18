@@ -61,7 +61,18 @@ class ExpenseController extends Controller
     public function create()
     {
         $categories = ExpenseCategory::where('name', '!=', 'Purchases')->get();
-        $suppliers = \App\Models\Supplier::all(); // Assuming a Supplier model exists
+        $suppliers = \App\Models\Supplier::all();
+        
+        // Debug: Check if suppliers exist
+        if ($suppliers->isEmpty()) {
+            \Log::info('No suppliers found in database');
+        } else {
+            \Log::info('Suppliers found: ' . $suppliers->count());
+            foreach ($suppliers as $supplier) {
+                \Log::info('Supplier: ' . $supplier->supplier_name);
+            }
+        }
+        
         return view('Admin.expenses.create', compact('categories', 'suppliers'));
     }
 
@@ -72,13 +83,22 @@ class ExpenseController extends Controller
     {
         $data = $request->validated();
 
+        // Handle new supplier creation
+        if (!empty($request->supplier_name)) {
+            // Check if supplier already exists
+            $supplier = \App\Models\Supplier::firstOrCreate([
+                'supplier_name' => trim($request->supplier_name)
+            ]);
+            $data['supplier_id'] = $supplier->id;
+        }
+
         if ($request->hasFile('receipt')) {
             $data['receipt_path'] = $request->file('receipt')->store('receipts', 'public');
         }
 
         Expense::create($data);
 
-        return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense created successfully.');
+        return redirect()->route('admin.expenses.index')->with('success', 'Expense created successfully.');
     }
 
     /**
