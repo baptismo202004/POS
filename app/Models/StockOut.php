@@ -7,11 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class StockOut extends Model
 {
     protected $fillable = [
+        'stock_in_id',
         'product_id',
         'sale_id',
-        'quantity',
         'branch_id',
+        'quantity',
+        'reason'
     ];
+
+    public function stockIn()
+    {
+        return $this->belongsTo(StockIn::class);
+    }
 
     public function product()
     {
@@ -21,5 +28,10 @@ class StockOut extends Model
     public function sale()
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

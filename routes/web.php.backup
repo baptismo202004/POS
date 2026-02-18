@@ -713,29 +713,15 @@ Route::get('/dashboard/widgets', function (Request $request) {
     // 9. Alerts Panel - Out of Stock Items
     try {
         $subquery = DB::table('products')
-            ->leftJoinSub(
-                DB::table('stock_ins')
-                    ->select('product_id', DB::raw('SUM(quantity) as total_in'))
-                    ->groupBy('product_id'),
-                'stock_in_totals',
-                'products.id',
-                '=',
-                'stock_in_totals.product_id'
-            )
-            ->leftJoinSub(
-                DB::table('stock_outs')
-                    ->select('product_id', DB::raw('SUM(quantity) as total_out'))
-                    ->groupBy('product_id'),
-                'stock_out_totals',
-                'products.id',
-                '=',
-                'stock_out_totals.product_id'
-            )
+            ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
+            ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
+            ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
             ->select(
                 'products.id',
                 'products.product_name',
-                DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
-            );
+                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+            )
+            ->groupBy('products.id', 'products.product_name', 'branches.id', 'branches.branch_name');
         
         $outOfStockItems = DB::table(DB::raw('(' . $subquery->toSql() . ') as product_stocks'))
             ->whereRaw('current_stock <= 15')
@@ -995,79 +981,30 @@ Route::middleware('auth')->group(function () {
         Route::get('/categories/{category}/edit', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'edit'])->middleware('ability:products,edit')->name('categories.edit');
         Route::put('/categories/{category}', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'update'])->middleware('ability:products,edit')->name('categories.update');
         Route::put('/categories/bulk-update', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'bulkUpdate'])->middleware('ability:products,edit')->name('categories.bulkUpdate');
-        Route::delete('/categories/bulk-delete', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'bulkDestroy'])->middleware('ability:products,edit')->name('categories.bulkDestroy');
+        Route::delete('/categories/bulk-delete', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'bulkDestroy'])->middleware('ability:products,full')->name('categories.bulkDestroy');
         Route::delete('/categories/{category}', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'destroy'])->middleware('ability:products,full')->name('categories.destroy');
 
+        Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->middleware('ability:purchases,edit')->name('purchases.ocr-product-match');
+        Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->middleware('ability:purchases,view')->name('purchases.index');
+        Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->middleware('ability:purchases,edit')->name('purchases.create');
+        Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->middleware('ability:purchases,edit')->name('purchases.store');
+        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->middleware('ability:purchases,view')->name('purchases.show');
+
         // Inventory routes
-        Route::get('/inventory', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'index'])->name('inventory.index');
-        Route::get('/inventory/out-of-stock', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'outOfStock'])->name('inventory.out-of-stock');
-        Route::post('/inventory/{product}/adjust', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'adjust'])->name('inventory.adjust');
-        Route::post('/inventory/{product}/stock-in', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'stockIn'])->name('inventory.stock-in');
-        Route::get('/inventory/out-of-stock/export', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'exportOutOfStockPDF'])->name('inventory.out-of-stock.export');
-
-        // API routes for out-of-stock functionality
-        Route::get('/api/branches', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getBranches']);
-        
-        Route::get('/inventory/product-stock/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductStock']);
-        
-        Route::get('/purchases/by-product/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductPurchases']);
-        
-        Route::get('/inventory/product-sales/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductSales']);
-
-        // Purchase routes
-        Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('purchases.index');
-        Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('purchases.create');
-        Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
-        Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
-        Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->name('purchases.ocr-product-match');
-
+        Route::get('/inventory', [InventoryController::class, 'index'])->middleware('ability:inventory,view')->name('inventory.index');
+        Route::get('/inventory/out-of-stock', [InventoryController::class, 'outOfStock'])->middleware('ability:inventory,view')->name('inventory.out-of-stock');
+        Route::get('/inventory/out-of-stock/export', [InventoryController::class, 'exportOutOfStockPDF'])->middleware('ability:inventory,view')->name('inventory.out-of-stock.export');
+        Route::get('/inventory/product-stock/{productId}', [InventoryController::class, 'getProductStock'])->middleware('ability:inventory,view')->name('inventory.product-stock');
+        Route::get('/purchases/by-product/{productId}', [InventoryController::class, 'getProductPurchases'])->middleware('ability:inventory,view')->name('inventory.product-purchases');
+        Route::get('/inventory/product-sales/{productId}', [InventoryController::class, 'getProductSales'])->middleware('ability:inventory,view')->name('inventory.product-sales');
+        Route::post('/inventory/{product}/stock-in', [InventoryController::class, 'stockIn'])->middleware('ability:inventory,edit')->name('inventory.stock-in');
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
-    });
+        
+        // Stock Transfer routes
+        Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
+        Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
-    // Admin routes
-    Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-        // Stock In routes
-        Route::get('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInIndex'])->name('stockin.index');
-        Route::get('stockin/create', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.create');
-        Route::post('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInStore'])->name('stockin.store');
-        Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
-
-        // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
-        Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
-        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
-        Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
-        Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
-        Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
-        Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
-        Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
-
-        // Reports routes - unified in index page
-        Route::get('reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
-        Route::post('reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
-        Route::post('reports/export', [\App\Http\Controllers\Admin\ReportsController::class, 'export'])->name('reports.export');
-    });
-
-    // Stock Transfer routes
-    Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
-    Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
-
-    // Settings routes (guard at least with view-level ability)
-    Route::middleware('ability:settings,view')->group(function () {
-        Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
-        Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
-        Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
-        Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
-        Route::resource('sales', \App\Http\Controllers\Admin\SalesController::class);
-        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
-        Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
-        Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
-            // Custom receipt template routes
-            Route::get('receipt-templates/{receiptTemplate}/preview', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'preview'])->name('receipt-templates.preview');
-            Route::post('receipt-templates/{receiptTemplate}/set-default', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'setDefault'])->name('receipt-templates.set-default');
-        });
-
-        // Separate Suppliers routes with proper abilities
+        // Settings routes (guard at least with view-level ability)
         Route::resource('suppliers', \App\Http\Controllers\SuperAdmin\SupplierController::class);
         
         // Test route for debugging
@@ -1086,6 +1023,22 @@ Route::middleware('auth')->group(function () {
                 return 'Error creating supplier: ' . $e->getMessage();
             }
         });
+
+        // Settings routes (guard at least with view-level ability)
+        Route::middleware('ability:settings,view')->group(function () {
+            Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
+            Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
+            Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);
+            Route::resource('branches', \App\Http\Controllers\SuperAdmin\BranchController::class);
+            Route::get('/api/branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'apiIndex'])->middleware('auth');
+            Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+            Route::resource('taxes', \App\Http\Controllers\Admin\TaxController::class);
+            Route::resource('receipt-templates', \App\Http\Controllers\Admin\ReceiptTemplateController::class);
+            // Custom receipt template routes
+            Route::get('receipt-templates/{receiptTemplate}/preview', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'preview'])->name('receipt-templates.preview');
+            Route::post('receipt-templates/{receiptTemplate}/set-default', [\App\Http\Controllers\Admin\ReceiptTemplateController::class, 'setDefault'])->name('receipt-templates.set-default');
+        });
+    });
         
         // Test POST route
         Route::post('test-supplier-post', function(\Illuminate\Http\Request $request) {
@@ -1118,20 +1071,27 @@ Route::middleware('auth')->group(function () {
                 ], 500);
             }
         });
-        
-        // API routes for out-of-stock functionality
-        Route::get('/api/branches', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getBranches']);
-        
-        Route::get('/inventory/product-stock/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductStock']);
-        
-        Route::get('/purchases/by-product/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductPurchases']);
-        
-        Route::get('/inventory/product-sales/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductSales']);
 
         // Admin-only user management (account creation, access control)
         Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('users.create');
             Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
+            
+            // Sales routes
+            Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+            Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+            Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt'));
+            Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items'));
+            Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today'));
+            Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue'));
+            Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales'));
+            
+            // Refund routes
+            Route::get('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'index'])->name('refunds.index');
+            Route::post('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'store'])->name('refunds.store'));
+            Route::get('refunds/create', [\App\Http\Controllers\Admin\RefundController::class, 'create'])->name('refunds.create'));
+            Route::post('refunds/{refund}/approve', [\App\Http\Controllers\Admin\RefundController::class, 'approve'])->name('refunds.approve'));
+            Route::post('refunds/{refund}/reject', [\App\Http\Controllers\Admin\RefundController::class, 'reject'])->name('refunds.reject'));
 
             // Role-based access configuration UI
             Route::get('/access', [\App\Http\Controllers\Admin\AccessController::class, 'index'])->name('access.index');
@@ -1168,23 +1128,19 @@ Route::middleware('auth')->group(function () {
             Route::post('customers/make-payment', [CustomerController::class, 'makePayment'])->name('customers.make-payment');
             Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
+        });
 
-            // Sales route
-            Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
-            Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
-            Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
-            Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
-            Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
-            Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
-            Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
+        // Test POST routes
+        Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
+        Route::get('expenses/todays-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getTodaysExpenses'])->name('expenses.todays-expenses');
+        Route::get('expenses/this-month-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getThisMonthExpenses'])->name('expenses.this-month-expenses');
 
-            // Expenses routes
-            Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);
-            Route::get('expenses/todays-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getTodaysExpenses'])->name('expenses.todays-expenses');
-            Route::get('expenses/this-month-expenses', [\App\Http\Controllers\Admin\ExpenseController::class, 'getThisMonthExpenses'])->name('expenses.this-month-expenses');
-
-            // Refund routes
-            Route::get('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'index'])->name('refunds.index');
+        // Refund routes
+        Route::get('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'index'])->name('refunds.index');
+        Route::post('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'store'])->name('refunds.store');
+        Route::get('refunds/create', [\App\Http\Controllers\Admin\RefundController::class, 'create'])->name('refunds.create');
+        Route::post('refunds/{refund}/approve', [\App\Http\Controllers\Admin\RefundController::class, 'approve'])->name('refunds.approve');
+        Route::post('refunds/{refund}/reject', [\App\Http\Controllers\Admin\RefundController::class, 'reject'])->name('refunds.reject');
             Route::post('refunds', [\App\Http\Controllers\Admin\RefundController::class, 'store'])->name('refunds.store');
             Route::get('refunds/create', [\App\Http\Controllers\Admin\RefundController::class, 'create'])->name('refunds.create');
             Route::post('refunds/{refund}/approve', [\App\Http\Controllers\Admin\RefundController::class, 'approve'])->name('refunds.approve');
@@ -1207,23 +1163,24 @@ Route::middleware('auth')->group(function () {
             Route::post('credits/{credit}/update-name', [\App\Http\Controllers\Admin\CreditController::class, 'updateCustomerName'])->name('credits.update-name');
             Route::post('credits/{credit}/update-customer', [\App\Http\Controllers\Admin\CreditController::class, 'updateWalkInCustomer'])->name('credits.update-customer');
 
-            // Customer routes
+            // Test POST routes
             Route::get('customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');
             Route::get('customers/credit-limits', [\App\Http\Controllers\Admin\CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
             Route::get('customers/payment-history', [\App\Http\Controllers\Admin\CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
         });
     });
+{
+}
 
-    Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])->name('ui.sidebar.user-mgmt');
+            Route::post('/ui/sidebar/user-mgmt', [\App\Http\Controllers\UiStateController::class, 'setSidebarUserMgmt'])->name('ui.sidebar.user-mgmt');
 
-    Route::get('/password/reset', function () {return view('auth.passwords.email');})->name('password.request');
+            Route::get('/password/reset', function () {return view('auth.passwords.email');})->name('password.request');
 
-    Route::post('/password/email', function (Request $request) {
-        $request->validate(['email' => 'required|email']);
-        $user = \App\Models\User::where('email', $request->input('email'))->first();
-        if ($user) {
-            // dispatch reset email here if implemented
-        }
-        return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
-    })->name('password.email');
-
+            Route::post('/password/email', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+    $user = \App\Models\User::where('email', $request->input('email'))->first();
+    if ($user) {
+        // dispatch reset email here if implemented
+    }
+    return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
+})->name('password.email');

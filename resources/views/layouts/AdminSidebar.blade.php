@@ -573,7 +573,7 @@
             
             @canAccess('inventory','view')
             @php
-                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('stockin.*') || request()->routeIs('superadmin.stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock');
+                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock');
             @endphp
             <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
@@ -721,7 +721,7 @@
 
             <div>
                 @php
-                    $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
+                    $isSettingsActive = request()->routeIs('brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('unit-types.*') || request()->routeIs('branches.*');
                 @endphp
                 <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isSettingsActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('settingsMenu', event); return false;" id="settingsToggle">
                     <span class="bg-white rounded d-flex align-items-center justify-content-center icon-badge">

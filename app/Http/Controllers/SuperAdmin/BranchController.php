@@ -17,6 +17,16 @@ class BranchController extends Controller
         return view('SuperAdmin.branches.index', compact('branches', 'users'));
     }
 
+    public function apiIndex()
+    {
+        try {
+            $branches = Branch::all();
+            return response()->json($branches);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch branches'], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([

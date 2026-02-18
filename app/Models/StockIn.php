@@ -15,6 +15,7 @@ class StockIn extends Model
         'purchase_id',
         'unit_type_id',
         'quantity',
+        'initial_quantity',
         'price',
         'sold'
     ];
@@ -37,5 +38,10 @@ class StockIn extends Model
     public function unitType()
     {
         return $this->belongsTo(UnitType::class);
+    }
+
+    public function stockOuts()
+    {
+        return $this->hasMany(StockOut::class);
     }
 }

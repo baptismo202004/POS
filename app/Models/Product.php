@@ -91,6 +91,12 @@ class Product extends Model
         return $stockIn - $sold;
     }
 
+    public function getCurrentBranchIdAttribute()
+    {
+        // This will be set when loading from out-of-stock page
+        return $this->attributes['current_branch_id'] ?? null;
+    }
+
     public function getTotalSoldAttribute()
     {
         return $this->saleItems()->sum('quantity');
