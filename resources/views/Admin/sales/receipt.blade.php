@@ -168,14 +168,14 @@
             <p>09973849783</p>
             <br>
             <h2>PAYMENT RECEIPT</h2>
-            <p>{{ $sale->reference_number ?? 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
+            <p>{{ $sale->reference_number ?: 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
             <p>{{ $sale->created_at->format('Y-M-d') }}</p>
         </div>
 
         <div class="details">
             <p>Cashier: {{ $sale->cashier->name ?? 'N/A' }}</p>
             <p>Date: {{ $sale->created_at->format('Y-M-d') }}</p>
-            <p>Reference: {{ $sale->reference_number ?? 'N/A' }}</p>
+            <p>Reference: {{ $sale->reference_number ?: 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
         </div>
 
         <div class="items">

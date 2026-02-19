@@ -143,6 +143,7 @@
                             <table class="table table-bordered" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
+                                        <th>Reference #</th>
                                         <th>Product Name</th>
                                         <th>Cashier</th>
                                         <th>Items</th>
@@ -155,6 +156,7 @@
                                 <tbody id="salesTableBody">
                                     @forelse($recentSales as $sale)
                                         <tr class="{{ $filter !== 'all' ? 'table-warning' : '' }}">
+                                            <td>{{ $sale->reference_number ?: 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</td>
                                             <td>{{ $sale->product_names ?: 'No products' }}</td>
                                             <td>{{ $sale->cashier->name ?? 'Unknown' }}</td>
                                             <td>{{ $sale->saleItems->sum('quantity') }} items</td>

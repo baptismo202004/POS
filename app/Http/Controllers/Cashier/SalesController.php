@@ -105,7 +105,7 @@ class SalesController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
-            'items.*.branch_id' => 'required|exists:branches,id',
+            'items.*.branch_id' => 'nullable|exists:branches,id',
         ]);
 
         try {
@@ -134,7 +134,8 @@ class SalesController extends Controller
                 $itemsByBranch = [];
                 foreach ($validated['items'] as $item) {
                     $product = Product::findOrFail($item['product_id']);
-                    $itemBranchId = $item['branch_id'];
+                    // Use provided branch_id or fallback to cashier's branch
+                    $itemBranchId = $item['branch_id'] ?? $branchId;
                     $itemSubtotal = $item['quantity'] * $item['unit_price'];
                     $subtotal += $itemSubtotal;
 
@@ -187,7 +188,7 @@ class SalesController extends Controller
                     $branchProportions[$branchId] = $branchData['subtotal'] / $subtotal;
                 }
 
-                // Get the current count for reference number generation
+                // Get current count for reference number generation
                 $currentSaleCount = Sale::whereDate('created_at', today())->count();
 
                 // Create sales for each branch
@@ -201,6 +202,11 @@ class SalesController extends Controller
                     $currentSaleCount++;
                     $referenceNumber = 'REF-' . date('Ymd') . '-' . str_pad($currentSaleCount, 4, '0', STR_PAD_LEFT);
 
+                    // Debug logging
+                    \Log::info("Creating sale with reference: " . $referenceNumber);
+                    \Log::info("Branch ID: " . $branchId);
+                    \Log::info("Total Amount: " . $branchTotalAmount);
+
                     $sale = Sale::create([
                         'branch_id' => $branchId,
                         'cashier_id' => $user->id,
@@ -213,6 +219,8 @@ class SalesController extends Controller
                         'reference_number' => $referenceNumber,
                         'receipt_group_id' => $receiptGroupId,
                     ]);
+
+                    \Log::info("Sale created with ID: " . $sale->id . " and reference: " . $sale->reference_number);
 
                     // Create sale items for this branch
                     foreach ($branchData['items'] as $item) {
@@ -250,6 +258,7 @@ class SalesController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error("Sale creation error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()

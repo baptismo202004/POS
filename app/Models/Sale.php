@@ -12,8 +12,11 @@ class Sale extends Model
         'customer_id',
         'branch_id',
         'total_amount',
+        'subtotal',
+        'discount_amount',
         'tax',
         'payment_method',
+        'status',
         'reference_number',
         'receipt_group_id',
     ];
