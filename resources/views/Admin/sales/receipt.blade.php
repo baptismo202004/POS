@@ -163,19 +163,19 @@
         <div class="header">
             <img src="{{ asset('/images/BGH LOGO.png') }}" alt="BGH IT Solutions Logo" style="max-width: 60px; margin-bottom: 8px;">
             <h1>BGH IT Solutions</h1>
-            <p>Purol A1, Balirong City of Naga Cebu</p>
+            <p>Purok A-1, Balirong City of Naga Cebu</p>
             <p>bghsupport@bghitsolutions.com</p>
             <p>09973849783</p>
             <br>
             <h2>PAYMENT RECEIPT</h2>
-            <p>PR-{{ $sale->created_at->format('Ymd') . $sale->id }}</p>
+            <p>{{ $sale->reference_number ?? 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
             <p>{{ $sale->created_at->format('Y-M-d') }}</p>
         </div>
 
         <div class="details">
             <p>Cashier: {{ $sale->cashier->name ?? 'N/A' }}</p>
             <p>Date: {{ $sale->created_at->format('Y-M-d') }}</p>
-            <p>Reference: </p>
+            <p>Reference: {{ $sale->reference_number ?? 'N/A' }}</p>
         </div>
 
         <div class="items">
@@ -209,7 +209,7 @@
         </div>
 
         <div class="footer">
-            <p style="text-align:center;">Thank you for your business!</p>
+            <p style="text-align:center;">Thank you for your shopping!</p>
         </div>
     </div>
 </body>

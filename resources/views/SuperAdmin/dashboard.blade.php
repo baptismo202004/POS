@@ -1726,29 +1726,7 @@
                 </div>
             </div>
 
-            <div class="widget-card transaction-summary-card">
-                <div class="widget-header">
-                    <h3 class="widget-title">Transaction Summary</h3>
-                    <div class="widget-badge">Today</div>
-                </div>
-                <div class="widget-content">
-                    <div class="summary-stats">
-                        <div class="summary-item">
-                            <div class="summary-label">Total Transactions</div>
-                            <div class="summary-value" id="totalTransactions">0</div>
-                        </div>
-                        <div class="summary-item">
-                            <div class="summary-label">Average Value</div>
-                            <div class="summary-value" id="avgTransactionValue">₱0.00</div>
-                        </div>
-                        <div class="summary-item">
-                            <div class="summary-label">Highest Sale</div>
-                            <div class="summary-value" id="highestSaleToday">₱0.00</div>
-                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 @endsection
@@ -1759,7 +1737,7 @@
 <script>
   // Utility functions
   function viewCashierDetails(cashierId) {
-    window.location.href = '/superadmin/users/' + cashierId;
+    window.location.href = '/users/' + cashierId;
   }
   
   function getInitials(name) {
@@ -1940,7 +1918,6 @@
     if (data.topProducts) updateTopProducts(data.topProducts);
     if (data.topBranches) updateTopBranches(data.topBranches);
     if (data.cashierPerformance) updateCashierPerformance(data.cashierPerformance);
-    if (data.transactionSummary) updateTransactionSummary(data.transactionSummary);
     if (data.alerts) updateUnusualActivities(data.alerts);
 
     fetchChartData().then(chartData => { if (chartData) updateTrendChart(chartData); });
@@ -2208,6 +2185,10 @@
     if (alertsList) {
       const alertItems = [];
       
+      // Debug: Log alerts data
+      console.log('Alerts data:', alerts);
+      console.log('Voided sales count:', alerts.voidedSales);
+      
       if (alerts.outOfStock > 0) {
         alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory/out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
@@ -2217,7 +2198,7 @@
       }
       
       if (alerts.voidedSales > 0) {
-        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/sales/voided'"><i class="fas fa-ban alert-icon" style="color:#00E5FF"></i><div class="alert-content"><div class="alert-title">${alerts.voidedSales} voided sales today</div><div class="alert-description">Monitor activity</div></div></div>`);
       }
       
       if (alerts.belowCostSales > 0) {
@@ -2316,7 +2297,7 @@
     item.addEventListener('click', function() {
       const branchId = this.getAttribute('data-branch-id');
       console.log('Clicked branch ID:', branchId);
-      window.location.href = '/superadmin/branches/' + branchId;
+      window.location.href = '/branches/' + branchId;
     });
   });
 }
@@ -2357,18 +2338,6 @@ function updateCashierPerformance(cashiers) {
   }
 }
 
-function updateTransactionSummary(summary) {
-  debugLog('📋 Updating transaction summary with data:', summary);
-  if (!summary) return;
-  
-  const totalTransactionsEl = $('totalTransactions');
-  const avgTransactionEl = $('avgTransactionValue');
-  const highestSaleEl = $('highestSaleToday');
-  
-  if (totalTransactionsEl) totalTransactionsEl.textContent = summary.totalTransactions;
-  if (avgTransactionEl) avgTransactionEl.textContent = peso(summary.avgTransactionValue);
-  if (highestSaleEl) highestSaleEl.textContent = peso(summary.highestSaleToday);
-}
   
   function updateUnusualActivities(alerts) {
     debugLog('⚠️ Updating unusual activities with data:', alerts);

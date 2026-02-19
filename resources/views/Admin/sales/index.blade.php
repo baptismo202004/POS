@@ -57,7 +57,7 @@
                                         </div>
                                     @endif
                                 </div>
-                                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-primary">Go to Sales Management</a>
+                                
                             </div>
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
@@ -434,6 +434,23 @@
             
             const modal = new bootstrap.Modal(document.getElementById('refundModal'));
             modal.show();
+        }
+        
+        function voidSale(saleId) {
+            if (confirm('Are you sure you want to void this sale? This action cannot be undone.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/superadmin/sales/${saleId}/void`;
+                
+                const csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = '_token';
+                csrfToken.value = '{{ csrf_token() }}';
+                form.appendChild(csrfToken);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
         }
         
         document.getElementById('sale_item_id').addEventListener('change', function() {

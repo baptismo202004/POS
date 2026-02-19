@@ -220,7 +220,14 @@
 
         <!-- Receipt Info -->
         <div class="receipt-info">
-            <div class="receipt-number">Receipt #{{ $sale->id }}</div>
+            <div>
+                @if($receiptGroupId)
+                    <div class="receipt-number">Group Receipt #{{ $receiptGroupId }}</div>
+                    <div class="receipt-number">Branch Sale #{{ $sale->id }}</div>
+                @else
+                    <div class="receipt-number">Receipt #{{ $sale->id }}</div>
+                @endif
+            </div>
             <div class="receipt-date">{{ $sale->created_at->format('M d, Y h:i A') }}</div>
         </div>
 
@@ -261,22 +268,84 @@
             </tbody>
         </table>
 
+        <!-- Multi-Branch Sales Section -->
+        @if($relatedSales->count() > 0)
+        <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
+            <div style="font-weight: bold; margin-bottom: 10px; color: #007bff;">
+                📋 Additional Branch Sales (Same Receipt)
+            </div>
+            @foreach($relatedSales as $relatedSale)
+            <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 3px;">
+                <div style="font-weight: bold; margin-bottom: 5px;">
+                    {{ $relatedSale->branch->branch_name ?? 'Unknown Branch' }} - Sale #{{ $relatedSale->id }}
+                </div>
+                <table style="width: 100%; font-size: 12px;">
+                    @foreach($relatedSale->items as $item)
+                    <tr>
+                        <td>{{ $item->product->product_name }}</td>
+                        <td style="text-align: right;">{{ $item->quantity }}</td>
+                        <td style="text-align: right;">₱{{ number_format($item->unit_price, 2) }}</td>
+                        <td style="text-align: right;">₱{{ number_format($item->subtotal, 2) }}</td>
+                    </tr>
+                    @endforeach
+                    <tr style="font-weight: bold; border-top: 1px solid #ddd;">
+                        <td colspan="3">Branch Subtotal:</td>
+                        <td style="text-align: right;">₱{{ number_format($relatedSale->total_amount, 2) }}</td>
+                    </tr>
+                </table>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
         <!-- Totals Section -->
         <div class="totals-section">
-            <div class="total-row">
-                <span>Subtotal:</span>
-                <span>₱{{ number_format($sale->subtotal, 2) }}</span>
-            </div>
-            @if($sale->discount_amount > 0)
-            <div class="total-row">
-                <span>Discount:</span>
-                <span>-₱{{ number_format($sale->discount_amount, 2) }}</span>
-            </div>
+            @if($receiptGroupId && $relatedSales->count() > 0)
+                @php
+                    $combinedSubtotal = $sale->subtotal + $relatedSales->sum('subtotal');
+                    $combinedDiscount = $sale->discount_amount + $relatedSales->sum('discount_amount');
+                    $combinedTotal = $sale->total_amount + $relatedSales->sum('total_amount');
+                @endphp
+                <div class="total-row">
+                    <span>This Branch Subtotal:</span>
+                    <span>₱{{ number_format($sale->subtotal, 2) }}</span>
+                </div>
+                @if($sale->discount_amount > 0)
+                <div class="total-row">
+                    <span>This Branch Discount:</span>
+                    <span>-₱{{ number_format($sale->discount_amount, 2) }}</span>
+                </div>
+                @endif
+                <div class="total-row" style="border-top: 1px solid #ddd; padding-top: 8px; margin-top: 8px;">
+                    <span>Combined Receipt Subtotal:</span>
+                    <span>₱{{ number_format($combinedSubtotal, 2) }}</span>
+                </div>
+                @if($combinedDiscount > 0)
+                <div class="total-row">
+                    <span>Combined Discount:</span>
+                    <span>-₱{{ number_format($combinedDiscount, 2) }}</span>
+                </div>
+                @endif
+                <div class="total-row grand-total">
+                    <span>Combined Total:</span>
+                    <span>₱{{ number_format($combinedTotal, 2) }}</span>
+                </div>
+            @else
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₱{{ number_format($sale->subtotal, 2) }}</span>
+                </div>
+                @if($sale->discount_amount > 0)
+                <div class="total-row">
+                    <span>Discount:</span>
+                    <span>-₱{{ number_format($sale->discount_amount, 2) }}</span>
+                </div>
+                @endif
+                <div class="total-row grand-total">
+                    <span>Total:</span>
+                    <span>₱{{ number_format($sale->total_amount, 2) }}</span>
+                </div>
             @endif
-            <div class="total-row grand-total">
-                <span>Total:</span>
-                <span>₱{{ number_format($sale->total_amount, 2) }}</span>
-            </div>
         </div>
 
         <!-- Payment Info -->
@@ -290,7 +359,9 @@
                         📋 CREDIT PAYMENT
                     </div>
                     <div style="font-size: 12px; color: #856404;">
-                        <div>Ref: {{ $sale->credit->reference_number ?? 'N/A' }}</div>
+                        @if($sale->reference_number)
+                            <div>Reference: {{ $sale->reference_number }}</div>
+                        @endif
                         @if($sale->credit->customer)
                             <div>Customer: {{ $sale->credit->customer->full_name }}</div>
                         @endif
@@ -311,7 +382,7 @@
             <div class="cashier-info">
                 Cashier: {{ $sale->cashier->name ?? 'System' }}
             </div>
-            <div class="thank-you">Thank you for your purchase!</div>
+            <div class="thank-you">Thank you for your shopping!</div>
             <div>Please come again</div>
             @if($sale->status === 'voided')
                 <div style="color: red; font-weight: bold; margin-top: 10px;">

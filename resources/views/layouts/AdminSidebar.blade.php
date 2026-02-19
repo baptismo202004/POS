@@ -624,6 +624,9 @@
                     <a href="{{ route('admin.sales.management.index') }}" class="{{ request()->routeIs('admin.sales.management.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Sales</span>
                     </a>
+                    <a href="{{ route('superadmin.sales.voided') }}" class="{{ request()->routeIs('superadmin.sales.voided') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Voided Sales</span>
+                    </a>
                     <a href="{{ route('admin.refunds.index') }}" class="{{ request()->routeIs('admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Refund/Return</span>
                     </a>
