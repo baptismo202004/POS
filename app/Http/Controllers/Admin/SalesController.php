@@ -147,6 +147,38 @@ class SalesController extends Controller
         return response()->json(['items' => $items]);
     }
     
+    public function getGraphData()
+    {
+        // Get sales data for the last 2 weeks
+        $endDate = Carbon::today();
+        $startDate = $endDate->copy()->subDays(14); // 2 weeks ago
+        
+        $salesData = Sale::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(total_amount) as total_sales, COUNT(*) as total_orders')
+            ->groupBy('DATE(created_at)')
+            ->orderBy('date')
+            ->get();
+        
+        // Fill in missing dates with zero values
+        $completeData = [];
+        $currentDate = $startDate->copy();
+        
+        while ($currentDate <= $endDate) {
+            $dateStr = $currentDate->format('Y-m-d');
+            $dayData = $salesData->firstWhere('date', $dateStr);
+            
+            $completeData[] = [
+                'date' => $currentDate->format('M j'), // Format: "Jan 15"
+                'sales' => $dayData ? (float) $dayData->total_sales : 0,
+                'orders' => $dayData ? (int) $dayData->total_orders : 0
+            ];
+            
+            $currentDate->addDay();
+        }
+        
+        return response()->json($completeData);
+    }
+    
     public function getTodaysRevenue()
     {
         $today = Carbon::today();

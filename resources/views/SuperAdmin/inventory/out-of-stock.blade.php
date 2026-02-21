@@ -186,98 +186,102 @@
             </div>
         </div>
     </div>
-</main>
 </div>
 
 <!-- Stock Adjustment Modal -->
 <div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="adjustStockModalLabel">Adjust Stock for <span id="productName"></span> - <span id="branchName"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Current Stock Card -->
-                <div class="card mb-3 border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0">Current Stock Record from <span id="branchName"></span></h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <h4 class="text-primary" id="currentStockDisplay">0</h4>
-                                <p class="text-muted mb-0">Units available</p>
+                <div class="row">
+                    <!-- Left Column: Stock Adjustment Form -->
+                    <div class="col-md-6" id="stockAdjustmentFormColumn">
+                        <!-- Current Stock Card -->
+                        <div class="card mb-3 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">Current Stock Record from <span id="branchName"></span></h6>
                             </div>
-                            <div class="col-md-4 text-end">
-                                <button type="button" class="btn btn-outline-primary" id="viewSalesBtn">
-                                    <i class="fas fa-chart-line me-1"></i> View Sales
-                                </button>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <h4 class="text-primary" id="currentStockDisplay">0</h4>
+                                        <p class="text-muted mb-0">Units available</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- General Overview Card -->
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-header bg-secondary text-white">
+                                <h6 class="mb-0">General Overview</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row" id="otherBranchesStock">
+                                    <!-- Will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stock Adjustment Options -->
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Stock Adjustment Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="adjustStockForm" method="POST" action="">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label for="adjustmentType" class="form-label">Adjustment Type</label>
+                                        <select class="form-control" id="adjustmentType" name="adjustment_type" required>
+                                            <option value="">-- Select Adjustment Type --</option>
+                                            <option value="purchase">Add from Purchase</option>
+                                            <option value="transfer">Create Stock Transfer</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Purchase Option -->
+                                    <div id="purchaseOption" style="display: none;">
+                                        <div class="mb-3">
+                                            <label for="purchase_id" class="form-label">Purchase ID</label>
+                                            <select class="form-control" id="purchase_id" name="purchase_id">
+                                                <option value="">-- Select Purchase --</option>
+                                                <!-- Will be populated dynamically -->
+                                            </select>
+                                            <small class="form-text text-muted">Select a purchase that contains this product</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="purchaseQuantity" class="form-label">Quantity to Add</label>
+                                            <input type="number" name="purchase_quantity" id="purchaseQuantity" class="form-control" min="1" required>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transfer Option -->
+                                    <div id="transferOption" style="display: none;">
+                                        <div class="mb-3">
+                                            <label for="fromBranch" class="form-label">From Branch</label>
+                                            <select class="form-control" id="fromBranch" name="from_branch">
+                                                <option value="">-- Select Branch --</option>
+                                                <!-- Will be populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="transferQuantity" class="form-label">Quantity to Transfer</label>
+                                            <input type="number" name="transfer_quantity" id="transferQuantity" class="form-control" min="1" required>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- General Overview Card -->
-                <div class="card mb-3 border-secondary">
-                    <div class="card-header bg-secondary text-white">
-                        <h6 class="mb-0">General Overview</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row" id="otherBranchesStock">
-                            <!-- Will be populated dynamically -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stock Adjustment Options -->
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0">Stock Adjustment Options</h6>
-                    </div>
-                    <div class="card-body">
-                        <form id="adjustStockForm" method="POST" action="">
-                            @csrf
-                            <div class="mb-3">
-                                <label for="adjustmentType" class="form-label">Adjustment Type</label>
-                                <select class="form-control" id="adjustmentType" name="adjustment_type" required>
-                                    <option value="">-- Select Adjustment Type --</option>
-                                    <option value="purchase">Add from Purchase</option>
-                                    <option value="transfer">Create Stock Transfer</option>
-                                </select>
-                            </div>
-
-                            <!-- Purchase Option -->
-                            <div id="purchaseOption" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="purchase_id" class="form-label">Purchase ID</label>
-                                    <select class="form-control" id="purchase_id" name="purchase_id">
-                                        <option value="">-- Select Purchase --</option>
-                                        <!-- Will be populated dynamically -->
-                                    </select>
-                                    <small class="form-text text-muted">Select a purchase that contains this product</small>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="purchaseQuantity" class="form-label">Quantity to Add</label>
-                                    <input type="number" name="purchase_quantity" id="purchaseQuantity" class="form-control" min="1" required>
-                                </div>
-                            </div>
-
-                            <!-- Transfer Option -->
-                            <div id="transferOption" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="fromBranch" class="form-label">From Branch</label>
-                                    <select class="form-control" id="fromBranch" name="from_branch">
-                                        <option value="">-- Select Branch --</option>
-                                        <!-- Will be populated dynamically -->
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="transferQuantity" class="form-label">Quantity to Transfer</label>
-                                    <input type="number" name="transfer_quantity" id="transferQuantity" class="form-control" min="1" required>
-                                </div>
-                            </div>
-                        </form>
+                    
+                    <!-- Right Column: Sales Graph -->
+                    <div class="col-md-6" id="salesGraphColumn">
+                        <!-- Sales graph will be rendered here automatically -->
                     </div>
                 </div>
             </div>
@@ -293,6 +297,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Function to update dashboard alerts
@@ -376,9 +381,9 @@
         const adjustStockModal = document.getElementById('adjustStockModal');
         let currentProductData = null;
         let salesData = null;
-        let originalModalContent = null; // Store original modal content
 
-        adjustStockModal.addEventListener('shown.bs.modal', function (event) {
+        adjustStockModal.addEventListener('show.bs.modal', function (event) {
+            console.log('� [MODAL] Modal opened');
             const button = event.relatedTarget;
             const productId = button.getAttribute('data-product-id');
             const productName = button.getAttribute('data-product-name');
@@ -386,108 +391,265 @@
             const branchId = button.getAttribute('data-branch-id');
             const branchName = button.getAttribute('data-branch-name');
 
-            // Store original modal content when first opened
-            if (!originalModalContent) {
-                originalModalContent = adjustStockModal.querySelector('.modal-body').innerHTML;
-            }
-
+            // Set product data
             currentProductData = {
                 id: productId,
                 name: productName,
-                currentStock: parseInt(currentStock),
+                currentStock: currentStock,
                 branchId: branchId,
                 branchName: branchName
             };
 
-            // Update modal header
+            // Update modal content
             document.getElementById('productName').textContent = productName;
             document.getElementById('branchName').textContent = branchName;
             document.getElementById('currentStockDisplay').textContent = currentStock;
 
+            console.log('🎨 [UI] Modal header updated with product information');
+
             // Load other branches stock data
+            console.log('🔄 [API] Starting to load other branches stock data...');
             loadOtherBranchesStock(productId, branchId);
             
             // Load purchase options for this product
+            console.log('🔄 [API] Starting to load purchase options...');
             loadPurchaseOptions(productId);
             
             // Load branch options for transfer
+            console.log('🔄 [API] Starting to load branch options for transfer...');
             loadBranchOptions(branchId);
+            
+            // Load and display sales data automatically
+            loadAndDisplaySalesData(productId);
         });
 
-        // Load other branches stock
+        // Load other branches stock data
         function loadOtherBranchesStock(productId, currentBranchId) {
+            console.log('📊 [BRANCH_STOCK] Loading stock data for product:', {
+                productId: productId,
+                currentBranchId: currentBranchId,
+                endpoint: `/superadmin/inventory/product-stock/${productId}`
+            });
+            
             fetch(`/superadmin/inventory/product-stock/${productId}`)
                 .then(response => {
+                    console.log('📡 [API] Branch stock response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok
+                    });
+                    
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    const container = document.getElementById('otherBranchesStock');
-                    if (!container) {
-                        console.error('Container not found: otherBranchesStock');
-                        return;
-                    }
-                    container.innerHTML = '';
+                    console.log('✅ [BRANCH_STOCK] Stock data loaded successfully:', {
+                        dataType: typeof data,
+                        isArray: Array.isArray(data),
+                        length: data ? data.length : 0,
+                        rawData: data
+                    });
                     
-                    if (Array.isArray(data)) {
-                        data.forEach(branch => {
-                            if (branch.branch_id != currentBranchId) {
-                                const col = document.createElement('div');
-                                col.className = 'col-md-4 mb-2';
-                                col.innerHTML = `
-                                    <div class="p-2 border rounded">
-                                        <small class="text-muted">${branch.branch_name}</small>
-                                        <div class="fw-bold">${branch.current_stock} units</div>
-                                    </div>
-                                `;
-                                container.appendChild(col);
+                    // Debug: Log the actual data structure
+                    console.log('🔍 [DEBUG] Raw branch data:', data);
+                    console.log('🔍 [DEBUG] Current branch ID:', currentBranchId);
+                    console.log('🔍 [DEBUG] Filtered branches:', data.filter(branch => branch.branch_id != currentBranchId));
+                    
+                    // Display other branches stock
+                    const otherBranchesContainer = document.getElementById('otherBranchesStock');
+                    if (otherBranchesContainer) {
+                        if (Array.isArray(data) && data.length > 0) {
+                            // Show all branches including current branch, but exclude current from display
+                            const displayBranches = data.filter(branch => branch.branch_id != currentBranchId);
+                            
+                            console.log('📋 [BRANCH_STOCK] Processing branch data:', displayBranches);
+                            
+                            if (displayBranches.length > 0) {
+                                let html = '';
+                                let totalBranches = 0;
+                                let processedBranches = 0;
+                                
+                                displayBranches.forEach(branch => {
+                                    totalBranches++;
+                                    
+                                    console.log(`🔍 [FIELD_DEBUG] Branch object keys:`, Object.keys(branch));
+                                    console.log(`🔍 [FIELD_DEBUG] Branch object:`, branch);
+                                    
+                                    const branchName = branch.branch_name || branch.name || 'Unknown Branch';
+                                    const totalUnits = branch.current_stock || 0;
+                                    
+                                    console.log(`🏪 [BRANCH] Processing branch:`, {
+                                        branchId: branch.branch_id,
+                                        branchName: branchName,
+                                        totalUnits: totalUnits,
+                                        current_stock: branch.current_stock,
+                                        isEligibleForTransfer: branch.branch_id != currentBranchId,
+                                        rawBranch: branch
+                                    });
+                                    
+                                    html += `
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card border-light">
+                                                <div class="card-body">
+                                                    <h6 class="text-dark">${branchName}</h6>
+                                                    <h4 class="text-dark">${totalUnits}</h4>
+                                                    <small class="text-muted">Total Units</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                    processedBranches++;
+                                });
+                                
+                                otherBranchesContainer.innerHTML = html;
+                                
+                                console.log(`✅ [BRANCH_STOCK] Branch stock display completed:`, {
+                                    totalBranches: totalBranches,
+                                    processedBranches: processedBranches,
+                                    excludedCurrentBranch: currentBranchId
+                                });
+                            } else {
+                                // Check if we have any data at all (including current branch)
+                                console.log('📭 [BRANCH_STOCK] No other branches found - checking if we have current branch data');
+                                console.log('🔍 [DEBUG] All branch data:', data);
+                                
+                                // If we have data but it's only current branch, still show current branch for reference
+                                if (data.length > 0) {
+                                    const currentBranchData = data.find(branch => branch.branch_id == currentBranchId);
+                                    if (currentBranchData) {
+                                        console.log('� [BRANCH_STOCK] Showing current branch as reference:', currentBranchData);
+                                        const branchName = currentBranchData.branch_name || currentBranchData.name || 'Current Branch';
+                                        const totalUnits = currentBranchData.total_units || currentBranchData.quantity || 0;
+                                        
+                                        otherBranchesContainer.innerHTML = `
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card border-light">
+                                                    <div class="card-body">
+                                                        <h6 class="text-dark">${branchName}</h6>
+                                                        <h4 class="text-dark">${totalUnits}</h4>
+                                                        <small class="text-muted">Total Units</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card border-light">
+                                                    <div class="card-body text-center">
+                                                        <h6 class="text-muted">No Other Branches</h6>
+                                                        <small class="text-muted">This product only exists in current branch</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                        
+                                        console.log('📭 [BRANCH_STOCK] Current branch displayed with no other branches message');
+                                    } else {
+                                        // Fallback to no data message
+                                        showNoDataMessage('No Stock Data Available', 'This product has no stock records in any branches');
+                                    }
+                                } else {
+                                    // No data at all
+                                    showNoDataMessage('No Stock Data Available', 'This product has no stock records in any branches');
+                                }
                             }
-                        });
-                    } else {
-                        console.error('Invalid response format:', data);
+                        } else {
+                            // No data at all
+                            showNoDataMessage('No Stock Data Available', 'This product has no stock records in any branches');
+                        }
+                    }
+                    
+                    function showNoDataMessage(title, message) {
+                        console.log('📭 [BRANCH_STOCK] Showing no data message:', title);
+                        otherBranchesContainer.innerHTML = `
+                            <div class="col-12">
+                                <div class="card border-light">
+                                    <div class="card-body text-center py-4">
+                                        <i class="fas fa-warehouse fa-3x text-muted mb-3"></i>
+                                        <h6 class="text-muted mb-2">${title}</h6>
+                                        <small class="text-muted">${message}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading other branches stock:', error);
-                    const container = document.getElementById('otherBranchesStock');
-                    if (container) {
-                        container.innerHTML = '<div class="alert alert-danger">Error loading stock data</div>';
+                    console.error('❌ [BRANCH_STOCK] Error loading branch stock:', error);
+                    const otherBranchesContainer = document.getElementById('otherBranchesStock');
+                    if (otherBranchesContainer) {
+                        otherBranchesContainer.innerHTML = '<p class="text-danger">Error loading branch stock data</p>';
                     }
                 });
         }
 
         // Load purchase options
         function loadPurchaseOptions(productId) {
+            console.log('🛒 [PURCHASE] Loading purchase options for product:', {
+                productId: productId,
+                endpoint: `/superadmin/purchases/by-product/${productId}`
+            });
+            
             fetch(`/superadmin/purchases/by-product/${productId}`)
                 .then(response => {
+                    console.log('📡 [API] Purchase options response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok
+                    });
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     return response.json();
                 })
                 .then(data => {
+                    console.log('✅ [PURCHASE] Purchase options loaded successfully:', {
+                        dataType: typeof data,
+                        isArray: Array.isArray(data),
+                        length: Array.isArray(data) ? data.length : 'N/A',
+                        rawData: data
+                    });
+                    
                     const select = document.getElementById('purchase_id');
                     if (!select) {
-                        console.error('Element not found: purchase_id');
+                        console.error('❌ [PURCHASE] Element not found: purchase_id');
                         return;
                     }
                     select.innerHTML = '<option value="">-- Select Purchase --</option>';
                     
                     if (Array.isArray(data)) {
+                        console.log('📋 [PURCHASE] Processing purchase data:', data);
+                        
+                        let processedCount = 0;
                         data.forEach(purchase => {
+                            console.log('📦 [PURCHASE] Processing purchase option:', {
+                                purchaseId: purchase.id,
+                                quantity: purchase.quantity,
+                                displayText: `Purchase #${purchase.id} - ${purchase.quantity} units`
+                            });
+                            
                             const option = document.createElement('option');
                             option.value = purchase.id;
                             option.textContent = `Purchase #${purchase.id} - ${purchase.quantity} units`;
                             select.appendChild(option);
+                            processedCount++;
+                        });
+                        
+                        console.log('✅ [PURCHASE] Purchase options populated:', {
+                            totalPurchases: data.length,
+                            processedPurchases: processedCount
                         });
                     } else {
-                        console.error('Invalid response format:', data);
+                        console.error('❌ [PURCHASE] Invalid response format:', data);
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading purchase options:', error);
+                    console.error('❌ [PURCHASE] Error loading purchase options:', {
+                        error: error.message,
+                        stack: error.stack,
+                        productId: productId
+                    });
                     const select = document.getElementById('purchase_id');
                     if (select) {
                         select.innerHTML = '<option value="">-- Error loading purchases --</option>';
@@ -497,36 +659,83 @@
 
         // Load branch options for transfer
         function loadBranchOptions(currentBranchId) {
+            console.log('🏢 [BRANCH] Loading branch options for transfer:', {
+                currentBranchId: currentBranchId,
+                endpoint: '/superadmin/api/branches'
+            });
+            
             fetch('/superadmin/api/branches')
                 .then(response => {
+                    console.log('📡 [API] Branch options response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok
+                    });
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     return response.json();
                 })
                 .then(data => {
+                    console.log('✅ [BRANCH] Branch options loaded successfully:', {
+                        dataType: typeof data,
+                        isArray: Array.isArray(data),
+                        length: Array.isArray(data) ? data.length : 'N/A',
+                        rawData: data
+                    });
+                    
                     const select = document.getElementById('fromBranch');
                     if (!select) {
-                        console.error('Element not found: fromBranch');
+                        console.error('❌ [BRANCH] Element not found: fromBranch');
                         return;
                     }
                     select.innerHTML = '<option value="">-- Select Branch --</option>';
                     
                     if (Array.isArray(data)) {
+                        console.log('📋 [BRANCH] Processing branch data:', data);
+                        
+                        let processedCount = 0;
+                        let excludedCount = 0;
+                        
                         data.forEach(branch => {
                             if (branch.id != currentBranchId) {
+                                console.log('🏪 [BRANCH] Processing branch option:', {
+                                    branchId: branch.id,
+                                    branchName: branch.branch_name,
+                                    isEligibleForTransfer: true
+                                });
+                                
                                 const option = document.createElement('option');
                                 option.value = branch.id;
                                 option.textContent = branch.branch_name;
                                 select.appendChild(option);
+                                processedCount++;
+                            } else {
+                                console.log('🚫 [BRANCH] Excluding current branch from transfer options:', {
+                                    branchId: branch.id,
+                                    branchName: branch.branch_name,
+                                    reason: 'Current branch - cannot transfer from self'
+                                });
+                                excludedCount++;
                             }
                         });
+                        
+                        console.log('✅ [BRANCH] Branch options populated:', {
+                            totalBranches: data.length,
+                            processedBranches: processedCount,
+                            excludedCurrentBranch: excludedCount
+                        });
                     } else {
-                        console.error('Invalid response format:', data);
+                        console.error('❌ [BRANCH] Invalid response format:', data);
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading branches:', error);
+                    console.error('❌ [BRANCH] Error loading branches:', {
+                        error: error.message,
+                        stack: error.stack,
+                        currentBranchId: currentBranchId
+                    });
                     const select = document.getElementById('fromBranch');
                     if (select) {
                         select.innerHTML = '<option value="">-- Error loading branches --</option>';
@@ -552,59 +761,105 @@
             }
         });
 
-        // Handle View Sales button
-        document.getElementById('viewSalesBtn').addEventListener('click', function() {
-            if (!currentProductData) return;
-            
-            // Check if sales graph already exists
-            if (document.getElementById('salesChart')) {
-                // Scroll to existing sales graph
-                document.querySelector('.card:has(#salesChart)').scrollIntoView({ behavior: 'smooth' });
-                return;
-            }
+        // Load and display sales data automatically
+        function loadAndDisplaySalesData(productId) {
+            console.log('📈 [SALES] Auto-loading sales data for product:', productId);
             
             // Show loading state
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            const salesGraphColumn = document.getElementById('salesGraphColumn');
+            if (salesGraphColumn) {
+                salesGraphColumn.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Loading Sales Data...</h6>
+                        </div>
+                        <div class="card-body text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Fetching sales information...</p>
+                        </div>
+                    </div>
+                `;
+            }
             
-            // Load sales data
-            fetch(`/superadmin/inventory/product-sales/${currentProductData.id}`)
-                .then(response => response.json())
+            // Fetch sales data
+            fetch(`/superadmin/inventory/product-sales/${productId}`)
+                .then(response => {
+                    console.log('📡 [API] Sales data response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok,
+                        endpoint: `/superadmin/inventory/product-sales/${productId}`
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('✅ [SALES] Sales data loaded successfully:', {
+                        dataType: typeof data,
+                        isObject: typeof data === 'object',
+                        isArray: Array.isArray(data),
+                        keys: Object.keys(data),
+                        rawData: data
+                    });
+                    
+                    // Store sales data globally
                     salesData = data;
+                    console.log('💾 [SALES] Sales data stored in global variable');
+                    
+                    // Display the graph
                     displaySalesGraph();
                 })
                 .catch(error => {
-                    console.error('Error loading sales data:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Failed to load sales data'
-                    });
-                })
-                .finally(() => {
-                    // Restore button state
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-chart-line"></i> View Sales';
+                    console.error('❌ [SALES] Error loading sales data:', error);
+                    
+                    if (salesGraphColumn) {
+                        salesGraphColumn.innerHTML = `
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Sales Trend - ${currentProductData.name}</h6>
+                                </div>
+                                <div class="card-body text-center py-4">
+                                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                                    <p class="text-muted mb-0">Failed to load sales data</p>
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
-        });
+        }
 
         // Display sales graph
         function displaySalesGraph() {
-            const modalBody = adjustStockModal.querySelector('.modal-body');
+            console.log('🎨 [CHART] Display sales graph function started');
+            
+            const salesGraphColumn = document.getElementById('salesGraphColumn');
+            if (!salesGraphColumn) {
+                console.error('❌ [CHART] Sales graph column not found');
+                return;
+            }
+            
+            console.log('📊 [CHART] Analyzing sales data structure:', {
+                salesDataExists: !!salesData,
+                salesDataType: typeof salesData,
+                salesDataKeys: salesData ? Object.keys(salesData) : 'N/A',
+                isArray: Array.isArray(salesData),
+                isEmpty: salesData ? Object.keys(salesData).length === 0 : true
+            });
             
             // Check if there's sales data
             if (!salesData || Object.keys(salesData).length === 0 || (typeof salesData === 'object' && !Array.isArray(salesData) && Object.keys(salesData).every(key => salesData[key].length === 0))) {
+                console.log('📭 [CHART] No sales data available, showing no data message');
+                
                 // Display no sales data message
-                const salesGraphSection = document.createElement('div');
-                salesGraphSection.className = 'mt-3';
-                salesGraphSection.innerHTML = `
+                const noDataContent = `
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <h6 class="mb-0">Sales Trend - ${currentProductData.name}</h6>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideSalesGraph()">
-                                <i class="fas fa-times"></i> Close
-                            </button>
                         </div>
                         <div class="card-body text-center py-4">
                             <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
@@ -613,44 +868,61 @@
                     </div>
                 `;
                 
-                modalBody.appendChild(salesGraphSection);
-                salesGraphSection.scrollIntoView({ behavior: 'smooth' });
+                salesGraphColumn.innerHTML = noDataContent;
+                console.log('✅ [CHART] No data message displayed');
                 return;
             }
             
-            // Create sales graph section and append to modal
-            const salesGraphSection = document.createElement('div');
-            salesGraphSection.className = 'mt-3';
-            salesGraphSection.innerHTML = `
+            console.log('📈 [CHART] Sales data found, creating Chart.js configuration...');
+            
+            // Transform data for Chart.js
+            const chartData = transformSalesDataForChart(salesData);
+            console.log('🔄 [DATA] Transformed data for Chart.js:', chartData);
+            
+            // Create sales graph content
+            const salesGraphContent = `
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <h6 class="mb-0">Sales Trend - ${currentProductData.name}</h6>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideSalesGraph()">
-                            <i class="fas fa-times"></i> Close
-                        </button>
                     </div>
-                    <div class="card-body">
-                        <canvas id="salesChart" width="400" height="200"></canvas>
-                        <div class="mt-2" id="legendContainer"></div>
+                    <div class="card-body p-0">
+                        <div style="height: 350px; position: relative;">
+                            <canvas id="salesChart"></canvas>
+                        </div>
                     </div>
                 </div>
             `;
             
-            // Append to modal body
-            modalBody.appendChild(salesGraphSection);
+            // Set the content
+            salesGraphColumn.innerHTML = salesGraphContent;
+            console.log('✅ [CHART] Chart container created in right column');
             
-            // Scroll to the sales graph
-            salesGraphSection.scrollIntoView({ behavior: 'smooth' });
+            // Initialize Chart.js
+            setTimeout(() => {
+                initializeChart(chartData);
+            }, 100);
+        }
+
+        // Back to stock adjustment
+        function backToStockAdjustment() {
+            const salesGraphColumn = document.getElementById('salesGraphColumn');
+            const stockAdjustmentColumn = document.getElementById('stockAdjustmentFormColumn');
             
-            // Create line chart
-            const canvas = document.getElementById('salesChart');
-            const ctx = canvas.getContext('2d');
+            if (salesGraphColumn && stockAdjustmentColumn) {
+                salesGraphColumn.style.display = 'none';
+                stockAdjustmentColumn.style.display = 'block';
+                console.log('🔄 [LAYOUT] Switched back to stock adjustment view');
+            }
+        }
+
+        // Transform sales data for Chart.js
+        function transformSalesDataForChart(salesData) {
+            console.log('🔄 [TRANSFORM] Starting data transformation...');
             
-            // Prepare data for line graph
             const branches = Object.keys(salesData);
             const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1', '#e83e8c', '#fd7e14'];
             
-            // Get all unique dates
+            // Get all unique dates and sort them
             const allDates = new Set();
             branches.forEach(branch => {
                 salesData[branch].forEach(item => {
@@ -659,112 +931,181 @@
             });
             const sortedDates = Array.from(allDates).sort();
             
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Set up chart dimensions
-            const padding = 40;
-            const chartWidth = canvas.width - 2 * padding;
-            const chartHeight = canvas.height - 2 * padding;
-            
-            // Find max value for scaling
-            let maxValue = 0;
-            branches.forEach(branch => {
-                salesData[branch].forEach(item => {
-                    maxValue = Math.max(maxValue, item.quantity);
-                });
+            console.log('📅 [TRANSFORM] Date processing:', {
+                uniqueDates: sortedDates,
+                totalDates: sortedDates.length
             });
-            maxValue = Math.ceil(maxValue * 1.1); // Add 10% padding
             
-            // Draw axes
-            ctx.strokeStyle = '#ddd';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, canvas.height - padding);
-            ctx.lineTo(canvas.width - padding, canvas.height - padding);
-            ctx.stroke();
-            
-            // Draw grid lines and labels
-            ctx.fillStyle = '#666';
-            ctx.font = '10px Arial';
-            ctx.textAlign = 'right';
-            
-            // Y-axis labels
-            for (let i = 0; i <= 5; i++) {
-                const y = padding + (chartHeight / 5) * i;
-                const value = Math.round(maxValue - (maxValue / 5) * i);
-                ctx.fillText(value, padding - 5, y + 3);
+            // Create datasets for each branch
+            const datasets = branches.map((branch, index) => {
+                const branchData = salesData[branch];
+                const color = colors[index % colors.length];
                 
-                // Grid lines
-                ctx.strokeStyle = '#f0f0f0';
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(canvas.width - padding, y);
-                ctx.stroke();
+                // Create data array aligned with sortedDates
+                const data = sortedDates.map(date => {
+                    const dataPoint = branchData.find(item => item.date === date);
+                    return dataPoint ? dataPoint.quantity : null; // Use null for missing dates
+                });
+                
+                console.log(`📊 [TRANSFORM] Created dataset for ${branch}:`, {
+                    branch: branch,
+                    color: color,
+                    dataPoints: data,
+                    hasNulls: data.some(val => val === null)
+                });
+                
+                return {
+                    label: branch,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color + '20', // Add transparency
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: color,
+                    pointBorderWidth: 2,
+                    tension: 0.1, // Smooth lines
+                    spanGaps: true // Connect across null values
+                };
+            });
+            
+            const result = {
+                labels: sortedDates,
+                datasets: datasets
+            };
+            
+            console.log('✅ [TRANSFORM] Data transformation completed:', {
+                labels: result.labels,
+                datasetCount: result.datasets.length,
+                datasets: result.datasets.map(ds => ({ label: ds.label, dataPoints: ds.data.length }))
+            });
+            
+            return result;
+        }
+
+        // Initialize Chart.js chart
+        function initializeChart(chartData) {
+            console.log('🎨 [CHART] Initializing Chart.js...');
+            
+            const canvas = document.getElementById('salesChart');
+            if (!canvas) {
+                console.error('❌ [CHART] Canvas element not found');
+                return;
             }
             
-            // X-axis labels (dates)
-            const dateStep = Math.max(1, Math.floor(sortedDates.length / 10)); // Show max 10 dates
-            sortedDates.forEach((date, index) => {
-                if (index % dateStep === 0) {
-                    const x = padding + (chartWidth / (sortedDates.length - 1)) * index;
-                    ctx.save();
-                    ctx.translate(x, canvas.height - padding + 15);
-                    ctx.rotate(-45);
-                    ctx.textAlign = 'right';
-                    ctx.fillText(date, 0, 0);
-                    ctx.restore();
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('❌ [CHART] Could not get 2D context from canvas');
+                return;
+            }
+            
+            // Destroy existing chart if it exists
+            if (window.salesChartInstance) {
+                window.salesChartInstance.destroy();
+                console.log('🗑️ [CHART] Destroyed existing chart instance');
+            }
+            
+            // Create new chart
+            window.salesChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].dataset.label;
+                                },
+                                label: function(context) {
+                                    return `Date: ${context.label}, Sales: ${context.parsed.y} units`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Sales (units)',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                display: true,
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            right: 10,
+                            bottom: 10,
+                            left: 10
+                        }
+                    }
                 }
             });
             
-            // Draw lines for each branch
-            const legendContainer = document.getElementById('legendContainer');
-            legendContainer.innerHTML = '<div class="d-flex flex-wrap gap-2">';
-            
-            branches.forEach((branch, branchIndex) => {
-                const color = colors[branchIndex % colors.length];
-                const branchData = salesData[branch];
-                
-                // Draw line
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                
-                let firstPoint = true;
-                sortedDates.forEach((date, dateIndex) => {
-                    const dataPoint = branchData.find(item => item.date === date);
-                    if (dataPoint) {
-                        const x = padding + (chartWidth / (sortedDates.length - 1)) * dateIndex;
-                        const y = padding + chartHeight - (dataPoint.quantity / maxValue) * chartHeight;
-                        
-                        if (firstPoint) {
-                            ctx.moveTo(x, y);
-                            firstPoint = false;
-                        } else {
-                            ctx.lineTo(x, y);
-                        }
-                        
-                        // Draw point
-                        ctx.fillStyle = color;
-                        ctx.beginPath();
-                        ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                        ctx.fill();
-                    }
-                });
-                
-                ctx.stroke();
-                
-                // Add to legend
-                legendContainer.innerHTML += `
-                    <div class="d-flex align-items-center gap-1">
-                        <div style="width: 12px; height: 12px; background-color: ${color}; border-radius: 2px;"></div>
-                        <small>${branch}</small>
-                    </div>
-                `;
+            console.log('✅ [CHART] Chart.js initialization completed:', {
+                chartType: 'line',
+                datasets: chartData.datasets.length,
+                labels: chartData.labels.length
             });
-            
-            legendContainer.innerHTML += '</div>';
         }
 
         // Hide sales graph

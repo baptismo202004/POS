@@ -1053,6 +1053,7 @@ Route::middleware('auth')->group(function () {
         // Sales route
         Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
         Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
+        Route::get('sales/graph-data', [\App\Http\Controllers\Admin\SalesController::class, 'getGraphData'])->name('sales.graph-data');
         Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
         Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
         Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');

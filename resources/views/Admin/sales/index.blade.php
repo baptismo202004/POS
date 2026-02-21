@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@section('head')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endsection
+
 @section('content')
 <style>
 .modal-body {
@@ -125,6 +129,40 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Graph -->
+                <div class="card shadow mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="m-0 font-weight-bold text-white">Sales Trend - Last 2 Weeks</h6>
+                            <small class="text-white-50">Daily sales revenue and order count for the past 14 days</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-light" onclick="refreshGraph()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success mb-3">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>TEST MESSAGE:</strong> If you can see this message, the view changes are working!
+                        </div>
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Graph Data:</strong> This chart displays daily sales revenue (₱) and total orders for the last 14 days. 
+                            Blue line shows sales revenue, cyan line shows order count. Hover over data points for detailed values.
+                        </div>
+                        <div id="graphLoading" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="graphContent" style="position: relative; z-index: 1;">
+                            <canvas id="salesGraph" width="400" height="150"></canvas>
                         </div>
                     </div>
                 </div>
@@ -258,6 +296,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Sales Graph -->
+    <script src="{{ asset('js/sales-graph.js') }}"></script>
     
     <script>
         let currentSale = null;
