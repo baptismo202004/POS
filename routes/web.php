@@ -769,11 +769,10 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $negativeProfitItems = 0;
     }
     
-    // 14. Voided Sales This Month
+    // 14. Voided Sales Today
     try {
         $voidedSalesToday = DB::table('sales')
-            ->whereDate('created_at', '>=', $today->copy()->startOfMonth())
-            ->whereDate('created_at', '<=', $today)
+            ->whereDate('created_at', '=', $today)
             ->where('voided', true)
             ->count();
         
@@ -1069,6 +1068,7 @@ Route::middleware('auth')->group(function () {
 
     // Stock Transfer routes
     Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
+    Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('stocktransfer.store');
     Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
     // Settings routes (guard at least with view-level ability)

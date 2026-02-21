@@ -42,7 +42,7 @@
                                             <td>{{ $product->total_sold }}</td>
                                             <td>{{ number_format($product->total_revenue, 2) }}</td>
                                             <td>
-                                                <button class="btn btn-sm btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $product->current_stock }}">Adjust Stock</button>
+                                                <a href="{{ route('admin.stockin.index') }}" class="btn btn-sm btn-primary">Manage Stock</a>
                                             </td>
                                         </tr>
                                     @empty
@@ -62,39 +62,7 @@
         </main>
     </div>
 
-    <div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="adjustStockModalLabel">Adjust Stock for <span id="productName"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="adjustStockForm" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="branch_id" class="form-label">Branch</label>
-                            <select class="form-control" id="branch_id" name="branch_id" required>
-                                <option value="">-- Select Branch --</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">New Stock Quantity</label>
-                            <input type="number" name="quantity" id="quantity" class="form-control" min="0" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save changes</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
+    
     <!-- Bootstrap JS bundle (optional) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -204,109 +172,7 @@
             });
             @endif
 
-            const adjustStockModal = document.getElementById('adjustStockModal');
-            adjustStockModal.addEventListener('shown.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const productId = button.getAttribute('data-product-id');
-                const productName = button.getAttribute('data-product-name');
-                const currentStock = button.getAttribute('data-current-stock');
-
-                const modalTitle = adjustStockModal.querySelector('.modal-title #productName');
-                const form = adjustStockModal.querySelector('#adjustStockForm');
-                const quantityInput = adjustStockModal.querySelector('#quantity');
-
-                modalTitle.textContent = productName;
-                form.action = `/superadmin/inventory/${productId}/adjust`;
-                quantityInput.value = currentStock;
-            });
-
-            // Handle stock adjustment form submission via AJAX
-            const adjustStockForm = document.getElementById('adjustStockForm');
-            adjustStockForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                
-                const submitBtn = adjustStockForm.querySelector('button[type="submit"]');
-                const originalText = submitBtn.textContent;
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Saving...';
-
-                const formData = new FormData(adjustStockForm);
-                const action = adjustStockForm.action;
-
-                fetch(action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('AJAX response received:', data);
-                    
-                    if (data.success) {
-                        // Close modal
-                        const modal = bootstrap.Modal.getInstance(adjustStockModal);
-                        modal.hide();
-                        
-                        // Show success message
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: data.message || 'Stock adjusted successfully.',
-                            showConfirmButton: true,
-                            confirmButtonText: 'Great!',
-                            confirmButtonColor: '#02C39A',
-                            backdrop: `
-                                rgba(2, 195, 154, 0.1)
-                                left top
-                                no-repeat
-                            `,
-                            showClass: {
-                                popup: 'animate__animated animate__fadeInDown'
-                            },
-                            hideClass: {
-                                popup: 'animate__animated animate__fadeOutUp'
-                            },
-                            position: 'top-center',
-                            toast: false,
-                            timer: 3000,
-                            timerProgressBar: true
-                        }).then(() => {
-                            // Update dashboard alerts if we have count
-                            if (data.outOfStockCount !== undefined) {
-                                console.log('Updating dashboard alerts with new count:', data.outOfStockCount);
-                                updateDashboardAlerts(data.outOfStockCount);
-                            } else {
-                                console.log('No outOfStockCount in response data');
-                            }
-                            // Reload page to show updated inventory data
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1000);
-                        });
-                    } else {
-                        throw new Error(data.message || 'Something went wrong');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: error.message || 'Failed to adjust stock. Please try again.',
-                        confirmButtonText: 'Okay',
-                        confirmButtonColor: '#E63946'
-                    });
-                })
-                .finally(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                });
-            });
-
+            
             const searchInput = document.getElementById('searchInput');
             let debounceTimer;
 
