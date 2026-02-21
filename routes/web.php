@@ -37,6 +37,10 @@ Route::post('/login', function (Request $request) {
         // Get authenticated user
         $user = Auth::user();
         
+        // Update last login timestamp
+        $user->last_login_at = now();
+        $user->save();
+        
         // Check if user has a user type assigned
         if (!$user->userType) {
             Auth::logout();
@@ -765,10 +769,11 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $negativeProfitItems = 0;
     }
     
-    // 14. Voided Sales Today (simplified - count all sales for now)
+    // 14. Voided Sales Today
     try {
         $voidedSalesToday = DB::table('sales')
-            ->whereDate('created_at', $today)
+            ->whereDate('created_at', '=', $today)
+            ->where('voided', true)
             ->count();
         
         Log::info('Voided sales calculated', ['count' => $voidedSalesToday]);
@@ -828,6 +833,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
             ->join('users', 'sales.cashier_id', '=', 'users.id')
             ->whereDate('sales.created_at', $today)
             ->select(
+                'users.id',
                 'users.name',
                 DB::raw('SUM(sales.total_amount) as total_sales'),
             DB::raw('COUNT(sales.id) as transaction_count'),
@@ -1014,6 +1020,18 @@ Route::middleware('auth')->group(function () {
         
         Route::get('/inventory/product-sales/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductSales']);
 
+        // Sales routes
+        Route::get('/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
+        Route::get('/sales/voided', [\App\Http\Controllers\Admin\SalesController::class, 'voidedSales'])->name('sales.voided');
+        Route::get('/sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
+        Route::get('/sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
+        Route::get('/sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
+        Route::get('/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+        Route::get('/sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
+        Route::get('/sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
+        Route::post('/sales/{sale}/void', [\App\Http\Controllers\Admin\SalesController::class, 'voidSale'])->name('sales.void');
+
         // Purchase routes
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('purchases.create');
@@ -1050,6 +1068,7 @@ Route::middleware('auth')->group(function () {
 
     // Stock Transfer routes
     Route::get('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'index'])->middleware('ability:inventory,view')->name('stocktransfer.index');
+    Route::post('/stocktransfer', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'store'])->middleware('ability:inventory,edit')->name('stocktransfer.store');
     Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
     // Settings routes (guard at least with view-level ability)

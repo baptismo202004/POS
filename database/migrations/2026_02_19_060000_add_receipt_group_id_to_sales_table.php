@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sales', function (Blueprint $table) {
-            $table->boolean('voided')->default(false)->after('payment_method');
+            $table->string('receipt_group_id')->nullable()->after('reference_number');
+            $table->index('receipt_group_id');
         });
     }
 
@@ -22,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sales', function (Blueprint $table) {
-            $table->dropColumn('voided');
+            $table->dropIndex(['receipt_group_id']);
+            $table->dropColumn('receipt_group_id');
         });
     }
 };

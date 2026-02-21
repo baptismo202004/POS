@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SalesController extends Controller
 {
@@ -99,7 +100,7 @@ class SalesController extends Controller
                     $recentSalesQuery->where('voided', true);
                     break;
                 case 'high-discount':
-                    $recentSalesQuery->where('discount_percentage', '>', 20);
+                    // Skip high-discount filter as column doesn't exist
                     break;
             }
         }
@@ -275,4 +276,54 @@ class SalesController extends Controller
         ));
     }
     
+    public function voidSale(Sale $sale)
+    {
+        $sale->voided = true;
+        $sale->save();
+        
+        return redirect()->back()->with('success', 'Sale has been voided successfully.');
     }
+    
+    public function voidedSales(Request $request)
+    {
+        // Get date range from request
+        $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date')) : Carbon::today();
+        $endDate = Carbon::today()->endOfDay(); // Always go to today
+        
+        // Get voided sales with relationships
+        $voidedSales = Sale::with(['saleItems.product', 'cashier', 'branch'])
+            ->where('voided', true)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+        
+        // Debug: Log what sales we found
+        \Log::info("Voided sales query returned: " . $voidedSales->count() . " sales");
+        foreach ($voidedSales as $sale) {
+            \Log::info("Sale ID: {$sale->id}, Items count: " . $sale->saleItems->count());
+        }
+        
+        // For voided sales, also get original items count
+        $voidedSales->getCollection()->each(function ($sale) {
+            $originalItemsCount = DB::table('sale_items')
+                ->where('sale_id', $sale->id)
+                ->sum('quantity');
+            $sale->original_items_count = $originalItemsCount;
+            
+            // Debug logging
+            \Log::info("Sale ID {$sale->id}: Original items count = {$originalItemsCount}");
+        });
+        
+        // Calculate totals
+        $totalVoidedAmount = $voidedSales->sum('total_amount');
+        $totalVoidedCount = $voidedSales->total();
+        
+        return view('Admin.sales.voided', compact(
+            'voidedSales',
+            'totalVoidedAmount',
+            'totalVoidedCount',
+            'startDate',
+            'endDate'
+        ));
+    }
+}

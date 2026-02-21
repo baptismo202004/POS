@@ -26,6 +26,7 @@ class User extends Authenticatable
         'profile_picture',
         'user_type_id',
         'status',
+        'last_login_at',
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -58,5 +60,10 @@ class User extends Authenticatable
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+    
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'cashier_id');
     }
 }

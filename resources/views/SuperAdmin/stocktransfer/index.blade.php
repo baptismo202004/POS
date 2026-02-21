@@ -9,7 +9,7 @@
                 <h4 class="m-0">Create Stock Transfer</h4>
             </div>
             <div class="card-body">
-                <form action="{{ route('superadmin.stocktransfer.store') }}" method="POST">
+                <form action="{{ route('stocktransfer.store') }}" method="POST">
                     @csrf
                     <div class="row">
                         <div class="col-md-3">

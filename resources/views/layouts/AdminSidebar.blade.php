@@ -550,9 +550,6 @@
                     <a href="{{ route('superadmin.products.index') }}" class="{{ request()->routeIs('superadmin.products.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">All Products</span>
                     </a>
-                    <a href="{{ route('admin.stockin.index') }}" class="{{ request()->routeIs('stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Stock In</span>
-                    </a>
                     <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Product Category</span>
                     </a>
@@ -623,6 +620,9 @@
                 <div class="d-flex flex-column ms-4 mt-1">
                     <a href="{{ route('admin.sales.management.index') }}" class="{{ request()->routeIs('admin.sales.management.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Sales</span>
+                    </a>
+                    <a href="{{ route('superadmin.sales.voided') }}" class="{{ request()->routeIs('superadmin.sales.voided') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Voided Sales</span>
                     </a>
                     <a href="{{ route('admin.refunds.index') }}" class="{{ request()->routeIs('admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Refund/Return</span>

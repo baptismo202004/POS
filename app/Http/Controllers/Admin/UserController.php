@@ -27,7 +27,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         // Load user with relationships
-        $user->load(['branch', 'userType']);
+        $user->load(['branch', 'userType', 'sales']);
         
         return view('Admin.users.show', compact('user'));
     }

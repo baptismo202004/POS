@@ -72,10 +72,20 @@
                             <tbody>
                                 @forelse($sales as $sale)
                                 <tr>
-                                    <td><strong>#{{ $sale->id }}</strong></td>
+                                    <td>
+                                        <strong>#{{ $sale->id }}</strong>
+                                        @if($sale->receipt_group_id)
+                                            <br><small class="text-muted"><i class="fas fa-link"></i> Group: {{ $sale->receipt_group_id }}</small>
+                                        @endif
+                                    </td>
                                     <td>{{ $sale->created_at->format('M d, Y h:i A') }}</td>
                                     <td>{{ $sale->customer_name ?: 'Walk-in' }}</td>
-                                    <td class="text-end">₱{{ number_format($sale->total_amount, 2) }}</td>
+                                    <td class="text-end">
+                                        ₱{{ number_format($sale->total_amount, 2) }}
+                                        @if($sale->receipt_group_id)
+                                            <br><small class="text-muted">Branch {{ $sale->branch->branch_name ?? 'N/A' }}</small>
+                                        @endif
+                                    </td>
                                     <td>
                                         <span class="badge bg-{{ $sale->payment_method == 'cash' ? 'success' : ($sale->payment_method == 'card' ? 'info' : 'warning') }}">
                                             {{ ucfirst($sale->payment_method) }}

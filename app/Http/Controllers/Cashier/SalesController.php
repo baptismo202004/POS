@@ -105,6 +105,7 @@ class SalesController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
+            'items.*.branch_id' => 'nullable|exists:branches,id',
         ]);
 
         try {
@@ -129,24 +130,36 @@ class SalesController extends Controller
                     $customerId = $customer->id;
                 }
 
+                // Group items by branch and calculate totals
+                $itemsByBranch = [];
                 foreach ($validated['items'] as $item) {
                     $product = Product::findOrFail($item['product_id']);
+                    // Use provided branch_id or fallback to cashier's branch
+                    $itemBranchId = $item['branch_id'] ?? $branchId;
                     $itemSubtotal = $item['quantity'] * $item['unit_price'];
                     $subtotal += $itemSubtotal;
 
-                    // Check stock availability
-                    $currentStock = $this->getCurrentStock($item['product_id'], $branchId);
+                    // Check stock availability at the specified branch
+                    $currentStock = $this->getCurrentStock($item['product_id'], $itemBranchId);
                     if ($currentStock < $item['quantity']) {
-                        throw new \Exception("Insufficient stock for {$product->product_name}. Available: {$currentStock}, Required: {$item['quantity']}");
+                        throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentStock}, Required: {$item['quantity']}");
                     }
 
-                    $saleItems[] = [
+                    if (!isset($itemsByBranch[$itemBranchId])) {
+                        $itemsByBranch[$itemBranchId] = [
+                            'items' => [],
+                            'subtotal' => 0
+                        ];
+                    }
+
+                    $itemsByBranch[$itemBranchId]['items'][] = [
                         'product_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'subtotal' => $itemSubtotal,
                         'unit_type_id' => $item['unit_type_id'],
                     ];
+                    $itemsByBranch[$itemBranchId]['subtotal'] += $itemSubtotal;
                 }
 
                 $totalAmount = $subtotal;
@@ -161,24 +174,66 @@ class SalesController extends Controller
 
                 $totalAmount -= $discountAmount;
 
-                // Create sale
-                $sale = Sale::create([
-                    'branch_id' => $branchId,
-                    'cashier_id' => $user->id,
-                    'customer_id' => $customerId,
-                    'total_amount' => $totalAmount,
-                    'subtotal' => $subtotal,
-                    'discount_amount' => $discountAmount,
-                    'payment_method' => $validated['payment_method'],
-                    'status' => 'completed',
-                ]);
-
-                // Create sale items
-                foreach ($saleItems as $item) {
-                    $sale->items()->create($item);
+                // Generate receipt group ID if multiple branches are involved
+                $receiptGroupId = null;
+                if (count($itemsByBranch) > 1) {
+                    $receiptGroupId = 'RCP-' . date('Ymd') . '-' . str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
                 }
 
-                // Create credit if payment method is credit
+                $sales = [];
+                $branchProportions = [];
+
+                // Calculate proportional amounts for each branch
+                foreach ($itemsByBranch as $branchId => $branchData) {
+                    $branchProportions[$branchId] = $branchData['subtotal'] / $subtotal;
+                }
+
+                // Get current count for reference number generation
+                $currentSaleCount = Sale::whereDate('created_at', today())->count();
+
+                // Create sales for each branch
+                foreach ($itemsByBranch as $branchId => $branchData) {
+                    // Calculate proportional amounts for this branch
+                    $branchTotalAmount = $totalAmount * $branchProportions[$branchId];
+                    $branchDiscountAmount = $discountAmount * $branchProportions[$branchId];
+                    $branchSubtotal = $branchData['subtotal'];
+
+                    // Create unique reference number for each branch sale
+                    $currentSaleCount++;
+                    $referenceNumber = 'REF-' . date('Ymd') . '-' . str_pad($currentSaleCount, 4, '0', STR_PAD_LEFT);
+
+                    // Debug logging
+                    \Log::info("Creating sale with reference: " . $referenceNumber);
+                    \Log::info("Branch ID: " . $branchId);
+                    \Log::info("Total Amount: " . $branchTotalAmount);
+
+                    $sale = Sale::create([
+                        'branch_id' => $branchId,
+                        'cashier_id' => $user->id,
+                        'customer_id' => $customerId,
+                        'total_amount' => $branchTotalAmount,
+                        'subtotal' => $branchSubtotal,
+                        'discount_amount' => $branchDiscountAmount,
+                        'payment_method' => $validated['payment_method'],
+                        'status' => 'completed',
+                        'reference_number' => $referenceNumber,
+                        'receipt_group_id' => $receiptGroupId,
+                    ]);
+
+                    \Log::info("Sale created with ID: " . $sale->id . " and reference: " . $sale->reference_number);
+
+                    // Create sale items for this branch
+                    foreach ($branchData['items'] as $item) {
+                        $sale->items()->create($item);
+                    }
+
+                    $sales[] = $sale;
+
+                    // Update stock for this branch
+                    $this->updateStock($branchData['items'], $branchId);
+                }
+
+                // Create credit if payment method is credit (only once for the entire receipt)
                 if ($validated['payment_method'] === 'credit' && $customerId) {
                     CustomerService::createCredit([
                         'customer' => [
@@ -188,16 +243,13 @@ class SalesController extends Controller
                             'address' => $validated['customer_address'] ?? null,
                         ],
                         'credit_amount' => $totalAmount,
-                        'sale_id' => $sale->id,
+                        'sale_id' => $sales[0]->id, // Use first sale as reference
                         'status' => 'active',
                         'date' => now()->addDays(30), // 30 days due date
-                        'notes' => 'Credit from POS Sale #' . $sale->id,
+                        'notes' => 'Credit from POS Sale #' . ($receiptGroupId ?? $sales[0]->id),
                         'credit_type' => 'sales'
                     ], $branchId, $user->id);
                 }
-
-                // Update stock
-                $this->updateStock($validated['items'], $branchId);
             });
 
             return response()->json([
@@ -206,6 +258,7 @@ class SalesController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error("Sale creation error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
@@ -244,9 +297,21 @@ class SalesController extends Controller
             abort(403, 'Unauthorized access');
         }
 
+        // Load the current sale with its relationships
         $sale->load(['items.product', 'items.unitType', 'cashier', 'branch', 'customer', 'credit.customer']);
 
-        return view('cashier.sales.receipt', compact('sale'));
+        // If this sale is part of a receipt group, load all related sales
+        $relatedSales = collect([]);
+        $receiptGroupId = $sale->receipt_group_id;
+        
+        if ($receiptGroupId) {
+            $relatedSales = Sale::with(['items.product', 'items.unitType', 'branch'])
+                ->where('receipt_group_id', $receiptGroupId)
+                ->where('id', '!=', $sale->id)
+                ->get();
+        }
+
+        return view('cashier.sales.receipt', compact('sale', 'relatedSales', 'receiptGroupId'));
     }
 
     public function void(Sale $sale)

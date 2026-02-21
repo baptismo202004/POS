@@ -7,7 +7,7 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">User Details</h2>
-                <a href="{{ request()->referer() ?: route('superadmin.users.index') }}" class="btn btn-secondary">
+                <a href="{{ request()->header('referer') ?: route('superadmin.users.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Users
                 </a>
             </div>
@@ -37,10 +37,10 @@
                         </div>
                         <div class="col-md-6">
                             <h6 class="text-muted">Performance Summary</h6>
-                            <p><strong>Total Sales:</strong> ₱{{ number_format($user->sales->sum('total_amount'), 2) }}</p>
-                            <p><strong>Average Sale:</strong> ₱{{ number_format($user->sales->avg('total_amount'), 2) }}</p>
-                            <p><strong>Total Transactions:</strong> {{ $user->sales->count() }}</p>
-                            <p><strong>Today's Sales:</strong> ₱{{ number_format($user->sales->whereDate('created_at', today)->sum('total_amount'), 2) }}</p>
+                            <p><strong>Total Sales:</strong> ₱{{ number_format($user->sales ? $user->sales->sum('total_amount') : 0, 2) }}</p>
+                            <p><strong>Average Sale:</strong> ₱{{ number_format($user->sales ? $user->sales->avg('total_amount') : 0, 2) }}</p>
+                            <p><strong>Total Transactions:</strong> {{ $user->sales ? $user->sales->count() : 0 }}</p>
+                            <p><strong>Today's Sales:</strong> ₱{{ number_format($user->sales ? $user->sales->filter(function($sale) { return \Carbon\Carbon::parse($sale->created_at)->isToday(); })->sum('total_amount') : 0, 2) }}</p>
                         </div>
                     </div>
                     
@@ -58,19 +58,17 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse ($user->sales->isEmpty())
-                                            @foreach ($user->sales->take(10) as $sale)
-                                                <tr>
-                                                    <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}</td>
-                                                    <td>{{ $sale->receipt_number ?? 'N/A' }}</td>
-                                                    <td>₱{{ number_format($sale->total_amount, 2) }}</td>
-                                                    <td>
-                                                        <a href="/superadmin/sales/{{ $sale->id }}" class="btn btn-sm btn-primary">
-                                                            <i class="fas fa-eye"></i> View
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
+                                        @forelse ($user->sales->take(10) as $sale)
+                                            <tr>
+                                                <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}</td>
+                                                <td>{{ $sale->reference_number ?? 'N/A' }}</td>
+                                                <td>₱{{ number_format($sale->total_amount, 2) }}</td>
+                                                <td>
+                                                    <a href="/superadmin/sales/{{ $sale->id }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                </td>
+                                            </tr>
                                         @empty
                                             <tr>
                                                 <td colspan="4" class="text-center text-muted">No sales found</td>
