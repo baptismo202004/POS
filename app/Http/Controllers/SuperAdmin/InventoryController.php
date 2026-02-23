@@ -92,19 +92,63 @@ class InventoryController extends Controller
 
     public function adjust(Request $request, Product $product)
     {
-        $adjustmentType = $request->input('adjustment_type');
+        $request->validate([
+            'new_stock' => 'required|integer|min:0',
+            'reason' => 'required|string|max:255',
+            'adjustment_type' => 'required|in:set,add,subtract'
+        ]);
         
         try {
-            if ($adjustmentType === 'purchase') {
-                return $this->adjustFromPurchase($request, $product);
-            } elseif ($adjustmentType === 'transfer') {
-                return $this->adjustFromTransfer($request, $product);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Invalid adjustment type'], 400);
+            $newStock = $request->input('new_stock');
+            $reason = $request->input('reason');
+            $adjustmentType = $request->input('adjustment_type');
+            
+            // Get current stock
+            $currentStock = $product->current_stock;
+            
+            // Validate adjustment
+            if ($adjustmentType === 'subtract' && $newStock > $currentStock) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot remove more stock than currently available'
+                ], 400);
             }
+            
+            // Create stock adjustment record
+            $product->stockIns()->create([
+                'quantity' => $newStock,
+                'sold' => 0,
+                'price' => DB::table('stock_ins')->where('product_id', $product->id)->where('price', '>', 0)->avg('price') ?? 0,
+                'reason' => $reason,
+                'notes' => "Manual adjustment: {$adjustmentType} (was {$currentStock})",
+                'branch_id' => 1 // Default branch or get from product
+            ]);
+            
+            // Update out-of-stock count
+            $outOfStockCount = DB::table('products')
+                ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
+                ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
+                ->select(
+                    'products.id',
+                    DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                )
+                ->groupBy('products.id')
+                ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+                ->count();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock adjusted successfully',
+                'new_stock' => $newStock,
+                'outOfStockCount' => $outOfStockCount
+            ]);
+            
         } catch (\Exception $e) {
             Log::error('Error adjusting stock: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to adjust stock'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to adjust stock'
+            ], 500);
         }
     }
 
@@ -427,6 +471,216 @@ class InventoryController extends Controller
             'sortDirection' => $sortDirection,
             'selectedBranchId' => $branchId
         ])->with('branchesJson', $branches->toJson());
+    }
+
+    public function stockManagement(Request $request)
+    {
+        $branches = Branch::all();
+        $sortBy = $request->query('sort_by', 'product_name');
+        $sortDirection = $request->query('sort_direction', 'asc');
+        $search = $request->query('search');
+        $branchId = $request->query('branch_id');
+        
+        if (!in_array($sortBy, ['product_name', 'current_stock', 'unit_price', 'last_updated'])) {
+            $sortBy = 'product_name';
+        }
+        
+        // Build base query with stock calculations
+        $productsQuery = DB::table('products')
+            ->leftJoin('stock_ins', function($join) {
+                $join->on('products.id', '=', 'stock_ins.product_id');
+            })
+            ->leftJoin('sale_items', function($join) {
+                $join->on('products.id', '=', 'sale_items.product_id');
+            })
+            ->leftJoin('branches', function($join) {
+                $join->on('stock_ins.branch_id', '=', 'branches.id');
+            })
+            ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->select(
+                'products.id',
+                'products.product_name',
+                'brands.brand_name',
+                'categories.category_name',
+                'branches.id as branch_id',
+                'branches.branch_name',
+                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock'),
+                DB::raw('MAX(stock_ins.created_at) as last_stock_update'),
+                DB::raw('(SELECT AVG(price) FROM stock_ins WHERE product_id = products.id AND price > 0 LIMIT 1) as unit_price')
+            )
+            ->groupBy('products.id', 'products.product_name', 'brands.brand_name', 'categories.category_name', 'branches.id', 'branches.branch_name');
+        
+        // Apply search filter
+        if ($search) {
+            $productsQuery->where('products.product_name', 'like', "%{$search}%")
+                ->orWhere('brands.brand_name', 'like', "%{$search}%")
+                ->orWhere('categories.category_name', 'like', "%{$search}%");
+        }
+        
+        // Apply branch filter
+        if ($branchId) {
+            $productsQuery->where('stock_ins.branch_id', $branchId);
+        }
+        
+        // Apply sorting
+        if ($sortBy === 'product_name') {
+            $productsQuery->orderBy('products.product_name', $sortDirection);
+        } elseif ($sortBy === 'current_stock') {
+            $productsQuery->orderByRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0))', $sortDirection);
+        } elseif ($sortBy === 'unit_price') {
+            $productsQuery->orderByRaw('(SELECT AVG(price) FROM stock_ins WHERE product_id = products.id AND price > 0 LIMIT 1)', $sortDirection);
+        } elseif ($sortBy === 'last_updated') {
+            $productsQuery->orderBy('last_stock_update', $sortDirection);
+        } else {
+            $productsQuery->orderBy('products.product_name', 'asc');
+        }
+        
+        $products = $productsQuery->paginate(15);
+        
+        // Calculate stock counts
+        $lowStockCount = DB::table('products')
+            ->leftJoin('stock_ins', function($join) {
+                $join->on('products.id', '=', 'stock_ins.product_id');
+            })
+            ->leftJoin('sale_items', function($join) {
+                $join->on('products.id', '=', 'sale_items.product_id');
+            })
+            ->select(
+                'products.id',
+                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+            )
+            ->groupBy('products.id')
+            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) > 0 AND (COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+            ->count();
+        
+        $outOfStockCount = DB::table('products')
+            ->leftJoin('stock_ins', function($join) {
+                $join->on('products.id', '=', 'stock_ins.product_id');
+            })
+            ->leftJoin('sale_items', function($join) {
+                $join->on('products.id', '=', 'sale_items.product_id');
+            })
+            ->select(
+                'products.id',
+                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+            )
+            ->groupBy('products.id')
+            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 0')
+            ->count();
+        
+        return view('SuperAdmin.inventory.stock-management', [
+            'products' => $products->appends($request->query()),
+            'branches' => $branches,
+            'sortBy' => $sortBy,
+            'sortDirection' => $sortDirection,
+            'selectedBranchId' => $branchId,
+            'lowStockCount' => $lowStockCount,
+            'outOfStockCount' => $outOfStockCount
+        ])->with('branchesJson', $branches->toJson());
+    }
+
+    public function getProductStockHistory($productId)
+    {
+        try {
+            $history = DB::table('stock_ins')
+                ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
+                ->where('stock_ins.product_id', $productId)
+                ->select(
+                    'stock_ins.id',
+                    'stock_ins.quantity',
+                    'stock_ins.sold',
+                    'stock_ins.price',
+                    'stock_ins.reason',
+                    'stock_ins.notes',
+                    'stock_ins.created_at',
+                    'branches.branch_name',
+                    DB::raw('"in" as type')
+                )
+                ->orderBy('stock_ins.created_at', 'desc')
+                ->limit(50)
+                ->get();
+            
+            return response()->json(['history' => $history]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching stock history: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch stock history'], 500);
+        }
+    }
+
+    public function bulkStockAdjustment(Request $request)
+    {
+        $request->validate([
+            'adjustment_type' => 'required|in:add,subtract,set',
+            'value' => 'required|integer|min:0',
+            'reason' => 'required|string|max:255'
+        ]);
+        
+        try {
+            $adjustmentType = $request->adjustment_type;
+            $value = $request->value;
+            $reason = $request->reason;
+            
+            // Get all products with their current stock
+            $products = DB::table('products')
+                ->leftJoin('stock_ins', function($join) {
+                    $join->on('products.id', '=', 'stock_ins.product_id');
+                })
+                ->leftJoin('sale_items', function($join) {
+                    $join->on('products.id', '=', 'sale_items.product_id');
+                })
+                ->select(
+                    'products.id',
+                    DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                )
+                ->groupBy('products.id')
+                ->get();
+            
+            $updatedCount = 0;
+            
+            foreach ($products as $product) {
+                $currentStock = $product->current_stock ?? 0;
+                $newStock = $currentStock;
+                
+                if ($adjustmentType === 'add') {
+                    $newStock = $currentStock + $value;
+                } elseif ($adjustmentType === 'subtract') {
+                    $newStock = max(0, $currentStock - $value);
+                } elseif ($adjustmentType === 'set') {
+                    $newStock = $value;
+                }
+                
+                // Only update if there's a change
+                if ($newStock !== $currentStock) {
+                    // Create stock adjustment record
+                    DB::table('stock_ins')->insert([
+                        'product_id' => $product->id,
+                        'quantity' => $newStock,
+                        'sold' => 0,
+                        'price' => 0,
+                        'reason' => $reason,
+                        'notes' => "Bulk adjustment: {$adjustmentType} {$value} (was {$currentStock})",
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    $updatedCount++;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Bulk adjustment completed. Updated {$updatedCount} products.",
+                'updated_count' => $updatedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in bulk stock adjustment: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to perform bulk adjustment'
+            ], 500);
+        }
     }
 
     public function exportOutOfStockPDF(Request $request)
