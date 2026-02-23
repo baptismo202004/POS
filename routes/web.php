@@ -1007,9 +1007,20 @@ Route::middleware('auth')->group(function () {
         // Inventory routes
         Route::get('/inventory', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/out-of-stock', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'outOfStock'])->name('inventory.out-of-stock');
+        Route::get('/inventory/stock-management', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'index'])->name('inventory.stock-management');
         Route::post('/inventory/{product}/adjust', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'adjust'])->name('inventory.adjust');
         Route::post('/inventory/{product}/stock-in', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'stockIn'])->name('inventory.stock-in');
         Route::get('/inventory/out-of-stock/export', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'exportOutOfStockPDF'])->name('inventory.out-of-stock.export');
+        
+        // Stock Management API routes
+        Route::get('/api/suppliers', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'getSuppliers'])->name('api.suppliers');
+        Route::get('/inventory/filtered-products', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'getFilteredProducts'])->name('inventory.filtered-products');
+        Route::get('/inventory/product-details/{id}', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'getProductDetails'])->name('inventory.product-details');
+        Route::get('/inventory/stock-history/{id}', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'getStockHistory'])->name('inventory.stock-history');
+
+        // Stock management API routes
+        Route::get('/inventory/product-stock-history/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductStockHistory']);
+        Route::post('/inventory/bulk-adjust', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'bulkStockAdjustment']);
 
         // API routes for out-of-stock functionality
         Route::get('/api/branches', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getBranches']);

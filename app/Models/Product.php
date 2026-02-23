@@ -26,6 +26,10 @@ class Product extends Model
         'voltage_specs',
         'status',
         'branch_id',
+        'supplier_id',
+        'min_stock_level',
+        'max_stock_level',
+        'stock_status',
     ];
 
     // Cast product_type_id to string since we changed it to varchar
@@ -62,6 +66,11 @@ class Product extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+    
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function serials()

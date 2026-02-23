@@ -570,7 +570,7 @@
             
             @canAccess('inventory','view')
             @php
-                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock');
+                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('superadmin.stockin.*') || request()->routeIs('stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock') || request()->routeIs('superadmin.inventory.stock-management');
             @endphp
             <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
@@ -590,6 +590,9 @@
                     </a>
                     <a href="{{ route('superadmin.inventory.out-of-stock') }}" class="{{ request()->routeIs('superadmin.inventory.out-of-stock') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Out of Stock Alert ({{ session('out_of_stock_count', 0) }}/{{ session('out_of_stock_total', 0) }})</span>
+                    </a>
+                    <a href="{{ route('superadmin.inventory.stock-management') }}" class="{{ request()->routeIs('superadmin.inventory.stock-management') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                        <span class="small">Stock Management</span>
                     </a>
                     <a href="{{ route('admin.stockin.index') }}" class="{{ request()->routeIs('stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
