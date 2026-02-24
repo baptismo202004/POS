@@ -1,147 +1,120 @@
 <!-- Minimal Stock Management Filters -->
 <div class="card mb-3 border-0 shadow-sm">
-    <div class="card-header bg-white border-0 p-2">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="filterDropdownBtn" data-bs-toggle="dropdown">
-                    <i class="fas fa-filter me-1"></i>
-                    Filters
-                    <span class="badge bg-secondary ms-1" id="activeFiltersCount">0</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
-                <!-- Stock Level Filters -->
-                <li><h6 class="dropdown-header small">Stock Level</h6></li>
-                <li>
-                    <div class="px-3 py-2">
-                        <div class="form-check form-check-sm">
-                            <input class="form-check-input" type="checkbox" id="filterOutOfStock" value="out_of_stock">
-                            <label class="form-check-label small" for="filterOutOfStock">
-                                Out of Stock
-                            </label>
-                        </div>
-                        <div class="form-check form-check-sm">
-                            <input class="form-check-input" type="checkbox" id="filterLowStock" value="low_stock">
-                            <label class="form-check-label small" for="filterLowStock">
-                                Low Stock
-                            </label>
-                        </div>
-                        <div class="form-check form-check-sm">
-                            <input class="form-check-input" type="checkbox" id="filterCriticalStock" value="critical_stock">
-                            <label class="form-check-label small" for="filterCriticalStock">
-                                Critical Stock
-                            </label>
-                        </div>
-                        <div class="form-check form-check-sm">
-                            <input class="form-check-input" type="checkbox" id="filterInStock" value="in_stock">
-                            <label class="form-check-label small" for="filterInStock">
-                                In Stock
-                            </label>
-                        </div>
-                        <div class="form-check form-check-sm">
-                            <input class="form-check-input" type="checkbox" id="filterOverstock" value="overstock">
-                            <label class="form-check-label small" for="filterOverstock">
-                                Overstock
-                            </label>
-                        </div>
+    <!-- Filter content only (no dropdown wrapper) -->
+    <ul class="dropdown-menu dropdown-menu-end show" style="min-width: 320px; position: absolute; right: 0; top: 100%; display: none; background-color: #f8f9fa; border: 1px solid #dee2e6; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); padding: 10px;" id="filterDropdownContent">
+                <!-- Two Column Layout -->
+                <div class="row g-2">
+                    <!-- Left Column -->
+                    <div class="col-6">
+                        <!-- Stock Level Filters -->
+                        <li class="list-unstyled"><h6 class="dropdown-header small mb-2">Stock Level</h6></li>
+                        <li class="list-unstyled">
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterOutOfStock" value="out_of_stock">
+                                <label class="form-check-label small" for="filterOutOfStock">Out of Stock</label>
+                            </div>
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterLowStock" value="low_stock">
+                                <label class="form-check-label small" for="filterLowStock">Low Stock</label>
+                            </div>
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterCriticalStock" value="critical_stock">
+                                <label class="form-check-label small" for="filterCriticalStock">Critical Stock</label>
+                            </div>
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterInStock" value="in_stock">
+                                <label class="form-check-label small" for="filterInStock">In Stock</label>
+                            </div>
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterOverstock" value="overstock">
+                                <label class="form-check-label small" for="filterOverstock">Overstock</label>
+                            </div>
+                        </li>
+                        
+                        <!-- Date Filters -->
+                        <li class="list-unstyled"><h6 class="dropdown-header small mb-2 mt-3">Date Filters</h6></li>
+                        <li class="list-unstyled">
+                            <div class="mb-2">
+                                <label class="form-label small">Date Range</label>
+                                <select class="form-select form-select-sm" id="dateRangeFilter">
+                                    <option value="">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="quarter">This Quarter</option>
+                                    <option value="year">This Year</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small">Stock Movement</label>
+                                <select class="form-select form-select-sm" id="movementFilter">
+                                    <option value="">All Items</option>
+                                    <option value="recently_restocked">Recently Restocked</option>
+                                    <option value="no_movement">No Movement (30 days)</option>
+                                    <option value="fast_moving">Fast Moving</option>
+                                    <option value="slow_moving">Slow Moving</option>
+                                </select>
+                            </div>
+                        </li>
                     </div>
-                </li>
-                
-                <li><hr class="dropdown-divider"></li></li>
-                
-                <!-- Category Filter -->
-                <li><h6 class="dropdown-header small">Category</h6></li>
-                <li>
-                    <div class="px-3 py-2">
-                        <select class="form-select form-select-sm" id="categoryFilter">
-                            <option value="">All Categories</option>
-                            <option value="Beverages">Beverages</option>
-                            <option value="Snacks">Snacks</option>
-                            <option value="Grocery">Grocery</option>
-                            <option value="Dairy">Dairy</option>
-                            <option value="Bakery">Bakery</option>
-                            <option value="Frozen">Frozen</option>
-                            <option value="Canned">Canned Goods</option>
-                            <option value="Personal Care">Personal Care</option>
-                            <option value="Household">Household</option>
-                        </select>
+                    
+                    <!-- Right Column -->
+                    <div class="col-6">
+                        <!-- Category Filter -->
+                        <li class="list-unstyled"><h6 class="dropdown-header small mb-2">Category</h6></li>
+                        <li class="list-unstyled">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="categoryFilter">
+                                    <option value="">All Categories</option>
+                                    <option value="Beverages">Beverages</option>
+                                    <option value="Snacks">Snacks</option>
+                                    <option value="Grocery">Grocery</option>
+                                    <option value="Dairy">Dairy</option>
+                                    <option value="Bakery">Bakery</option>
+                                    <option value="Frozen">Frozen</option>
+                                    <option value="Canned">Canned Goods</option>
+                                    <option value="Personal Care">Personal Care</option>
+                                    <option value="Household">Household</option>
+                                </select>
+                            </div>
+                        </li>
+                        
+                        <!-- Supplier Filter -->
+                        <li class="list-unstyled"><h6 class="dropdown-header small mb-2 mt-3">Supplier</h6></li>
+                        <li class="list-unstyled">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="supplierFilter">
+                                    <option value="">All Suppliers</option>
+                                    <!-- Suppliers will be loaded dynamically -->
+                                </select>
+                            </div>
+                        </li>
+                        
+                        <!-- Sort Options -->
+                        <li class="list-unstyled"><h6 class="dropdown-header small mb-2 mt-3">Sort By</h6></li>
+                        <li class="list-unstyled">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="sortByFilter">
+                                    <option value="name_asc">Name (A-Z)</option>
+                                    <option value="name_desc">Name (Z-A)</option>
+                                    <option value="quantity_asc">Quantity (Low to High)</option>
+                                    <option value="quantity_desc">Quantity (High to Low)</option>
+                                    <option value="updated_desc">Recently Updated</option>
+                                    <option value="status_asc">Stock Status</option>
+                                </select>
+                            </div>
+                        </li>
                     </div>
-                </li>
+                </div>
                 
-                <li><hr class="dropdown-divider"></li></li>
-                
-                <!-- Supplier Filter -->
-                <li><h6 class="dropdown-header small">Supplier</h6></li>
-                <li>
-                    <div class="px-3 py-2">
-                        <select class="form-select form-select-sm" id="supplierFilter">
-                            <option value="">All Suppliers</option>
-                            <!-- Suppliers will be loaded dynamically -->
-                        </select>
-                    </div>
-                </li>
-                
-                <li><hr class="dropdown-divider"></li></li>
-                
-                <!-- Date-Based Filters -->
-                <li><h6 class="dropdown-header small">Date Filters</h6></li>
-                <li>
-                    <div class="px-3 py-2">
-                        <div class="mb-2">
-                            <label class="form-label small">Date Range</label>
-                            <select class="form-select form-select-sm" id="dateRangeFilter">
-                                <option value="">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
-                                <option value="quarter">This Quarter</option>
-                                <option value="year">This Year</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small">Stock Movement</label>
-                            <select class="form-select form-select-sm" id="movementFilter">
-                                <option value="">All Items</option>
-                                <option value="recently_restocked">Recently Restocked</option>
-                                <option value="no_movement">No Movement (30 days)</option>
-                                <option value="fast_moving">Fast Moving</option>
-                                <option value="slow_moving">Slow Moving</option>
-                            </select>
-                        </div>
-                    </div>
-                </li>
-                
-                <li><hr class="dropdown-divider"></li></li>
-                
-                <!-- Sort Only -->
-                <li><h6 class="dropdown-header small">Sort By</h6></li>
-                <li>
-                    <div class="px-3 py-2">
-                        <select class="form-select form-select-sm" id="sortByFilter">
-                            <option value="name_asc">Name (A-Z)</option>
-                            <option value="name_desc">Name (Z-A)</option>
-                            <option value="quantity_asc">Quantity (Low to High)</option>
-                            <option value="quantity_desc">Quantity (High to Low)</option>
-                            <option value="updated_desc">Recently Updated</option>
-                            <option value="status_asc">Stock Status</option>
-                        </select>
-                    </div>
-                </li>
-                
-                <li><hr class="dropdown-divider"></li></li>
-                
-                <!-- Action Buttons -->
-                <li>
-                    <div class="px-3 py-2 d-flex gap-2">
-                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="applyFiltersBtn">
-                            Apply
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="clearFiltersBtn">
-                            Clear
-                        </button>
+                <!-- Action Buttons (Full Width) -->
+                <li class="list-unstyled mt-3">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="applyFiltersBtn">Apply</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="clearFiltersBtn">Clear</button>
                     </div>
                 </li>
             </ul>
-        </div>
     </div>
     
     <!-- Active Filters Display -->
@@ -170,10 +143,12 @@
 // Stock Management Filters JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     const filterDropdownBtn = document.getElementById('filterDropdownBtn');
+    const filterDropdownContent = document.getElementById('filterDropdownContent');
     const activeFiltersCount = document.getElementById('activeFiltersCount');
     const activeFiltersDiv = document.getElementById('activeFilters');
     const filterSummary = document.getElementById('filterSummary');
     const resultCount = document.getElementById('resultCount');
+    const headerSearchInput = document.getElementById('searchFilterHeader');
     
     // Filter elements
     const stockLevelFilters = {
@@ -209,6 +184,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load suppliers dynamically
     loadSuppliers();
     
+    // Dropdown toggle functionality
+    if (filterDropdownBtn && filterDropdownContent) {
+        filterDropdownBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isVisible = filterDropdownContent.style.display !== 'none';
+            filterDropdownContent.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!filterDropdownBtn.contains(e.target) && !filterDropdownContent.contains(e.target)) {
+                filterDropdownContent.style.display = 'none';
+            }
+        });
+        
+        // Position dropdown properly relative to button
+        function updateDropdownPosition() {
+            const buttonRect = filterDropdownBtn.getBoundingClientRect();
+            filterDropdownContent.style.top = (buttonRect.bottom + 2) + 'px';
+            filterDropdownContent.style.right = '0px';
+        }
+        
+        // Update position when button is clicked
+        filterDropdownBtn.addEventListener('click', updateDropdownPosition);
+    }
+    
     // Event listeners
     Object.values(stockLevelFilters).forEach(checkbox => {
         checkbox.addEventListener('change', updateActiveFiltersCount);
@@ -220,6 +221,11 @@ document.addEventListener('DOMContentLoaded', function() {
     movementFilter.addEventListener('change', updateActiveFiltersCount);
     searchFilter.addEventListener('input', debounceSearch);
     sortByFilter.addEventListener('change', updateActiveFiltersCount);
+    
+    // Add header search functionality
+    if (headerSearchInput) {
+        headerSearchInput.addEventListener('input', debounceSearch);
+    }
     
     applyFiltersBtn.addEventListener('click', applyFilters);
     clearFiltersBtn.addEventListener('click', clearAllFilters);
@@ -246,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function applyFilters() {
-        // Collect all active filters
+        // Update current filter state
         currentFilters.stockLevels = Object.entries(stockLevelFilters)
             .filter(([key, checkbox]) => checkbox.checked)
             .map(([key]) => key);
@@ -261,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update active filters display
         updateActiveFiltersDisplay();
         
-        // Apply filters to the table (this would be implemented based on your table structure)
+        // Apply filters to table
         applyFiltersToTable();
         
         // Update summary
@@ -347,33 +353,135 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadSuppliers() {
-        // This would load suppliers from your API
-        fetch('/api/suppliers')
-            .then(response => response.json())
-            .then(data => {
-                supplierFilter.innerHTML = '<option value="">All Suppliers</option>';
-                data.forEach(supplier => {
-                    supplierFilter.innerHTML += `<option value="${supplier.id}">${supplier.name}</option>`;
-                });
-            })
-            .catch(error => console.error('Error loading suppliers:', error));
+        // Since API endpoint doesn't exist, we'll use a simple approach
+        // Try to get suppliers from the page data or use basic options
+        const supplierSelect = document.getElementById('supplierFilter');
+        if (supplierSelect) {
+            // Clear existing options except the first one
+            while (supplierSelect.children.length > 1) {
+                supplierSelect.removeChild(supplierSelect.lastChild);
+            }
+            
+            // Add some common supplier options (you can customize these)
+            const suppliers = [
+                { id: 1, name: 'Global Supplies Inc.' },
+                { id: 2, name: 'Local Distributors Co.' },
+                { id: 3, name: 'International Trading Ltd.' },
+                { id: 4, name: 'Regional Wholesalers' },
+                { id: 5, name: 'Direct Manufacturers' }
+            ];
+            
+            suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.id;
+                option.textContent = supplier.name;
+                supplierSelect.appendChild(option);
+            });
+        }
     }
     
     function debounceSearch() {
         clearTimeout(window.searchTimeout);
         window.searchTimeout = setTimeout(() => {
-            applyFilters();
+            // Update search from both inputs
+            const searchValue = (searchFilter?.value || headerSearchInput?.value || '').trim();
+            currentFilters.search = searchValue;
+            applyFiltersToTable();
         }, 300);
     }
     
     function applyFiltersToTable() {
-        // This function would apply filters to your stock table
-        // Implementation depends on your table structure
         console.log('Applying filters:', currentFilters);
         
-        // Example: Trigger table reload with filters
-        const event = new CustomEvent('applyStockFilters', { detail: currentFilters });
-        document.dispatchEvent(event);
+        // Get all table rows
+        const tableRows = document.querySelectorAll('table tbody tr');
+        let visibleCount = 0;
+        let hasAnyData = tableRows.length > 0;
+        
+        tableRows.forEach(row => {
+            let showRow = true;
+            
+            // Get cell values for filtering
+            const productName = row.cells[0]?.textContent.toLowerCase() || '';
+            const categoryName = row.cells[1]?.textContent.toLowerCase() || '';
+            const currentStock = parseInt(row.cells[2]?.textContent) || 0;
+            
+            // Apply search filter
+            if (currentFilters.search) {
+                const searchTerm = currentFilters.search.toLowerCase();
+                if (!productName.includes(searchTerm) && !categoryName.includes(searchTerm)) {
+                    showRow = false;
+                }
+            }
+            
+            // Apply category filter
+            if (currentFilters.category && showRow) {
+                if (categoryName !== currentFilters.category.toLowerCase()) {
+                    showRow = false;
+                }
+            }
+            
+            // Apply stock level filters
+            if (currentFilters.stockLevels.length > 0 && showRow) {
+                const hasStockLevel = currentFilters.stockLevels.some(level => {
+                    switch (level) {
+                        case 'out_of_stock':
+                            return currentStock <= 0;
+                        case 'low_stock':
+                            return currentStock > 0 && currentStock <= 5;
+                        case 'critical_stock':
+                            return currentStock > 0 && currentStock <= 3;
+                        case 'in_stock':
+                            return currentStock > 0;
+                        case 'overstock':
+                            return currentStock > 100;
+                        default:
+                            return false;
+                    }
+                });
+                
+                if (!hasStockLevel) {
+                    showRow = false;
+                }
+            }
+            
+            // Show/hide row
+            row.style.display = showRow ? '' : 'none';
+            if (showRow) {
+                visibleCount++;
+            }
+        });
+        
+        // Handle no data found / nothing follows messages
+        const tbody = document.querySelector('table tbody');
+        
+        // Remove existing message rows
+        const existingMessages = tbody.querySelectorAll('.no-data-message');
+        existingMessages.forEach(msg => msg.remove());
+        
+        if (visibleCount === 0) {
+            // Create message row
+            const messageRow = document.createElement('tr');
+            messageRow.className = 'no-data-message';
+            
+            const messageCell = document.createElement('td');
+            messageCell.colSpan = '10'; // Span all columns
+            messageCell.className = 'text-center py-4 text-muted';
+            
+            if (!hasAnyData) {
+                messageCell.innerHTML = '<i class="fas fa-inbox me-2"></i>No data found';
+            } else {
+                messageCell.innerHTML = '<i class="fas fa-search me-2"></i>Nothing follows';
+            }
+            
+            messageRow.appendChild(messageCell);
+            tbody.appendChild(messageRow);
+        }
+        
+        // Update result count
+        if (resultCount) {
+            resultCount.textContent = visibleCount;
+        }
     }
 });
 </script>

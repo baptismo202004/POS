@@ -4,9 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\StockIn;
-use App\Models\StockOut;
-use App\Models\SaleItem;
 
 class Product extends Model
 {
@@ -28,6 +25,7 @@ class Product extends Model
         'branch_id',
         'supplier_id',
         'min_stock_level',
+        'low_stock_threshold',
         'max_stock_level',
         'stock_status',
     ];
@@ -67,7 +65,7 @@ class Product extends Model
     {
         return $this->belongsTo(Branch::class);
     }
-    
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
@@ -97,6 +95,7 @@ class Product extends Model
     {
         $stockIn = $this->stockIns()->sum('quantity');
         $sold = $this->stockIns()->sum('sold');
+
         return $stockIn - $sold;
     }
 
@@ -120,6 +119,7 @@ class Product extends Model
     {
         $stockIn = $this->stockIns()->where('branch_id', $branchId)->sum('quantity');
         $sold = $this->stockIns()->where('branch_id', $branchId)->sum('sold');
+
         return $stockIn - $sold;
     }
 }

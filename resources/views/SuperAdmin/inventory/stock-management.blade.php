@@ -13,11 +13,26 @@
             <p class="text-muted mb-0 small">Intelligent inventory monitoring</p>
         </div>
         
-        <!-- Search Bar -->
-        <div class="position-relative">
-            <input type="text" class="form-control form-control-sm" id="searchFilterHeader" 
-                   placeholder="Search..." style="width: 250px;">
-            <i class="fas fa-search position-absolute" style="right: 10px; top: 8px; color: #6c757d; font-size: 12px;"></i>
+        <!-- Right Side Controls -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Search Bar -->
+            <div class="position-relative">
+                <input type="text" class="form-control form-control-sm" id="searchFilterHeader" 
+                       placeholder="Search..." style="width: 250px;" value="{{ request('search') }}">
+                <i class="fas fa-search position-absolute" style="right: 10px; top: 8px; color: #6c757d; font-size: 12px;"></i>
+            </div>
+            
+            <!-- Filter Button -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="filterDropdownBtn" data-bs-toggle="dropdown">
+                    <i class="fas fa-filter me-1"></i>
+                    Filters
+                    <span class="badge bg-secondary ms-1" id="activeFiltersCount">0</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
+                    <!-- Filter content will be included here -->
+                </ul>
+            </div>
         </div>
     </div>
     
@@ -57,31 +72,73 @@
                         </thead>
                         <tbody>
                             @forelse($products as $product)
-                                <tr class="{{ $product->current_stock <= 15 ? 'table-warning' : ($product->current_stock <= 0 ? 'table-danger' : '') }}">
+                                @php
+                                    $currentStock = (int) ($product->current_stock ?? 0);
+                                    $minStockLevel = (int) ($product->min_stock_level ?? 0);
+                                    $maxStockLevel = (int) ($product->max_stock_level ?? 0);
+                                    $lowStockThreshold = (int) ($product->low_stock_threshold ?? 0);
+
+                                    $effectiveMin = $minStockLevel > 0 ? $minStockLevel : 10;
+                                    $effectiveMax = $maxStockLevel > 0 ? $maxStockLevel : 100;
+                                    $effectiveLow = $lowStockThreshold > 0 ? max($effectiveMin, $lowStockThreshold) : $effectiveMin;
+
+                                    if ($currentStock <= 0) {
+                                        $stockLevel = 'out_of_stock';
+                                    } elseif ($currentStock <= $effectiveMin) {
+                                        $stockLevel = 'critical_stock';
+                                    } elseif ($currentStock <= $effectiveLow) {
+                                        $stockLevel = 'low_stock';
+                                    } elseif ($currentStock <= $effectiveMax) {
+                                        $stockLevel = 'in_stock';
+                                    } else {
+                                        $stockLevel = 'overstock';
+                                    }
+
+                                    $rowClass = match ($stockLevel) {
+                                        'out_of_stock' => 'table-danger',
+                                        'critical_stock' => 'table-danger',
+                                        'low_stock' => 'table-warning',
+                                        'overstock' => 'table-info',
+                                        default => '',
+                                    };
+
+                                    $badgeClass = match ($stockLevel) {
+                                        'out_of_stock' => 'bg-danger',
+                                        'critical_stock' => 'bg-danger',
+                                        'low_stock' => 'bg-warning text-dark',
+                                        'in_stock' => 'bg-success',
+                                        'overstock' => 'bg-info text-dark',
+                                    };
+
+                                    $stockLabel = match ($stockLevel) {
+                                        'out_of_stock' => 'Out of Stock',
+                                        'critical_stock' => 'Critical',
+                                        'low_stock' => 'Low',
+                                        'in_stock' => 'In Stock',
+                                        'overstock' => 'Overstock',
+                                    };
+                                @endphp
+                                <tr class="{{ $rowClass }}">
                                     <td>
                                         <a href="{{ route('superadmin.products.show', $product->id) }}" class="text-decoration-none">
                                             {{ $product->product_name }}
                                         </a>
-                                        @if($product->current_stock <= 0)
-                                            <span class="badge bg-danger ms-2">Out of Stock</span>
-                                        @elseif($product->current_stock <= 15)
-                                            <span class="badge bg-warning ms-2">Low Stock</span>
-                                        @endif
+                                        <span class="badge {{ $badgeClass }} ms-2">{{ $stockLabel }}</span>
                                     </td>
                                     <td>{{ $product->brand_name ?? 'N/A' }}</td>
                                     <td>{{ $product->category_name ?? 'N/A' }}</td>
                                     <td>{{ $product->branch_name ?? 'Main Branch' }}</td>
-                                    <td class="{{ $product->current_stock <= 0 ? 'text-danger font-weight-bold' : ($product->current_stock <= 15 ? 'text-warning font-weight-bold' : '') }}">
-                                        <span class="badge {{ $product->current_stock <= 0 ? 'bg-danger' : ($product->current_stock <= 15 ? 'bg-warning' : 'bg-success') }}">
-                                            {{ $product->current_stock }}
+                                    <td>
+                                        <span class="badge {{ $badgeClass }}">
+                                            {{ $currentStock }}
                                         </span>
                                     </td>
                                     <td>{{ number_format($product->unit_price ?? 0, 2) }}</td>
-                                    <td>{{ number_format(($product->unit_price ?? 0) * $product->current_stock, 2) }}</td>
+                                    <td>{{ number_format(($product->unit_price ?? 0) * $currentStock, 2) }}</td>
                                     <td>{{ $product->last_stock_update ? \Carbon\Carbon::parse($product->last_stock_update)->format('M d, Y H:i') : 'Never' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $product->current_stock }}" title="Adjust Stock">
+                                            <button type="button" class="btn btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $currentStock }}" data-branch-id="{{ $product->branch_id ?? request('branch_id') }}" data-branch-name="{{ $product->branch_name ?? '' }}" title="Adjust Stock">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-success stock-in-btn" data-bs-toggle="modal" data-bs-target="#stockInModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" title="Stock In">
@@ -174,11 +231,16 @@
                                                 <option value="">-- Select Purchase --</option>
                                                 <!-- Will be populated dynamically -->
                                             </select>
-                                            <small class="form-text text-muted">Select a purchase that contains this product</small>
+                                            <small class="form-text text-muted">
+                                                Select a purchase that contains this product. Availability is based on
+                                                Purchased − Stocked − Sold per purchase batch.
+                                            </small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="purchaseQuantity" class="form-label">Quantity to Add</label>
                                             <input type="number" name="purchase_quantity" id="purchaseQuantity" class="form-control" min="1" required>
+                                            <small id="purchaseStats" class="form-text text-muted d-block"></small>
+                                            <small id="purchaseWarning" class="form-text text-danger d-none"></small>
                                         </div>
                                     </div>
 

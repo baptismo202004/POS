@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Category;
-use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class StockManagementController extends Controller
 {
@@ -16,377 +14,449 @@ class StockManagementController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'supplier']);
-        
-        // Apply stock level filters
-        if ($request->has('stock_levels') && is_array($request->stock_levels)) {
-            $query = $this->applyStockLevelFilters($query, $request->stock_levels);
-        }
-        
-        // Apply category filter
-        if ($request->filled('category')) {
-            $query->whereHas('category', function($q) use ($request) {
-                $q->where('category_name', $request->category);
-            });
-        }
-        
-        // Apply supplier filter
-        if ($request->filled('supplier')) {
-            $query->where('supplier_id', $request->supplier);
-        }
-        
-        // Apply search filter
+        $branchId = $this->resolveBranchId($request);
+
+        $query = $this->baseStockQuery($branchId);
+
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('product_name', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('barcode', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('model_number', 'LIKE', "%{$searchTerm}%");
+            $searchTerm = trim((string) $request->string('search'));
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('products.product_name', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.barcode', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.model_number', 'like', "%{$searchTerm}%");
             });
         }
-        
-        // Apply date range filter
+
+        if ($request->filled('category_id')) {
+            $query->where('products.category_id', $request->integer('category_id'));
+        }
+
+        if ($request->filled('supplier_id')) {
+            $supplierId = $request->integer('supplier_id');
+
+            // Supplier is determined from: stock_ins.purchase_id -> purchases.supplier_id
+            $query->whereExists(function ($exists) use ($branchId, $supplierId) {
+                $exists->select(DB::raw(1))
+                    ->from('stock_ins')
+                    ->join('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
+                    ->whereColumn('stock_ins.product_id', 'products.id')
+                    ->where('stock_ins.branch_id', $branchId)
+                    ->where('purchases.supplier_id', $supplierId);
+            });
+        }
+
+        $stockLevels = $request->input('stock_levels');
+        if (is_array($stockLevels) && count($stockLevels) > 0) {
+            $this->applyStockLevelFilters($query, $stockLevels);
+        }
+
         if ($request->filled('date_range')) {
-            $query = $this->applyDateRangeFilter($query, $request->date_range);
+            $this->applyDateRangeFilter($query, (string) $request->string('date_range'));
         }
-        
-        // Apply movement filter
+
         if ($request->filled('movement')) {
-            $query = $this->applyMovementFilter($query, $request->movement);
+            $this->applyMovementFilter($query, (string) $request->string('movement'));
         }
-        
-        // Apply sorting
-        $sortBy = $request->get('sort_by', 'name_asc');
-        $query = $this->applySorting($query, $sortBy);
-        
-        // Get results with pagination
-        $products = $query->with(['category', 'supplier', 'brand'])
-                          ->paginate(50);
-        
-        // Add calculated attributes to paginated results
-        $products->getCollection()->transform(function($product) {
-            // Calculate current stock
-            $currentStock = $product->stockIns()->sum('quantity') - $product->stockIns()->sum('sold');
-            
-            // Add calculated attributes
-            $product->current_stock = $currentStock;
-            $product->brand_name = $product->brand ? $product->brand->brand_name : 'N/A';
-            $product->category_name = $product->category ? $product->category->category_name : 'N/A';
-            $product->branch_name = $product->branch ? $product->branch->branch_name : 'Main Branch';
-            $product->unit_price = 0; // Default value - you may need to adjust this based on your pricing logic
-            $product->last_stock_update = $product->updated_at;
-            
-            return $product;
-        });
-        
-        // Get filter options
-        $categories = Category::orderBy('category_name')->pluck('category_name', 'category_name');
-        $suppliers = Supplier::orderBy('supplier_name')->pluck('supplier_name', 'id');
-        $branches = \App\Models\Branch::orderBy('branch_name')->get();
-        
-        // Calculate stock statistics
-        $stockStats = $this->calculateStockStatistics();
-        
-        return view('superadmin.inventory.stock-management', compact(
-            'products', 
-            'categories', 
-            'suppliers', 
-            'branches',
-            'stockStats'
-        ));
+
+        $this->applySorting(
+            $query,
+            (string) $request->string('sort_by', 'product_name'),
+            Str::lower((string) $request->string('sort_direction', 'asc')) === 'desc' ? 'desc' : 'asc'
+        );
+
+        $products = $query->paginate(15)->appends($request->query());
+
+        $categories = DB::table('categories')
+            ->orderBy('category_name')
+            ->pluck('category_name', 'id');
+
+        $suppliers = DB::table('suppliers')
+            ->orderBy('supplier_name')
+            ->pluck('supplier_name', 'id');
+
+        $branches = DB::table('branches')->orderBy('branch_name')->get();
+
+        $stockStats = $this->calculateStockStatistics($branchId);
+
+        return view('superadmin.inventory.stock-management', [
+            'products' => $products,
+            'categories' => $categories,
+            'suppliers' => $suppliers,
+            'branches' => $branches,
+            'stockStats' => $stockStats,
+            'selectedBranchId' => $branchId,
+        ]);
     }
-    
-    /**
-     * Apply stock level filters to query
-     */
-    private function applyStockLevelFilters($query, $stockLevels)
-    {
-        return $query->where(function($q) use ($stockLevels) {
-            foreach ($stockLevels as $level) {
-                switch ($level) {
-                    case 'out_of_stock':
-                        $q->orWhereHas('stockIns', function($stockQuery) {
-                            $stockQuery->selectRaw('SUM(quantity) - SUM(sold) as current_stock')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) <= 0');
-                        });
-                        break;
-                    case 'low_stock':
-                        $q->orWhereHas('stockIns', function($stockQuery) {
-                            $stockQuery->selectRaw('SUM(quantity) - SUM(sold) as current_stock')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) > 0')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) <= COALESCE(min_stock_level, 5)');
-                        });
-                        break;
-                    case 'critical_stock':
-                        $q->orWhereHas('stockIns', function($stockQuery) {
-                            $stockQuery->selectRaw('SUM(quantity) - SUM(sold) as current_stock')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) > 0')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) <= 3');
-                        });
-                        break;
-                    case 'in_stock':
-                        $q->orWhereHas('stockIns', function($stockQuery) {
-                            $stockQuery->selectRaw('SUM(quantity) - SUM(sold) as current_stock')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) > 0');
-                        });
-                        break;
-                    case 'overstock':
-                        $q->orWhereHas('stockIns', function($stockQuery) {
-                            $stockQuery->selectRaw('SUM(quantity) - SUM(sold) as current_stock')
-                                     ->havingRaw('SUM(quantity) - SUM(sold) > COALESCE(max_stock_level, 100)');
-                        });
-                        break;
-                }
-            }
-        });
-    }
-    
-    /**
-     * Apply date range filter
-     */
-    private function applyDateRangeFilter($query, $dateRange)
-    {
-        switch ($dateRange) {
-            case 'today':
-                return $query->whereDate('created_at', today());
-            case 'week':
-                return $query->whereBetween('created_at', [
-                    now()->startOfWeek(),
-                    now()->endOfWeek()
-                ]);
-            case 'month':
-                return $query->whereMonth('created_at', now()->month)
-                          ->whereYear('created_at', now()->year);
-            case 'quarter':
-                return $query->whereBetween('created_at', [
-                    now()->startOfQuarter(),
-                    now()->endOfQuarter()
-                ]);
-            case 'year':
-                return $query->whereYear('created_at', now()->year);
-            default:
-                return $query;
-        }
-    }
-    
-    /**
-     * Apply movement filter
-     */
-    private function applyMovementFilter($query, $movement)
-    {
-        switch ($movement) {
-            case 'recently_restocked':
-                return $query->whereDate('updated_at', '>=', now()->subDays(7));
-            case 'no_movement':
-                return $query->whereDate('updated_at', '<=', now()->subDays(30));
-            case 'fast_moving':
-                return $query->where('quantity', '>', 0)
-                          ->where('created_at', '<=', now()->subDays(30));
-            case 'slow_moving':
-                return $query->where('quantity', '>', 0)
-                          ->where('created_at', '>', now()->subDays(90));
-            default:
-                return $query;
-        }
-    }
-    
-    /**
-     * Apply sorting to query
-     */
-    private function applySorting($query, $sortBy)
-    {
-        switch ($sortBy) {
-            case 'name_asc':
-                return $query->orderBy('product_name', 'asc');
-            case 'name_desc':
-                return $query->orderBy('product_name', 'desc');
-            case 'quantity_asc':
-                return $query->selectRaw('products.*, (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) as current_stock')
-                          ->orderBy('current_stock', 'asc');
-            case 'quantity_desc':
-                return $query->selectRaw('products.*, (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) as current_stock')
-                          ->orderBy('current_stock', 'desc');
-            case 'updated_desc':
-                return $query->orderBy('updated_at', 'desc');
-            case 'status_asc':
-                return $query->selectRaw('products.*, (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) as current_stock')
-                          ->orderByRaw('
-                            CASE 
-                                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= 0 THEN 1
-                                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= 3 THEN 2
-                                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= COALESCE(min_stock_level, 5) THEN 3
-                                ELSE 4
-                            END
-                        ');
-            default:
-                return $query->orderBy('product_name', 'asc');
-        }
-    }
-    
-    /**
-     * Calculate stock statistics
-     */
-    private function calculateStockStatistics()
-    {
-        $stats = Product::selectRaw('
-            COUNT(*) as total_products,
-            SUM(CASE 
-                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= 0 THEN 1 
-                ELSE 0 
-            END) as out_of_stock_count,
-            SUM(CASE 
-                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) > 0 
-                AND (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= COALESCE(products.min_stock_level, 5) THEN 1 
-                ELSE 0 
-            END) as low_stock_count,
-            SUM(CASE 
-                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) > 0 
-                AND (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) <= 3 THEN 1 
-                ELSE 0 
-            END) as critical_stock_count,
-            SUM(CASE 
-                WHEN (SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id) > COALESCE(products.max_stock_level, 100) THEN 1 
-                ELSE 0 
-            END) as overstock_count,
-            SUM((SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id)) as total_quantity,
-            AVG((SELECT SUM(quantity) - SUM(sold) FROM stock_ins WHERE product_id = products.id)) as average_quantity
-        ')->first();
-        
-        return [
-            'total_products' => $stats->total_products ?? 0,
-            'out_of_stock' => $stats->out_of_stock_count ?? 0,
-            'low_stock' => $stats->low_stock_count ?? 0,
-            'critical_stock' => $stats->critical_stock_count ?? 0,
-            'overstock' => $stats->overstock_count ?? 0,
-            'total_quantity' => $stats->total_quantity ?? 0,
-            'average_quantity' => round($stats->average_quantity ?? 0, 2)
-        ];
-    }
-    
+
     /**
      * API endpoint for suppliers
      */
     public function getSuppliers()
     {
-        $suppliers = Supplier::select('id', 'supplier_name')
-                           ->orderBy('supplier_name')
-                           ->get();
-        
+        $suppliers = DB::table('suppliers')
+            ->select('id', 'supplier_name')
+            ->orderBy('supplier_name')
+            ->get();
+
         return response()->json($suppliers);
     }
-    
+
     /**
      * API endpoint for filtered products
      */
     public function getFilteredProducts(Request $request)
     {
-        $query = Product::with(['category', 'supplier']);
-        
-        // Apply all filters (same logic as index method)
-        if ($request->has('stock_levels') && is_array($request->stock_levels)) {
-            $query = $this->applyStockLevelFilters($query, $request->stock_levels);
-        }
-        
-        if ($request->filled('category')) {
-            $query->whereHas('category', function($q) use ($request) {
-                $q->where('category_name', $request->category);
-            });
-        }
-        
-        if ($request->filled('supplier')) {
-            $query->where('supplier_id', $request->supplier);
-        }
-        
+        $branchId = $this->resolveBranchId($request);
+
+        $query = $this->baseStockQuery($branchId);
+
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('product_name', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('barcode', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('model_number', 'LIKE', "%{$searchTerm}%");
+            $searchTerm = trim((string) $request->string('search'));
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('products.product_name', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.barcode', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.model_number', 'like', "%{$searchTerm}%");
             });
         }
-        
-        $sortBy = $request->get('sort_by', 'name_asc');
-        $query = $this->applySorting($query, $sortBy);
-        
+
+        if ($request->filled('category_id')) {
+            $query->where('products.category_id', $request->integer('category_id'));
+        }
+
+        if ($request->filled('supplier_id')) {
+            $supplierId = $request->integer('supplier_id');
+            $query->whereExists(function ($exists) use ($branchId, $supplierId) {
+                $exists->select(DB::raw(1))
+                    ->from('stock_ins')
+                    ->join('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
+                    ->whereColumn('stock_ins.product_id', 'products.id')
+                    ->where('stock_ins.branch_id', $branchId)
+                    ->where('purchases.supplier_id', $supplierId);
+            });
+        }
+
+        $stockLevels = $request->input('stock_levels');
+        if (is_array($stockLevels) && count($stockLevels) > 0) {
+            $this->applyStockLevelFilters($query, $stockLevels);
+        }
+
+        $this->applySorting(
+            $query,
+            (string) $request->string('sort_by', 'product_name'),
+            Str::lower((string) $request->string('sort_direction', 'asc')) === 'desc' ? 'desc' : 'asc'
+        );
+
         $products = $query->limit(100)->get();
-        
+
         return response()->json([
             'products' => $products,
-            'total' => $products->count()
+            'total' => $products->count(),
+            'branch_id' => $branchId,
         ]);
     }
-    
+
     /**
      * Get product details for modal
      */
     public function getProductDetails($id)
     {
-        $product = Product::with(['category', 'supplier', 'brand'])
-                          ->findOrFail($id);
-        
-        // Calculate current stock
-        $currentStock = $product->stockIns()->sum('quantity') - $product->stockIns()->sum('sold');
-        
+        $product = DB::table('products')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->leftJoin('suppliers', 'products.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+            ->where('products.id', (int) $id)
+            ->select([
+                'products.id',
+                'products.product_name',
+                'products.barcode',
+                'products.model_number',
+                'products.description',
+                'products.min_stock_level',
+                'products.max_stock_level',
+                'products.low_stock_threshold',
+                'products.updated_at',
+                'categories.category_name as category_name',
+                'suppliers.supplier_name as supplier_name',
+                'brands.brand_name as brand_name',
+            ])
+            ->first();
+
+        abort_if(! $product, 404);
+
+        $branchId = $this->resolveBranchId(request());
+        $currentStock = (int) (DB::table('stock_ins')
+            ->where('product_id', (int) $id)
+            ->where('branch_id', $branchId)
+            ->selectRaw('COALESCE(SUM(quantity - sold), 0) as current_stock')
+            ->value('current_stock') ?? 0);
+
+        $min = (int) ($product->min_stock_level ?? 0);
+        $max = (int) ($product->max_stock_level ?? 0);
+        $low = (int) ($product->low_stock_threshold ?? 0);
+
+        $effectiveMin = $min > 0 ? $min : 10;
+        $effectiveMax = $max > 0 ? $max : 100;
+        $effectiveLow = $low > 0 ? max($effectiveMin, $low) : $effectiveMin;
+
         return response()->json([
             'id' => $product->id,
             'product_name' => $product->product_name,
             'barcode' => $product->barcode,
             'model_number' => $product->model_number,
             'description' => $product->description ?? 'N/A',
-            'category' => $product->category ? $product->category->category_name : 'N/A',
-            'supplier' => $product->supplier ? $product->supplier->supplier_name : 'N/A',
-            'brand' => $product->brand ? $product->brand->brand_name : 'N/A',
+            'category' => $product->category_name ?? 'N/A',
+            'supplier' => $product->supplier_name ?? 'N/A',
+            'brand' => $product->brand_name ?? 'N/A',
+            'branch_id' => $branchId,
             'quantity' => $currentStock,
-            'min_stock_level' => $product->min_stock_level ?? 5,
-            'max_stock_level' => $product->max_stock_level ?? 100,
-            'updated_at' => $product->updated_at
+            'min_stock_level' => $effectiveMin,
+            'low_stock_threshold' => $effectiveLow,
+            'max_stock_level' => $effectiveMax,
+            'updated_at' => $product->updated_at,
         ]);
     }
-    
+
     /**
      * Get stock history for a product
      */
     public function getStockHistory($id)
     {
-        $product = Product::findOrFail($id);
-        
-        // Get stock movements
-        $stockIns = $product->stockIns()
-                           ->with(['user'])
-                           ->orderBy('created_at', 'desc')
-                           ->get()
-                           ->map(function($stockIn) {
-                               return [
-                                   'type' => 'in',
-                                   'quantity' => $stockIn->quantity,
-                                   'reference' => $stockIn->reference_number ?? 'N/A',
-                                   'user' => $stockIn->user ? $stockIn->user->name : 'System',
-                                   'created_at' => $stockIn->created_at
-                               ];
-                           });
-        
-        // Get stock outs (from sales)
-        $stockOuts = $product->stockIns()
-                            ->where('sold', '>', 0)
-                            ->with(['user'])
-                            ->orderBy('created_at', 'desc')
-                            ->get()
-                            ->map(function($stockOut) {
-                                return [
-                                    'type' => 'out',
-                                    'quantity' => $stockOut->sold,
-                                    'reference' => 'Sale',
-                                    'user' => $stockOut->user ? $stockOut->user->name : 'System',
-                                    'created_at' => $stockOut->created_at
-                                ];
-                            });
-        
-        // Combine and sort by date
-        $allMovements = $stockIns->concat($stockOuts)
-                                ->sortByDesc('created_at')
-                                ->values();
-        
-        return response()->json($allMovements);
+        $productExists = DB::table('products')->where('id', (int) $id)->exists();
+        abort_if(! $productExists, 404);
+
+        $branchId = $this->resolveBranchId(request());
+
+        $movements = DB::table('stock_ins')
+            ->where('product_id', (int) $id)
+            ->where('branch_id', $branchId)
+            ->orderByDesc('created_at')
+            ->limit(200)
+            ->get()
+            ->flatMap(function ($row) {
+                $items = [];
+
+                if ((int) $row->quantity > 0) {
+                    $items[] = [
+                        'type' => 'in',
+                        'quantity' => (int) $row->quantity,
+                        'reference' => $row->reference_number ?? 'N/A',
+                        'created_at' => $row->created_at,
+                    ];
+                }
+
+                if ((int) $row->sold > 0) {
+                    $items[] = [
+                        'type' => 'out',
+                        'quantity' => (int) $row->sold,
+                        'reference' => 'Sale',
+                        'created_at' => $row->created_at,
+                    ];
+                }
+
+                return $items;
+            })
+            ->values();
+
+        return response()->json($movements);
+    }
+
+    private function resolveBranchId(Request $request): int
+    {
+        $branchId = $request->integer('branch_id');
+        if ($branchId) {
+            return $branchId;
+        }
+
+        $userBranchId = (int) (optional($request->user())->branch_id ?? 0);
+        if ($userBranchId > 0) {
+            return $userBranchId;
+        }
+
+        return (int) (DB::table('branches')->orderBy('id')->value('id') ?? 1);
+    }
+
+    private function baseStockQuery(int $branchId)
+    {
+        $stockAgg = DB::table('stock_ins')
+            ->where('branch_id', $branchId)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, COALESCE(SUM(quantity - sold), 0) as current_stock, MAX(created_at) as last_stock_update, AVG(NULLIF(price, 0)) as unit_price');
+
+        return DB::table('products')
+            ->leftJoinSub($stockAgg, 'stock', function ($join) {
+                $join->on('products.id', '=', 'stock.product_id');
+            })
+            ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->leftJoin('branches', 'branches.id', '=', DB::raw((int) $branchId))
+            ->where('products.status', 'active')
+            ->select([
+                'products.id',
+                'products.product_name',
+                'products.barcode',
+                'products.model_number',
+                'products.category_id',
+                'products.min_stock_level',
+                'products.low_stock_threshold',
+                'products.max_stock_level',
+                DB::raw('COALESCE(stock.current_stock, 0) as current_stock'),
+                DB::raw('COALESCE(stock.unit_price, 0) as unit_price'),
+                DB::raw('stock.last_stock_update as last_stock_update'),
+                DB::raw('COALESCE(brands.brand_name, "N/A") as brand_name'),
+                DB::raw('COALESCE(categories.category_name, "N/A") as category_name'),
+                DB::raw('COALESCE(branches.branch_name, "N/A") as branch_name'),
+                DB::raw((int) $branchId.' as branch_id'),
+            ]);
+    }
+
+    private function applyStockLevelFilters($query, array $stockLevels): void
+    {
+        $stock = 'COALESCE(stock.current_stock, 0)';
+        $min = '(CASE WHEN COALESCE(products.min_stock_level, 0) <= 0 THEN 10 ELSE products.min_stock_level END)';
+        $max = '(CASE WHEN COALESCE(products.max_stock_level, 0) <= 0 THEN 100 ELSE products.max_stock_level END)';
+        $low = '(CASE WHEN COALESCE(products.low_stock_threshold, 0) <= 0 THEN '.$min.' ELSE GREATEST('.$min.', products.low_stock_threshold) END)';
+
+        $query->where(function ($q) use ($stockLevels, $stock, $min, $low, $max) {
+            foreach ($stockLevels as $level) {
+                switch ($level) {
+                    case 'out_of_stock':
+                        $q->orWhereRaw("{$stock} <= 0");
+                        break;
+                    case 'critical_stock':
+                        $q->orWhereRaw("{$stock} > 0 AND {$stock} <= {$min}");
+                        break;
+                    case 'low_stock':
+                        $q->orWhereRaw("{$stock} > {$min} AND {$stock} <= {$low}");
+                        break;
+                    case 'in_stock':
+                        $q->orWhereRaw("{$stock} > {$low} AND {$stock} <= {$max}");
+                        break;
+                    case 'overstock':
+                        $q->orWhereRaw("{$stock} > {$max}");
+                        break;
+                }
+            }
+        });
+    }
+
+    private function applyDateRangeFilter($query, string $dateRange): void
+    {
+        $dateRange = Str::lower($dateRange);
+
+        switch ($dateRange) {
+            case 'today':
+                $query->whereDate('products.created_at', today());
+                break;
+            case 'week':
+                $query->whereBetween('products.created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                break;
+            case 'month':
+                $query->whereMonth('products.created_at', now()->month)->whereYear('products.created_at', now()->year);
+                break;
+            case 'quarter':
+                $query->whereBetween('products.created_at', [now()->startOfQuarter(), now()->endOfQuarter()]);
+                break;
+            case 'year':
+                $query->whereYear('products.created_at', now()->year);
+                break;
+        }
+    }
+
+    private function applyMovementFilter($query, string $movement): void
+    {
+        $movement = Str::lower($movement);
+
+        switch ($movement) {
+            case 'recently_restocked':
+                $query->whereDate('stock.last_stock_update', '>=', now()->subDays(7));
+                break;
+            case 'no_movement':
+                $query->where(function ($q) {
+                    $q->whereNull('stock.last_stock_update')
+                        ->orWhereDate('stock.last_stock_update', '<=', now()->subDays(30));
+                });
+                break;
+        }
+    }
+
+    private function applySorting($query, string $sortBy, string $sortDirection): void
+    {
+        $sortBy = Str::lower($sortBy);
+        $sortDirection = $sortDirection === 'desc' ? 'desc' : 'asc';
+
+        $stock = 'COALESCE(stock.current_stock, 0)';
+        $min = '(CASE WHEN COALESCE(products.min_stock_level, 0) <= 0 THEN 10 ELSE products.min_stock_level END)';
+        $max = '(CASE WHEN COALESCE(products.max_stock_level, 0) <= 0 THEN 100 ELSE products.max_stock_level END)';
+        $low = '(CASE WHEN COALESCE(products.low_stock_threshold, 0) <= 0 THEN '.$min.' ELSE GREATEST('.$min.', products.low_stock_threshold) END)';
+
+        if ($sortBy === 'stock_level') {
+            $query->orderByRaw("
+                CASE
+                    WHEN {$stock} <= 0 THEN 1
+                    WHEN {$stock} <= {$min} THEN 2
+                    WHEN {$stock} <= {$low} THEN 3
+                    WHEN {$stock} <= {$max} THEN 4
+                    ELSE 5
+                END {$sortDirection}
+            ");
+
+            return;
+        }
+
+        if (in_array($sortBy, ['product_name', 'unit_price', 'last_updated', 'current_stock'], true)) {
+            match ($sortBy) {
+                'product_name' => $query->orderBy('products.product_name', $sortDirection),
+                'unit_price' => $query->orderBy('unit_price', $sortDirection),
+                'last_updated' => $query->orderBy('last_stock_update', $sortDirection),
+                'current_stock' => $query->orderBy('current_stock', $sortDirection),
+            };
+
+            return;
+        }
+
+        $query->orderBy('products.product_name', 'asc');
+    }
+
+    private function calculateStockStatistics(int $branchId): array
+    {
+        $query = $this->baseStockQuery($branchId);
+
+        $stats = DB::query()
+            ->fromSub($query, 't')
+            ->selectRaw('
+                COUNT(*) as total_products,
+                SUM(CASE WHEN current_stock <= 0 THEN 1 ELSE 0 END) as out_of_stock,
+                SUM(CASE
+                    WHEN current_stock > 0 AND current_stock <= (CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END) THEN 1
+                    ELSE 0
+                END) as critical_stock,
+                SUM(CASE
+                    WHEN current_stock > (CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END)
+                     AND current_stock <= (CASE
+                        WHEN COALESCE(low_stock_threshold, 0) <= 0 THEN (CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END)
+                        ELSE GREATEST((CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END), low_stock_threshold)
+                     END) THEN 1
+                    ELSE 0
+                END) as low_stock,
+                SUM(CASE
+                    WHEN current_stock > (CASE
+                        WHEN COALESCE(low_stock_threshold, 0) <= 0 THEN (CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END)
+                        ELSE GREATEST((CASE WHEN COALESCE(min_stock_level, 0) <= 0 THEN 10 ELSE min_stock_level END), low_stock_threshold)
+                     END)
+                     AND current_stock <= (CASE WHEN COALESCE(max_stock_level, 0) <= 0 THEN 100 ELSE max_stock_level END) THEN 1
+                    ELSE 0
+                END) as in_stock,
+                SUM(CASE WHEN current_stock > (CASE WHEN COALESCE(max_stock_level, 0) <= 0 THEN 100 ELSE max_stock_level END) THEN 1 ELSE 0 END) as overstock
+            ')
+            ->first();
+
+        return [
+            'total_products' => (int) ($stats->total_products ?? 0),
+            'out_of_stock' => (int) ($stats->out_of_stock ?? 0),
+            'critical_stock' => (int) ($stats->critical_stock ?? 0),
+            'low_stock' => (int) ($stats->low_stock ?? 0),
+            'in_stock' => (int) ($stats->in_stock ?? 0),
+            'overstock' => (int) ($stats->overstock ?? 0),
+        ];
     }
 }

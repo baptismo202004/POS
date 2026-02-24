@@ -71,6 +71,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const stockHistoryModal = document.getElementById('stockHistoryModal');
     let currentProductData = null;
     let salesData = null;
+    const branchStockByProduct = {};
+    const purchaseStatsByProduct = {};
 
     // Stock Adjustment Modal
     if (adjustStockModal) {
@@ -222,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     rawData: data
                 });
                 
+                // Cache for later use (e.g. transfer options, validations)
+                branchStockByProduct[productId] = Array.isArray(data) ? data : [];
+
                 // Display other branches stock
                 const otherBranchesContainer = document.getElementById('otherBranchesStock');
                 if (otherBranchesContainer) {
@@ -370,16 +375,36 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(data => {
                 console.log('✅ [PURCHASE] Purchase options loaded:', data);
-                
+
+                purchaseStatsByProduct[productId] = {};
+
                 const purchaseSelect = document.getElementById('purchase_id');
+                const statsEl = document.getElementById('purchaseStats');
+                const warningEl = document.getElementById('purchaseWarning');
+
+                if (statsEl) {
+                    statsEl.textContent = '';
+                }
+                if (warningEl) {
+                    warningEl.textContent = '';
+                    warningEl.classList.add('d-none');
+                }
+
                 if (purchaseSelect) {
                     purchaseSelect.innerHTML = '<option value="">-- Select Purchase --</option>';
-                    
+
                     if (Array.isArray(data) && data.length > 0) {
                         data.forEach(purchase => {
+                            purchaseStatsByProduct[productId][purchase.id] = purchase;
+
                             const option = document.createElement('option');
                             option.value = purchase.id;
-                            option.textContent = `Purchase #${purchase.id} - ${purchase.date} (${purchase.quantity} units)`;
+                            option.textContent = `Purchase #${purchase.id} - ${purchase.purchase_date} | Purchased: ${purchase.purchased_qty} | Stocked: ${purchase.stocked_qty} | Sold: ${purchase.sold_qty}`;
+                            option.dataset.purchasedQty = purchase.purchased_qty;
+                            option.dataset.stockedQty = purchase.stocked_qty;
+                            option.dataset.soldQty = purchase.sold_qty;
+                            option.dataset.remainingToStock = purchase.remaining_to_stock;
+                            option.dataset.availableQty = purchase.available_qty;
                             purchaseSelect.appendChild(option);
                         });
                     } else {
@@ -388,6 +413,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         option.textContent = 'No purchases found for this product';
                         option.disabled = true;
                         purchaseSelect.appendChild(option);
+                    }
+
+                    purchaseSelect.addEventListener('change', handlePurchaseSelectionChange);
+                    const purchaseQuantityInput = document.getElementById('purchaseQuantity');
+                    if (purchaseQuantityInput) {
+                        purchaseQuantityInput.addEventListener('input', handlePurchaseQuantityInput);
                     }
                 }
             })
@@ -400,39 +431,101 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Load branch options for transfer
+    // Load branch options for transfer using per-branch stock (quantity - sold)
     function loadBranchOptions(currentBranchId) {
         console.log('🏢 [BRANCH] Loading branch options for transfer, excluding:', currentBranchId);
-        
-        fetch('/api/branches')
-            .then(response => response.json())
-            .then(data => {
-                console.log('✅ [BRANCH] Branch options loaded:', data);
-                
-                const branchSelect = document.getElementById('fromBranch');
-                if (branchSelect) {
-                    branchSelect.innerHTML = '<option value="">-- Select Branch --</option>';
-                    
-                    if (Array.isArray(data) && data.length > 0) {
-                        data.forEach(branch => {
-                            // Exclude current branch from transfer options
-                            if (branch.id != currentBranchId) {
-                                const option = document.createElement('option');
-                                option.value = branch.id;
-                                option.textContent = branch.branch_name;
-                                branchSelect.appendChild(option);
-                            }
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('❌ [BRANCH] Error loading branch options:', error);
-                const branchSelect = document.getElementById('fromBranch');
-                if (branchSelect) {
-                    branchSelect.innerHTML = '<option value="">Error loading branches</option>';
-                }
-            });
+
+        const branchSelect = document.getElementById('fromBranch');
+        if (!branchSelect || !currentProductData) {
+            return;
+        }
+
+        const productId = currentProductData.id;
+        const branches = branchStockByProduct[productId] || [];
+
+        branchSelect.innerHTML = '<option value="">-- Select Branch --</option>';
+
+        branches.forEach(branch => {
+            if (String(branch.branch_id) === String(currentBranchId)) {
+                return;
+            }
+
+            const available = parseInt(branch.current_stock ?? 0, 10);
+            const option = document.createElement('option');
+            option.value = branch.branch_id;
+            option.textContent = `${branch.branch_name} (${available} available)`;
+            option.dataset.availableQty = available;
+            branchSelect.appendChild(option);
+        });
+    }
+
+    function handlePurchaseSelectionChange() {
+        const productId = currentProductData?.id;
+        const select = document.getElementById('purchase_id');
+        const statsEl = document.getElementById('purchaseStats');
+        const warningEl = document.getElementById('purchaseWarning');
+        const quantityInput = document.getElementById('purchaseQuantity');
+
+        if (!productId || !select || !statsEl || !warningEl || !quantityInput) {
+            return;
+        }
+
+        const purchaseId = select.value;
+        if (!purchaseId) {
+            statsEl.textContent = '';
+            warningEl.textContent = '';
+            warningEl.classList.add('d-none');
+            quantityInput.disabled = true;
+            return;
+        }
+
+        const stats = purchaseStatsByProduct[productId]?.[purchaseId];
+        if (!stats) {
+            statsEl.textContent = '';
+            warningEl.textContent = '';
+            warningEl.classList.add('d-none');
+            quantityInput.disabled = true;
+            return;
+        }
+
+        statsEl.textContent = `Purchased: ${stats.purchased_qty}, Stocked: ${stats.stocked_qty}, Sold: ${stats.sold_qty}, Remaining to stock: ${stats.remaining_to_stock}, Available from this purchase: ${stats.available_qty}`;
+
+        if (stats.remaining_to_stock <= 0) {
+            warningEl.textContent = 'This purchase is already fully stocked. No remaining quantity available for stock-in.';
+            warningEl.classList.remove('d-none');
+            quantityInput.disabled = true;
+        } else {
+            warningEl.textContent = '';
+            warningEl.classList.add('d-none');
+            quantityInput.disabled = false;
+            quantityInput.max = stats.remaining_to_stock;
+        }
+    }
+
+    function handlePurchaseQuantityInput() {
+        const productId = currentProductData?.id;
+        const select = document.getElementById('purchase_id');
+        const warningEl = document.getElementById('purchaseWarning');
+        const quantityInput = document.getElementById('purchaseQuantity');
+
+        if (!productId || !select || !warningEl || !quantityInput) {
+            return;
+        }
+
+        const purchaseId = select.value;
+        const stats = purchaseStatsByProduct[productId]?.[purchaseId];
+        if (!stats) {
+            return;
+        }
+
+        const value = parseInt(quantityInput.value || '0', 10);
+        if (value > stats.remaining_to_stock) {
+            warningEl.textContent = `You cannot stock more than remaining to stock (${stats.remaining_to_stock}).`;
+            warningEl.classList.remove('d-none');
+        } else {
+            warningEl.textContent = '';
+            warningEl.classList.add('d-none');
+        }
     }
 
     // Load and display sales data
@@ -548,10 +641,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const productId = document.getElementById('adjustProductId').value;
         const purchaseId = document.getElementById('purchase_id').value;
         const quantity = document.getElementById('purchaseQuantity').value;
+        const branchId = currentProductData?.branchId;
         
         if (!purchaseId || !quantity) {
             Swal.fire('Error', 'Please fill in all required fields', 'error');
             return;
+        }
+
+        const stats = purchaseStatsByProduct[productId]?.[purchaseId];
+        if (stats) {
+            if (stats.remaining_to_stock <= 0) {
+                Swal.fire('Error', 'This purchase is already fully stocked. No remaining quantity available.', 'error');
+                return;
+            }
+
+            if (parseInt(quantity, 10) > stats.remaining_to_stock) {
+                Swal.fire('Error', `You cannot stock more than remaining to stock (${stats.remaining_to_stock}).`, 'error');
+                return;
+            }
         }
         
         // Show loading
@@ -573,6 +680,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({
                 purchase_id: purchaseId,
                 quantity: quantity,
+                branch_id: branchId,
                 reason: 'Stock from purchase'
             })
         })
@@ -600,6 +708,21 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (!fromBranch || !quantity) {
             Swal.fire('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+
+        // Client-side validation: do not allow transfer more than available in source branch
+        const branches = branchStockByProduct[productId] || [];
+        const source = branches.find(b => String(b.branch_id) === String(fromBranch));
+        const available = parseInt(source?.current_stock ?? 0, 10);
+
+        if (available <= 0) {
+            Swal.fire('Error', 'Source branch has no available stock to transfer.', 'error');
+            return;
+        }
+
+        if (parseInt(quantity, 10) > available) {
+            Swal.fire('Error', `You cannot transfer more than available in source branch (${available}).`, 'error');
             return;
         }
         
