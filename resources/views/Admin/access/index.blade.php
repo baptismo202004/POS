@@ -468,7 +468,7 @@ function toggleAllPermissions(roleId, module, checked) {
 function updatePermissionSilent(roleId, module, action, checked, callback) {
     console.log(`Updating permission: Role ${roleId}, Module ${module}, Action ${action}, Checked ${checked}`);
     
-    fetch(`/superadmin/admin/access/permissions/update`, {
+    fetch('{{ route("admin.access.permissions.update") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -520,7 +520,7 @@ function updatePermission(roleId, module, action, checked) {
     
     const checkbox = event.target;
     
-    fetch(`/superadmin/admin/access/permissions/update`, {
+    fetch('{{ route("admin.access.permissions.update") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -584,7 +584,7 @@ function saveUser() {
     const form = document.getElementById('addUserForm');
     const formData = new FormData(form);
     
-    fetch('{{ route("superadmin.admin.users.store") }}', {
+    fetch('{{ route("admin.users.store") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -623,7 +623,7 @@ function saveRole() {
     const form = document.getElementById('addRoleForm');
     const formData = new FormData(form);
     
-    fetch('{{ route("superadmin.admin.roles.store") }}', {
+    fetch('{{ route("admin.roles.store") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

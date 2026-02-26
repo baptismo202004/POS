@@ -3,17 +3,16 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Credit;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\StockIn;
-use App\Models\UnitType;
-use App\Models\Credit;
 use App\Services\CustomerService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SalesController extends Controller
 {
@@ -22,7 +21,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -32,7 +31,7 @@ class SalesController extends Controller
         $dateFrom = $request->query('date_from');
         $dateTo = $request->query('date_to');
 
-        if (!in_array($sortBy, ['id', 'total_amount', 'created_at', 'payment_method'])) {
+        if (! in_array($sortBy, ['id', 'total_amount', 'created_at', 'payment_method'])) {
             $sortBy = 'created_at';
         }
 
@@ -42,9 +41,9 @@ class SalesController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhereHas('items.product', function ($subQ) use ($search) {
-                      $subQ->where('product_name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('items.product', function ($subQ) use ($search) {
+                        $subQ->where('product_name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -62,7 +61,7 @@ class SalesController extends Controller
         return view('cashier.sales.index', [
             'sales' => $sales->appends($request->query()),
             'sortBy' => $sortBy,
-            'sortDirection' => $sortDirection
+            'sortDirection' => $sortDirection,
         ]);
     }
 
@@ -71,7 +70,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -87,7 +86,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -115,10 +114,10 @@ class SalesController extends Controller
                 $customerId = null;
 
                 // Handle customer creation/lookup for credit sales or when customer info is provided
-                if ($validated['payment_method'] === 'credit' || 
-                    !empty($validated['customer_name']) || 
-                    !empty($validated['customer_phone'])) {
-                    
+                if ($validated['payment_method'] === 'credit' ||
+                    ! empty($validated['customer_name']) ||
+                    ! empty($validated['customer_phone'])) {
+
                     $customerData = [
                         'full_name' => $validated['customer_name'] ?? '',
                         'phone' => $validated['customer_phone'] ?? $validated['customer_contact'] ?? null,
@@ -145,10 +144,10 @@ class SalesController extends Controller
                         throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentStock}, Required: {$item['quantity']}");
                     }
 
-                    if (!isset($itemsByBranch[$itemBranchId])) {
+                    if (! isset($itemsByBranch[$itemBranchId])) {
                         $itemsByBranch[$itemBranchId] = [
                             'items' => [],
-                            'subtotal' => 0
+                            'subtotal' => 0,
                         ];
                     }
 
@@ -166,9 +165,9 @@ class SalesController extends Controller
 
                 // Apply discount
                 $discountAmount = 0;
-                if (!empty($validated['discount_amount'])) {
+                if (! empty($validated['discount_amount'])) {
                     $discountAmount = $validated['discount_amount'];
-                } elseif (!empty($validated['discount_percentage'])) {
+                } elseif (! empty($validated['discount_percentage'])) {
                     $discountAmount = $totalAmount * ($validated['discount_percentage'] / 100);
                 }
 
@@ -177,7 +176,7 @@ class SalesController extends Controller
                 // Generate receipt group ID if multiple branches are involved
                 $receiptGroupId = null;
                 if (count($itemsByBranch) > 1) {
-                    $receiptGroupId = 'RCP-' . date('Ymd') . '-' . str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
+                    $receiptGroupId = 'RCP-'.date('Ymd').'-'.str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
                 }
 
                 $sales = [];
@@ -200,12 +199,12 @@ class SalesController extends Controller
 
                     // Create unique reference number for each branch sale
                     $currentSaleCount++;
-                    $referenceNumber = 'REF-' . date('Ymd') . '-' . str_pad($currentSaleCount, 4, '0', STR_PAD_LEFT);
+                    $referenceNumber = 'REF-'.date('Ymd').'-'.str_pad($currentSaleCount, 4, '0', STR_PAD_LEFT);
 
                     // Debug logging
-                    \Log::info("Creating sale with reference: " . $referenceNumber);
-                    \Log::info("Branch ID: " . $branchId);
-                    \Log::info("Total Amount: " . $branchTotalAmount);
+                    Log::info('Creating sale with reference: '.$referenceNumber);
+                    Log::info('Branch ID: '.$branchId);
+                    Log::info('Total Amount: '.$branchTotalAmount);
 
                     $sale = Sale::create([
                         'branch_id' => $branchId,
@@ -220,7 +219,7 @@ class SalesController extends Controller
                         'receipt_group_id' => $receiptGroupId,
                     ]);
 
-                    \Log::info("Sale created with ID: " . $sale->id . " and reference: " . $sale->reference_number);
+                    Log::info('Sale created with ID: '.$sale->id.' and reference: '.$sale->reference_number);
 
                     // Create sale items for this branch
                     foreach ($branchData['items'] as $item) {
@@ -246,22 +245,23 @@ class SalesController extends Controller
                         'sale_id' => $sales[0]->id, // Use first sale as reference
                         'status' => 'active',
                         'date' => now()->addDays(30), // 30 days due date
-                        'notes' => 'Credit from POS Sale #' . ($receiptGroupId ?? $sales[0]->id),
-                        'credit_type' => 'sales'
+                        'notes' => 'Credit from POS Sale #'.($receiptGroupId ?? $sales[0]->id),
+                        'credit_type' => 'sales',
                     ], $branchId, $user->id);
                 }
             });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Sale completed successfully'
+                'message' => 'Sale completed successfully',
             ]);
 
         } catch (\Exception $e) {
-            \Log::error("Sale creation error: " . $e->getMessage());
+            Log::error('Sale creation error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
         }
     }
@@ -271,7 +271,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -289,7 +289,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -303,7 +303,7 @@ class SalesController extends Controller
         // If this sale is part of a receipt group, load all related sales
         $relatedSales = collect([]);
         $receiptGroupId = $sale->receipt_group_id;
-        
+
         if ($receiptGroupId) {
             $relatedSales = Sale::with(['items.product', 'items.unitType', 'branch'])
                 ->where('receipt_group_id', $receiptGroupId)
@@ -319,7 +319,7 @@ class SalesController extends Controller
         $user = Auth::user();
         $branchId = $user->branch_id;
 
-        if (!$branchId) {
+        if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
         }
 
@@ -330,7 +330,7 @@ class SalesController extends Controller
         if ($sale->status === 'voided') {
             return response()->json([
                 'success' => false,
-                'message' => 'Sale is already voided'
+                'message' => 'Sale is already voided',
             ]);
         }
 
@@ -358,13 +358,13 @@ class SalesController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Sale voided successfully'
+                'message' => 'Sale voided successfully',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error voiding sale: ' . $e->getMessage()
+                'message' => 'Error voiding sale: '.$e->getMessage(),
             ]);
         }
     }
@@ -373,7 +373,7 @@ class SalesController extends Controller
     {
         $unitTypeId = $request->query('unit_type_id');
         $branchId = $request->query('branch_id', Auth::user()->branch_id);
-        
+
         if ($unitTypeId) {
             // Get price from product_unit_type table for specific unit type
             try {
@@ -389,7 +389,7 @@ class SalesController extends Controller
                 // Fall through to stock-based pricing
             }
         }
-        
+
         // Fallback to stock-based pricing
         $stockIn = StockIn::where('product_id', $productId)
             ->where('branch_id', $branchId)
@@ -400,25 +400,26 @@ class SalesController extends Controller
         if ($stockIn) {
             return response()->json([
                 'success' => true,
-                'price' => $stockIn->price
+                'price' => $stockIn->price,
             ]);
         }
 
         // Final fallback to product default price
         $product = Product::find($productId);
+
         return response()->json([
             'success' => true,
-            'price' => $product->price ?? 0
+            'price' => $product->price ?? 0,
         ]);
     }
 
     public function checkStock($productId, $branchId)
     {
         $currentStock = $this->getCurrentStock($productId, $branchId);
-        
+
         return response()->json([
             'success' => true,
-            'stock' => $currentStock
+            'stock' => $currentStock,
         ]);
     }
 
@@ -479,13 +480,14 @@ class SalesController extends Controller
             ->where('status', 'active')
             ->where(function ($query) use ($search) {
                 $query->where('product_name', 'like', "%{$search}%")
-                      ->orWhere('barcode', 'like', "%{$search}%");
+                    ->orWhere('barcode', 'like', "%{$search}%");
             })
             ->limit(10)
             ->get();
 
         $productsWithStock = $products->map(function ($product) use ($branchId) {
             $product->current_stock = $this->getCurrentStock($product->id, $branchId);
+
             return $product;
         });
 
@@ -496,7 +498,7 @@ class SalesController extends Controller
     {
         $phone = $request->query('phone');
         $name = $request->query('name');
-        
+
         try {
             if ($phone) {
                 $customer = \App\Models\Customer::where('phone', $phone)
@@ -518,5 +520,29 @@ class SalesController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error looking up customer']);
         }
+    }
+
+    public function reports(Request $request)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        $dateFrom = $request->query('date_from', Carbon::today()->startOfMonth());
+        $dateTo = $request->query('date_to', Carbon::today()->endOfDay());
+
+        $sales = Sale::with(['items.product', 'cashier'])
+            ->where('branch_id', $branchId)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $totalSales = $sales->sum('total_amount');
+        $totalTransactions = $sales->count();
+
+        return view('cashier.sales.reports', compact('sales', 'totalSales', 'totalTransactions', 'dateFrom', 'dateTo'));
     }
 }

@@ -66,15 +66,11 @@
                             <div class="mb-2">
                                 <select class="form-select form-select-sm" id="categoryFilter">
                                     <option value="">All Categories</option>
-                                    <option value="Beverages">Beverages</option>
-                                    <option value="Snacks">Snacks</option>
-                                    <option value="Grocery">Grocery</option>
-                                    <option value="Dairy">Dairy</option>
-                                    <option value="Bakery">Bakery</option>
-                                    <option value="Frozen">Frozen</option>
-                                    <option value="Canned">Canned Goods</option>
-                                    <option value="Personal Care">Personal Care</option>
-                                    <option value="Household">Household</option>
+                                    @foreach(($categories ?? []) as $id => $name)
+                                        <option value="{{ $id }}" {{ (string) request('category_id') === (string) $id ? 'selected' : '' }}>
+                                            {{ $name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                         </li>
@@ -85,7 +81,11 @@
                             <div class="mb-2">
                                 <select class="form-select form-select-sm" id="supplierFilter">
                                     <option value="">All Suppliers</option>
-                                    <!-- Suppliers will be loaded dynamically -->
+                                    @foreach(($suppliers ?? []) as $id => $name)
+                                        <option value="{{ $id }}" {{ (string) request('supplier_id') === (string) $id ? 'selected' : '' }}>
+                                            {{ $name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                         </li>
@@ -252,58 +252,127 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function applyFilters() {
-        // Update current filter state
-        currentFilters.stockLevels = Object.entries(stockLevelFilters)
-            .filter(([key, checkbox]) => checkbox.checked)
-            .map(([key]) => key);
-        
-        currentFilters.category = categoryFilter.value;
-        currentFilters.supplier = supplierFilter.value;
-        currentFilters.dateRange = dateRangeFilter.value;
-        currentFilters.movement = movementFilter.value;
-        currentFilters.search = searchFilter.value.trim();
-        currentFilters.sortBy = sortByFilter.value;
-        
-        // Update active filters display
-        updateActiveFiltersDisplay();
-        
-        // Apply filters to table
-        applyFiltersToTable();
-        
-        // Update summary
-        updateFilterSummary();
+        const params = new URLSearchParams(window.location.search);
+
+        // Search (header input)
+        const searchValue = (headerSearchInput?.value || '').trim();
+        if (searchValue) {
+            params.set('search', searchValue);
+        } else {
+            params.delete('search');
+        }
+
+        // Category and supplier (IDs)
+        if (categoryFilter.value) {
+            params.set('category_id', categoryFilter.value);
+        } else {
+            params.delete('category_id');
+        }
+
+        if (supplierFilter.value) {
+            params.set('supplier_id', supplierFilter.value);
+        } else {
+            params.delete('supplier_id');
+        }
+
+        // Date range & movement
+        if (dateRangeFilter.value) {
+            params.set('date_range', dateRangeFilter.value);
+        } else {
+            params.delete('date_range');
+        }
+
+        if (movementFilter.value === 'recently_restocked' || movementFilter.value === 'no_movement') {
+            params.set('movement', movementFilter.value);
+        } else {
+            params.delete('movement');
+        }
+
+        // Stock levels (multi)
+        Array.from(params.keys())
+            .filter(k => k === 'stock_levels' || k.startsWith('stock_levels['))
+            .forEach(k => params.delete(k));
+
+        const selectedLevels = Object.values(stockLevelFilters)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+
+        selectedLevels.forEach(level => {
+            params.append('stock_levels[]', level);
+        });
+
+        // Sort mapping
+        const sortValue = sortByFilter.value;
+        let sortBy = null;
+        let sortDirection = null;
+
+        switch (sortValue) {
+            case 'name_asc':
+                sortBy = 'product_name';
+                sortDirection = 'asc';
+                break;
+            case 'name_desc':
+                sortBy = 'product_name';
+                sortDirection = 'desc';
+                break;
+            case 'quantity_asc':
+                sortBy = 'current_stock';
+                sortDirection = 'asc';
+                break;
+            case 'quantity_desc':
+                sortBy = 'current_stock';
+                sortDirection = 'desc';
+                break;
+            case 'updated_desc':
+                sortBy = 'last_updated';
+                sortDirection = 'desc';
+                break;
+            case 'status_asc':
+                sortBy = 'stock_level';
+                sortDirection = 'asc';
+                break;
+        }
+
+        if (sortBy && sortDirection) {
+            params.set('sort_by', sortBy);
+            params.set('sort_direction', sortDirection);
+        } else {
+            params.delete('sort_by');
+            params.delete('sort_direction');
+        }
+
+        const baseUrl = window.stockManagementUrl || window.location.pathname;
+        const query = params.toString();
+        window.location = query ? `${baseUrl}?${query}` : baseUrl;
     }
     
     function clearAllFilters() {
-        // Clear all checkboxes
+        // Reset UI controls
         Object.values(stockLevelFilters).forEach(checkbox => {
             checkbox.checked = false;
         });
-        
-        // Clear all selects
         categoryFilter.value = '';
         supplierFilter.value = '';
         dateRangeFilter.value = '';
         movementFilter.value = '';
-        searchFilter.value = '';
+        if (headerSearchInput) {
+            headerSearchInput.value = '';
+        }
         sortByFilter.value = 'name_asc';
-        
-        // Reset state
-        currentFilters = {
-            stockLevels: [],
-            category: '',
-            supplier: '',
-            dateRange: '',
-            movement: '',
-            search: '',
-            sortBy: 'name_asc'
-        };
-        
-        // Update display
-        updateActiveFiltersCount();
-        updateActiveFiltersDisplay();
-        applyFiltersToTable();
-        updateFilterSummary();
+
+        // Clear related query parameters and redirect
+        const params = new URLSearchParams(window.location.search);
+
+        ['search', 'category_id', 'supplier_id', 'date_range', 'movement', 'sort_by', 'sort_direction']
+            .forEach(key => params.delete(key));
+
+        Array.from(params.keys())
+            .filter(k => k === 'stock_levels' || k.startsWith('stock_levels['))
+            .forEach(k => params.delete(k));
+
+        const baseUrl = window.stockManagementUrl || window.location.pathname;
+        const query = params.toString();
+        window.location = query ? `${baseUrl}?${query}` : baseUrl;
     }
     
     function updateActiveFiltersDisplay() {
@@ -353,31 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadSuppliers() {
-        // Since API endpoint doesn't exist, we'll use a simple approach
-        // Try to get suppliers from the page data or use basic options
-        const supplierSelect = document.getElementById('supplierFilter');
-        if (supplierSelect) {
-            // Clear existing options except the first one
-            while (supplierSelect.children.length > 1) {
-                supplierSelect.removeChild(supplierSelect.lastChild);
-            }
-            
-            // Add some common supplier options (you can customize these)
-            const suppliers = [
-                { id: 1, name: 'Global Supplies Inc.' },
-                { id: 2, name: 'Local Distributors Co.' },
-                { id: 3, name: 'International Trading Ltd.' },
-                { id: 4, name: 'Regional Wholesalers' },
-                { id: 5, name: 'Direct Manufacturers' }
-            ];
-            
-            suppliers.forEach(supplier => {
-                const option = document.createElement('option');
-                option.value = supplier.id;
-                option.textContent = supplier.name;
-                supplierSelect.appendChild(option);
-            });
-        }
+        // Options are rendered server-side in the Blade template; no dynamic loading needed here.
+        return;
     }
     
     function debounceSearch() {

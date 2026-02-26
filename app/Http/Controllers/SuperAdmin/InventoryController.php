@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Product;
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -247,12 +248,13 @@ class InventoryController extends Controller
     public function getProductSales($productId)
     {
         try {
-            // Get sales data for this product over the last 30 days, grouped by branch
+            // Get sales data for this product over the last 14 days, grouped by branch and date.
+            // Returns an array of rows: [{ branch_name, date, quantity }, ...]
             $salesData = DB::table('sales')
                 ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
                 ->join('branches', 'sales.branch_id', '=', 'branches.id')
                 ->where('sale_items.product_id', $productId)
-                ->where('sales.created_at', '>=', now()->subDays(30))
+                ->where('sales.created_at', '>=', now()->subDays(14))
                 ->select(
                     'branches.branch_name',
                     DB::raw('DATE(sales.created_at) as date'),
@@ -262,20 +264,7 @@ class InventoryController extends Controller
                 ->orderBy('date', 'asc')
                 ->get();
 
-            // Group data by branch for easier processing in JavaScript
-            $groupedData = [];
-            foreach ($salesData as $sale) {
-                $branchName = $sale->branch_name;
-                if (! isset($groupedData[$branchName])) {
-                    $groupedData[$branchName] = [];
-                }
-                $groupedData[$branchName][] = [
-                    'date' => $sale->date,
-                    'quantity' => $sale->quantity,
-                ];
-            }
-
-            return response()->json($groupedData);
+            return response()->json($salesData);
         } catch (\Exception $e) {
             Log::error('Error fetching product sales: '.$e->getMessage());
 
@@ -290,13 +279,56 @@ class InventoryController extends Controller
             'purchase_quantity' => 'required|integer|min:1',
         ]);
 
-        $purchaseId = $request->input('purchase_id');
-        $quantity = $request->input('purchase_quantity');
+        // Product must be active
+        if ($product->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This product is not active and cannot receive stock from purchase.',
+            ], 400);
+        }
 
-        // Validation: Check remaining quantity from purchase
+        $purchaseId = (int) $request->input('purchase_id');
+        $quantity = (int) $request->input('purchase_quantity');
+
+        // Resolve target branch from request or product
+        $branchId = (int) $request->input('branch_id', $product->branch_id ?? 1);
+
+        // Branch must exist and be active
+        $branch = Branch::find($branchId);
+        if (! $branch || $branch->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected branch is not active or does not accept inventory.',
+            ], 400);
+        }
+
+        // Purchase must exist and (if branch-specific) belong to the same branch
+        $purchase = Purchase::find($purchaseId);
+        if (! $purchase) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected purchase could not be found.',
+            ], 404);
+        }
+
+        if (! is_null($purchase->branch_id) && (int) $purchase->branch_id !== $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected purchase belongs to a different branch and cannot be used for this stock-in.',
+            ], 400);
+        }
+
+        // Validation: Check remaining quantity from purchase for this product
         $purchasedQty = \App\Models\PurchaseItem::where('purchase_id', $purchaseId)
             ->where('product_id', $product->id)
             ->value('quantity');
+
+        if ($purchasedQty === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected purchase does not contain this product.',
+            ], 400);
+        }
 
         $alreadyStocked = \App\Models\StockIn::where('purchase_id', $purchaseId)
             ->where('product_id', $product->id)
@@ -306,32 +338,28 @@ class InventoryController extends Controller
             ->where('product_id', $product->id)
             ->sum('sold');
 
-        $remaining = $purchasedQty - $alreadyStocked;
+        $remaining = (int) $purchasedQty - (int) $alreadyStocked;
 
-        if ($quantity > $remaining) {
+        if ($quantity <= 0 || $quantity > $remaining) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot stock more than purchased quantity. Remaining: {$remaining} units from Purchase #{$purchaseId}",
+                'message' => "Cannot stock more than remaining purchasable quantity. Remaining: {$remaining} units from Purchase #{$purchaseId}",
             ], 400);
         }
 
-        // Create new stock_in record
-        $branchId = (int) $request->input('branch_id', $product->branch_id ?? 1);
+        // Perform stock-in inside a DB transaction for safety
+        DB::transaction(function () use ($product, $branchId, $quantity, $purchaseId) {
+            $product->stockIns()->create([
+                'quantity' => $quantity,
+                'initial_quantity' => $quantity, // Save original quantity
+                'sold' => 0,
+                'branch_id' => $branchId,
+                'price' => 0,
+                'purchase_id' => $purchaseId,
+            ]);
+        });
 
-        $product->stockIns()->create([
-            'quantity' => $quantity,
-            'initial_quantity' => $quantity, // Save original quantity
-            'sold' => 0,
-            'branch_id' => $branchId,
-            'price' => 0,
-            'purchase_id' => $purchaseId,
-        ]);
-
-        // Calculate new stock
-        $currentStock = $product->current_stock;
-        $newStock = $currentStock + $quantity;
-
-        // Update out-of-stock count
+        // Update out-of-stock count (for dashboard/sidebar widgets)
         $outOfStockCount = DB::table('products')
             ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
             ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
@@ -362,49 +390,90 @@ class InventoryController extends Controller
     {
         $request->validate([
             'from_branch' => 'required|exists:branches,id',
+            'to_branch' => 'required|exists:branches,id',
             'transfer_quantity' => 'required|integer|min:1',
         ]);
 
-        $fromBranchId = $request->input('from_branch');
-        $quantity = $request->input('transfer_quantity');
+        // Product must be active
+        if ($product->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This product is not active and cannot be transferred between branches.',
+            ], 400);
+        }
+
+        $fromBranchId = (int) $request->input('from_branch');
+        $toBranchId = (int) $request->input('to_branch');
+        $quantity = (int) $request->input('transfer_quantity');
+
+        // Source branch must be active
+        $fromBranch = Branch::find($fromBranchId);
+        if (! $fromBranch || $fromBranch->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'The source branch is not active and cannot be used for transfer.',
+            ], 400);
+        }
+
+        if ($toBranchId === $fromBranchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Source and destination branches must be different for a stock transfer.',
+            ], 400);
+        }
+
+        $toBranch = Branch::find($toBranchId);
+        if (! $toBranch || $toBranch->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'The destination branch is not active and cannot receive transferred stock.',
+            ], 400);
+        }
 
         // Validate transfer amount strictly per source branch using (quantity - sold)
         $availableInSource = \App\Models\StockIn::where('product_id', $product->id)
             ->where('branch_id', $fromBranchId)
             ->sum(DB::raw('quantity - sold'));
 
-        if ($quantity > $availableInSource) {
+        if ($quantity <= 0 || $quantity > $availableInSource) {
             return response()->json([
                 'success' => false,
                 'message' => "Cannot transfer more units than available in source branch. Available: {$availableInSource}",
             ], 400);
         }
 
-        // Find stock_in record from source branch
-        $sourceStock = $product->stockIns()
-            ->where('branch_id', $fromBranchId)
-            ->where('quantity', '>', 'sold') // Has available stock
-            ->first();
+        // Perform transfer inside a DB transaction for safety
+        DB::transaction(function () use ($product, $fromBranchId, $toBranchId, $quantity) {
+            // Find stock_in record from source branch
+            $sourceStock = $product->stockIns()
+                ->where('branch_id', $fromBranchId)
+                ->whereColumn('quantity', '>', 'sold') // Has available stock
+                ->lockForUpdate()
+                ->first();
 
-        if (! $sourceStock) {
-            return response()->json(['success' => false, 'message' => 'Source branch has insufficient stock for transfer'], 400);
-        }
+            if (! $sourceStock) {
+                throw new \RuntimeException('Source branch has insufficient stock for transfer.');
+            }
 
-        $availableStock = $sourceStock->quantity - $sourceStock->sold;
-        $transferAmount = min($quantity, $availableStock);
+            $availableStock = $sourceStock->quantity - $sourceStock->sold;
+            $transferAmount = min($quantity, $availableStock);
 
-        // Update source branch (reduce stock)
-        $sourceStock->increment('sold', $transferAmount);
+            if ($transferAmount <= 0) {
+                throw new \RuntimeException('No transferable stock available in source branch.');
+            }
 
-        // Create new stock_in record for destination branch (current branch)
-        $product->stockIns()->create([
-            'quantity' => $transferAmount,
-            'initial_quantity' => $transferAmount, // Save original quantity
-            'sold' => 0,
-            'branch_id' => $product->current_branch_id ?? 1,
-            'price' => 0,
-            'reason' => 'Stock Transfer',
-        ]);
+            // Update source branch (reduce stock)
+            $sourceStock->increment('sold', $transferAmount);
+
+            // Create new stock_in record for destination branch
+            $product->stockIns()->create([
+                'quantity' => $transferAmount,
+                'initial_quantity' => $transferAmount, // Save original quantity
+                'sold' => 0,
+                'branch_id' => $toBranchId,
+                'price' => 0,
+            ]);
+        });
 
         // Update out-of-stock count
         $outOfStockCount = DB::table('products')
@@ -424,7 +493,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Successfully transferred {$transferAmount} units from branch to current branch.",
+            'message' => "Successfully transferred {$quantity} units from source branch to destination branch.",
             'outOfStockCount' => $outOfStockCount,
         ]);
     }
@@ -633,23 +702,105 @@ class InventoryController extends Controller
     public function getProductStockHistory($productId)
     {
         try {
-            $history = DB::table('stock_ins')
+            $productId = (int) $productId;
+
+            // 1) Stock-ins across all branches (manual + from purchase)
+            $stockIns = DB::table('stock_ins')
+                ->leftJoin('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
                 ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
                 ->where('stock_ins.product_id', $productId)
-                ->select(
-                    'stock_ins.id',
+                ->select([
                     'stock_ins.quantity',
-                    'stock_ins.sold',
                     'stock_ins.price',
-                    'stock_ins.reason',
-                    'stock_ins.notes',
                     'stock_ins.created_at',
                     'branches.branch_name',
-                    DB::raw('"in" as type')
-                )
-                ->orderBy('stock_ins.created_at', 'desc')
-                ->limit(50)
-                ->get();
+                    'purchases.id as purchase_id',
+                ])
+                ->orderByDesc('stock_ins.created_at')
+                ->limit(200)
+                ->get()
+                ->map(function ($row) {
+                    $reason = $row->purchase_id
+                        ? 'Stock in from Purchase #'.$row->purchase_id
+                        : 'Manual Stock In';
+
+                    return [
+                        'type' => 'in',
+                        'quantity' => (int) $row->quantity,
+                        'price' => $row->price,
+                        'branch_name' => $row->branch_name ?? 'N/A',
+                        'reason' => $reason,
+                        'notes' => null,
+                        'created_at' => $row->created_at,
+                    ];
+                });
+
+            // 2) Sales stock-outs across all branches
+            $sales = DB::table('sales')
+                ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
+                ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+                ->where('sale_items.product_id', $productId)
+                ->select([
+                    'sale_items.quantity',
+                    'sales.created_at',
+                    'branches.branch_name',
+                ])
+                ->orderByDesc('sales.created_at')
+                ->limit(200)
+                ->get()
+                ->map(function ($row) {
+                    return [
+                        'type' => 'out',
+                        'quantity' => (int) $row->quantity,
+                        'price' => null,
+                        'branch_name' => $row->branch_name ?? 'N/A',
+                        'reason' => 'Sale',
+                        'notes' => null,
+                        'created_at' => $row->created_at,
+                    ];
+                });
+
+            // 3) Transfer movements across all branches for this product
+            $transfers = DB::table('stock_transfers')
+                ->join('branches as from_b', 'stock_transfers.from_branch_id', '=', 'from_b.id')
+                ->join('branches as to_b', 'stock_transfers.to_branch_id', '=', 'to_b.id')
+                ->where('stock_transfers.product_id', $productId)
+                ->select([
+                    'stock_transfers.quantity',
+                    'stock_transfers.status',
+                    'stock_transfers.notes',
+                    'stock_transfers.created_at',
+                    'from_b.branch_name as from_branch_name',
+                    'to_b.branch_name as to_branch_name',
+                    'stock_transfers.from_branch_id',
+                    'stock_transfers.to_branch_id',
+                ])
+                ->orderByDesc('stock_transfers.created_at')
+                ->limit(200)
+                ->get()
+                ->map(function ($row) {
+                    // Represent transfers from both perspectives in a neutral way
+                    $reason = 'Transfer '.$row->from_branch_name.' → '.$row->to_branch_name;
+
+                    return [
+                        'type' => 'transfer',
+                        'quantity' => (int) $row->quantity,
+                        'price' => null,
+                        'branch_name' => $row->from_branch_name.' → '.$row->to_branch_name,
+                        'reason' => $reason,
+                        'notes' => $row->notes,
+                        'created_at' => $row->created_at,
+                    ];
+                });
+
+            // Merge all movement types and sort by created_at DESC, then take latest 200
+            $history = $stockIns
+                ->merge($sales)
+                ->merge($transfers)
+                ->sortByDesc('created_at')
+                ->values()
+                ->take(200)
+                ->all();
 
             return response()->json(['history' => $history]);
         } catch (\Exception $e) {

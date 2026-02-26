@@ -200,10 +200,10 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('📊 [BRANCH_STOCK] Loading stock data for product:', {
             productId: productId,
             currentBranchId: currentBranchId,
-            endpoint: `/inventory/product-stock/${productId}`
+            endpoint: `/superadmin/inventory/product-stock/${productId}`
         });
         
-        fetch(`/inventory/product-stock/${productId}`)
+        fetch(`/superadmin/inventory/product-stock/${productId}`)
             .then(response => {
                 console.log('📡 [API] Branch stock response received:', {
                     status: response.status,
@@ -226,6 +226,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // Cache for later use (e.g. transfer options, validations)
                 branchStockByProduct[productId] = Array.isArray(data) ? data : [];
+
+                // After caching branch stock, refresh transfer source options
+                try {
+                    console.log('🏢 [BRANCH] Updating transfer options with loaded branch stock', {
+                        productId,
+                        currentBranchId,
+                        branches: branchStockByProduct[productId]
+                    });
+                    loadBranchOptions(currentBranchId);
+                } catch (e) {
+                    console.error('❌ [BRANCH] Error updating transfer options:', e);
+                }
 
                 // Display other branches stock
                 const otherBranchesContainer = document.getElementById('otherBranchesStock');
@@ -357,10 +369,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadPurchaseOptions(productId) {
         console.log('🛒 [PURCHASE] Loading purchase options for product:', {
             productId: productId,
-            endpoint: `/purchases/by-product/${productId}`
+            endpoint: `/superadmin/purchases/by-product/${productId}`
         });
         
-        fetch(`/purchases/by-product/${productId}`)
+        fetch(`/superadmin/purchases/by-product/${productId}`)
             .then(response => {
                 console.log('📡 [API] Purchase options response received:', {
                     status: response.status,
@@ -394,23 +406,46 @@ document.addEventListener('DOMContentLoaded', function () {
                     purchaseSelect.innerHTML = '<option value="">-- Select Purchase --</option>';
 
                     if (Array.isArray(data) && data.length > 0) {
+                        let addedOptions = 0;
+
                         data.forEach(purchase => {
+                            // Only include purchases that still have remaining quantity to stock
+                            if (!purchase || typeof purchase.remaining_to_stock === 'undefined') {
+                                return;
+                            }
+
+                            const remaining = Number(purchase.remaining_to_stock || 0);
+                            if (remaining <= 0) {
+                                return; // Skip fully stocked purchases
+                            }
+
+                            // Keep full stats in memory for the details area below the quantity input
                             purchaseStatsByProduct[productId][purchase.id] = purchase;
 
                             const option = document.createElement('option');
                             option.value = purchase.id;
-                            option.textContent = `Purchase #${purchase.id} - ${purchase.purchase_date} | Purchased: ${purchase.purchased_qty} | Stocked: ${purchase.stocked_qty} | Sold: ${purchase.sold_qty}`;
+                            // Simplified label: focus on remaining quantity to stock
+                            option.textContent = `Purchase #${purchase.id} - ${purchase.purchase_date} | To Stock: ${remaining}`;
                             option.dataset.purchasedQty = purchase.purchased_qty;
                             option.dataset.stockedQty = purchase.stocked_qty;
                             option.dataset.soldQty = purchase.sold_qty;
-                            option.dataset.remainingToStock = purchase.remaining_to_stock;
+                            option.dataset.remainingToStock = remaining;
                             option.dataset.availableQty = purchase.available_qty;
                             purchaseSelect.appendChild(option);
+                            addedOptions++;
                         });
+
+                        if (addedOptions === 0) {
+                            const option = document.createElement('option');
+                            option.value = '';
+                            option.textContent = 'No purchases with remaining stock for this product';
+                            option.disabled = true;
+                            purchaseSelect.appendChild(option);
+                        }
                     } else {
                         const option = document.createElement('option');
                         option.value = '';
-                        option.textContent = 'No purchases found for this product';
+                        option.textContent = 'No purchases with remaining stock for this product';
                         option.disabled = true;
                         purchaseSelect.appendChild(option);
                     }
@@ -445,18 +480,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         branchSelect.innerHTML = '<option value="">-- Select Branch --</option>';
 
+        let addedOptions = 0;
+
         branches.forEach(branch => {
+            // Skip current branch as a source
             if (String(branch.branch_id) === String(currentBranchId)) {
                 return;
             }
 
             const available = parseInt(branch.current_stock ?? 0, 10);
+            if (available <= 0) {
+                return; // Only show branches with available stock
+            }
+
             const option = document.createElement('option');
             option.value = branch.branch_id;
             option.textContent = `${branch.branch_name} (${available} available)`;
             option.dataset.availableQty = available;
             branchSelect.appendChild(option);
+            addedOptions++;
         });
+
+        if (addedOptions === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No other branches with available stock';
+            option.disabled = true;
+            branchSelect.appendChild(option);
+        }
     }
 
     function handlePurchaseSelectionChange() {
@@ -552,12 +603,50 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             
             // Load sales data
-            fetch(`/inventory/product-sales/${productId}`)
+            fetch(`/superadmin/inventory/product-sales/${productId}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log('✅ [SALES] Sales data loaded:', data);
-                    
-                    if (data && data.length > 0) {
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Group by branch_name
+                        const branchesMap = {};
+                        const allDatesSet = new Set();
+
+                        data.forEach(item => {
+                            const branchName = item.branch_name || 'Unknown Branch';
+                            const date = item.date;
+
+                            allDatesSet.add(date);
+
+                            if (!branchesMap[branchName]) {
+                                branchesMap[branchName] = {};
+                            }
+
+                            branchesMap[branchName][date] = (branchesMap[branchName][date] || 0) + Number(item.quantity || 0);
+                        });
+
+                        const allDates = Array.from(allDatesSet).sort();
+
+                        // Helper to generate distinct colors per branch
+                        const branchNames = Object.keys(branchesMap);
+                        const datasets = branchNames.map((branchName, index) => {
+                            const hue = (index * 60) % 360; // spread colors around the wheel
+                            const borderColor = `hsl(${hue}, 70%, 45%)`;
+                            const backgroundColor = `hsla(${hue}, 70%, 45%, 0.2)`;
+
+                            const dataPoints = allDates.map(date => branchesMap[branchName][date] || 0);
+
+                            return {
+                                label: branchName,
+                                data: dataPoints,
+                                borderColor,
+                                backgroundColor,
+                                tension: 0.1,
+                                fill: false,
+                            };
+                        });
+
                         // Create sales graph
                         const salesHtml = `
                             <div class="card border-secondary">
@@ -570,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                         `;
                         salesGraphColumn.innerHTML = salesHtml;
-                        
+
                         // Initialize chart
                         setTimeout(() => {
                             const ctx = document.getElementById('salesChart');
@@ -578,24 +667,41 @@ document.addEventListener('DOMContentLoaded', function () {
                                 new Chart(ctx, {
                                     type: 'line',
                                     data: {
-                                        labels: data.map(item => item.date),
-                                        datasets: [{
-                                            label: 'Sales',
-                                            data: data.map(item => item.quantity),
-                                            borderColor: 'rgb(75, 192, 192)',
-                                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                            tension: 0.1
-                                        }]
+                                        labels: allDates,
+                                        datasets,
                                     },
                                     options: {
                                         responsive: true,
                                         plugins: {
+                                            legend: {
+                                                display: true,
+                                                position: 'bottom',
+                                            },
                                             title: {
                                                 display: true,
-                                                text: currentProductData ? currentProductData.name : 'Product Sales'
-                                            }
-                                        }
-                                    }
+                                                text: currentProductData ? currentProductData.name : 'Product Sales',
+                                            },
+                                        },
+                                        interaction: {
+                                            mode: 'index',
+                                            intersect: false,
+                                        },
+                                        scales: {
+                                            x: {
+                                                title: {
+                                                    display: true,
+                                                    text: 'Date',
+                                                },
+                                            },
+                                            y: {
+                                                title: {
+                                                    display: true,
+                                                    text: 'Quantity Sold',
+                                                },
+                                                beginAtZero: true,
+                                            },
+                                        },
+                                    },
                                 });
                             }
                         }, 100);
@@ -671,32 +777,45 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         
-        fetch(`/inventory/${productId}/stock-in`, {
+        fetch(`/superadmin/inventory/${productId}/stock-in`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify({
                 purchase_id: purchaseId,
-                quantity: quantity,
+                purchase_quantity: quantity,
                 branch_id: branchId,
                 reason: 'Stock from purchase'
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire('Success', 'Stock added successfully from purchase', 'success').then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('Error', data.message || 'Failed to add stock', 'error');
+        .then(async response => {
+            const rawText = await response.text();
+            let data;
+            try {
+                data = rawText ? JSON.parse(rawText) : {};
+            } catch (e) {
+                console.error('❌ [PURCHASE] Non-JSON response:', { status: response.status, body: rawText });
+                Swal.fire('Error', `Purchase stock-in failed (HTTP ${response.status}). Check server logs.`, 'error');
+                return;
             }
+
+            if (!response.ok || !data.success) {
+                const msg = data && data.message ? data.message : `Purchase stock-in failed (HTTP ${response.status}).`;
+                Swal.fire('Error', msg, 'error');
+                return;
+            }
+
+            Swal.fire('Success', data.message || 'Stock added successfully from purchase', 'success').then(() => {
+                location.reload();
+            });
         })
         .catch(error => {
-            console.error('Error:', error);
-            Swal.fire('Error', 'Failed to add stock', 'error');
+            console.error('❌ [PURCHASE] Request error:', error);
+            Swal.fire('Error', 'Failed to add stock due to a network or server error.', 'error');
         });
     }
 
@@ -705,9 +824,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const productId = document.getElementById('adjustProductId').value;
         const fromBranch = document.getElementById('fromBranch').value;
         const quantity = document.getElementById('transferQuantity').value;
+        const destinationBranchId = currentProductData?.branchId;
         
         if (!fromBranch || !quantity) {
             Swal.fire('Error', 'Please fill in all required fields', 'error');
+            return;
+        }
+
+        if (!destinationBranchId) {
+            Swal.fire('Error', 'Destination branch is not set for this product.', 'error');
             return;
         }
 
@@ -736,38 +861,52 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         
-        fetch(`/inventory/${productId}/adjust`, {
+        fetch(`/superadmin/inventory/${productId}/adjust`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify({
                 from_branch: fromBranch,
+                to_branch: destinationBranchId,
                 transfer_quantity: quantity,
                 reason: 'Stock transfer',
                 adjustment_type: 'transfer'
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire('Success', 'Stock transfer created successfully', 'success').then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('Error', data.message || 'Failed to create transfer', 'error');
+        .then(async response => {
+            const rawText = await response.text();
+            let data;
+            try {
+                data = rawText ? JSON.parse(rawText) : {};
+            } catch (e) {
+                console.error('❌ [TRANSFER] Non-JSON response:', { status: response.status, body: rawText });
+                Swal.fire('Error', `Stock transfer failed (HTTP ${response.status}). Check server logs.`, 'error');
+                return;
             }
+
+            if (!response.ok || !data.success) {
+                const msg = data && data.message ? data.message : `Stock transfer failed (HTTP ${response.status}).`;
+                Swal.fire('Error', msg, 'error');
+                return;
+            }
+
+            Swal.fire('Success', data.message || 'Stock transfer created successfully', 'success').then(() => {
+                location.reload();
+            });
         })
         .catch(error => {
-            console.error('Error:', error);
-            Swal.fire('Error', 'Failed to create transfer', 'error');
+            console.error('❌ [TRANSFER] Request error:', error);
+            Swal.fire('Error', 'Failed to create transfer due to a network or server error.', 'error');
         });
     }
     function loadStockHistory(productId) {
         console.log('📊 [HISTORY] Loading stock history for product:', productId);
         
-        fetch(`/inventory/product-stock-history/${productId}`)
+        fetch(`/superadmin/inventory/product-stock-history/${productId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -970,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return false;
                 }
                 
-                return fetch('/inventory/bulk-adjust', {
+                return fetch('/superadmin/inventory/bulk-adjust', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),

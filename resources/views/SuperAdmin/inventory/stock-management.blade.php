@@ -141,9 +141,6 @@
                                             <button type="button" class="btn btn-primary adjust-stock-btn" data-bs-toggle="modal" data-bs-target="#adjustStockModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" data-current-stock="{{ $currentStock }}" data-branch-id="{{ $product->branch_id ?? request('branch_id') }}" data-branch-name="{{ $product->branch_name ?? '' }}" title="Adjust Stock">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button type="button" class="btn btn-success stock-in-btn" data-bs-toggle="modal" data-bs-target="#stockInModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" title="Stock In">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
                                             <button type="button" class="btn btn-info history-btn" data-bs-toggle="modal" data-bs-target="#stockHistoryModal" data-product-id="{{ $product->id }}" data-product-name="{{ $product->product_name }}" title="History">
                                                 <i class="fas fa-history"></i>
                                             </button>
