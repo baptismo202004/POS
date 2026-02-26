@@ -3,14 +3,6 @@
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\PosAdminController;
 use App\Http\Controllers\Cashier\CashierDashboardController;
-<<<<<<< HEAD
-use App\Http\Controllers\Cashier\CreditController;
-use App\Http\Controllers\Cashier\CustomerController as CashierCustomerController;
-use App\Http\Controllers\Cashier\ExpenseController;
-use App\Http\Controllers\Cashier\RefundController;
-use App\Http\Controllers\Cashier\SalesController;
-=======
->>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\InventoryController;

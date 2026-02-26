@@ -469,11 +469,7 @@ function toggleAllPermissions(roleId, module, checked) {
 function updatePermissionSilent(roleId, module, action, checked, callback) {
     console.log(`Updating permission: Role ${roleId}, Module ${module}, Action ${action}, Checked ${checked}`);
     
-<<<<<<< HEAD
-    fetch('{{ route("admin.access.permissions.update") }}', {
-=======
     fetch(`/admin/access/permissions/update`, {
->>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -525,11 +521,7 @@ function updatePermission(roleId, module, action, checked) {
     
     const checkbox = event.target;
     
-<<<<<<< HEAD
-    fetch('{{ route("admin.access.permissions.update") }}', {
-=======
     fetch(`/admin/access/permissions/update`, {
->>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

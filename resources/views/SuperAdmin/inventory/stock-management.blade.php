@@ -3,7 +3,6 @@
 @section('title', 'Stock Management')
 
 @section('content')
-<<<<<<< HEAD
 <div class="container-fluid">
     <!-- Minimal Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -36,28 +35,6 @@
             </div>
         </div>
     </div>
-=======
-<div class="d-flex">
-    <!-- Main Content Area -->
-    <div class="flex-fill">
-        <div class="container-fluid">
-            <!-- Minimal Page Header -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <h5 class="mb-1 fw-bold">
-                        Stock Management
-                    </h5>
-                    <p class="text-muted mb-0 small">Intelligent inventory monitoring</p>
-                </div>
-                
-                <!-- Search Bar -->
-                <div class="position-relative">
-                    <input type="text" class="form-control form-control-sm" id="searchFilterHeader" 
-                           placeholder="Search..." style="width: 250px;">
-                    <i class="fas fa-search position-absolute" style="right: 10px; top: 8px; color: #6c757d; font-size: 12px;"></i>
-                </div>
-            </div>
->>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
     
     <!-- Include Advanced Filters Component -->
     @include('superadmin.inventory.stock-filters')

@@ -291,44 +291,41 @@
         
         /* Click animation state */
         .sidebar nav a.clicking {
-            animation: navClickAnimation 0.6s ease-out !important;
-            position: relative !important;
-            z-index: 10 !important;
-            transform: scale(1) !important;
-            background: rgba(0, 229, 255, 0.15) !important;
-            box-shadow: 0 0 0 rgba(0, 229, 255, 0) !important;
+            animation: navClickAnimation 0.6s ease-out;
+            position: relative;
+            z-index: 10;
         }
         
         @keyframes navClickAnimation {
             0% {
-                transform: scale(1) translateX(0) !important;
-                background: rgba(0, 229, 255, 0.15) !important;
-                box-shadow: 0 0 0 rgba(0, 229, 255, 0) !important;
+                transform: scale(1) translateX(0);
+                background: rgba(0, 229, 255, 0.15);
+                box-shadow: 0 0 0 rgba(0, 229, 255, 0);
             }
             20% {
-                transform: scale(0.92) translateX(-2px) !important;
-                background: rgba(0, 229, 255, 0.4) !important;
-                box-shadow: 0 0 20px rgba(0, 229, 255, 0.3) !important;
+                transform: scale(0.92) translateX(-2px);
+                background: rgba(0, 229, 255, 0.4);
+                box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
             }
             40% {
-                transform: scale(0.95) translateX(2px) !important;
-                background: rgba(0, 229, 255, 0.3) !important;
-                box-shadow: 0 0 30px rgba(0, 229, 255, 0.4) !important;
+                transform: scale(0.95) translateX(2px);
+                background: rgba(0, 229, 255, 0.3);
+                box-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
             }
             60% {
-                transform: scale(0.98) translateX(-1px) !important;
-                background: rgba(0, 229, 255, 0.25) !important;
-                box-shadow: 0 0 25px rgba(0, 229, 255, 0.2) !important;
+                transform: scale(0.98) translateX(-1px);
+                background: rgba(0, 229, 255, 0.25);
+                box-shadow: 0 0 25px rgba(0, 229, 255, 0.2);
             }
             80% {
-                transform: scale(0.99) translateX(0) !important;
-                background: rgba(0, 229, 255, 0.2) !important;
-                box-shadow: 0 0 15px rgba(0, 229, 255, 0.1) !important;
+                transform: scale(0.99) translateX(0);
+                background: rgba(0, 229, 255, 0.2);
+                box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
             }
             100% {
-                transform: scale(1) translateX(0) !important;
-                background: rgba(0, 229, 255, 0.15) !important;
-                box-shadow: 0 0 0 rgba(0, 229, 255, 0) !important;
+                transform: scale(1) translateX(0);
+                background: rgba(0, 229, 255, 0.15);
+                box-shadow: 0 0 0 rgba(0, 229, 255, 0);
             }
         }
         
@@ -561,17 +558,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add click animations to all navigation links
     const navLinks = document.querySelectorAll('.sidebar nav a');
     
-    console.log('Found navigation links:', navLinks.length);
-    
-    navLinks.forEach((link, index) => {
-        console.log(`Setting up click for link ${index}:`, link.href);
-        
+    navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            console.log('Clicked on:', this.href);
-            
             // Don't animate if it's already active or has no href
             if (this.classList.contains('active') || !this.getAttribute('href') || this.getAttribute('href') === '#') {
-                console.log('Skipping animation - active or no href');
                 return;
             }
             
@@ -581,11 +571,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Store the original href
             const href = this.getAttribute('href');
             
-            console.log('Starting animation for:', href);
-            
             // Add clicking class for animation
             this.classList.add('clicking');
-            console.log('Added clicking class');
             
             // Add a subtle loading state before navigation
             const icon = this.querySelector('.sidebar-icon');
@@ -593,19 +580,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon.style.opacity = '0.7';
                 // Add spinning animation to icon
                 icon.style.animation = 'spin 0.8s linear';
-                console.log('Added icon animation');
             }
             
             // Add pulse effect to the text
             const textSpan = this.querySelector('span:not(.icon-badge)');
             if (textSpan) {
                 textSpan.style.animation = 'pulse 0.6s ease-in-out';
-                console.log('Added text animation');
             }
             
             // Navigate after animation completes (600ms delay)
             setTimeout(() => {
-                console.log('Navigating to:', href);
                 window.location.href = href;
             }, 600);
         });
@@ -627,7 +611,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         `;
         document.head.appendChild(style);
-        console.log('Added animation styles');
     }
 });
 </script>
