@@ -36,7 +36,6 @@
                     <h4 class="m-0">Refunds & Returns</h4>
                     <p class="mb-0 text-muted">Overview of your refund and return transactions</p>
                 </div>
-                <a href="{{ route('cashier.refunds.create') }}" class="btn btn-primary">New Refund</a>
             </div>
             <div class="card-body">
                 <div class="row">

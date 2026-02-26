@@ -347,8 +347,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadSuppliers() {
-        // This would load suppliers from your API
-        fetch('/api/suppliers')
+        // Load suppliers from the correct SuperAdmin API route
+        fetch('/superadmin/api/suppliers')
             .then(response => response.json())
             .then(data => {
                 supplierFilter.innerHTML = '<option value="">All Suppliers</option>';

@@ -23,10 +23,10 @@
                 <div class="card card-rounded shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="m-0">Edit Expense</h4>
-                        <a href="{{ route('superadmin.admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
+                        <a href="{{ route('admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('superadmin.admin.expenses.update', $expense) }}" method="POST" enctype="multipart/form-data">
+                        <form action="{{ route('admin.expenses.update', $expense) }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
                             <div class="row">

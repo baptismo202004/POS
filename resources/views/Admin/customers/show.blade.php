@@ -39,7 +39,7 @@
             <div class="container-fluid">
                 <!-- Back Button -->
                 <div class="mb-3">
-                    <a href="{{ route('superadmin.admin.customers.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Back to Customers
                     </a>
                 </div>

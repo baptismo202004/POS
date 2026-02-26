@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Models\Product;
 use App\Models\Refund;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\Product;
 use App\Models\StockOut;
-use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -19,24 +18,24 @@ class RefundController extends Controller
     {
         // Get today's refunds data
         $today = \Carbon\Carbon::today();
-        
+
         $todayRefunds = \App\Models\Refund::whereDate('created_at', $today)
             ->where('status', 'approved')
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
-        
+
         // Get this month's refunds
         $thisMonth = \Carbon\Carbon::now()->startOfMonth();
         $monthlyRefunds = \App\Models\Refund::whereDate('created_at', '>=', $thisMonth)
             ->where('status', 'approved')
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
-        
+
         // Get recent refunds for the table
         $refunds = Refund::with(['sale', 'saleItem.product', 'product', 'cashier'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
-            
+
         return view('Admin.refunds.index', compact(
             'refunds',
             'todayRefunds',
@@ -46,25 +45,38 @@ class RefundController extends Controller
 
     public function create(Request $request)
     {
-        $saleId = $request->get('sale_id');
-        $saleItemId = $request->get('sale_item_id');
-        
-        $sale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
-        $saleItem = SaleItem::with('product')->find($saleItemId);
-        
-        if (!$sale || !$saleItem) {
-            return response()->json(['error' => 'Sale or sale item not found'], 404);
+        $saleId = $request->integer('sale_id');
+        $saleItemId = $request->integer('sale_item_id');
+
+        $sale = null;
+        $saleItem = null;
+        $lookupError = null;
+
+        if ($saleId) {
+            $sale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
+
+            if (! $sale) {
+                $lookupError = 'Sale not found.';
+            }
         }
-        
-        return view('Admin.refunds.create', compact('sale', 'saleItem'));
+
+        if ($sale && $saleItemId) {
+            $saleItem = $sale->saleItems->firstWhere('id', $saleItemId);
+
+            if (! $saleItem) {
+                $lookupError = 'Sale item not found for this sale.';
+            }
+        }
+
+        return view('Admin.refunds.create', compact('sale', 'saleItem', 'lookupError'));
     }
 
     public function store(Request $request)
     {
         try {
             // Debug: Log incoming request data
-            \Log::info('Refund request data: ' . json_encode($request->all()));
-            
+            \Log::info('Refund request data: '.json_encode($request->all()));
+
             $validator = Validator::make($request->all(), [
                 'sale_id' => 'required|exists:sales,id',
                 'sale_item_id' => 'required|exists:sale_items,id',
@@ -76,29 +88,33 @@ class RefundController extends Controller
             ]);
 
             if ($validator->fails()) {
-                \Log::error('Refund validation failed: ' . json_encode($validator->errors()->toArray()));
-                return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+                \Log::error('Refund validation failed: '.json_encode($validator->errors()->toArray()));
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+                }
+
+                return back()->withErrors($validator)->withInput();
             }
 
             \Log::info('Validation passed, starting transaction');
-            
+
             DB::transaction(function () use ($request) {
-                \Log::info('Finding sale item: ' . $request->sale_item_id);
+                \Log::info('Finding sale item: '.$request->sale_item_id);
                 $saleItem = SaleItem::find($request->sale_item_id);
-                
-                if (!$saleItem) {
-                    \Log::error('Sale item not found: ' . $request->sale_item_id);
+
+                if (! $saleItem) {
+                    \Log::error('Sale item not found: '.$request->sale_item_id);
                     throw new \Exception('Sale item not found');
                 }
-                
+
                 \Log::info('Sale item found, checking existing refunds');
                 // Validate that refund quantity doesn't exceed sold quantity
                 $totalRefunded = Refund::where('sale_item_id', $request->sale_item_id)
                     ->where('status', 'approved')
                     ->sum('quantity_refunded');
-                    
-                \Log::info('Total refunded: ' . $totalRefunded . ', requested: ' . $request->quantity_refunded . ', sold: ' . $saleItem->quantity);
-                    
+
+                \Log::info('Total refunded: '.$totalRefunded.', requested: '.$request->quantity_refunded.', sold: '.$saleItem->quantity);
+
                 if ($totalRefunded + $request->quantity_refunded > $saleItem->quantity) {
                     throw new \Exception('Cannot refund more items than were sold');
                 }
@@ -116,40 +132,40 @@ class RefundController extends Controller
                     'status' => 'approved', // Auto-approve for simplicity
                     'notes' => $request->notes,
                 ]);
-                
-                \Log::info('Refund created with ID: ' . $refund->id);
+
+                \Log::info('Refund created with ID: '.$refund->id);
 
                 // Update sale total amount by deducting refund amount
                 $sale = \App\Models\Sale::find($request->sale_id);
                 if ($sale) {
                     $currentTotal = $sale->total_amount;
                     $newTotal = $currentTotal - $request->refund_amount;
-                    
+
                     $sale->total_amount = max(0, $newTotal);
                     $sale->save();
-                    
-                    \Log::info('Sale total updated: ' . $currentTotal . ' -> ' . $sale->total_amount . ' (Refund: ' . $request->refund_amount . ')');
+
+                    \Log::info('Sale total updated: '.$currentTotal.' -> '.$sale->total_amount.' (Refund: '.$request->refund_amount.')');
                 }
 
                 // Update inventory - add back refunded items
                 $product = Product::find($request->product_id);
                 if ($product) {
-                    \Log::info('Updating inventory for product: ' . $product->id);
-                    
+                    \Log::info('Updating inventory for product: '.$product->id);
+
                     // Try to find and update StockIn record (primary method)
                     $stockIn = \App\Models\StockIn::where('product_id', $product->id)
                         ->where('branch_id', auth()->user()->branch_id ?? 1)
                         ->first();
-                        
+
                     if ($stockIn) {
                         // Reduce sold count (add back to inventory)
                         $newSold = max(0, $stockIn->sold - $request->quantity_refunded);
                         $stockIn->sold = $newSold;
                         $stockIn->save();
-                        \Log::info('Updated StockIn sold count: ' . $stockIn->sold . ' (reduced by ' . $request->quantity_refunded . ')');
+                        \Log::info('Updated StockIn sold count: '.$stockIn->sold.' (reduced by '.$request->quantity_refunded.')');
                     } else {
-                        \Log::warning('No StockIn record found for product: ' . $product->id . ', creating new record');
-                        
+                        \Log::warning('No StockIn record found for product: '.$product->id.', creating new record');
+
                         // Create new StockIn record if none exists
                         \App\Models\StockIn::create([
                             'product_id' => $product->id,
@@ -160,41 +176,51 @@ class RefundController extends Controller
                         ]);
                         \Log::info('Created new StockIn record for refunded items');
                     }
-                    
+
                     // Try to update StockOut record (secondary method)
                     $stockOut = StockOut::where('sale_id', $request->sale_id)
                         ->where('product_id', $request->product_id)
                         ->first();
-                        
+
                     if ($stockOut) {
                         \Log::info('Found stock out record, updating quantity');
                         $newQuantity = max(0, $stockOut->quantity - $request->quantity_refunded);
-                        
+
                         if ($newQuantity <= 0) {
                             $stockOut->delete();
                             \Log::info('StockOut record deleted (fully refunded)');
                         } else {
                             $stockOut->quantity = $newQuantity;
                             $stockOut->save();
-                            \Log::info('StockOut quantity updated to: ' . $stockOut->quantity);
+                            \Log::info('StockOut quantity updated to: '.$stockOut->quantity);
                         }
                     } else {
                         \Log::info('No StockOut record found - this is normal for some sales');
                     }
                 } else {
-                    \Log::warning('Product not found: ' . $request->product_id);
+                    \Log::warning('Product not found: '.$request->product_id);
                 }
-                
+
                 \Log::info('Refund transaction completed successfully');
             });
 
             \Log::info('Returning success response');
-            return response()->json(['success' => true, 'message' => 'Refund processed successfully']);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Refund processed successfully']);
+            }
+
+            return redirect()
+                ->route('admin.refunds.index')
+                ->with('success', 'Refund processed successfully.');
 
         } catch (\Exception $e) {
-            \Log::error('Refund processing error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json(['success' => false, 'message' => 'Error processing refund: ' . $e->getMessage()], 500);
+            \Log::error('Refund processing error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
+            \Log::error('Stack trace: '.$e->getTraceAsString());
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Error processing refund: '.$e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Error processing refund: '.$e->getMessage())->withInput();
         }
     }
 
@@ -203,14 +229,14 @@ class RefundController extends Controller
         try {
             DB::transaction(function () use ($refund) {
                 $refund->update(['status' => 'approved']);
-                
+
                 // Update inventory
                 $product = $refund->product;
                 if ($product) {
                     $stockOut = StockOut::where('product_id', $product->id)
                         ->where('sale_item_id', $refund->sale_item_id)
                         ->first();
-                        
+
                     if ($stockOut) {
                         $stockOut->quantity -= $refund->quantity_refunded;
                         if ($stockOut->quantity <= 0) {
@@ -224,13 +250,14 @@ class RefundController extends Controller
 
             return redirect()->back()->with('success', 'Refund approved successfully');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error approving refund: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error approving refund: '.$e->getMessage());
         }
     }
 
     public function reject(Refund $refund)
     {
         $refund->update(['status' => 'rejected']);
+
         return redirect()->back()->with('success', 'Refund rejected successfully');
     }
 }

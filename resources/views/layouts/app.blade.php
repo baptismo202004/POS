@@ -402,7 +402,7 @@
     @stack('stylesDashboard')
 
 </head>
-<body class="min-h-screen font-sans">
+<body class="min-h-screen font-sans" style="margin-top: 0; padding-top: 0;">
 
     @php
         $user = auth()->user();
@@ -410,7 +410,11 @@
     @endphp
 
     {{-- Sidebar --}}
-    @if(!$isCashier)
+    @if($isCashier)
+        <aside class="sidebar-fixed">
+            @include('layouts.CashierSidebar')
+        </aside>
+    @else
         <aside class="sidebar-fixed">
             @include('layouts.AdminSidebar')
         </aside>
@@ -418,11 +422,9 @@
 
     <main class="main-content">
         <!-- Mobile menu toggle -->
-        @if(!$isCashier)
-            <button class="d-md-none btn btn-primary position-fixed" style="top: 1rem; left: 1rem; z-index: 1001;" id="mobileMenuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-        @endif
+        <button class="d-md-none btn btn-primary position-fixed" style="top: 1rem; left: 1rem; z-index: 1001;" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
         
         @yield('content')
     </main>

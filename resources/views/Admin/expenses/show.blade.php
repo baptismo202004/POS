@@ -23,7 +23,7 @@
                 <div class="card card-rounded shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="m-0">Expense Details</h4>
-                        <a href="{{ route('superadmin.admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
+                        <a href="{{ route('admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
                     </div>
                     <div class="card-body">
                         <div class="row">

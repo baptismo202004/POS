@@ -3,12 +3,6 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .main-content {
-            margin-left: 0 !important;
-        }
-        .card-rounded{ border-radius: 12px; }
-    </style>
 @endpush
 
 @section('content')
@@ -21,7 +15,6 @@
                         <div class="p-4 card-rounded shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                                 <h2 class="m-0">Add Stock In</h2>
-                                <a href="{{ route('cashier.stockin.index') }}" class="btn btn-outline-primary">Back to Stock List</a>
                             </div>
 
                             <form action="{{ route('cashier.stockin.store') }}" method="POST">
@@ -71,166 +64,88 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const sidebarHTML = sessionStorage.getItem('cashierSidebarHTML') || localStorage.getItem('cashierSidebarHTML');
-    if (sidebarHTML) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = sidebarHTML;
-        const appendedSidebar = wrapper.firstElementChild;
-        if (appendedSidebar) {
-            document.body.appendChild(appendedSidebar);
+@if(session('error'))
+    Swal.fire({
+        icon: 'error',
+        title: 'Stock-in Error',
+        html: '{!! session('error') !!}',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: 'var(--theme-color)',
+    });
+@endif
+
+const purchaseSelect = document.getElementById('purchase_id');
+const tableBody = document.getElementById('purchase-items-table-body');
+const container = document.getElementById('purchase-items-form-container');
+
+function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+}
+
+if (purchaseSelect) {
+    purchaseSelect.addEventListener('change', async function () {
+        const purchaseId = purchaseSelect.value;
+        tableBody.innerHTML = '';
+
+        if (!purchaseId) {
+            container.style.display = 'none';
+            return;
         }
 
-        const sidebar = appendedSidebar || document.querySelector('body > div[style*="position: fixed"][style*="left: 0"]');
-        if (sidebar) {
-            sidebar.style.transform = 'translateX(0)';
-            sidebar.style.zIndex = '2000';
-
-            const navItems = sidebar.querySelectorAll('.nav-card');
-            navItems.forEach(item => {
-                item.style.transform = 'translateX(0)';
-                item.style.opacity = '1';
+        try {
+            const res = await fetch('{{ url('cashier/stockin/products-by-purchase') }}/' + purchaseId, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
-            const logoImg = sidebar.querySelector('img[src*="BGH LOGO.png"]');
-            if (logoImg) {
-                logoImg.addEventListener('click', () => {
-                    window.location.href = '{{ route('cashier.dashboard') }}';
-                });
-            }
+            if (!res.ok) throw new Error('Request failed');
 
-            const expandedWidth = 220;
-            sidebar.style.width = expandedWidth + 'px';
-            sidebar.style.padding = '20px 10px';
-            sidebar.style.overflowX = 'hidden';
-
-            const page = document.querySelector('.stockin-page');
-            if (page) {
-                page.style.transition = 'margin-left 0.2s ease';
-                page.style.marginLeft = expandedWidth + 'px';
-            }
-
-            navItems.forEach(item => {
-                item.style.justifyContent = 'flex-start';
-                item.style.gap = '16px';
-                item.style.paddingLeft = '20px';
-                item.style.paddingRight = '20px';
-
-                const icon = item.querySelector('.nav-icon');
-                if (icon) icon.style.margin = '0';
-
-                const content = item.querySelector('.nav-content');
-                if (content) {
-                    content.style.opacity = '1';
-                    content.style.pointerEvents = 'auto';
-                }
-            });
-
-            const itemsArr = Array.from(navItems);
-            const inventoryCard = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Inventory');
-            const stockInCard = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Stock In');
-            if (inventoryCard && stockInCard) {
-                stockInCard.style.marginLeft = '18px';
-                stockInCard.style.paddingLeft = '20px';
-                stockInCard.style.opacity = '1';
-                inventoryCard.insertAdjacentElement('afterend', stockInCard);
-            }
-
-            const productsCard = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
-            const categoryCard = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
-            if (productsCard && categoryCard) {
-                categoryCard.style.marginLeft = '18px';
-                categoryCard.style.paddingLeft = '20px';
-                productsCard.insertAdjacentElement('afterend', categoryCard);
-            }
-        }
-    } else {
-        console.warn('Cashier sidebar not found in sessionStorage/localStorage (cashierSidebarHTML).');
-    }
-
-    @if(session('error'))
-        Swal.fire({
-            icon: 'error',
-            title: 'Stock-in Error',
-            html: '{!! session('error') !!}',
-            confirmButtonText: 'Okay',
-            confirmButtonColor: 'var(--theme-color)',
-        });
-    @endif
-
-    const purchaseSelect = document.getElementById('purchase_id');
-    const tableBody = document.getElementById('purchase-items-table-body');
-    const container = document.getElementById('purchase-items-form-container');
-
-    function escapeHtml(s) {
-        return String(s || '').replace(/[&<>"']/g, function (c) {
-            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
-        });
-    }
-
-    if (purchaseSelect) {
-        purchaseSelect.addEventListener('change', async function () {
-            const purchaseId = purchaseSelect.value;
-            tableBody.innerHTML = '';
-
-            if (!purchaseId) {
+            const items = await res.json();
+            if (!Array.isArray(items) || items.length === 0) {
                 container.style.display = 'none';
                 return;
             }
 
-            try {
-                const res = await fetch('{{ url('cashier/stockin/products-by-purchase') }}/' + purchaseId, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
+            items.forEach((item, idx) => {
+                const productName = item.product?.product_name || 'N/A';
+                const purchasedQty = item.quantity || 0;
 
-                if (!res.ok) throw new Error('Request failed');
-
-                const items = await res.json();
-                if (!Array.isArray(items) || items.length === 0) {
-                    container.style.display = 'none';
-                    return;
+                let unitTypeOptions = '<option value="">-- Select Unit --</option>';
+                const unitTypes = item.product?.unit_types || item.product?.unitTypes || [];
+                if (Array.isArray(unitTypes)) {
+                    unitTypes.forEach(u => {
+                        unitTypeOptions += `<option value="${u.id}">${escapeHtml(u.unit_name)}</option>`;
+                    });
                 }
 
-                items.forEach((item, idx) => {
-                    const productName = item.product?.product_name || 'N/A';
-                    const purchasedQty = item.quantity || 0;
+                tableBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td>
+                            ${escapeHtml(productName)}
+                            <input type="hidden" name="items[${idx}][product_id]" value="${item.product_id}">
+                        </td>
+                        <td>
+                            <select class="form-select" name="items[${idx}][unit_type_id]">
+                                ${unitTypeOptions}
+                            </select>
+                        </td>
+                        <td>${purchasedQty}</td>
+                        <td>
+                            <input type="number" class="form-control" name="items[${idx}][quantity]" min="0" value="0">
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" name="items[${idx}][price]" min="0" step="0.01" value="0.00" required>
+                        </td>
+                    </tr>
+                `);
+            });
 
-                    let unitTypeOptions = '<option value="">-- Select Unit --</option>';
-                    const unitTypes = item.product?.unit_types || item.product?.unitTypes || [];
-                    if (Array.isArray(unitTypes)) {
-                        unitTypes.forEach(u => {
-                            unitTypeOptions += `<option value="${u.id}">${escapeHtml(u.unit_name)}</option>`;
-                        });
-                    }
-
-                    tableBody.insertAdjacentHTML('beforeend', `
-                        <tr>
-                            <td>
-                                ${escapeHtml(productName)}
-                                <input type="hidden" name="items[${idx}][product_id]" value="${item.product_id}">
-                            </td>
-                            <td>
-                                <select class="form-select" name="items[${idx}][unit_type_id]">
-                                    ${unitTypeOptions}
-                                </select>
-                            </td>
-                            <td>${purchasedQty}</td>
-                            <td>
-                                <input type="number" class="form-control" name="items[${idx}][quantity]" min="0" value="0">
-                            </td>
-                            <td>
-                                <input type="number" class="form-control" name="items[${idx}][price]" min="0" step="0.01" value="0.00" required>
-                            </td>
-                        </tr>
-                    `);
-                });
-
-                container.style.display = '';
-            } catch (e) {
-                container.style.display = 'none';
-            }
-        });
-    }
-});
+            container.style.display = '';
+        } catch (e) {
+            container.style.display = 'none';
+        }
+    });
+}
 </script>
 @endpush
