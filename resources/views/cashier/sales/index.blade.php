@@ -27,20 +27,10 @@
                             <input type="date" class="form-control" name="date_to" 
                                    value="{{ request('date_to') }}" placeholder="To">
                         </div>
-                        <div class="col-md-2">
-                            <select class="form-select" name="payment_method">
-                                <option value="">All Methods</option>
-                                <option value="cash" {{ request('payment_method') == 'cash' ? 'selected' : '' }}>Cash</option>
-                                <option value="card" {{ request('payment_method') == 'card' ? 'selected' : '' }}>Card</option>
-                                <option value="gcash" {{ request('payment_method') == 'gcash' ? 'selected' : '' }}>GCash</option>
-                                <option value="other" {{ request('payment_method') == 'other' ? 'selected' : '' }}>Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
+                          <div class="col-md-2">
                             <button class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
                         </div>
                     </div>
-
                     <!-- Sales Table -->
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -97,20 +87,17 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{{ route('cashier.sales.show', $sale) }}" class="btn btn-outline-primary" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('cashier.sales.receipt', $sale) }}" class="btn btn-outline-success" title="Receipt">
-                                                <i class="fas fa-receipt"></i>
-                                            </a>
-                                            @if($sale->status !== 'voided')
-                                                <button class="btn btn-outline-danger" onclick="voidSale({{ $sale->id }})" title="Void">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
+    <div class="btn-group btn-group-sm">
+        <a href="{{ route('cashier.pos.receipt', $sale) }}" class="btn btn-outline-success" title="Receipt">
+            <i class="fas fa-receipt"></i>
+        </a>
+        @if($sale->status !== 'voided')
+            <button class="btn btn-outline-danger" onclick="voidSale({{ $sale->id }})" title="Void">
+                <i class="fas fa-times"></i>
+            </button>
+        @endif
+    </div>
+</td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -118,9 +105,7 @@
                                         <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
                                         <h5>No sales found</h5>
                                         <p class="text-muted">Start by creating your first sale.</p>
-                                        <a href="{{ route('cashier.sales.create') }}" class="btn btn-primary">
-                                            <i class="fas fa-plus"></i> Create Sale
-                                        </a>
+                                        
                                     </td>
                                 </tr>
                                 @endforelse

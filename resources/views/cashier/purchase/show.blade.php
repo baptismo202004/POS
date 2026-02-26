@@ -3,11 +3,6 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .main-content {
-            margin-left: 0 !important;
-        }
-    </style>
 @endpush
 
 @section('content')
@@ -77,54 +72,6 @@
 @endsection
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const sidebarHTML = sessionStorage.getItem('cashierSidebarHTML') || localStorage.getItem('cashierSidebarHTML');
-    if (sidebarHTML) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = sidebarHTML;
-        const appendedSidebar = wrapper.firstElementChild;
-        if (appendedSidebar) {
-            document.body.appendChild(appendedSidebar);
-        }
-
-        const sidebar = appendedSidebar || document.querySelector('body > div[style*="position: fixed"][style*="left: 0"]');
-        if (sidebar) {
-            sidebar.style.transform = 'translateX(0)';
-            sidebar.style.zIndex = '2000';
-            const navItems = sidebar.querySelectorAll('.nav-card');
-            navItems.forEach(item => {
-                item.style.transform = 'translateX(0)';
-                item.style.opacity = '1';
-            });
-
-            const logoImg = sidebar.querySelector('img[src*="BGH LOGO.png"]');
-            if (logoImg) {
-                logoImg.addEventListener('click', () => {
-                    window.location.href = '{{ route('cashier.dashboard') }}';
-                });
-            }
-
-            const expandedWidth = 220;
-            sidebar.style.width = expandedWidth + 'px';
-            sidebar.style.padding = '20px 10px';
-            sidebar.style.overflowX = 'hidden';
-
-            const page = document.querySelector('.purchase-page');
-            if (page) {
-                page.style.transition = 'margin-left 0.2s ease';
-                page.style.marginLeft = expandedWidth + 'px';
-            }
-
-            navItems.forEach(item => {
-                item.style.justifyContent = 'flex-start';
-                item.style.gap = '16px';
-                item.style.paddingLeft = '20px';
-                item.style.paddingRight = '20px';
-
-                const icon = item.querySelector('.nav-icon');
-                if (icon) icon.style.margin = '0';
-
                 const content = item.querySelector('.nav-content');
                 if (content) {
                     content.style.opacity = '1';

@@ -214,7 +214,7 @@
         // Create form and submit for download
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '{{ route("superadmin.admin.reports.export") }}';
+        form.action = '{{ route("admin.reports.export") }}';
         
         // Add CSRF token
         const csrfToken = document.createElement('input');

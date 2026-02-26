@@ -16,7 +16,6 @@
             <div class="p-4 card-rounded shadow-sm bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <h2 class="m-0">Add Stock In</h2>
-                    <a href="{{ route('admin.stockin.index') }}" class="btn btn-outline-primary">Back to Stock List</a>
                 </div>
 
                 <form action="{{ route('admin.stockin.store') }}" method="POST">
@@ -115,9 +114,9 @@
 
                     if (data.items && data.items.length > 0) {
                         var idx = 0;
-                        var branchOptions = @json($branches->map(function($branch) {
+                        var branchOptions = @json($branches ? $branches->map(function($branch) {
                             return ['id' => $branch->id, 'name' => $branch->branch_name];
-                        }));
+                        }) : []);
                         
                         data.items.forEach(function(item) {
                             var productName = item.product ? item.product.product_name : 'N/A';
@@ -131,9 +130,11 @@
                             }
 
                             var branchSelectOptions = '';
-                            branchOptions.forEach(function(branch) {
-                                branchSelectOptions += '<option value="' + branch.id + '">' + branch.name + '</option>';
-                            });
+                            if (branchOptions && branchOptions.length > 0) {
+                                branchOptions.forEach(function(branch) {
+                                    branchSelectOptions += '<option value="' + branch.id + '">' + branch.name + '</option>';
+                                });
+                            }
 
                             var rowHtml = 
                                 '<tr>' +

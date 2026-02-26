@@ -4,13 +4,14 @@
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sidebar-fixed {
-            display: none;
+        /* Hide sidebar on dashboard only */
+        aside.sidebar-fixed {
+            display: none !important;
         }
-        .main-content {
+        main.main-content {
             margin-left: 0 !important;
         }
-
+        
         /* ========================================
            ELECTRIC MODERN PALETTE - CASHIER DASHBOARD
            Minimal, branch-scoped interface
@@ -308,7 +309,7 @@
                 <div class="kpi-icon">
                     <i class="fas fa-cash-register"></i>
                 </div>
-                <div class="kpi-value">₱{{ number_format($todaySales, 2) }}</div>
+                <div class="kpi-value">₱{{ number_format($todaySales->total_revenue ?? 0, 2) }}</div>
                 <div class="kpi-label">Today's Sales</div>
             </div>
         </div>
@@ -317,7 +318,7 @@
                 <div class="kpi-icon">
                     <i class="fas fa-receipt"></i>
                 </div>
-                <div class="kpi-value">{{ $todayTransactions }}</div>
+                <div class="kpi-value">{{ $todaySales->total_sales ?? 0 }}</div>
                 <div class="kpi-label">Transactions</div>
             </div>
         </div>
@@ -348,10 +349,26 @@
 
     <!-- Navigation Cards -->
     <div class="row mb-4">
+        @php
+            $dashboardRoutes = [
+                'products' => route('cashier.products.index'),
+                'product_category' => route('cashier.categories.index'),
+                'purchases' => route('cashier.purchases.index'),
+                'inventory' => route('cashier.inventory.index'),
+                'stock_in' => route('cashier.stockin.index'),
+                'customer' => route('cashier.customers.index'),
+                'refund_return' => route('cashier.refunds.index'),
+                'sales' => route('cashier.sales.index'),
+                'sales_report' => route('cashier.sales.reports'),
+                'expenses' => route('cashier.expenses.index'),
+                'credit' => route('cashier.credit.index'),
+            ];
+        @endphp
+
         @foreach ($modules as $moduleKey => $moduleData)
-            @if (isset($permissions[$moduleKey]) && in_array('view', $permissions[$moduleKey]))
+            @canAccess($moduleKey, 'view')
                 <div class="col-lg-3 col-md-4 col-sm-6 mb-3 {{ in_array($moduleKey, ['stock_in','product_category']) ? 'd-none' : '' }}">
-                    <a href="{{ $moduleKey === 'products' ? route('cashier.products.index') : ($moduleKey === 'product_category' ? route('cashier.categories.index') : ($moduleKey === 'purchases' ? route('cashier.purchases.index') : ($moduleKey === 'inventory' ? route('cashier.inventory.index') : ($moduleKey === 'stock_in' ? route('cashier.stockin.index') : '#')))) }}" class="nav-card" @if($moduleKey === 'products') onclick="animateAndNavigate(event, 'products')" @elseif($moduleKey === 'product_category') onclick="animateAndNavigate(event, 'product_category')" @elseif($moduleKey === 'purchases') onclick="animateAndNavigate(event, 'purchases')" @elseif($moduleKey === 'inventory') onclick="animateAndNavigate(event, 'inventory')" @elseif($moduleKey === 'stock_in') onclick="animateAndNavigate(event, 'stock_in')" @endif>
+                    <a href="{{ $dashboardRoutes[$moduleKey] ?? '#' }}" class="nav-card">
                         <div class="nav-icon">
                             <i class="fas fa-{{ $moduleData['icon'] ?? 'cogs' }}"></i>
                         </div>
@@ -429,6 +446,10 @@
 <script src="{{ asset('js/cashier-sidebar-resize.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Dashboard should not inject/restore the animated sidebar
+    sessionStorage.removeItem('cashierSidebarHTML');
+    localStorage.removeItem('cashierSidebarHTML');
+
     // Sales Chart
     const ctx = document.getElementById('salesChart');
     if (ctx) {

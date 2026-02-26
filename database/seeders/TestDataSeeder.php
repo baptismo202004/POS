@@ -154,6 +154,7 @@ class TestDataSeeder extends Seeder
                     'purchase_id' => $purchase->id,
                     'unit_type_id' => $unitTypeId,
                     'quantity' => $qty,
+                    'initial_quantity' => $qty,
                     'price' => $unitCost,
                     'sold' => 0,
                 ]);
@@ -186,6 +187,7 @@ class TestDataSeeder extends Seeder
                 'purchase_id' => null,
                 'unit_type_id' => $unitTypeId,
                 'quantity' => random_int(1, 5),
+                'initial_quantity' => random_int(1, 5),
                 'price' => random_int(80, 200) / 1.0,
                 'sold' => 0,
             ]);

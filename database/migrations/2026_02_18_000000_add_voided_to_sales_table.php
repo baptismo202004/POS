@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sales', function (Blueprint $table) {
-            $table->boolean('voided')->default(false)->after('payment_method');
-        });
+        if (! Schema::hasColumn('sales', 'voided')) {
+            Schema::table('sales', function (Blueprint $table) {
+                $table->boolean('voided')->default(false)->after('payment_method');
+            });
+        }
     }
 
     /**

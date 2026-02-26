@@ -69,7 +69,7 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
-                                                    <a href="{{ route('superadmin.admin.customers.show', $customer->customer_id ?? $customer->id) }}" class="btn btn-outline-primary" title="View Customer" style="text-decoration: none;">
+                                                    <a href="{{ route('admin.customers.show', $customer->customer_id ?? $customer->id) }}" class="btn btn-outline-primary" title="View Customer" style="text-decoration: none;">
                                                         <i class="fas fa-eye"></i> View
                                                     </a>
                                                     @if($customer->status == 'active')
@@ -205,7 +205,7 @@ function addNewCustomer() {
             // Send AJAX request to create the customer
             const customerData = result.value;
         
-            fetch('{{ route("superadmin.admin.customers.store") }}', {
+            fetch('{{ route("admin.customers.store") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

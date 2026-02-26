@@ -4,11 +4,73 @@
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sidebar-fixed {
-            display: none !important;
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
-        .main-content {
-            margin-left: 0 !important;
+        
+        .search-wrapper .fas.fa-search {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 2;
+            font-size: 14px;
+        }
+        
+        .search-wrapper input {
+            padding-left: 40px !important;
+            width: 250px;
+        }
+        
+        .btn-edit-category {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #000;
+        }
+        
+        .btn-edit-category:hover:not(:disabled) {
+            background-color: #e0a800;
+            border-color: #e0a800;
+            color: #fff;
+        }
+        
+        .btn-edit-category:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-delete-category {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: #fff;
+        }
+        
+        .btn-delete-category:hover:not(:disabled) {
+            background-color: #c82333;
+            border-color: #c82333;
+            color: #fff;
+        }
+        
+        .btn-delete-category:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .table tbody tr.selected {
+            background-color: #e3f2fd !important;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .categories-page {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
         }
     </style>
 @endpush
@@ -29,18 +91,21 @@
                                 </div>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="search-wrapper">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <path d="m21 21-4.35-4.35"></path>
-                                        </svg>
+                                        <i class="fas fa-search"></i>
                                         <input type="text" name="search" id="category-search-input" class="form-control" placeholder="Search categories..." value="{{ request('search') }}">
                                     </div>
-                                    <a href="{{ route('cashier.categories.create') }}" class="btn btn-add-category d-flex align-items-center gap-2">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M12 5v14M5 12h14"></path>
-                                        </svg>
+                                    <button type="button" class="btn btn-add-category d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                                        <i class="fas fa-plus"></i>
                                         Add Category
-                                    </a>
+                                    </button>
+                                    <button type="button" id="editCategoryBtn" class="btn btn-edit-category d-flex align-items-center gap-2" disabled>
+                                        <i class="fas fa-edit"></i>
+                                        Edit Category
+                                    </button>
+                                    <button type="button" id="deleteBtn" class="btn btn-delete-category d-flex align-items-center gap-2" disabled>
+                                        <i class="fas fa-trash"></i>
+                                        Delete Selected
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -88,6 +153,42 @@
     </div>
 </div>
 
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCategoryModalLabel">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editCategoryForm" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_category_name" class="form-label">Category Name *</label>
+                        <input type="text" name="category_name" id="edit_category_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_status" class="form-label">Status</label>
+                        <select name="status" id="edit_status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Category Modal -->
 <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -125,81 +226,8 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebarHTML = sessionStorage.getItem('cashierSidebarHTML') || localStorage.getItem('cashierSidebarHTML');
-        if (sidebarHTML) {
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = sidebarHTML;
-            const appendedSidebar = wrapper.firstElementChild;
-            if (appendedSidebar) {
-                document.body.appendChild(appendedSidebar);
-            }
-
-            const sidebar = appendedSidebar || document.querySelector('body > div[style*="position: fixed"][style*="left: 0"]');
-            if (sidebar) {
-                // Ensure the sidebar itself is visible
-                sidebar.style.transform = 'translateX(0)';
-                sidebar.style.zIndex = '2000';
-
-                // The cloned cards are initially hidden by inline styles, so we need to make them visible.
-                const navItems = sidebar.querySelectorAll('.nav-card');
-                navItems.forEach(item => {
-                    item.style.transform = 'translateX(0)';
-                    item.style.opacity = '1';
-                });
-
-                // Re-attach event listener for the logo to navigate back to the dashboard
-                const logoImg = sidebar.querySelector('img[src*="BGH LOGO.png"]');
-                if (logoImg) {
-                    logoImg.addEventListener('click', () => {
-                        window.location.href = '{{ route('cashier.dashboard') }}';
-                    });
-                }
-
-                // Add hover-expandable functionality
-                const expandedWidth = 220;
-                sidebar.style.width = expandedWidth + 'px';
-                sidebar.style.padding = '20px 10px';
-                sidebar.style.overflowX = 'hidden';
-
-                // Keep page content visible (sidebar should not cover headers)
-                const page = document.querySelector('.categories-page');
-                if (page) {
-                    page.style.transition = 'margin-left 0.2s ease';
-                    page.style.marginLeft = expandedWidth + 'px';
-                }
-
-                // Ensure nav text stays visible
-                navItems.forEach(item => {
-                    item.style.justifyContent = 'flex-start';
-                    item.style.gap = '16px';
-                    item.style.paddingLeft = '20px';
-                    item.style.paddingRight = '20px';
-
-                    const icon = item.querySelector('.nav-icon');
-                    if (icon) icon.style.margin = '0';
-
-                    const content = item.querySelector('.nav-content');
-                    if (content) {
-                        content.style.opacity = '1';
-                        content.style.pointerEvents = 'auto';
-                    }
-                });
-
-                // Nest Product Category under Products
-                const itemsArr = Array.from(navItems);
-                const productsItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
-                const categoryItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
-                if (productsItem && categoryItem) {
-                    categoryItem.style.marginLeft = '18px';
-                    categoryItem.style.paddingLeft = '20px';
-                    productsItem.insertAdjacentElement('afterend', categoryItem);
-                }
-            }
-        } else {
-            console.warn('Cashier sidebar not found in sessionStorage/localStorage (cashierSidebarHTML).');
-        }
-        const editBtn = document.getElementById('editBtn');
+    // Use standard CashierSidebar from layouts
+        const editBtn = document.getElementById('editCategoryBtn');
         const deleteBtn = document.getElementById('deleteBtn');
         const checkboxes = document.querySelectorAll('.row-checkbox');
         let selectedIds = [];
@@ -207,6 +235,34 @@
         function updateButtonStates() {
             if (editBtn) editBtn.disabled = selectedIds.length !== 1;
             if (deleteBtn) deleteBtn.disabled = selectedIds.length === 0;
+        }
+
+        function editCategory(id, name, status) {
+            // Find the category data
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if (!row) return;
+            
+            // Populate modal with category data
+            document.getElementById('edit_category_name').value = row.dataset.name || name;
+            document.getElementById('edit_status').value = row.dataset.status || status;
+            
+            // Set form action for update
+            const form = document.getElementById('editCategoryForm');
+            form.action = `/cashier/categories/${id}`;
+            
+            // Add PUT method override
+            let methodInput = form.querySelector('input[name="_method"]');
+            if (!methodInput) {
+                methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                form.appendChild(methodInput);
+            }
+            methodInput.value = 'PUT';
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
+            modal.show();
         }
 
         checkboxes.forEach(checkbox => {
@@ -218,8 +274,10 @@
 
                 if (this.checked) {
                     selectedIds.push(id);
+                    row.classList.add('selected');
                 } else {
                     selectedIds = selectedIds.filter(selectedId => selectedId !== id);
+                    row.classList.remove('selected');
                 }
                 updateButtonStates();
             });
@@ -236,31 +294,86 @@
 
         if (deleteBtn) {
             deleteBtn.addEventListener('click', function() {
-                if (selectedIds.length > 0 && confirm('Are you sure you want to delete the selected categories?')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '{{ route("cashier.categories.deleteMultiple") }}';
-                    
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = '{{ csrf_token() }}';
-                    form.appendChild(csrfInput);
-                    
-                    selectedIds.forEach(id => {
-                        const idInput = document.createElement('input');
-                        idInput.type = 'hidden';
-                        idInput.name = 'ids[]';
-                        idInput.value = id;
-                        form.appendChild(idInput);
+                if (selectedIds.length === 0) return;
+                
+                const count = selectedIds.length;
+                const message = count === 1 
+                    ? 'Are you sure you want to delete this category? This action cannot be undone.'
+                    : `Are you sure you want to delete these ${count} categories? This action cannot be undone.`;
+                
+                Swal.fire({
+                    title: 'Delete Categories?',
+                    html: message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, delete them!',
+                    cancelButtonText: 'Cancel',
+                    reverseButtons: true,
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => {
+                        // Show loading
+                        Swal.showLoading();
+                        
+                        return new Promise((resolve, reject) => {
+                            // Create form data
+                            const formData = new FormData();
+                            formData.append('_token', '{{ csrf_token() }}');
+                            
+                            selectedIds.forEach(id => {
+                                formData.append('category_ids[]', id);
+                            });
+                            
+                            // Send AJAX request
+                            fetch('{{ route("cashier.categories.deleteMultiple.post") }}', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resolve(data);
+                                } else {
+                                    reject(data.message || 'Deletion failed');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Delete error:', error);
+                                reject('Network error occurred');
+                            });
+                        });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: 'Categories deleted successfully',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            timerProgressBar: true
+                        }).then(() => {
+                            // Reload page after success message
+                            window.location.reload();
+                        });
+                    }
+                }).catch((error) => {
+                    // Show error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: error || 'Something went wrong. Please try again.',
+                        confirmButtonColor: '#dc3545'
                     });
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                });
             });
         }
-    });
 
     function openCategoryModal() {
         document.getElementById('categoryForm').action = '{{ route("cashier.categories.store") }}';
@@ -270,18 +383,164 @@
         document.getElementById('status').value = 'active';
     }
 
-    function editCategory(id, name, status) {
-        document.getElementById('categoryForm').action = '/cashier/categories/' + id;
-        if (!document.getElementById('categoryForm').querySelector('input[name="_method"]')) {
-            const methodInput = document.createElement('input');
-            methodInput.type = 'hidden';
-            methodInput.name = '_method';
-            methodInput.value = 'PUT';
-            document.getElementById('categoryForm').appendChild(methodInput);
-        }
-        document.getElementById('categoryModalLabel').textContent = 'Edit Category';
-        document.getElementById('category_name').value = name;
-        document.getElementById('status').value = status;
+    // Search functionality
+    const searchInput = document.getElementById('category-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const categoryName = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+                const categoryId = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+                
+                if (categoryName.includes(searchTerm) || categoryId.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
     }
+
+    // Handle add category form submission
+    document.getElementById('categoryForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch('{{ route("cashier.categories.store") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, treat as error
+                throw new Error('Invalid response format');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('categoryModal'));
+                modal.hide();
+                
+                // Show success message
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Category created successfully',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+                
+                // Reload page after short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                // Show error message
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: data.message || 'Something went wrong'
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Create error:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Something went wrong. Please try again.'
+                });
+            }
+        });
+    })
+
+    // Handle edit form submission
+    document.getElementById('editCategoryForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const categoryId = this.action.split('/').pop();
+        
+        // Add PUT method override
+        formData.append('_method', 'PUT');
+        
+        fetch(`/cashier/categories/${categoryId}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, treat as error
+                throw new Error('Invalid response format');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editCategoryModal'));
+                modal.hide();
+                
+                // Show success message
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Category updated successfully',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+                
+                // Reload page after short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                // Show error message
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: data.message || 'Something went wrong'
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Update error:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Something went wrong. Please try again.'
+                });
+            }
+        });
+    });
 </script>
 @endsection

@@ -15,6 +15,7 @@
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                 <i class="fas fa-user-plus me-2"></i>Add New User
             </button>
+            <a href="{{ route('admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
                 <i class="fas fa-shield-alt me-2"></i>Add Role
             </button>
@@ -224,7 +225,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="addUserForm">
+                    <form id="addUserForm" method="POST" action="{{ route('admin.users.store') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label">Name</label>
@@ -319,7 +320,7 @@ document.getElementById('roleSelect').addEventListener('change', function() {
 function loadPermissions(roleId) {
     console.log(`Loading permissions for role ID: ${roleId}`);
     
-    fetch(`/superadmin/admin/access/permissions/${roleId}`)
+    fetch(`/admin/access/permissions/${roleId}`)
         .then(response => response.json())
         .then(data => {
             console.log('Permissions response:', data);
@@ -468,7 +469,11 @@ function toggleAllPermissions(roleId, module, checked) {
 function updatePermissionSilent(roleId, module, action, checked, callback) {
     console.log(`Updating permission: Role ${roleId}, Module ${module}, Action ${action}, Checked ${checked}`);
     
+<<<<<<< HEAD
     fetch('{{ route("admin.access.permissions.update") }}', {
+=======
+    fetch(`/admin/access/permissions/update`, {
+>>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -520,7 +525,11 @@ function updatePermission(roleId, module, action, checked) {
     
     const checkbox = event.target;
     
+<<<<<<< HEAD
     fetch('{{ route("admin.access.permissions.update") }}', {
+=======
+    fetch(`/admin/access/permissions/update`, {
+>>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -659,7 +668,7 @@ function saveRole() {
 }
 
 function editUser(userId) {
-    fetch(`/superadmin/admin/access/users/${userId}`, {
+    fetch(`/admin/access/users/${userId}`, {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             'Accept': 'application/json'

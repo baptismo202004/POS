@@ -136,22 +136,39 @@
             </div>
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
         <!-- Statistics Cards -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="stats-card">
-                    <div class="stats-number">₱{{ number_format($totalExpenses, 2) }}</div>
+                    <div class="stats-number">₱{{ number_format((float) ($todayExpenses->total_amount ?? 0), 2) }}</div>
                     <div class="stats-label">Today's Expenses</div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="stats-card">{{ $expenses->total() }}</div>
-                <div class="stats-label">Total Expenses</div>
+                <div class="stats-card">
+                    <div class="stats-number">{{ number_format((float) ($monthlyExpenses->total_expenses ?? 0)) }}</div>
+                    <div class="stats-label">This Month (Count)</div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="stats-card">₱{{ number_format($expenses->sum('amount'), 2) }}</div>
-                <div class="stats-label">Total Amount</div>
+                <div class="stats-card">
+                    <div class="stats-number">₱{{ number_format((float) ($monthlyExpenses->total_amount ?? 0), 2) }}</div>
+                    <div class="stats-label">This Month (Amount)</div>
+                </div>
             </div>
         </div>
 
@@ -170,33 +187,37 @@
                                 <th>Date</th>
                                 <th>Description</th>
                                 <th>Category</th>
+                                <th>Supplier</th>
+                                <th>Payment</th>
                                 <th>Amount</th>
-                                <th>Receipt #</th>
-                                <th>Recorded By</th>
+                                <th>Receipt</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($expenses as $expense)
                                 <tr>
-                                    <td>{{ \Carbon\Carbon::parse($expense->expense_date)->format('M d, Y') }}</td>
+                                    <td>{{ $expense->expense_date?->format('M d, Y') }}</td>
                                     <td>
                                         <div>
                                             <strong>{{ $expense->description }}</strong>
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="category-badge">{{ $expense->category }}</span>
+                                        <span class="category-badge">{{ $expense->category?->name ?? 'N/A' }}</span>
                                     </td>
+                                    <td>{{ $expense->supplier?->supplier_name ?? '—' }}</td>
+                                    <td class="text-capitalize">{{ $expense->payment_method }}</td>
                                     <td class="fw-bold text-danger">-₱{{ number_format($expense->amount, 2) }}</td>
                                     <td>
-                                        @if($expense->receipt_number)
-                                            <span class="receipt-badge">{{ $expense->receipt_number }}</span>
+                                        @if($expense->receipt_path)
+                                            <a class="receipt-badge text-decoration-none" href="{{ asset('storage/'.$expense->receipt_path) }}" target="_blank" rel="noopener">
+                                                View
+                                            </a>
                                         @else
                                             <span class="text-muted">No receipt</span>
                                         @endif
                                     </td>
-                                    <td>{{ Auth::user()->name ?? 'N/A' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ route('cashier.expenses.edit', $expense->id) }}" class="btn btn-sm btn-outline-primary">

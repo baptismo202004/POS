@@ -136,7 +136,7 @@
                     </div>
                     <div class="col-md-3">
                         <strong>Category:</strong> 
-                        <span class="category-badge">{{ $expense->category }}</span>
+                        <span class="category-badge">{{ $expense->category?->name ?? 'N/A' }}</span>
                     </div>
                 </div>
             </div>
@@ -159,7 +159,7 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('cashier.expenses.update', $expense->id) }}" method="POST">
+                        <form action="{{ route('cashier.expenses.update', $expense->id) }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
                             <div class="row">
@@ -188,24 +188,47 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="category" class="form-label">Category *</label>
-                                    <select id="category" name="category" class="form-select" required>
+                                    <label for="expense_category_id" class="form-label">Category *</label>
+                                    <select id="expense_category_id" name="expense_category_id" class="form-select" required>
                                         <option value="">Select Category</option>
-                                        <option value="utilities" {{ $expense->category === 'utilities' ? 'selected' : '' }}>Utilities</option>
-                                        <option value="supplies" {{ $expense->category === 'supplies' ? 'selected' : '' }}>Office Supplies</option>
-                                        <option value="maintenance" {{ $expense->category === 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                                        <option value="rent" {{ $expense->category === 'rent' ? 'selected' : '' }}>Rent</option>
-                                        <option value="salary" {{ $expense->category === 'salary' ? 'selected' : '' }}>Salary</option>
-                                        <option value="marketing" {{ $expense->category === 'marketing' ? 'selected' : '' }}>Marketing</option>
-                                        <option value="transportation" {{ $expense->category === 'transportation' ? 'selected' : '' }}>Transportation</option>
-                                        <option value="equipment" {{ $expense->category === 'equipment' ? 'selected' : '' }}>Equipment</option>
-                                        <option value="other" {{ $expense->category === 'other' ? 'selected' : '' }}>Other</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}" @selected((int) $expense->expense_category_id === (int) $category->id)>
+                                                {{ $category->name }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="receipt_number" class="form-label">Receipt Number</label>
-                                    <input type="text" id="receipt_number" name="receipt_number" class="form-control" 
-                                           placeholder="Enter receipt number (optional)" value="{{ $expense->receipt_number }}">
+                                    <label for="supplier_id" class="form-label">Supplier (optional)</label>
+                                    <select id="supplier_id" name="supplier_id" class="form-select">
+                                        <option value="">Select Supplier</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}" @selected((int) $expense->supplier_id === (int) $supplier->id)>
+                                                {{ $supplier->supplier_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method *</label>
+                                    <select id="payment_method" name="payment_method" class="form-select" required>
+                                        <option value="cash" @selected($expense->payment_method === 'cash')>Cash</option>
+                                        <option value="card" @selected($expense->payment_method === 'card')>Card</option>
+                                        <option value="gcash" @selected($expense->payment_method === 'gcash')>GCash</option>
+                                        <option value="other" @selected($expense->payment_method === 'other')>Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="receipt" class="form-label">Receipt (optional)</label>
+                                    <input type="file" id="receipt" name="receipt" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                    @if($expense->receipt_path)
+                                        <div class="small mt-2">
+                                            Current: <a href="{{ asset('storage/'.$expense->receipt_path) }}" target="_blank" rel="noopener">View receipt</a>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 

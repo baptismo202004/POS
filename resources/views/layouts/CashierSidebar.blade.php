@@ -289,6 +289,67 @@
             transition: none; /* Instant change - no delay */
         }
         
+        /* Click animation state */
+        .sidebar nav a.clicking {
+            animation: navClickAnimation 0.6s ease-out;
+            position: relative;
+            z-index: 10;
+        }
+        
+        @keyframes navClickAnimation {
+            0% {
+                transform: scale(1) translateX(0);
+                background: rgba(0, 229, 255, 0.15);
+                box-shadow: 0 0 0 rgba(0, 229, 255, 0);
+            }
+            20% {
+                transform: scale(0.92) translateX(-2px);
+                background: rgba(0, 229, 255, 0.4);
+                box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+            }
+            40% {
+                transform: scale(0.95) translateX(2px);
+                background: rgba(0, 229, 255, 0.3);
+                box-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
+            }
+            60% {
+                transform: scale(0.98) translateX(-1px);
+                background: rgba(0, 229, 255, 0.25);
+                box-shadow: 0 0 25px rgba(0, 229, 255, 0.2);
+            }
+            80% {
+                transform: scale(0.99) translateX(0);
+                background: rgba(0, 229, 255, 0.2);
+                box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+            }
+            100% {
+                transform: scale(1) translateX(0);
+                background: rgba(0, 229, 255, 0.15);
+                box-shadow: 0 0 0 rgba(0, 229, 255, 0);
+            }
+        }
+        
+        /* Ripple effect */
+        .sidebar nav a::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .sidebar nav a.clicking::after {
+            width: 100%;
+            height: 100%;
+        }
+        
         .sidebar nav a.active .icon-badge {
             background: transparent;
             border-color: transparent;
@@ -344,17 +405,15 @@
             @canAccess('products','view')
             <div class="section-label">PRODUCTS</div>
             
-            @canAccess('products','view')
-            <a href="{{ route('cashier.products.index') }}" class="{{ request()->routeIs('cashier.products*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.products.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-box sidebar-icon"></i>
                 </span>
                 <span>Products</span>
             </a>
-            @endcanAccess
             
             @canAccess('product_category','edit')
-            <a href="{{ route('cashier.categories.index') }}" class="{{ request()->routeIs('cashier.categories*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.categories.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-tags sidebar-icon"></i>
                 </span>
@@ -367,17 +426,15 @@
             @canAccess('inventory','view')
             <div class="section-label">INVENTORY</div>
             
-            @canAccess('inventory','view')
-            <a href="{{ route('cashier.inventory.index') }}" class="{{ request()->routeIs('cashier.inventory*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
-                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
-                    <i class="fas fa-box sidebar-icon"></i>
-                </span>
-                <span>Inventory</span>
-            </a>
-            @endcanAccess
-            
             @canAccess('inventory','edit')
-            <a href="{{ route('cashier.stockin.index') }}" class="{{ request()->routeIs('cashier.stockin*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.purchases.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <i class="fas fa-shopping-bag sidebar-icon"></i>
+                </span>
+                <span>Purchase</span>
+            </a>
+            
+            <a href="{{ route('cashier.stockin.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-sign-in-alt sidebar-icon"></i>
                 </span>
@@ -385,7 +442,14 @@
             </a>
             @endcanAccess
             
-            @canAccess('inventory','edit')
+            <a href="{{ route('cashier.inventory.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <i class="fas fa-box sidebar-icon"></i>
+                </span>
+                <span>Inventory</span>
+            </a>
+            
+            @canAccess('stock_transfer','view')
             <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-exchange-alt sidebar-icon"></i>
@@ -399,17 +463,15 @@
             @canAccess('sales','view')
             <div class="section-label">SALES</div>
             
-            @canAccess('sales','view')
-            <a href="{{ route('cashier.sales.index') }}" class="{{ request()->routeIs('cashier.sales*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.sales.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-shopping-cart sidebar-icon"></i>
                 </span>
                 <span>Sales</span>
             </a>
-            @endcanAccess
             
             @canAccess('sales_report','view')
-            <a href="{{ route('cashier.sales.reports') }}" class="{{ request()->routeIs('cashier.sales.reports*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.sales.reports') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-file-invoice-dollar sidebar-icon"></i>
                 </span>
@@ -418,7 +480,7 @@
             @endcanAccess
             
             @canAccess('sales','edit')
-            <a href="{{ route('cashier.refunds.index') }}" class="{{ request()->routeIs('cashier.refunds*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.refunds.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-undo sidebar-icon"></i>
                 </span>
@@ -431,17 +493,15 @@
             @canAccess('credit','view')
             <div class="section-label">FINANCE</div>
             
-            @canAccess('credit','view')
-            <a href="{{ route('cashier.credit.index') }}" class="{{ request()->routeIs('cashier.credit*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.credit.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-credit-card sidebar-icon"></i>
                 </span>
                 <span>Credit</span>
             </a>
-            @endcanAccess
             
             @canAccess('expenses','view')
-            <a href="{{ route('cashier.expenses.index') }}" class="{{ request()->routeIs('cashier.expenses*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.expenses.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-file-invoice sidebar-icon"></i>
                 </span>
@@ -454,14 +514,12 @@
             @canAccess('customer','view')
             <div class="section-label">CUSTOMER</div>
             
-            @canAccess('customer','view')
-            <a href="{{ route('cashier.customers.index') }}" class="{{ request()->routeIs('cashier.customers*') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+            <a href="{{ route('cashier.customers.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-users sidebar-icon"></i>
                 </span>
                 <span>Customers</span>
             </a>
-            @endcanAccess
             @endcanAccess
 
                     </nav>
@@ -494,3 +552,65 @@
         </ul>
     </div>
 </aside>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click animations to all navigation links
+    const navLinks = document.querySelectorAll('.sidebar nav a');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Don't animate if it's already active or has no href
+            if (this.classList.contains('active') || !this.getAttribute('href') || this.getAttribute('href') === '#') {
+                return;
+            }
+            
+            // Prevent immediate navigation
+            e.preventDefault();
+            
+            // Store the original href
+            const href = this.getAttribute('href');
+            
+            // Add clicking class for animation
+            this.classList.add('clicking');
+            
+            // Add a subtle loading state before navigation
+            const icon = this.querySelector('.sidebar-icon');
+            if (icon) {
+                icon.style.opacity = '0.7';
+                // Add spinning animation to icon
+                icon.style.animation = 'spin 0.8s linear';
+            }
+            
+            // Add pulse effect to the text
+            const textSpan = this.querySelector('span:not(.icon-badge)');
+            if (textSpan) {
+                textSpan.style.animation = 'pulse 0.6s ease-in-out';
+            }
+            
+            // Navigate after animation completes (600ms delay)
+            setTimeout(() => {
+                window.location.href = href;
+            }, 600);
+        });
+    });
+    
+    // Add spin and pulse animation keyframes if not already present
+    if (!document.querySelector('#navAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'navAnimations';
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.6; transform: scale(1.05); }
+                100% { opacity: 1; transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+});
+</script>

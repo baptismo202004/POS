@@ -2,416 +2,216 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Receipt #{{ $sale->id }}</title>
+    <title>Payment Receipt - {{ $sale->id }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Courier New', monospace;
-            background: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .receipt-container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px dashed #333;
-            padding-bottom: 20px;
-        }
-        
-        .company-name {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        
-        .company-address {
+            font-family: 'Courier New', Courier, monospace;
             font-size: 12px;
-            color: #666;
-            margin-bottom: 10px;
+            color: #000;
+            background: #fff;
         }
         
-        .receipt-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            font-size: 14px;
+        /* Paper Size Options - Uncomment the one you want to use */
+        
+        /* Small Receipt: 9x13cm (3.54x5.12 inches) */
+        .receipt-container {
+            width: 9cm;
+            min-height: 13cm;
+            margin: 20px auto;
+            padding: 15px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
-        .receipt-number {
-            font-weight: bold;
-            color: #333;
+        /* 58mm Thermal Printer (219px) */
+        /*
+        .receipt-container {
+            width: 219px;
+            margin: 20px auto;
+            padding: 8px;
+            border: 1px solid #ccc;
         }
+        */
         
-        .receipt-date {
-            color: #666;
-        }
-        
-        .customer-info {
-            margin-bottom: 20px;
+        /* 72mm Thermal Printer (272px) */
+        /*
+        .receipt-container {
+            width: 272px;
+            margin: 20px auto;
             padding: 10px;
-            background: #f9f9f9;
-            border-radius: 5px;
-            font-size: 14px;
+            border: 1px solid #ccc;
         }
+        */
         
-        .customer-info div {
-            margin-bottom: 5px;
+        /* 80mm Thermal Printer (302px) - Original */
+        /*
+        .receipt-container {
+            width: 302px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
         }
+        */
         
-        .items-table {
+        /* A4 Paper */
+        /*
+        .receipt-container {
+            width: 210mm;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 794px;
+        }
+        */
+        
+        /* Letter Paper */
+        /*
+        .receipt-container {
+            width: 8.5in;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-width: 816px;
+        }
+        */
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
+        .details, .items, .total, .footer {
+            margin-bottom: 15px;
+        }
+        .details p {
+            margin: 3px 0;
+        }
+        .items table {
             width: 100%;
-            margin-bottom: 20px;
             border-collapse: collapse;
         }
-        
-        .items-table th {
-            text-align: left;
-            padding: 8px 0;
-            border-bottom: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
+        .items th, .items td {
+            padding: 5px 0;
+            font-size: 11px;
         }
-        
-        .items-table td {
-            padding: 8px 0;
-            font-size: 14px;
+        .items thead {
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
         }
-        
-        .item-name {
-            font-weight: 500;
+        .items .amount {
+            text-align: right;
         }
-        
-        .item-details {
-            font-size: 12px;
-            color: #666;
+        .total {
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            text-align: right;
+            font-size: 16px;
+            font-weight: bold;
         }
-        
-        .totals-section {
-            border-top: 2px dashed #333;
-            padding-top: 20px;
-            margin-bottom: 20px;
+        .barcode-container {
+            text-align: center;
+            margin-top: 20px;
         }
-        
-        .total-row {
+        .qr-placeholder {
+            width: 100px;
+            height: 100px;
+            border: 1px solid #000;
+            margin: 10px auto;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
         }
-        
-        .total-row.grand-total {
-            font-weight: bold;
-            font-size: 16px;
-            border-top: 1px solid #ddd;
-            padding-top: 8px;
-            margin-top: 8px;
-        }
-        
-        .payment-info {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        
-        .payment-method {
-            background: #f0f8ff;
-            padding: 8px 15px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-top: 5px;
-            font-weight: 500;
-        }
-        
-        .receipt-footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .cashier-info {
-            margin-bottom: 10px;
-        }
-        
-        .thank-you {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .actions {
-            text-align: center;
-            margin-top: 30px;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            margin: 0 5px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-primary {
-            background: #007bff;
-            color: white;
-        }
-        
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
         @media print {
+            @page {
+                margin: 0;
+                size: 9cm 13cm; /* Small Receipt: 9x13cm */
+            }
             body {
-                background: white;
+                margin: 0;
                 padding: 0;
             }
-            
             .receipt-container {
+                margin: 0;
+                padding: 15px;
+                border: none;
                 box-shadow: none;
-                border-radius: 0;
-                max-width: 100%;
-                padding: 20px;
-            }
-            
-            .actions {
-                display: none;
+                width: 9cm;
+                min-height: 13cm;
             }
         }
     </style>
+    <script>
+        window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+                window.close();
+            };
+        };
+    </script>
 </head>
 <body>
     <div class="receipt-container">
-        <!-- Receipt Header -->
-        <div class="receipt-header">
-            <div class="company-name">{{ config('app.name', 'POS System') }}</div>
-            <div class="company-address">{{ $sale->branch->branch_name ?? 'Main Branch' }}</div>
-            <div class="company-address">{{ $sale->branch->address ?? '123 Main St, City' }}</div>
-            <div class="company-address">Tel: {{ $sale->branch->phone ?? '123-456-7890' }}</div>
+        <div class="header">
+            <img src="{{ asset('/images/BGH LOGO.png') }}" alt="BGH IT Solutions Logo" style="max-width: 60px; margin-bottom: 8px;">
+            <h1>BGH IT Solutions</h1>
+            <p>Purok A-1, Balirong City of Naga Cebu</p>
+            <p>bghsupport@bghitsolutions.com</p>
+            <p>09973849783</p>
+            <br>
+            <h2>PAYMENT RECEIPT</h2>
+            <p>{{ $sale->reference_number ?: 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
+            <p>{{ $sale->created_at->format('Y-M-d') }}</p>
         </div>
 
-        <!-- Receipt Info -->
-        <div class="receipt-info">
-            <div>
-                @if($receiptGroupId)
-                    <div class="receipt-number">Group Receipt #{{ $receiptGroupId }}</div>
-                    <div class="receipt-number">Branch Sale #{{ $sale->id }}</div>
-                @else
-                    <div class="receipt-number">Receipt #{{ $sale->id }}</div>
-                @endif
-            </div>
-            <div class="receipt-date">{{ $sale->created_at->format('M d, Y h:i A') }}</div>
+        <div class="details">
+            <p>Cashier: {{ $sale->cashier->name ?? 'N/A' }}</p>
+            <p>Date: {{ $sale->created_at->format('Y-M-d') }}</p>
+            <p>Reference: {{ $sale->reference_number ?: 'PR-' . $sale->created_at->format('Ymd') . $sale->id }}</p>
         </div>
 
-        <!-- Customer Info -->
-        @if($sale->customer)
-        <div class="customer-info">
-            <div><strong>Customer:</strong> {{ $sale->customer->full_name }}</div>
-            @if($sale->customer->phone)
-                <div><strong>Contact:</strong> {{ $sale->customer->phone }}</div>
-            @endif
-        </div>
-        @endif
-
-        <!-- Items Table -->
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th style="text-align: right;">Qty</th>
-                    <th style="text-align: right;">Price</th>
-                    <th style="text-align: right;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($sale->items as $item)
-                <tr>
-                    <td>
-                        <div class="item-name">{{ $item->product->product_name }}</div>
-                        @if($item->unitType)
-                            <div class="item-details">{{ $item->unitType->name }}</div>
-                        @endif
-                    </td>
-                    <td style="text-align: right;">{{ $item->quantity }}</td>
-                    <td style="text-align: right;">₱{{ number_format($item->unit_price, 2) }}</td>
-                    <td style="text-align: right;">₱{{ number_format($item->subtotal, 2) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <!-- Multi-Branch Sales Section -->
-        @if($relatedSales->count() > 0)
-        <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
-            <div style="font-weight: bold; margin-bottom: 10px; color: #007bff;">
-                📋 Additional Branch Sales (Same Receipt)
-            </div>
-            @foreach($relatedSales as $relatedSale)
-            <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 3px;">
-                <div style="font-weight: bold; margin-bottom: 5px;">
-                    {{ $relatedSale->branch->branch_name ?? 'Unknown Branch' }} - Sale #{{ $relatedSale->id }}
-                </div>
-                <table style="width: 100%; font-size: 12px;">
-                    @foreach($relatedSale->items as $item)
+        <div class="items">
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ $item->product->product_name }}</td>
-                        <td style="text-align: right;">{{ $item->quantity }}</td>
-                        <td style="text-align: right;">₱{{ number_format($item->unit_price, 2) }}</td>
-                        <td style="text-align: right;">₱{{ number_format($item->subtotal, 2) }}</td>
+                        <th>#</th>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th class="amount">Price</th>
+                        <th class="amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sale->saleItems as $index => $item)
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+                        <td>{{ \Illuminate\Support\Str::limit($item->product->product_name, 20) }}</td>
+                        <td>{{ $item->quantity }}</td>
+                        <td class="amount">P{{ number_format($item->unit_price, 2) }}</td>
+                        <td class="amount">P{{ number_format($item->subtotal, 2) }}</td>
                     </tr>
                     @endforeach
-                    <tr style="font-weight: bold; border-top: 1px solid #ddd;">
-                        <td colspan="3">Branch Subtotal:</td>
-                        <td style="text-align: right;">₱{{ number_format($relatedSale->total_amount, 2) }}</td>
-                    </tr>
-                </table>
-            </div>
-            @endforeach
-        </div>
-        @endif
-
-        <!-- Totals Section -->
-        <div class="totals-section">
-            @if($receiptGroupId && $relatedSales->count() > 0)
-                @php
-                    $combinedSubtotal = $sale->subtotal + $relatedSales->sum('subtotal');
-                    $combinedDiscount = $sale->discount_amount + $relatedSales->sum('discount_amount');
-                    $combinedTotal = $sale->total_amount + $relatedSales->sum('total_amount');
-                @endphp
-                <div class="total-row">
-                    <span>This Branch Subtotal:</span>
-                    <span>₱{{ number_format($sale->subtotal, 2) }}</span>
-                </div>
-                @if($sale->discount_amount > 0)
-                <div class="total-row">
-                    <span>This Branch Discount:</span>
-                    <span>-₱{{ number_format($sale->discount_amount, 2) }}</span>
-                </div>
-                @endif
-                <div class="total-row" style="border-top: 1px solid #ddd; padding-top: 8px; margin-top: 8px;">
-                    <span>Combined Receipt Subtotal:</span>
-                    <span>₱{{ number_format($combinedSubtotal, 2) }}</span>
-                </div>
-                @if($combinedDiscount > 0)
-                <div class="total-row">
-                    <span>Combined Discount:</span>
-                    <span>-₱{{ number_format($combinedDiscount, 2) }}</span>
-                </div>
-                @endif
-                <div class="total-row grand-total">
-                    <span>Combined Total:</span>
-                    <span>₱{{ number_format($combinedTotal, 2) }}</span>
-                </div>
-            @else
-                <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>₱{{ number_format($sale->subtotal, 2) }}</span>
-                </div>
-                @if($sale->discount_amount > 0)
-                <div class="total-row">
-                    <span>Discount:</span>
-                    <span>-₱{{ number_format($sale->discount_amount, 2) }}</span>
-                </div>
-                @endif
-                <div class="total-row grand-total">
-                    <span>Total:</span>
-                    <span>₱{{ number_format($sale->total_amount, 2) }}</span>
-                </div>
-            @endif
+                </tbody>
+            </table>
         </div>
 
-        <!-- Payment Info -->
-        <div class="payment-info">
-            <div>Payment Method</div>
-            <div class="payment-method">{{ ucfirst($sale->payment_method) }}</div>
-            
-            @if($sale->credit)
-                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
-                    <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">
-                        📋 CREDIT PAYMENT
-                    </div>
-                    <div style="font-size: 12px; color: #856404;">
-                        @if($sale->reference_number)
-                            <div>Reference: {{ $sale->reference_number }}</div>
-                        @endif
-                        @if($sale->credit->customer)
-                            <div>Customer: {{ $sale->credit->customer->full_name }}</div>
-                        @endif
-                        <div>Credit Amount: ₱{{ number_format($sale->credit->credit_amount ?? 0, 2) }}</div>
-                        <div>Paid: ₱{{ number_format($sale->credit->paid_amount ?? 0, 2) }}</div>
-                        <div>Balance: ₱{{ number_format($sale->credit->remaining_balance ?? 0, 2) }}</div>
-                        <div>Status: {{ ucfirst($sale->credit->status ?? 'unknown') }}</div>
-                        @if($sale->credit->notes)
-                            <div style="margin-top: 5px; font-style: italic;">Notes: {{ $sale->credit->notes }}</div>
-                        @endif
-                    </div>
-                </div>
-            @endif
+        <div class="total">
+            <span>TOTAL</span>
+            <span>PHP {{ number_format($sale->total_amount, 2) }}</span>
         </div>
 
-        <!-- Receipt Footer -->
-        <div class="receipt-footer">
-            <div class="cashier-info">
-                Cashier: {{ $sale->cashier->name ?? 'System' }}
-            </div>
-            <div class="thank-you">Thank you for your shopping!</div>
-            <div>Please come again</div>
-            @if($sale->status === 'voided')
-                <div style="color: red; font-weight: bold; margin-top: 10px;">
-                    *** VOIDED ***
-                </div>
-            @endif
+        <div class="footer">
+            <p style="text-align:center;">Thank you for your shopping!</p>
         </div>
     </div>
-
-    <!-- Action Buttons -->
-    <div class="actions">
-        <button class="btn btn-primary" onclick="window.print()">
-            🖨️ Print Receipt
-        </button>
-        <a href="{{ route('cashier.sales.index') }}" class="btn btn-secondary">
-            ← Back to Sales
-        </a>
-        @if($sale->status !== 'voided')
-            <button class="btn btn-success" onclick="window.location.href='{{ route('cashier.sales.create') }}'">
-                ➕ New Sale
-            </button>
-        @endif
-    </div>
-
-    <script>
-        // Auto-print when page loads (optional)
-        // window.onload = function() {
-        //     window.print();
-        // };
-    </script>
 </body>
 </html>
+                                        

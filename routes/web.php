@@ -3,11 +3,14 @@
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\PosAdminController;
 use App\Http\Controllers\Cashier\CashierDashboardController;
+<<<<<<< HEAD
 use App\Http\Controllers\Cashier\CreditController;
 use App\Http\Controllers\Cashier\CustomerController as CashierCustomerController;
 use App\Http\Controllers\Cashier\ExpenseController;
 use App\Http\Controllers\Cashier\RefundController;
 use App\Http\Controllers\Cashier\SalesController;
+=======
+>>>>>>> e35526bd90d5d38b2a18503553947162576ff8b1
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\InventoryController;
@@ -107,6 +110,11 @@ Route::get('/cashier/dashboard', [CashierDashboardController::class, 'index'])->
 Route::get('/cashier/dashboard/chart', [CashierDashboardController::class, 'chartData'])->middleware('auth')->name('cashier.dashboard.chart');
 Route::get('/cashier/dashboard/low-stock', [CashierDashboardController::class, 'getLowStock'])->middleware('auth')->name('cashier.dashboard.low-stock');
 
+// Cashier Sales
+Route::get('/cashier/sales', [CashierDashboardController::class, 'salesIndex'])->middleware('auth')->name('cashier.sales.index');
+Route::get('/cashier/sales/create', [CashierDashboardController::class, 'salesCreate'])->middleware('auth')->name('cashier.sales.create');
+Route::get('/cashier/sales/reports', [CashierDashboardController::class, 'salesReports'])->middleware('auth')->name('cashier.sales.reports');
+
 // Cashier Products
 Route::get('/cashier/products', [CashierDashboardController::class, 'products'])->middleware('auth')->name('cashier.products.index');
 Route::get('/cashier/products/create', [CashierDashboardController::class, 'createProduct'])->middleware('auth')->name('cashier.products.create');
@@ -124,13 +132,18 @@ Route::get('/cashier/categories/{category}/edit', [CashierDashboardController::c
 Route::put('/cashier/categories/{category}', [CashierDashboardController::class, 'updateCategory'])->middleware('auth')->name('cashier.categories.update');
 Route::delete('/cashier/categories/{category}', [CashierDashboardController::class, 'destroyCategory'])->middleware('auth')->name('cashier.categories.destroy');
 Route::delete('/cashier/categories/bulk-delete', [CashierDashboardController::class, 'bulkDeleteCategories'])->middleware('auth')->name('cashier.categories.deleteMultiple');
+Route::post('/cashier/categories/bulk-delete', [CashierDashboardController::class, 'bulkDeleteCategories'])->middleware('auth')->name('cashier.categories.deleteMultiple.post');
 
 // Cashier Purchases
 Route::get('/cashier/purchases', [CashierDashboardController::class, 'purchasesIndex'])->middleware('auth')->name('cashier.purchases.index');
 Route::get('/cashier/purchases/create', [CashierDashboardController::class, 'purchasesCreate'])->middleware('auth')->name('cashier.purchases.create');
 Route::post('/cashier/purchases', [CashierDashboardController::class, 'purchasesStore'])->middleware('auth')->name('cashier.purchases.store');
 Route::get('/cashier/purchases/{purchase}', [CashierDashboardController::class, 'purchasesShow'])->middleware('auth')->name('cashier.purchases.show');
-Route::post('/cashier/purchases/ocr-product-match', [CashierDashboardController::class, 'purchasesMatchProduct'])->middleware('auth')->name('cashier.purchases.ocr-product-match');
+Route::post('/cashier/purchases/ocr-product-match', [CashierDashboardController::class, 'purchasesOcrProductMatch'])->middleware('auth')->name('cashier.purchases.ocr-product-match');
+Route::post('/cashier/test-ocr', [CashierDashboardController::class, 'testOcr'])->middleware('auth')->name('cashier.test.ocr');
+
+// Cashier Suppliers
+Route::post('/cashier/suppliers', [CashierDashboardController::class, 'supplierStore'])->middleware('auth')->name('cashier.suppliers.store');
 
 // Cashier Inventory
 Route::get('/cashier/inventory', [CashierDashboardController::class, 'inventoryIndex'])->middleware('auth')->name('cashier.inventory.index');
@@ -141,41 +154,33 @@ Route::get('/cashier/stockin/create', [CashierDashboardController::class, 'stock
 Route::post('/cashier/stockin', [CashierDashboardController::class, 'stockInStore'])->middleware('auth')->name('cashier.stockin.store');
 Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboardController::class, 'stockInProductsByPurchase'])->middleware('auth')->name('cashier.stockin.products-by-purchase');
 
-// Cashier Sales
-Route::get('/cashier/sales', [SalesController::class, 'index'])->middleware('auth')->name('cashier.sales.index');
-Route::get('/cashier/sales/create', [SalesController::class, 'create'])->middleware('auth')->name('cashier.sales.create');
-Route::post('/cashier/sales', [SalesController::class, 'store'])->middleware('auth')->name('cashier.sales.store');
-Route::get('/cashier/sales/{sale}', [SalesController::class, 'show'])->middleware('auth')->name('cashier.sales.show');
-Route::get('/cashier/sales/{sale}/receipt', [SalesController::class, 'receipt'])->middleware('auth')->name('cashier.sales.receipt');
-
-// Cashier Sales Reports
-Route::get('/cashier/sales/reports', [SalesController::class, 'reports'])->middleware('auth')->name('cashier.sales.reports');
-
 // Cashier Refunds
-Route::get('/cashier/refunds', [RefundController::class, 'index'])->middleware('auth')->name('cashier.refunds.index');
-Route::get('/cashier/refunds/create', [RefundController::class, 'create'])->middleware('auth')->name('cashier.refunds.create');
-Route::post('/cashier/refunds', [RefundController::class, 'store'])->middleware('auth')->name('cashier.refunds.store');
-Route::get('/cashier/refunds/{refund}', [RefundController::class, 'show'])->middleware('auth')->name('cashier.refunds.show');
+Route::get('/cashier/refunds', [CashierDashboardController::class, 'refundsIndex'])->middleware('auth')->name('cashier.refunds.index');
+Route::post('/cashier/refunds', [CashierDashboardController::class, 'refundsStore'])->middleware('auth')->name('cashier.refunds.store');
 
 // Cashier Credit
-Route::get('/cashier/credit', [CreditController::class, 'index'])->middleware('auth')->name('cashier.credit.index');
-Route::get('/cashier/credit/create', [CreditController::class, 'create'])->middleware('auth')->name('cashier.credit.create');
-Route::post('/cashier/credit', [CreditController::class, 'store'])->middleware('auth')->name('cashier.credit.store');
-Route::get('/cashier/credit/{credit}', [CreditController::class, 'show'])->middleware('auth')->name('cashier.credit.show');
+Route::get('/cashier/credit', [CashierDashboardController::class, 'creditIndex'])->middleware('auth')->name('cashier.credit.index');
+Route::get('/cashier/credit/create', [CashierDashboardController::class, 'creditCreate'])->middleware('auth')->name('cashier.credit.create');
+Route::post('/cashier/credit', [CashierDashboardController::class, 'creditStore'])->middleware('auth')->name('cashier.credit.store');
+Route::get('/cashier/credit/credit-limits-data', [CashierDashboardController::class, 'creditLimitsData'])->middleware('auth')->name('cashier.credit.limits-data');
+Route::post('/cashier/credit/update-credit-limits', [CashierDashboardController::class, 'updateCreditLimits'])->middleware('auth')->name('cashier.credit.update-limits');
 
 // Cashier Expenses
-Route::get('/cashier/expenses', [ExpenseController::class, 'index'])->middleware('auth')->name('cashier.expenses.index');
-Route::get('/cashier/expenses/create', [ExpenseController::class, 'create'])->middleware('auth')->name('cashier.expenses.create');
-Route::post('/cashier/expenses', [ExpenseController::class, 'store'])->middleware('auth')->name('cashier.expenses.store');
-Route::get('/cashier/expenses/{expense}', [ExpenseController::class, 'show'])->middleware('auth')->name('cashier.expenses.show');
+Route::get('/cashier/expenses', [CashierDashboardController::class, 'expensesIndex'])->middleware('auth')->name('cashier.expenses.index');
+Route::get('/cashier/expenses/create', [CashierDashboardController::class, 'expensesCreate'])->middleware('auth')->name('cashier.expenses.create');
+Route::get('/cashier/expenses/{expense}/edit', [CashierDashboardController::class, 'expensesEdit'])->middleware('auth')->name('cashier.expenses.edit');
+Route::put('/cashier/expenses/{expense}', [CashierDashboardController::class, 'expensesUpdate'])->middleware('auth')->name('cashier.expenses.update');
+Route::delete('/cashier/expenses/{expense}', [CashierDashboardController::class, 'expensesDestroy'])->middleware('auth')->name('cashier.expenses.destroy');
+Route::post('/cashier/expenses', [CashierDashboardController::class, 'expensesStore'])->middleware('auth')->name('cashier.expenses.store');
 
 // Cashier Customers
-Route::get('/cashier/customers', [CashierCustomerController::class, 'index'])->middleware('auth')->name('cashier.customers.index');
-Route::get('/cashier/customers/create', [CashierCustomerController::class, 'create'])->middleware('auth')->name('cashier.customers.create');
-Route::post('/cashier/customers', [CashierCustomerController::class, 'store'])->middleware('auth')->name('cashier.customers.store');
-Route::get('/cashier/customers/{customer}', [CashierCustomerController::class, 'show'])->middleware('auth')->name('cashier.customers.show');
-Route::get('/cashier/customers/{customer}/edit', [CashierCustomerController::class, 'edit'])->middleware('auth')->name('cashier.customers.edit');
-Route::put('/cashier/customers/{customer}', [CashierCustomerController::class, 'update'])->middleware('auth')->name('cashier.customers.update');
+Route::get('/cashier/customers', [CashierDashboardController::class, 'customersIndex'])->middleware('auth')->name('cashier.customers.index');
+Route::get('/cashier/customers/create', [CashierDashboardController::class, 'customersCreate'])->middleware('auth')->name('cashier.customers.create');
+Route::get('/cashier/customers/{customer}', [CashierDashboardController::class, 'customersShow'])->middleware('auth')->name('cashier.customers.show');
+Route::get('/cashier/customers/{customer}/edit', [CashierDashboardController::class, 'customersEdit'])->middleware('auth')->name('cashier.customers.edit');
+Route::put('/cashier/customers/{customer}', [CashierDashboardController::class, 'customersUpdate'])->middleware('auth')->name('cashier.customers.update');
+Route::delete('/cashier/customers/{customer}', [CashierDashboardController::class, 'customersDestroy'])->middleware('auth')->name('cashier.customers.destroy');
+Route::post('/cashier/customers', [CashierDashboardController::class, 'customersStore'])->middleware('auth')->name('cashier.customers.store');
 
 // Dashboard chart data (JSON)
 Route::get('/dashboard/chart', [DashboardController::class, 'chartData'])->middleware('auth')->name('dashboard.chart');
@@ -1012,6 +1017,11 @@ Route::post('/pos', [PosAdminController::class, 'store'])->name('pos.store')->mi
 Route::post('/pos/lookup', [PosAdminController::class, 'lookup'])->name('pos.lookup')->middleware('auth');
 Route::post('/pos/cashier/validate', [PosAdminController::class, 'validateCashier'])->name('pos.cashier.validate')->middleware('auth');
 Route::post('/admin/pos/checkout', [\App\Http\Controllers\Admin\PosController::class, 'checkout'])->name('admin.pos.checkout')->middleware('auth');
+
+// Cashier POS Routes
+Route::post('/cashier/pos/lookup', [CashierDashboardController::class, 'posLookup'])->name('cashier.pos.lookup')->middleware('auth');
+Route::post('/cashier/pos/store', [CashierDashboardController::class, 'posStore'])->name('cashier.pos.store')->middleware('auth');
+Route::get('/cashier/pos/receipt/{sale}', [CashierDashboardController::class, 'receipt'])->name('cashier.pos.receipt')->middleware('auth');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();

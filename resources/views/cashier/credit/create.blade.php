@@ -103,12 +103,7 @@
                 <h2 class="mb-1">Add Credit Account</h2>
                 <p class="text-muted mb-0">Create a new credit account for customer</p>
             </div>
-            <div>
-                <a href="{{ route('cashier.credit.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Credits
-                </a>
-            </div>
-        </div>
+             </div>
 
         <!-- Credit Form -->
         <div class="row justify-content-center">

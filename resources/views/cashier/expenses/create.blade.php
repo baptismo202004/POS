@@ -131,11 +131,7 @@
                 <h2 class="mb-1">Add Expense</h2>
                 <p class="text-muted mb-0">Record a new branch expense</p>
             </div>
-            <div>
-                <a href="{{ route('cashier.expenses.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Expenses
-                </a>
-            </div>
+            
         </div>
 
         <!-- Expense Form -->
@@ -155,7 +151,7 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('cashier.expenses.store') }}" method="POST">
+                        <form action="{{ route('cashier.expenses.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <div class="row">
                                 <div class="col-md-12 mb-3">
@@ -182,24 +178,38 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="category" class="form-label">Category *</label>
-                                    <select id="category" name="category" class="form-select" required>
+                                    <label for="expense_category_id" class="form-label">Category *</label>
+                                    <select id="expense_category_id" name="expense_category_id" class="form-select" required>
                                         <option value="">Select Category</option>
-                                        <option value="utilities">Utilities</option>
-                                        <option value="supplies">Office Supplies</option>
-                                        <option value="maintenance">Maintenance</option>
-                                        <option value="rent">Rent</option>
-                                        <option value="salary">Salary</option>
-                                        <option value="marketing">Marketing</option>
-                                        <option value="transportation">Transportation</option>
-                                        <option value="equipment">Equipment</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="supplier_id" class="form-label">Supplier (optional)</label>
+                                    <select id="supplier_id" name="supplier_id" class="form-select">
+                                        <option value="">Select Supplier</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method *</label>
+                                    <select id="payment_method" name="payment_method" class="form-select" required>
+                                        <option value="cash">Cash</option>
+                                        <option value="card">Card</option>
+                                        <option value="gcash">GCash</option>
                                         <option value="other">Other</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="receipt_number" class="form-label">Receipt Number</label>
-                                    <input type="text" id="receipt_number" name="receipt_number" class="form-control" 
-                                           placeholder="Enter receipt number (optional)">
+                                    <label for="receipt" class="form-label">Receipt (optional)</label>
+                                    <input type="file" id="receipt" name="receipt" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                                 </div>
                             </div>
 

@@ -13,35 +13,39 @@
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sidebar-fixed {
-            display: none !important;
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
-        .main-content {
-            margin-left: 0 !important;
+        
+        .search-wrapper .fas.fa-search {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 2;
+            font-size: 14px;
+        }
+        
+        .search-wrapper input {
+            padding-left: 40px !important;
+            width: 250px;
         }
     </style>
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    
-    <div class="container-fluid products-page">
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="row mb-6">
-                    <div class="col-12">
-                        <div class="products-header-card">
-                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                                <div>
-                                    <h2 class="m-0 mb-1">Product</h2>
-                                    <p class="mb-0">Manage your product inventory</p>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-4 card-rounded shadow-sm bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <h2 class="m-0">Products</h2>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="search-wrapper">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <path d="m21 21-4.35-4.35"></path>
-                                        </svg>
+                                        <i class="fas fa-search"></i>
                                         <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
                                     </div>
                                     <a href="{{ route('cashier.products.create') }}" class="btn btn-add-product d-flex align-items-center gap-2">
@@ -99,7 +103,7 @@
                                             </tr>
                                         </thead>
                                         <tbody id="product-table-body">
-                                            @include('SuperAdmin.products._product_table', ['products' => $products])
+                                            @include('cashier.products._product_table', ['products' => $products])
                                         </tbody>
                                     </table>
                                 </div>
@@ -109,12 +113,10 @@
                             <div class="d-flex justify-content-center mt-4">
                                 {{ $products->links() }}
                             </div>
-                        </div>
-                    </div>
-                </div>
             </div>
-        </main>
+        </div>
     </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -227,80 +229,7 @@
         });
     });
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const sidebarHTML = sessionStorage.getItem('cashierSidebarHTML') || localStorage.getItem('cashierSidebarHTML');
-        if (sidebarHTML) {
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = sidebarHTML;
-            const appendedSidebar = wrapper.firstElementChild;
-            if (appendedSidebar) {
-                document.body.appendChild(appendedSidebar);
-            }
-
-            const sidebar = appendedSidebar || document.querySelector('body > div[style*="position: fixed"][style*="left: 0"]');
-            if (sidebar) {
-                // Ensure the sidebar itself is visible
-                sidebar.style.transform = 'translateX(0)';
-                sidebar.style.zIndex = '2000';
-
-                // The cloned cards are initially hidden by inline styles, so we need to make them visible.
-                const navItems = sidebar.querySelectorAll('.nav-card');
-                navItems.forEach(item => {
-                    item.style.transform = 'translateX(0)';
-                    item.style.opacity = '1';
-                });
-
-                // Re-attach event listener for the logo to navigate back to the dashboard
-                const logoImg = sidebar.querySelector('img[src*="BGH LOGO.png"]');
-                if (logoImg) {
-                    logoImg.addEventListener('click', () => {
-                        window.location.href = '{{ route('cashier.dashboard') }}';
-                    });
-                }
-
-                // Add hover-expandable functionality
-                const expandedWidth = 220;
-                sidebar.style.width = expandedWidth + 'px';
-                sidebar.style.padding = '20px 10px';
-                sidebar.style.overflowX = 'hidden';
-
-                // Keep page content visible (sidebar should not cover headers)
-                const page = document.querySelector('.products-page');
-                if (page) {
-                    page.style.transition = 'margin-left 0.2s ease';
-                    page.style.marginLeft = expandedWidth + 'px';
-                }
-
-                // Ensure nav text stays visible
-                navItems.forEach(item => {
-                    item.style.justifyContent = 'flex-start';
-                    item.style.gap = '16px';
-                    item.style.paddingLeft = '20px';
-                    item.style.paddingRight = '20px';
-
-                    const icon = item.querySelector('.nav-icon');
-                    if (icon) icon.style.margin = '0';
-
-                    const content = item.querySelector('.nav-content');
-                    if (content) {
-                        content.style.opacity = '1';
-                        content.style.pointerEvents = 'auto';
-                    }
-                });
-
-                // Nest Product Category under Products
-                const itemsArr = Array.from(navItems);
-                const productsItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
-                const categoryItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
-                if (productsItem && categoryItem) {
-                    categoryItem.style.marginLeft = '18px';
-                    categoryItem.style.paddingLeft = '20px';
-                    productsItem.insertAdjacentElement('afterend', categoryItem);
-                }
-            }
-        } else {
-            console.warn('Cashier sidebar not found in sessionStorage/localStorage (cashierSidebarHTML).');
-        }
+    // Use standard CashierSidebar from layouts
         @if(session('success'))
             Swal.fire({
                 toast: true,
@@ -323,6 +252,5 @@
                 confirmButtonColor: '#2196F3'
             });
         @endif
-    });
 </script>
 @endpush
