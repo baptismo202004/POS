@@ -34,7 +34,7 @@
 
         .credit-card:hover {
             box-shadow: var(--card-hover-shadow);
-            transform: translateY(-5px);
+            transform: translateY(-2px);
         }
 
         .card-header-custom {
@@ -46,37 +46,40 @@
         }
 
         .table-custom {
-            border-radius: 10px;
-            overflow: hidden;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 1200px;
         }
 
-        .table-custom thead {
-            background: linear-gradient(135deg, var(--primary-color), #1e40af);
-            color: white;
-        }
-
-        .table-custom th {
+        .table-custom thead th {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
             border: none;
-            padding: 15px;
+            color: var(--primary-color);
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 1px;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 16px 12px;
+            white-space: nowrap;
         }
 
-        .table-custom tbody tr {
-            transition: all 0.2s ease;
+        .table-custom tbody td {
+            padding: 16px 12px;
+            vertical-align: middle;
             border-bottom: 1px solid #e5e7eb;
         }
 
         .table-custom tbody tr:hover {
-            background: #f1f5f9;
-            transform: scale(1.01);
+            background-color: #f8fafc;
+            transition: background-color 0.2s ease;
         }
 
-        .table-custom td {
-            padding: 15px;
-            vertical-align: middle;
+        .table-custom tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
         }
 
         .stats-card {
@@ -107,7 +110,7 @@
             text-transform: uppercase;
         }
 
-        .status-pending {
+        .status-active {
             background: var(--warning-color);
             color: white;
         }
@@ -134,11 +137,9 @@
                 <p class="text-muted mb-0">Manage customer credit accounts</p>
             </div>
             <div class="d-flex gap-2">
-                @canAccess('credit_limits','view')
                 <button class="btn btn-info" onclick="showCreditLimits()">
                     <i class="fas fa-chart-bar me-2"></i>Credit Limits
                 </button>
-                @endcanAccess
                 <a href="{{ route('cashier.credit.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Add Credit
                 </a>
@@ -155,19 +156,19 @@
             </div>
             <div class="col-md-4">
                 <div class="stats-card">
-                    <div class="stats-number">{{ $credits->where('status', 'pending')->count() }}</div>
+                    <div class="stats-number">{{ $credits->where('status', 'active')->count() }}</div>
                     <div class="stats-label">Pending Credits</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="stats-card">
-                    <div class="stats-number">₱{{ number_format($credits->where('status', 'pending')->sum('amount'), 2) }}</div>
+                    <div class="stats-number">₱{{ number_format($credits->where('status', 'active')->sum('remaining_balance'), 2) }}</div>
                     <div class="stats-label">Pending Amount</div>
                 </div>
             </div>
         </div>
 
-        <!-- Credits Table -->
+        <!-- Credits Table - Full Width -->
         <div class="card credit-card">
             <div class="card-header card-header-custom">
                 <h5 class="mb-0">
@@ -179,44 +180,59 @@
                     <table class="table table-custom mb-0">
                         <thead>
                             <tr>
-                                <th>Customer</th>
-                                <th>Amount</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Actions</th>
+                                <th style="width: 200px;">Customer</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 120px;">Paid</th>
+                                <th style="width: 120px;">Balance</th>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 120px;">Created</th>
+                                <th style="width: 150px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($credits as $credit)
                                 <tr>
-                                    <td>
+                                    <td style="width: 200px;">
                                         <div class="d-flex align-items-center">
                                             <i class="fas fa-user-circle me-2 text-muted"></i>
                                             <div>
-                                                <strong>{{ $credit->customer_name ?? 'N/A' }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ $credit->customer_email ?? 'N/A' }}</small>
+                                                <strong>{{ $credit->customer?->full_name ?? $credit->customer_name ?? 'Guest Customer' }}</strong>
+                                                @if(!$credit->customer && $credit->customer_name)
+                                                    <br>
+                                                    <small class="text-warning">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                                        Legacy record (not linked to customer database)
+                                                    </small>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="fw-bold">₱{{ number_format($credit->amount, 2) }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($credit->due_date)->format('M d, Y') }}</td>
-                                    <td>
+                                    <td style="width: 120px;" class="fw-bold text-primary">₱{{ number_format($credit->credit_amount, 2) }}</td>
+                                    <td style="width: 120px;" class="fw-bold text-success">₱{{ number_format($credit->paid_amount, 2) }}</td>
+                                    <td style="width: 120px;" class="fw-bold {{ $credit->remaining_balance > 0 ? 'text-warning' : 'text-success' }}">
+                                        ₱{{ number_format($credit->remaining_balance, 2) }}
+                                    </td>
+                                    <td style="width: 100px;">
                                         <span class="status-badge status-{{ $credit->status }}">
-                                            {{ $credit->status }}
+                                            {{ ucfirst($credit->status) }}
                                         </span>
                                     </td>
-                                    <td>{{ \Carbon\Carbon::parse($credit->created_at)->format('M d, Y') }}</td>
-                                    <td>
+                                    <td style="width: 120px;">{{ \Carbon\Carbon::parse($credit->created_at)->format('M d, Y') }}</td>
+                                    <td style="width: 150px;">
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ route('cashier.credit.edit', $credit->id) }}" class="btn btn-sm btn-outline-primary">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-success"
+                                                    title="Record Payment"
+                                                    onclick="recordPayment({{ $credit->id }}, '{{ $credit->customer?->full_name ?? $credit->customer_name ?? 'Customer' }}', {{ $credit->remaining_balance }})">
+                                                <i class="fas fa-cash-register"></i>
+                                            </button>
+                                            <a href="{{ route('cashier.credit.edit', $credit->id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <form action="{{ route('cashier.credit.destroy', $credit->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this credit?')">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this credit?')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -225,7 +241,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">
+                                    <td colspan="7" class="text-center py-4 text-muted">
                                         <i class="fas fa-credit-card fa-3x mb-3"></i>
                                         <h5>No Credit Accounts</h5>
                                         <p>No credit accounts found. Create a new credit account to get started.</p>
@@ -252,6 +268,99 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+function recordPayment(creditId, customerName, remainingBalance) {
+    Swal.fire({
+        title: 'Record Payment',
+        html: `
+            <div class="text-start">
+                <p><strong>Customer:</strong> ${customerName}</p>
+                <p><strong>Current Balance:</strong> ₱${parseFloat(remainingBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                <div class="mb-3 text-start">
+                    <label class="form-label">Payment Amount (₱)</label>
+                    <input type="number" id="swal-payment-amount" class="swal2-input" min="0.01" step="0.01" placeholder="Enter amount">
+                </div>
+                <div class="mb-3 text-start">
+                    <label class="form-label">Payment Method</label>
+                    <select id="swal-payment-method" class="swal2-select">
+                        <option value="cash">Cash</option>
+                    </select>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Record Payment',
+        cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        preConfirm: () => {
+            const amount = parseFloat(document.getElementById('swal-payment-amount').value || '0');
+            const method = document.getElementById('swal-payment-method').value;
+
+            if (!amount || amount <= 0) {
+                Swal.showValidationMessage('Please enter a valid payment amount');
+                return false;
+            }
+
+            if (amount > parseFloat(remainingBalance)) {
+                Swal.showValidationMessage('Payment amount cannot be greater than remaining balance');
+                return false;
+            }
+
+            return { amount, method };
+        }
+    }).then((result) => {
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+
+        const { amount, method } = result.value;
+
+        fetch(`/cashier/credit/${creditId}/payments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                payment_amount: amount,
+                payment_method: method
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Payment Recorded',
+                    html: `
+                        <p>Payment of <strong>₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> has been recorded for <strong>${customerName}</strong>.</p>
+                        <p>New Remaining Balance: <strong>₱${data.remaining_balance}</strong></p>
+                        <p>Status: <strong>${(data.status || '').toUpperCase()}</strong></p>
+                    `,
+                    confirmButtonText: 'Okay'
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to Record Payment',
+                    text: data.message || 'Please try again.',
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Payment error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'An error occurred while recording the payment. Please try again.',
+            });
+        });
+    });
+}
+
 function showCreditLimits() {
     fetch('/cashier/credit/credit-limits-data')
         .then(response => response.json())

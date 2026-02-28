@@ -112,4 +112,84 @@ class CreditController extends Controller
 
         return view('cashier.credit.show', compact('credit'));
     }
+
+    public function edit(Credit $credit)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        if ($credit->branch_id !== $branchId) {
+            abort(403, 'Unauthorized access to this credit transaction');
+        }
+
+        $customers = Customer::orderBy('name')->get();
+        $credit->load(['customer']);
+
+        return view('cashier.credit.edit', compact('credit', 'customers'));
+    }
+
+    public function update(Request $request, Credit $credit)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        if ($credit->branch_id !== $branchId) {
+            abort(403, 'Unauthorized access to this credit transaction');
+        }
+
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'email' => 'nullable|email|max:255',
+            'phone_number' => 'nullable|string|max:20',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Update credit customer association
+            $credit->update([
+                'customer_id' => $request->customer_id,
+            ]);
+
+            // Update customer information if provided
+            if ($credit->customer) {
+                $customerData = [];
+                
+                if ($request->filled('email')) {
+                    $customerData['email'] = $request->email;
+                }
+                
+                if ($request->filled('phone_number')) {
+                    $customerData['phone'] = $request->phone_number;
+                }
+                
+                if (!empty($customerData)) {
+                    $credit->customer->update($customerData);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer information updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating customer information: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

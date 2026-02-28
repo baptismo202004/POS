@@ -305,7 +305,7 @@
     <!-- KPI Cards -->
     <div class="row mb-4">
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card">
+            <div class="kpi-card" onclick="showSalesSummaryModal()" style="cursor: pointer;">
                 <div class="kpi-icon">
                     <i class="fas fa-cash-register"></i>
                 </div>
@@ -314,16 +314,16 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card">
+            <div class="kpi-card" onclick="showCreditRevenueModal()" style="cursor: pointer;">
                 <div class="kpi-icon">
-                    <i class="fas fa-receipt"></i>
+                    <i class="fas fa-coins"></i>
                 </div>
-                <div class="kpi-value">{{ $todaySales->total_sales ?? 0 }}</div>
-                <div class="kpi-label">Transactions</div>
+                <div class="kpi-value">₱{{ number_format($todayCreditRevenue ?? 0, 2) }}</div>
+                <div class="kpi-label">Credit Payments Today</div>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card">
+            <div class="kpi-card" onclick="showExpensesSummaryModal()" style="cursor: pointer;">
                 <div class="kpi-icon">
                     <i class="fas fa-wallet"></i>
                 </div>
@@ -437,14 +437,72 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ asset('js/cashier-sidebar.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-inventory.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-products.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-purchase.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-stockin.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-categories.js') }}"></script>
-<script src="{{ asset('js/cashier-sidebar-resize.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+function showSalesSummaryModal() {
+    Swal.fire({
+        title: "Today's Sales",
+        html: `
+            <div class="text-start">
+                <p class="mb-1"><strong>Total Revenue:</strong> ₱{{ number_format($todaySales->total_revenue ?? 0, 2) }}</p>
+                <p class="mb-1"><strong>Transactions:</strong> {{ $todaySales->total_sales ?? 0 }}</p>
+                @if($todayRefunds)
+                    <p class="mb-1"><strong>Approved Refunds:</strong> {{ $todayRefunds->total_refunds }} (₱{{ number_format($todayRefunds->total_refund_amount ?? 0, 2) }})</p>
+                @endif
+                <p class="text-muted mt-2">This summary is for your branch today.</p>
+            </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'Close',
+    });
+}
+
+function showCreditRevenueModal() {
+    Swal.fire({
+        title: 'Credit Payments Today',
+        html: `
+            <div class="text-start">
+                <p class="mb-1"><strong>Total Payments Collected:</strong> ₱{{ number_format($todayCreditRevenue ?? 0, 2) }}</p>
+                <hr>
+                <p class="mb-1"><strong>Customers who paid today:</strong></p>
+                @if(isset($todayCreditPayments) && $todayCreditPayments->count())
+                    <ul class="mb-2" style="max-height: 180px; overflow-y: auto; padding-left: 1.2rem;">
+                        @foreach($todayCreditPayments as $payment)
+                            <li class="mb-1">
+                                <strong>{{ $payment->credit->customer->full_name ?? 'Unknown Customer' }}</strong>
+                                – ₱{{ number_format($payment->payment_amount, 2) }}
+                                <span class="text-muted small">({{ $payment->created_at->format('h:i A') }})</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if($todayCreditPayments->count() === 10)
+                        <p class="text-muted small mb-0">Showing latest 10 payments.</p>
+                    @endif
+                @else
+                    <p class="text-muted mb-0">No credit payments recorded yet today.</p>
+                @endif
+                <p class="text-muted mt-2">All amounts are for this branch only.</p>
+            </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'Close',
+    });
+}
+
+function showExpensesSummaryModal() {
+    Swal.fire({
+        title: "Today's Expenses",
+        html: `
+            <div class="text-start">
+                <p class="mb-1"><strong>Total Expenses:</strong> ₱{{ number_format($todayExpenses ?? 0, 2) }}</p>
+                <p class="text-muted mt-2">All expenses recorded today for this branch.</p>
+            </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'Close',
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Dashboard should not inject/restore the animated sidebar
     sessionStorage.removeItem('cashierSidebarHTML');

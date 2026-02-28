@@ -48,6 +48,44 @@
         margin-bottom: 10px;
     }
 
+    /* Custom SweetAlert animations */
+    @keyframes slideInUp {
+        from {
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes bounceIn {
+        0% {
+            transform: scale(0.3);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.05);
+        }
+        70% {
+            transform: scale(0.9);
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .swal2-icon-success {
+        animation: bounceIn 0.6s ease-out;
+    }
+
+    .swal2-icon-success i {
+        font-size: 4rem;
+        color: #10b981;
+    }
+
     .search-section {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         padding: 25px;
@@ -649,6 +687,12 @@ function checkout() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Capture payment details before clearing cart
+            const selectedPayment = document.querySelector('input[name="payment_method"]:checked').value;
+            const customerName = document.getElementById('customer_name').value;
+            const creditDueDate = document.getElementById('credit_due_date').value;
+            const totalAmount = document.getElementById('total-amount').textContent;
+            
             // Clear cart
             saleData.items = [];
             updateOrderDisplay();
@@ -658,17 +702,89 @@ function checkout() {
                 // Redirect to receipt
                 window.location.href = data.receipt_url;
             } else {
-                // For credit payments, show success and reload
-                alert('Sale completed successfully!');
-                window.location.reload();
+                // For credit payments, show beautiful success message
+                if (selectedPayment === 'credit') {
+                    Swal.fire({
+                        title: '<div class="swal2-icon-success"><i class="fas fa-check-circle"></i></div>',
+                        html: `
+                            <div class="text-center">
+                                <h3 class="mb-3" style="color: #10b981; font-weight: 600;">Credit Sale Completed Successfully!</h3>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Customer:</span>
+                                        <strong>${customerName || 'Guest Customer'}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Total Amount:</span>
+                                        <strong style="color: #2563eb; font-size: 1.2em;">${totalAmount}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Due Date:</span>
+                                        <strong>${new Date(creditDueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Payment Method:</span>
+                                        <span class="badge bg-primary fs-6">Credit</span>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info mb-3" style="border-radius: 10px;">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Credit Reference:</strong> A credit record has been created and the customer can pay this amount on or before the due date.
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-success btn-lg me-2" onclick="window.location.reload()">
+                                        <i class="fas fa-plus-circle me-2"></i>New Sale
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-lg" onclick="window.location.href='/cashier/sales'">
+                                        <i class="fas fa-list me-2"></i>View Sales
+                                    </button>
+                                </div>
+                            </div>
+                        `,
+                        showConfirmButton: false,
+                        showCloseButton: true,
+                        width: '600px',
+                        padding: '2em',
+                        backdrop: 'rgba(0,0,123,0.1)',
+                        didOpen: () => {
+                            // Add custom animations
+                            const swalContainer = document.querySelector('.swal2-container');
+                            swalContainer.style.animation = 'slideInUp 0.5s ease-out';
+                        }
+                    });
+                } else {
+                    // For other payment methods, show simple success
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sale Completed!',
+                        text: 'The sale has been processed successfully.',
+                        confirmButtonColor: '#10b981',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
             }
         } else {
-            alert('Error: ' + data.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'An error occurred while processing the sale.',
+                confirmButtonColor: '#ef4444'
+            });
         }
     })
     .catch(error => {
         console.error('Checkout error:', error);
-        alert('An error occurred while processing the sale. Please try again.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Processing Error',
+            text: 'An error occurred while processing the sale. Please try again.',
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'OK'
+        });
     })
     .finally(() => {
         // Restore button state
@@ -823,8 +939,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Payment method change listeners
+    paymentCash.addEventListener('change', function() {
+        if (this.checked) {
+            creditDetails.style.display = 'none';
+        }
+    });
+
+    paymentCredit.addEventListener('change', function() {
+        if (this.checked) {
+            creditDetails.style.display = 'block';
+        }
+    });
+
     // Load initial products
     search('list');
 });
 </script>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endsection
