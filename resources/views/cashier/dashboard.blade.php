@@ -267,6 +267,28 @@
 @endpush
 
 @section('content')
+@php
+    $cashierUser = auth()->user();
+    $cashierAvatarUrl = null;
+    if ($cashierUser && !empty($cashierUser->profile_picture)) {
+        $av = $cashierUser->profile_picture;
+        if (\Illuminate\Support\Str::startsWith($av, ['http://', 'https://', '//'])) {
+            $cashierAvatarUrl = $av;
+        } elseif (\Illuminate\Support\Str::startsWith($av, 'storage/')) {
+            $cashierAvatarUrl = asset($av);
+        } else {
+            $candidate = ltrim($av, '/');
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($candidate)) {
+                $cashierAvatarUrl = asset('storage/' . $candidate);
+            } elseif (file_exists(public_path($candidate))) {
+                $cashierAvatarUrl = asset($candidate);
+            } else {
+                $cashierAvatarUrl = asset($candidate);
+            }
+        }
+    }
+@endphp
+
 <div class="p-3 p-lg-4">
     <!-- Header -->
     <div class="d-flex flex-wrap align-items-start justify-content-between mb-4">
@@ -283,10 +305,32 @@
         <!-- User Dropdown -->
         <div class="dropdown">
             <button class="btn btn-primary dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: white;">
-                <i class="fas fa-user me-2"></i>
-                {{ auth()->user()->name }}
+                @if(!empty($cashierAvatarUrl))
+                    <img src="{{ $cashierAvatarUrl }}" alt="{{ $cashierUser->name ?? 'Cashier' }}" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">
+                @else
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-primary me-2" style="width:32px;height:32px;font-weight:700;">
+                        {{ $cashierUser ? strtoupper(substr($cashierUser->name,0,1)) : 'C' }}
+                    </div>
+                @endif
+                <span>{{ $cashierUser->name ?? 'Cashier' }}</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li class="px-3 py-2">
+                    <div class="d-flex align-items-center gap-2">
+                        @if(!empty($cashierAvatarUrl))
+                            <img src="{{ $cashierAvatarUrl }}" alt="{{ $cashierUser->name ?? 'Cashier' }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;">
+                        @else
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-light text-primary" style="width:40px;height:40px;font-weight:700;">
+                                {{ $cashierUser ? strtoupper(substr($cashierUser->name,0,1)) : 'C' }}
+                            </div>
+                        @endif
+                        <div class="ms-1">
+                            <div class="small fw-semibold">{{ $cashierUser->name ?? 'Cashier' }}</div>
+                            <div class="small text-muted">{{ $cashierUser->email ?? '' }}</div>
+                        </div>
+                    </div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
@@ -332,17 +376,12 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card" onclick="showLowStockModal()" style="cursor: pointer;">
+            <div class="kpi-card">
                 <div class="kpi-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-money-bill-wave"></i>
                 </div>
-                <div class="kpi-value">
-                    {{ $lowStockCount }}
-                    @if($lowStockCount > 0)
-                        <span class="alert-badge">Alert</span>
-                    @endif
-                </div>
-                <div class="kpi-label">Low Stock Items</div>
+                <div class="kpi-value">₱{{ number_format($cashOnHandToday, 2) }}</div>
+                <div class="kpi-label">Cash on Hand Today</div>
             </div>
         </div>
     </div>

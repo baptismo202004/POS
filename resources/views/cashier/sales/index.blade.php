@@ -15,19 +15,11 @@
                 <div class="card-body">
                     <!-- Search and Filters -->
                     <div class="row mb-3">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control" placeholder="Search sales..." 
-                                   value="{{ request('search') }}" id="searchInput">
-                        </div>
                         <div class="col-md-2">
                             <input type="date" class="form-control" name="date_from" 
-                                   value="{{ request('date_from') }}" placeholder="From">
+                                   value="{{ request('date_from') }}" placeholder="Date">
                         </div>
                         <div class="col-md-2">
-                            <input type="date" class="form-control" name="date_to" 
-                                   value="{{ request('date_to') }}" placeholder="To">
-                        </div>
-                          <div class="col-md-2">
                             <button class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
                         </div>
                     </div>
@@ -37,22 +29,12 @@
                             <thead>
                                 <tr>
                                     <th>
-                                        <a href="{{ route('cashier.sales.index', ['sort_by' => 'id', 'sort_direction' => ($sortBy == 'id' && $sortDirection == 'asc') ? 'desc' : 'asc']) }}">
-                                            Receipt # 
-                                            @if ($sortBy == 'id')
-                                                <i class="fas fa-sort-{{ $sortDirection == 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
+                                        Receipt #
                                     </th>
                                     <th>Date & Time</th>
                                     <th>Customer</th>
                                     <th>
-                                        <a href="{{ route('cashier.sales.index', ['sort_by' => 'total_amount', 'sort_direction' => ($sortBy == 'total_amount' && $sortDirection == 'asc') ? 'desc' : 'asc']) }}">
-                                            Total Amount
-                                            @if ($sortBy == 'total_amount')
-                                                <i class="fas fa-sort-{{ $sortDirection == 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
+                                        Total Amount
                                     </th>
                                     <th>Payment</th>
                                     <th>Status</th>
@@ -82,8 +64,29 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ $sale->status == 'completed' ? 'success' : ($sale->status == 'voided' ? 'danger' : 'secondary') }}">
-                                            {{ ucfirst($sale->status) }}
+                                        @php
+                                            // Compute total sold quantity for this sale and total approved refunded quantity
+                                            $totalSoldQty = $sale->saleItems->sum('quantity');
+                                            $totalRefundedQty = $sale->refunds()->where('status', 'approved')->sum('quantity_refunded');
+
+                                            if ($totalRefundedQty > 0 && $totalRefundedQty >= $totalSoldQty && $totalSoldQty > 0) {
+                                                // All quantity refunded
+                                                $statusLabel = 'Refunded';
+                                                $statusClass = 'bg-warning';
+                                            } elseif ($totalRefundedQty > 0 && $totalRefundedQty < $totalSoldQty) {
+                                                // Some quantity refunded, but not all
+                                                $statusLabel = 'Partially Refunded';
+                                                $statusClass = 'bg-warning';
+                                            } else {
+                                                // No refunds; fall back to original status
+                                                $statusLabel = ucfirst($sale->status);
+                                                $statusClass = $sale->status == 'completed'
+                                                    ? 'bg-success'
+                                                    : ($sale->status == 'voided' ? 'bg-danger' : 'bg-secondary');
+                                            }
+                                        @endphp
+                                        <span class="badge {{ $statusClass }}">
+                                            {{ $statusLabel }}
                                         </span>
                                     </td>
                                     <td>
@@ -102,11 +105,6 @@
                                                     data-products='@json($sale->saleItems->map(function($item){ return ["name" => $item->product->product_name ?? "N/A", "qty" => $item->quantity]; }))'
                                                     onclick="openRefundModal(this)">
                                                     <i class="fas fa-undo"></i>
-                                                </button>
-                                            @endif
-                                            @if($sale->status !== 'voided')
-                                                <button class="btn btn-outline-danger" onclick="voidSale({{ $sale->id }})" title="Void">
-                                                    <i class="fas fa-times"></i>
                                                 </button>
                                             @endif
                                         </div>
@@ -186,12 +184,25 @@ function openRefundModal(button) {
         ? '<ul class="mb-2">' + products.map(p => `<li>${p.name} <span class="text-muted">(x${p.qty})</span></li>`).join('') + '</ul>'
         : '<p class="text-muted mb-2">No product details available.</p>';
 
+    // If there is exactly one product in the sale, allow specifying a quantity to refund
+    let quantityInputHtml = '';
+    if (products.length === 1) {
+        const maxQty = parseInt(products[0].qty || 1, 10) || 1;
+        quantityInputHtml = `
+            <div class="mb-2">
+                <label class="form-label">Quantity to refund (max ${maxQty})</label>
+                <input id="refund-qty" type="number" class="swal2-input" min="1" max="${maxQty}" value="1" />
+            </div>
+        `;
+    }
+
     Swal.fire({
         title: 'Refund / Return',
         html: `
             <div class="text-start">
                 <p class="mb-1"><strong>Products in this sale:</strong></p>
                 ${productsHtml}
+                ${quantityInputHtml}
                 <div class="mb-2">
                     <label class="form-label">Reason for refund/return</label>
                     <textarea id="refund-reason" class="swal2-textarea" placeholder="Enter reason..."></textarea>
@@ -210,7 +221,22 @@ function openRefundModal(button) {
                 Swal.showValidationMessage('Please enter a reason for the refund/return.');
                 return false;
             }
-            return { reason };
+
+            let quantity = null;
+            if (products.length === 1) {
+                const qtyInput = document.getElementById('refund-qty');
+                if (qtyInput) {
+                    const maxQty = parseInt(products[0].qty || 1, 10) || 1;
+                    const val = parseInt(qtyInput.value, 10);
+                    if (isNaN(val) || val < 1 || val > maxQty) {
+                        Swal.showValidationMessage(`Please enter a valid quantity between 1 and ${maxQty}.`);
+                        return false;
+                    }
+                    quantity = val;
+                }
+            }
+
+            return { reason, quantity };
         }
     }).then((result) => {
         if (result.isConfirmed && result.value) {
@@ -223,7 +249,7 @@ function openRefundModal(button) {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ reason: result.value.reason })
+                body: JSON.stringify({ reason: result.value.reason, quantity: result.value.quantity ?? null })
             })
             .then(response => response.json())
             .then(data => {
@@ -287,19 +313,6 @@ function voidSale(saleId) {
         });
     }
 }
-
-// Search functionality
-document.getElementById('searchInput').addEventListener('keyup', function(e) {
-    if(e.key === 'Enter') {
-        const params = new URLSearchParams(window.location.search);
-        if(this.value) {
-            params.set('search', this.value);
-        } else {
-            params.delete('search');
-        }
-        window.location.href = '{{ route('cashier.sales.index') }}?' + params.toString();
-    }
-});
 
 // Filter change handlers
 document.querySelectorAll('select[name], input[name]').forEach(input => {

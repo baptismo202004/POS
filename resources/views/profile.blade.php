@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 @endsection
 
-@push('styles')
+@push('stylesDashboard')
 <style>
     .avatar-xl { width:110px;height:110px;border-radius:14px;object-fit:cover; }
     .card-soft { background:#f8fafc;border-radius:12px;padding:16px }
