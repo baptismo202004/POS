@@ -97,6 +97,8 @@ class SalesController extends Controller
             'customer_phone' => 'nullable|string|max:255',
             'customer_email' => 'nullable|email|max:255',
             'customer_address' => 'nullable|string|max:255',
+            'credit_due_date' => 'nullable|date',
+            'credit_notes' => 'nullable|string|max:1000',
             'discount_amount' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'items' => 'required|array|min:1',
@@ -244,8 +246,8 @@ class SalesController extends Controller
                         'credit_amount' => $totalAmount,
                         'sale_id' => $sales[0]->id, // Use first sale as reference
                         'status' => 'active',
-                        'date' => now()->addDays(30), // 30 days due date
-                        'notes' => 'Credit from POS Sale #'.($receiptGroupId ?? $sales[0]->id),
+                        'date' => $validated['credit_due_date'] ?? now()->addDays(30), // Use provided date or default 30 days
+                        'notes' => $validated['credit_notes'] ?? 'Credit from POS Sale #'.($receiptGroupId ?? $sales[0]->id),
                         'credit_type' => 'sales',
                     ], $branchId, $user->id);
                 }

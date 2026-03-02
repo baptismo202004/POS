@@ -19,12 +19,15 @@ use App\Models\StockIn;
 use App\Models\StockOut;
 use App\Models\Supplier;
 use App\Models\UnitType;
+use App\Models\CreditPayment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CashierDashboardController extends Controller
 {
@@ -71,6 +74,17 @@ class CashierDashboardController extends Controller
             ->where('status', 'approved')
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
+
+        // Get today's credit payments (revenue from credit) for the current branch
+        $todayCreditPaymentsQuery = CreditPayment::with(['credit.customer'])
+            ->whereDate('created_at', $today)
+            ->whereHas('credit', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->orderBy('created_at', 'desc');
+
+        $todayCreditRevenue = (clone $todayCreditPaymentsQuery)->sum('payment_amount');
+        $todayCreditPayments = $todayCreditPaymentsQuery->take(10)->get();
 
         // Get low stock items count for the current branch
         $lowStockCount = Product::whereHas('stockIns', function ($query) use ($branchId) {
@@ -141,6 +155,8 @@ class CashierDashboardController extends Controller
             'todaySales',
             'todayExpenses',
             'todayRefunds',
+            'todayCreditRevenue',
+            'todayCreditPayments',
             'lowStockCount',
             'topProducts',
             'recentSales',
@@ -193,21 +209,44 @@ class CashierDashboardController extends Controller
         $branchId = $user->branch_id;
 
         if (! $branchId) {
-            abort(403, 'No branch assigned to this cashier');
+            return response()->json([
+                'success' => false,
+                'message' => 'No branch assigned to this cashier',
+            ], 403);
         }
 
-        $lowStockItems = DB::table('products')
-            ->whereHas('stockIns', function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId)
-                    ->whereRaw('stock_ins.quantity < products.reorder_level');
-            })
-            ->where('branch_id', $branchId)
-            ->select('products.*')
-            ->get();
+        try {
+            // Use Eloquent Product model to get low stock items for this branch
+            $products = Product::where('branch_id', $branchId)
+                ->whereHas('stockIns', function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId);
+                })
+                ->whereNotNull('low_stock_threshold')
+                ->where('low_stock_threshold', '>', 0)
+                ->get();
 
-        return response()->json([
-            'low_stock_items' => $lowStockItems,
-        ]);
+            // Map to structure expected by dashboard JS: product_name, branch_name, current_stock, unit_name
+            $lowStockItems = $products->map(function ($product) use ($branchId) {
+                return [
+                    'product_name' => $product->product_name,
+                    'branch_name' => $product->branch->branch_name ?? 'Branch',
+                    'current_stock' => $product->getStockAtBranch($branchId),
+                    'unit_name' => 'unit',
+                ];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'lowStockItems' => $lowStockItems,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading low stock items for cashier dashboard: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load low stock items',
+            ], 500);
+        }
     }
 
     // SALES METHODS
@@ -235,6 +274,120 @@ class CashierDashboardController extends Controller
         $sales = $query->paginate(15);
 
         return view('cashier.sales.index', compact('sales', 'sortBy', 'sortDirection'));
+    }
+
+    /**
+     * Perform a quick full refund for a sale from the cashier sales list.
+     */
+    public function quickRefund(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId || $sale->branch_id !== $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to refund this sale.',
+            ], 403);
+        }
+
+        // Disallow refunds for credit sales
+        if (strtolower($sale->payment_method) === 'credit') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refunds are not allowed for credit sales.',
+            ], 422);
+        }
+
+        // Enforce 3-day window
+        $saleDate = $sale->created_at->startOfDay();
+        $today = Carbon::today();
+        $diffDays = $today->diffInDays($saleDate);
+
+        if ($diffDays > 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refund/Return is only allowed within 2-3 days from the purchase date.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+        ]);
+
+        try {
+            DB::transaction(function () use ($sale, $user, $validated) {
+                $saleItems = $sale->saleItems()->with('product')->get();
+
+                foreach ($saleItems as $item) {
+                    // Create refund record per item
+                    $refund = Refund::create([
+                        'sale_id' => $sale->id,
+                        'sale_item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'cashier_id' => $user->id,
+                        'quantity_refunded' => $item->quantity,
+                        'refund_amount' => $item->subtotal,
+                        'reason' => $validated['reason'],
+                        'status' => 'approved',
+                        'notes' => null,
+                    ]);
+
+                    // Update inventory for each product similar to refundsStore
+                    $product = Product::find($item->product_id);
+                    if ($product) {
+                        $stockIn = StockIn::where('product_id', $product->id)
+                            ->where('branch_id', $sale->branch_id)
+                            ->first();
+
+                        if ($stockIn) {
+                            $newSold = max(0, $stockIn->sold - $item->quantity);
+                            $stockIn->sold = $newSold;
+                            $stockIn->save();
+                        } else {
+                            StockIn::create([
+                                'product_id' => $product->id,
+                                'branch_id' => $sale->branch_id,
+                                'quantity' => $item->quantity,
+                                'sold' => 0,
+                                'price' => $item->unit_price,
+                            ]);
+                        }
+
+                        $stockOut = StockOut::where('sale_id', $sale->id)
+                            ->where('product_id', $product->id)
+                            ->first();
+
+                        if ($stockOut) {
+                            $newQuantity = max(0, $stockOut->quantity - $item->quantity);
+                            if ($newQuantity <= 0) {
+                                $stockOut->delete();
+                            } else {
+                                $stockOut->quantity = $newQuantity;
+                                $stockOut->save();
+                            }
+                        }
+                    }
+                }
+
+                // Update sale totals; keep existing status to avoid enum/length issues
+                $sale->total_amount = 0;
+                $sale->save();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sale refunded successfully.',
+                'status' => $sale->status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Quick refund error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing refund: '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     public function salesCreate()
@@ -1155,10 +1308,16 @@ class CashierDashboardController extends Controller
                 // Update sale total amount by deducting refund amount
                 $sale = \App\Models\Sale::find($request->sale_id);
                 if ($sale) {
+                    // Do not allow refunds for credit sales (defensive check)
+                    if (strtolower($sale->payment_method) === 'credit') {
+                        throw new \Exception('Refunds are not allowed for credit sales.');
+                    }
+
                     $currentTotal = $sale->total_amount;
                     $newTotal = $currentTotal - $request->refund_amount;
 
                     $sale->total_amount = max(0, $newTotal);
+                    $sale->status = 'refunded';
                     $sale->save();
 
                     \Log::info('Sale total updated: '.$currentTotal.' -> '.$sale->total_amount.' (Refund: '.$request->refund_amount.')');
@@ -1303,7 +1462,11 @@ class CashierDashboardController extends Controller
             ->orderBy('full_name')
             ->get();
 
-        return view('cashier.credit.create', compact('customers'));
+        // Branches dropdown based on branches table
+        $branches = Branch::where('status', 'active')->orderBy('branch_name')->get();
+        $userBranch = Branch::find($branchId);
+
+        return view('cashier.credit.create', compact('customers', 'branches', 'userBranch'));
     }
 
     /**
@@ -1313,39 +1476,79 @@ class CashierDashboardController extends Controller
     {
         try {
             $user = Auth::user();
-            $branchId = $user->branch_id;
+            $userBranchId = $user->branch_id;
 
-            if (! $branchId) {
+            if (! $userBranchId) {
                 return response()->json(['success' => false, 'message' => 'No branch assigned to this cashier'], 403);
             }
 
+            // customer_id can be either an existing customer ID or a new name
             $validator = Validator::make($request->all(), [
-                'customer_id' => 'required|exists:customers,id',
+                'branch_id' => 'required|exists:branches,id',
+                'customer_id' => 'required',
                 'credit_amount' => 'required|numeric|min:0',
+                'phone_number' => 'nullable|string|max:20',
+                'due_date' => 'required|date',
                 'description' => 'nullable|string|max:255',
-                'notes' => 'nullable|string|max:1000',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
             }
 
-            // Verify customer belongs to the cashier's branch
-            $customer = Customer::find($request->customer_id);
-            if (! $customer || $customer->branch_id != $branchId) {
-                return response()->json(['success' => false, 'message' => 'Customer not found or not authorized for this branch'], 403);
+            // Use selected branch from form
+            $branchId = (int) $request->branch_id;
+
+            // Generate a unique reference number for this credit
+            $referenceNumber = 'CR-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4));
+
+            // Resolve or create customer
+            $rawCustomer = $request->customer_id;
+
+            if (is_numeric($rawCustomer)) {
+                $customer = Customer::find($rawCustomer);
+            } else {
+                $customer = null;
+            }
+
+            // If no existing customer, create a new one using typed name
+            if (! $customer) {
+                $customer = new Customer([
+                    'full_name' => $rawCustomer,
+                    'status' => 'active',
+                    'created_by' => $user->id,
+                ]);
+
+                // If customers table has branch_id, set it safely
+                if (Schema::hasColumn('customers', 'branch_id')) {
+                    $customer->branch_id = $branchId;
+                }
+
+                $customer->save();
+            }
+
+            // If customers table has branch_id, ensure it matches the selected branch
+            if (isset($customer->branch_id) && $customer->branch_id != $branchId) {
+                return response()->json(['success' => false, 'message' => 'Customer not authorized for this branch'], 403);
             }
 
             $credit = Credit::create([
-                'customer_id' => $request->customer_id,
+                'reference_number' => $referenceNumber,
+                'customer_id' => $customer->id,
                 'branch_id' => $branchId,
                 'cashier_id' => $user->id,
                 'credit_amount' => $request->credit_amount,
                 'remaining_balance' => $request->credit_amount,
+                'date' => $request->due_date,
                 'description' => $request->description,
                 'status' => 'active',
-                'notes' => $request->notes,
+                'notes' => $request->phone_number,
             ]);
+
+            // Update customer phone number if provided
+            if (!empty($request->phone_number)) {
+                $customer->update(['phone' => $request->phone_number]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Credit created successfully', 'credit' => $credit]);
 
@@ -1353,6 +1556,74 @@ class CashierDashboardController extends Controller
             \Log::error('Cashier credit creation error: '.$e->getMessage());
 
             return response()->json(['success' => false, 'message' => 'Error creating credit: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Record a payment for a specific credit (cashier side).
+     */
+    public function creditRecordPayment(Request $request, Credit $credit)
+    {
+        $user = Auth::user();
+
+        // Ensure credit belongs to the cashier's branch if branch_id is set
+        if (isset($credit->branch_id) && $credit->branch_id !== $user->branch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to record a payment for this credit.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        // Do not allow overpayment
+        if ($validated['payment_amount'] > $credit->remaining_balance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment amount cannot be greater than remaining balance.',
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($credit, $user, $validated) {
+                // Create payment record
+                CreditPayment::create([
+                    'credit_id' => $credit->id,
+                    'cashier_id' => $user->id,
+                    'payment_amount' => $validated['payment_amount'],
+                    'payment_method' => $validated['payment_method'] ?? 'cash',
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                // Update credit balances
+                $credit->paid_amount = ($credit->paid_amount ?? 0) + $validated['payment_amount'];
+                $credit->remaining_balance = max(0, $credit->remaining_balance - $validated['payment_amount']);
+
+                if ($credit->remaining_balance <= 0) {
+                    $credit->status = 'paid';
+                }
+
+                $credit->save();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment recorded successfully.',
+                'remaining_balance' => number_format($credit->fresh()->remaining_balance, 2),
+                'status' => $credit->fresh()->status,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error recording credit payment: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error recording payment. Please try again.',
+            ], 500);
         }
     }
 
@@ -1848,15 +2119,21 @@ class CashierDashboardController extends Controller
 
             // Create credit record if needed
             if ($paymentMethod === 'credit' && $customerName) {
-                Credit::create([
-                    'branch_id' => $branchId,
-                    'customer_name' => $customerName,
+                // Use CustomerService to create/find customer and credit
+                \App\Services\CustomerService::createCredit([
+                    'customer' => [
+                        'full_name' => $customerName,
+                        'phone' => null, // Can be enhanced to capture phone from POS
+                        'email' => null,
+                        'address' => null,
+                    ],
+                    'credit_amount' => $total,
                     'sale_id' => $sale->id,
-                    'amount' => $total,
-                    'due_date' => $creditDueDate,
-                    'status' => 'pending',
-                    'notes' => $creditNotes,
-                ]);
+                    'status' => 'active',
+                    'date' => $creditDueDate ?? now()->addDays(30),
+                    'notes' => $creditNotes ?? 'Credit from POS Sale #' . $sale->id,
+                    'credit_type' => 'sales',
+                ], $branchId, $user->id);
             }
 
             DB::commit();
@@ -2007,6 +2284,150 @@ class CashierDashboardController extends Controller
             return response()->json([
                 'message' => 'Error creating supplier. Please try again.'
             ], 500);
+        }
+    }
+
+    /**
+     * Show the form for editing the specified credit.
+     */
+    public function creditEdit($id)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        $credit = Credit::where('id', $id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        // Get all customers for the dropdown
+        $customers = \App\Models\Customer::where('status', 'active')
+            ->orderBy('full_name', 'asc')
+            ->get();
+
+        return view('cashier.credit.edit', compact('credit', 'customers'));
+    }
+
+    /**
+     * Update the specified credit in storage.
+     */
+    public function creditUpdate(Request $request, $id)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        $credit = Credit::where('id', $id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        // New validation to match the updated form (customer + contact info)
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'email' => 'nullable|email|max:255',
+            'phone_number' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::transaction(function () use ($credit, $validated) {
+                // Update which customer this credit is linked to
+                $credit->update([
+                    'customer_id' => $validated['customer_id'],
+                ]);
+
+                // Update customer contact information if we have a related customer
+                if ($credit->customer) {
+                    $customerData = [];
+
+                    if (!empty($validated['email'])) {
+                        $customerData['email'] = $validated['email'];
+                    }
+
+                    if (!empty($validated['phone_number'])) {
+                        $customerData['phone'] = $validated['phone_number'];
+                    }
+
+                    if (!empty($validated['address'])) {
+                        $customerData['address'] = $validated['address'];
+                    }
+
+                    if (!empty($customerData)) {
+                        $credit->customer->update($customerData);
+                    }
+                }
+            });
+
+            // Check if it's an AJAX request (multiple methods)
+            $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            // Debug logging
+            \Log::info('Credit Update Request:', [
+                'ajax' => $request->ajax(),
+                'wantsJson' => $request->wantsJson(),
+                'xRequestedWith' => $request->header('X-Requested-With'),
+                'isAjax' => $isAjax,
+                'headers' => $request->headers->all()
+            ]);
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Credit updated successfully!'
+                ]);
+            }
+
+            return redirect()->route('cashier.credit.index')
+                ->with('success', 'Credit updated successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Error updating credit: '.$e->getMessage());
+            
+            // Check if it's an AJAX request (multiple methods)
+            $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error updating credit. Please try again.'
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->with('error', 'Error updating credit. Please try again.');
+        }
+    }
+
+    /**
+     * Remove the specified credit from storage.
+     */
+    public function creditDestroy($id)
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        $credit = Credit::where('id', $id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        try {
+            $credit->delete();
+
+            return redirect()->route('cashier.credit.index')
+                ->with('success', 'Credit deleted successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Error deleting credit: '.$e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Error deleting credit. Please try again.');
         }
     }
 }

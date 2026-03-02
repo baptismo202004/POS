@@ -137,10 +137,26 @@
         </div>
 
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        title: '<div class="swal2-icon-success"><i class="fas fa-check-circle"></i></div>',
+                        html: `
+                            <div class="text-center">
+                                <h3 class="mb-3" style="color: #10b981; font-weight: 600;">Expense Created Successfully!</h3>
+                                <p class="text-muted mb-0">{{ session('success') }}</p>
+                            </div>
+                        `,
+                        showConfirmButton: true,
+                        confirmButtonText: 'Okay',
+                        confirmButtonColor: '#10b981',
+                        width: '500px',
+                        padding: '1.5em',
+                        backdrop: 'rgba(0,0,0,0.35)'
+                    });
+                });
+            </script>
         @endif
 
         @if(session('error'))

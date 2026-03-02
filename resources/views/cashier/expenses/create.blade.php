@@ -135,8 +135,8 @@
         </div>
 
         <!-- Expense Form -->
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
+        <div class="row">
+            <div class="col-12">
                 <div class="card form-card">
                     <div class="card-header card-header-custom">
                         <h5 class="mb-0">
@@ -145,72 +145,100 @@
                     </div>
                     <div class="card-body p-4">
                         @if(session('success'))
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
+                            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    Swal.fire({
+                                        title: '<div class="swal2-icon-success"><i class="fas fa-check-circle"></i></div>',
+                                        html: `
+                                            <div class="text-center">
+                                                <h3 class="mb-3" style="color: #10b981; font-weight: 600;">Expense Created Successfully!</h3>
+                                                <p class="text-muted mb-0">{{ session('success') }}</p>
+                                            </div>
+                                        `,
+                                        showConfirmButton: true,
+                                        confirmButtonText: 'Okay',
+                                        confirmButtonColor: '#10b981',
+                                        width: '500px',
+                                        padding: '1.5em',
+                                        backdrop: 'rgba(0,0,0,0.35)'
+                                    });
+                                });
+                            </script>
                         @endif
 
                         <form action="{{ route('cashier.expenses.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label for="description" class="form-label">Description *</label>
-                                    <textarea id="description" name="description" class="form-control" rows="3" 
-                                              required placeholder="Enter expense description..."></textarea>
-                                </div>
-                            </div>
 
                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="amount" class="form-label">Amount *</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">₱</span>
-                                        <input type="number" id="amount" name="amount" class="form-control" 
-                                               step="0.01" min="0" required placeholder="0.00">
+                                <!-- Section A: Expense Information -->
+                                <div class="col-md-6 mb-4">
+                                    <h5 class="mb-3">Expense Information</h5>
+
+                                    <div class="mb-3">
+                                        <label for="expense_category_id" class="form-label">Expense Category *</label>
+                                        <select id="expense_category_id" name="expense_category_id" class="form-select" required>
+                                            <option value="">Select Category</option>
+                                            @foreach($categories as $category)
+                                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="expense_date" class="form-label">Expense Date *</label>
+                                        <input type="date" id="expense_date" name="expense_date" class="form-control" 
+                                               value="{{ now()->format('Y-m-d') }}" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="amount" class="form-label">Amount *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₱</span>
+                                            <input type="number" id="amount" name="amount" class="form-control" 
+                                                   step="0.01" min="0" required placeholder="0.00">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="payment_method" class="form-label">Payment Method *</label>
+                                        <select id="payment_method" name="payment_method" class="form-select" required>
+                                            <option value="cash">Cash</option>
+                                            <option value="card">Card</option>
+                                            <option value="gcash">GCash</option>
+                                            <option value="other">Other</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="expense_date" class="form-label">Expense Date *</label>
-                                    <input type="date" id="expense_date" name="expense_date" class="form-control" required>
+
+                                <!-- Section B: Additional Details -->
+                                <div class="col-md-6 mb-4">
+                                    <h5 class="mb-3">Additional Details</h5>
+
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">Description *</label>
+                                        <textarea id="description" name="description" class="form-control" rows="3" 
+                                                  required placeholder="Enter expense description..."></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="supplier_id" class="form-label">Supplier (optional)</label>
+                                        <select id="supplier_id" name="supplier_id" class="form-select">
+                                            <option value="">Select Supplier</option>
+                                            @foreach($suppliers as $supplier)
+                                                <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="expense_category_id" class="form-label">Category *</label>
-                                    <select id="expense_category_id" name="expense_category_id" class="form-select" required>
-                                        <option value="">Select Category</option>
-                                        @foreach($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="supplier_id" class="form-label">Supplier (optional)</label>
-                                    <select id="supplier_id" name="supplier_id" class="form-select">
-                                        <option value="">Select Supplier</option>
-                                        @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="payment_method" class="form-label">Payment Method *</label>
-                                    <select id="payment_method" name="payment_method" class="form-select" required>
-                                        <option value="cash">Cash</option>
-                                        <option value="card">Card</option>
-                                        <option value="gcash">GCash</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="receipt" class="form-label">Receipt (optional)</label>
-                                    <input type="file" id="receipt" name="receipt" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                                </div>
+                            <!-- Section C: Receipt Attachment -->
+                            <hr class="my-4">
+                            <h5 class="mb-3">Receipt Attachment</h5>
+                            <div class="mb-3">
+                                <label for="receipt" class="form-label">Upload Receipt (Image or PDF) (optional)</label>
+                                <input type="file" id="receipt" name="receipt" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                             </div>
 
                             <div class="alert alert-warning">

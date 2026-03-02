@@ -58,7 +58,7 @@ class CustomerService
     {
         return DB::transaction(function () use ($creditData, $branchId, $cashierId) {
             // Handle customer creation/lookup
-            $customer = self::findOrCreateCustomer($creditData, $branchId);
+            $customer = self::findOrCreateCustomer($creditData['customer'], $branchId);
 
             // Generate reference number
             $referenceNumber = 'CR-' . date('Y') . '-' . str_pad(Credit::count() + 1, 4, '0', STR_PAD_LEFT);
