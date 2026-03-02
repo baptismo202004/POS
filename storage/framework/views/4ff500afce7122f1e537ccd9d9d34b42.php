@@ -15,7 +15,6 @@
             <div class="p-4 card-rounded shadow-sm bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <h2 class="m-0">Add Stock In</h2>
-                    <a href="<?php echo e(route('admin.stockin.index')); ?>" class="btn btn-outline-primary">Back to Stock List</a>
                 </div>
 
                 <form action="<?php echo e(route('admin.stockin.store')); ?>" method="POST">
@@ -27,7 +26,15 @@
                                         <select name="purchase_id" id="purchase_id" class="form-select" required>
                                             <option value="">-- Select Purchase Reference --</option>
                                             <?php $__currentLoopData = $purchases; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $purchase): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                                <option value="<?php echo e($purchase->id); ?>"><?php echo e($purchase->reference_number ?: 'N/A'); ?> - <?php echo e(optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A'); ?></option>
+                                                <option value="<?php echo e($purchase->id); ?>">
+                                                    <?php echo e($purchase->supplier_name ?? 'N/A'); ?>
+
+                                                    | <?php echo e($purchase->reference_number ?: 'N/A'); ?>
+
+                                                    | <?php echo e($purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('m/d/Y') : 'N/A'); ?>
+
+                                                    | <?php echo e($purchase->remaining_quantity); ?> stocks remaining
+                                                </option>
                                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                         </select>
                                     </div>
@@ -41,12 +48,13 @@
                                             <thead>
                                                 <tr>
                                                     <th>Product</th>
-                                                    <th>Unit Type</th>
                                                     <th>Purchased Qty</th>
+                                                    <th>Unit Type</th>
+                                                    <th>Branch</th>
                                                     <th>Stock-In Qty</th>
                                                     <th>Original Price</th>
                                                     <th>New Price</th>
-                                                    <th>Branch</th>
+                                                    <th style="width: 80px;">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="purchase-items-table-body"></tbody>
@@ -84,11 +92,12 @@
         var tableBody = document.getElementById('purchase-items-table-body');
         var container = document.getElementById('purchase-items-form-container');
         var form = document.querySelector('form[action*="stockin"]');
+        var stockInRowIndex = 0; // global index for items[] rows
 
         function escapeHtml(s) {
-            return String(s || '').replace(/[&<>"']/g, function (c) {
-                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'':'&#39;'}[c];
-            });
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(s == null ? '' : String(s)));
+            return div.innerHTML;
         }
 
         if (purchaseSelect) {
@@ -113,14 +122,19 @@
                     var data = await res.json();
 
                     if (data.items && data.items.length > 0) {
-                        var idx = 0;
-                        var branchOptions = <?php echo json_encode($branches->map(function($branch) {
+                        stockInRowIndex = 0; // reset index for this purchase
+                        var branchOptions = <?php echo json_encode($branches ? $branches->map(function($branch) {
                             return ['id' => $branch->id, 'name' => $branch->branch_name];
-                        }), 512) ?>;
+                        }) : [], 512) ?>;
                         
                         data.items.forEach(function(item) {
                             var productName = item.product ? item.product.product_name : 'N/A';
+                            // Backend sends remaining quantity in item.quantity; treat this as base numeric quantity
                             var purchasedQty = item.quantity || 0;
+                            var purchasedQtyDisplay = purchasedQty;
+                            if (item.unit_type && item.unit_type.unit_name) {
+                                purchasedQtyDisplay += ' ' + item.unit_type.unit_name;
+                            }
                             
                             var unitTypeOptions = '<option value="">No unit types</option>';
                             if (item.unit_types && item.unit_types.length > 0) {
@@ -130,36 +144,51 @@
                             }
 
                             var branchSelectOptions = '';
-                            branchOptions.forEach(function(branch) {
-                                branchSelectOptions += '<option value="' + branch.id + '">' + branch.name + '</option>';
-                            });
+                            if (branchOptions && branchOptions.length > 0) {
+                                branchOptions.forEach(function(branch) {
+                                    branchSelectOptions += '<option value="' + branch.id + '">' + branch.name + '</option>';
+                                });
+                            }
+
+                            var idx = stockInRowIndex++;
 
                             var rowHtml = 
                                 '<tr>' +
+                                    // Product
                                     '<td>' + 
                                         escapeHtml(productName) +
                                         '<input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '">' +
                                     '</td>' +
+                                    // Purchased Qty (remaining to stock in)
+                                    '<td>' + escapeHtml(purchasedQtyDisplay) + '</td>' +
+                                    // Unit Type
                                     '<td>' +
                                         '<select class="form-select" name="items[' + idx + '][unit_type_id]">' +
                                             unitTypeOptions +
                                         '</select>' +
                                     '</td>' +
-                                    '<td>' + purchasedQty + '</td>' +
-                                    '<td>' +
-                                        '<input type="number" class="form-control" name="items[' + idx + '][quantity]" min="0" value="0">' +
-                                    '</td>' +
-                                    '<td>' +
-                                        '<input type="number" class="form-control" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
-                                    '</td>' +
-                                    '<td>' +
-                                        '<input type="number" class="form-control" name="items[' + idx + '][new_price]" min="0" step="0.01" value="0.00" required>' +
-                                    '</td>' +
+                                    // Branch
                                     '<td>' +
                                         '<select class="form-select" name="items[' + idx + '][branch_id]" required>' +
                                             '<option value="">-- Select Branch --</option>' +
                                             branchSelectOptions +
                                         '</select>' +
+                                    '</td>' +
+                                    // Stock-In Qty
+                                    '<td>' +
+                                        '<input type="number" class="form-control" name="items[' + idx + '][quantity]" min="0" value="0">' +
+                                    '</td>' +
+                                    // Original Price
+                                    '<td>' +
+                                        '<input type="number" class="form-control" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
+                                    '</td>' +
+                                    // New Price
+                                    '<td>' +
+                                        '<input type="number" class="form-control" name="items[' + idx + '][new_price]" min="0" step="0.01" value="0.00" required>' +
+                                    '</td>' +
+                                    // Actions
+                                    '<td>' +
+                                        '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Branch</button>' +
                                     '</td>' +
                                 '</tr>';
                             
@@ -175,6 +204,42 @@
                     console.error('Fetch error:', e);
                     container.style.display = 'none';
                 }
+            });
+        }
+
+        // Delegated handler for Add Branch button
+        if (tableBody) {
+            tableBody.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('add-branch')) return;
+
+                var currentRow = e.target.closest('tr');
+                if (!currentRow) return;
+
+                var newIdx = stockInRowIndex++;
+                var clone = currentRow.cloneNode(true);
+
+                // Update all name attributes in the cloned row to use the new index
+                var inputs = clone.querySelectorAll('input[name^="items["], select[name^="items["]');
+                inputs.forEach(function(el) {
+                    var name = el.getAttribute('name');
+                    if (!name) return;
+                    name = name.replace(/items\[(\d+)\]/, 'items[' + newIdx + ']');
+                    el.setAttribute('name', name);
+
+                    // Reset values for branch, quantity, and new_price
+                    if (name.endsWith('[branch_id]')) {
+                        el.value = '';
+                    }
+                    if (name.endsWith('[quantity]')) {
+                        el.value = 0;
+                    }
+                    if (name.endsWith('[new_price]')) {
+                        el.value = '0.00';
+                    }
+                });
+
+                // Insert cloned row after the current one
+                currentRow.parentNode.insertBefore(clone, currentRow.nextSibling);
             });
         }
 

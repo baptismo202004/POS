@@ -37,7 +37,7 @@
     </div>
     
     <!-- Include Advanced Filters Component -->
-    @include('superadmin.inventory.stock-filters')
+    @include('SuperAdmin.inventory.stock-filters')
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -251,6 +251,18 @@
                                             </select>
                                         </div>
                                         <div class="mb-3">
+                                            <label for="toBranch" class="form-label">To Branch</label>
+                                            <select class="form-control" id="toBranch" name="to_branch">
+                                                <option value="">-- Select Destination Branch --</option>
+                                                <!-- Will be populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="transferPrice" class="form-label">Price</label>
+                                            <input type="number" name="transfer_price" id="transferPrice" class="form-control" min="0" step="0.01" placeholder="Enter price">
+                                            <small id="currentRkPriceLabel" class="form-text text-muted">Current price from RK: ₱0.00</small>
+                                        </div>
+                                        <div class="mb-3">
                                             <label for="transferQuantity" class="form-label">Quantity to Transfer</label>
                                             <input type="number" name="transfer_quantity" id="transferQuantity" class="form-control" min="1" required>
                                         </div>
@@ -324,6 +336,24 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Minimal filters for history (kept compact for modal) -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <input type="text" id="historySearchInput" class="form-control" placeholder="Search branch, reason or notes">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" id="historyDateInput" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="historyTypeFilter" class="form-select">
+                            <option value="">All Types</option>
+                            <option value="in">Stock In</option>
+                            <option value="out">Stock Out</option>
+                            <option value="transfer">Transfer</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div id="stockHistoryContent">
                     <!-- Stock history will be loaded here -->
                 </div>

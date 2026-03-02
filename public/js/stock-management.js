@@ -71,8 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const stockHistoryModal = document.getElementById('stockHistoryModal');
     let currentProductData = null;
     let salesData = null;
+    let currentStockHistory = [];
     const branchStockByProduct = {};
     const purchaseStatsByProduct = {};
+    let allBranches = [];
 
     // Stock Adjustment Modal
     if (adjustStockModal) {
@@ -106,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('purchase_id').value = '';
             document.getElementById('purchaseQuantity').value = '';
             document.getElementById('fromBranch').value = '';
+            const toBranchSelect = document.getElementById('toBranch');
+            if (toBranchSelect) {
+                toBranchSelect.value = '';
+            }
             document.getElementById('transferQuantity').value = '';
             
             // Hide all adjustment options initially
@@ -120,9 +126,14 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('🔄 [API] Starting to load purchase options...');
             loadPurchaseOptions(productId);
             
-            // Load branch options for transfer
+            // Load branch options for transfer (from/to)
             console.log('🔄 [API] Starting to load branch options for transfer...');
             loadBranchOptions(branchId);
+
+            // Load full branches list for To Branch dropdown
+            loadAllBranches().then(() => {
+                populateToBranchOptions();
+            });
             
             // Load and display sales data automatically
             loadAndDisplaySalesData(productId);
@@ -193,6 +204,29 @@ document.addEventListener('DOMContentLoaded', function () {
             // Load stock history
             loadStockHistory(productId);
         });
+
+        // Wire up filters
+        const historySearchInput = document.getElementById('historySearchInput');
+        const historyDateInput = document.getElementById('historyDateInput');
+        const historyTypeFilter = document.getElementById('historyTypeFilter');
+
+        if (historySearchInput) {
+            historySearchInput.addEventListener('input', function () {
+                renderStockHistory();
+            });
+        }
+
+        if (historyDateInput) {
+            historyDateInput.addEventListener('change', function () {
+                renderStockHistory();
+            });
+        }
+
+        if (historyTypeFilter) {
+            historyTypeFilter.addEventListener('change', function () {
+                renderStockHistory();
+            });
+        }
     }
 
     // Load other branches stock data
@@ -296,15 +330,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             // Check if we have any data at all (including current branch)
                             console.log('📭 [BRANCH_STOCK] No other branches found - checking if we have current branch data');
                             console.log('🔍 [DEBUG] All branch data:', data);
-                            
+
                             // If we have data but it's only current branch, still show current branch for reference
                             if (data.length > 0) {
                                 const currentBranchData = data.find(branch => branch.branch_id == currentBranchId);
                                 if (currentBranchData) {
                                     console.log('📭 [BRANCH_STOCK] Showing current branch as reference:', currentBranchData);
                                     const branchName = currentBranchData.branch_name || currentBranchData.name || 'Current Branch';
-                                    const totalUnits = currentBranchData.total_units || currentBranchData.quantity || 0;
-                                    
+                                    // Use current_stock from API so it matches the Current Stock Record card
+                                    const totalUnits = currentBranchData.current_stock ?? currentBranchData.total_units ?? currentBranchData.quantity ?? 0;
+
                                     otherBranchesContainer.innerHTML = `
                                         <div class="col-md-6 mb-3">
                                             <div class="card border-light">
@@ -324,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                             </div>
                                         </div>
                                     `;
-                                    
+
                                     console.log('📭 [BRANCH_STOCK] Current branch displayed with no other branches message');
                                 } else {
                                     // Fallback to no data message
@@ -466,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Load branch options for transfer using per-branch stock (quantity - sold)
+    // Load branch options for transfer using per-branch stock (quantity - sold) for FROM branch
     function loadBranchOptions(currentBranchId) {
         console.log('🏢 [BRANCH] Loading branch options for transfer, excluding:', currentBranchId);
 
@@ -508,6 +543,70 @@ document.addEventListener('DOMContentLoaded', function () {
             option.disabled = true;
             branchSelect.appendChild(option);
         }
+
+        // After updating FROM options, update TO options to reflect new selection
+        populateToBranchOptions();
+
+        // When user manually changes FROM branch, refresh TO branch options
+        branchSelect.removeEventListener('change', handleFromBranchChange);
+        branchSelect.addEventListener('change', handleFromBranchChange);
+    }
+
+    function handleFromBranchChange() {
+        populateToBranchOptions();
+    }
+
+    // Load all branches from branches table (for TO branch dropdown)
+    function loadAllBranches() {
+        if (allBranches.length > 0) {
+            return Promise.resolve(allBranches);
+        }
+
+        console.log('🏬 [BRANCH] Loading all branches for To Branch dropdown');
+
+        return fetch('/superadmin/api/branches')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    allBranches = data;
+                } else {
+                    allBranches = [];
+                }
+                populateToBranchOptions();
+                return allBranches;
+            })
+            .catch(error => {
+                console.error('❌ [BRANCH] Error loading branches list:', error);
+                allBranches = [];
+                return allBranches;
+            });
+    }
+
+    // Populate TO branch dropdown from branches table, excluding selected FROM branch
+    function populateToBranchOptions() {
+        const toSelect = document.getElementById('toBranch');
+        const fromSelect = document.getElementById('fromBranch');
+
+        if (!toSelect) return;
+
+        const fromBranchId = fromSelect ? fromSelect.value : '';
+
+        toSelect.innerHTML = '<option value="">-- Select Destination Branch --</option>';
+
+        if (!allBranches || allBranches.length === 0) {
+            return;
+        }
+
+        allBranches.forEach(branch => {
+            if (String(branch.id) === String(fromBranchId)) {
+                return; // skip the selected FROM branch
+            }
+
+            const option = document.createElement('option');
+            option.value = branch.id;
+            option.textContent = branch.branch_name || branch.name || `Branch #${branch.id}`;
+            toSelect.appendChild(option);
+        });
     }
 
     function handlePurchaseSelectionChange() {
@@ -823,16 +922,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function saveTransferAdjustment() {
         const productId = document.getElementById('adjustProductId').value;
         const fromBranch = document.getElementById('fromBranch').value;
+        const toBranch = document.getElementById('toBranch') ? document.getElementById('toBranch').value : '';
         const quantity = document.getElementById('transferQuantity').value;
-        const destinationBranchId = currentProductData?.branchId;
+        const transferPriceInput = document.getElementById('transferPrice');
+        const transferPrice = transferPriceInput ? transferPriceInput.value : '';
         
-        if (!fromBranch || !quantity) {
+        if (!fromBranch || !toBranch || !quantity) {
             Swal.fire('Error', 'Please fill in all required fields', 'error');
-            return;
-        }
-
-        if (!destinationBranchId) {
-            Swal.fire('Error', 'Destination branch is not set for this product.', 'error');
             return;
         }
 
@@ -871,8 +967,9 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             body: JSON.stringify({
                 from_branch: fromBranch,
-                to_branch: destinationBranchId,
+                to_branch: toBranch,
                 transfer_quantity: quantity,
+                transfer_price: transferPrice,
                 reason: 'Stock transfer',
                 adjustment_type: 'transfer'
             })
@@ -915,39 +1012,8 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(data => {
                 console.log('✅ [HISTORY] Stock history loaded:', data);
-                
-                const historyContent = document.getElementById('stockHistoryContent');
-                if (historyContent) {
-                    if (data.history && data.history.length > 0) {
-                        let html = '<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Date</th><th>Type</th><th>Quantity</th><th>Price</th><th>Branch</th><th>Reason</th><th>Notes</th></tr></thead><tbody>';
-                        
-                        data.history.forEach(record => {
-                            const date = new Date(record.created_at).toLocaleString();
-                            const typeBadge = `<span class="badge bg-${record.type === 'in' ? 'success' : 'warning'}">${record.type.toUpperCase()}</span>`;
-                            const price = record.price ? '₱' + parseFloat(record.price).toFixed(2) : 'N/A';
-                            const branch = record.branch_name || 'N/A';
-                            const reason = record.reason || '-';
-                            const notes = record.notes || '-';
-                            
-                            html += `
-                                <tr>
-                                    <td>${date}</td>
-                                    <td>${typeBadge}</td>
-                                    <td>${record.quantity}</td>
-                                    <td>${price}</td>
-                                    <td>${branch}</td>
-                                    <td>${reason}</td>
-                                    <td>${notes}</td>
-                                </tr>
-                            `;
-                        });
-                        
-                        html += '</tbody></table></div>';
-                        historyContent.innerHTML = html;
-                    } else {
-                        historyContent.innerHTML = '<div class="text-center py-4"><i class="fas fa-history fa-3x text-muted mb-3"></i><h6 class="text-muted">No Stock History</h6><small class="text-muted">No stock movements found for this product</small></div>';
-                    }
-                }
+                currentStockHistory = Array.isArray(data.history) ? data.history : [];
+                renderStockHistory();
             })
             .catch(error => {
                 console.error('❌ [HISTORY] Error loading stock history:', error);
@@ -956,6 +1022,87 @@ document.addEventListener('DOMContentLoaded', function () {
                     historyContent.innerHTML = '<div class="alert alert-danger">Error loading stock history</div>';
                 }
             });
+    }
+
+    function renderStockHistory() {
+        const historyContent = document.getElementById('stockHistoryContent');
+        if (!historyContent) {
+            return;
+        }
+
+        if (!Array.isArray(currentStockHistory) || currentStockHistory.length === 0) {
+            historyContent.innerHTML = '<div class="text-center py-4"><i class="fas fa-history fa-3x text-muted mb-3"></i><h6 class="text-muted">No Stock History</h6><small class="text-muted">No stock movements found for this product</small></div>';
+            return;
+        }
+
+        const searchInput = document.getElementById('historySearchInput');
+        const dateInput = document.getElementById('historyDateInput');
+        const typeFilter = document.getElementById('historyTypeFilter');
+
+        const searchText = (searchInput?.value || '').toLowerCase().trim();
+        const filterDate = (dateInput?.value || '').trim(); // yyyy-mm-dd
+        const filterType = (typeFilter?.value || '').trim();
+
+        const filtered = currentStockHistory.filter(record => {
+            // Type filter
+            if (filterType && String(record.type).toLowerCase() !== filterType.toLowerCase()) {
+                return false;
+            }
+
+            // Date filter - match on date portion of created_at
+            if (filterDate) {
+                const recordDate = (record.created_at || '').substring(0, 10); // assume YYYY-MM-DD...
+                if (recordDate !== filterDate) {
+                    return false;
+                }
+            }
+
+            // Text search over branch, reason, notes
+            if (searchText) {
+                const branch = (record.branch_name || '').toLowerCase();
+                const reason = (record.reason || '').toLowerCase();
+                const notes = (record.notes || '').toLowerCase();
+
+                if (!branch.includes(searchText) && !reason.includes(searchText) && !notes.includes(searchText)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            historyContent.innerHTML = '<div class="text-center py-4"><i class="fas fa-history fa-3x text-muted mb-3"></i><h6 class="text-muted">No matching records</h6><small class="text-muted">Try adjusting your filters</small></div>';
+            return;
+        }
+
+        let html = '<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Date</th><th>Type</th><th>Quantity</th><th>Price</th><th>Branch</th><th>Reason</th><th>Notes</th></tr></thead><tbody>';
+
+        filtered.forEach(record => {
+            const date = new Date(record.created_at).toLocaleString();
+            const type = (record.type || '').toString().toLowerCase();
+            const isIn = type === 'in';
+            const typeBadge = `<span class="badge bg-${isIn ? 'success' : 'warning'}">${type.toUpperCase() || '-'}</span>`;
+            const price = record.price ? '₱' + parseFloat(record.price).toFixed(2) : 'N/A';
+            const branch = record.branch_name || 'N/A';
+            const reason = record.reason || '-';
+            const notes = record.notes || '-';
+
+            html += `
+                <tr>
+                    <td>${date}</td>
+                    <td>${typeBadge}</td>
+                    <td>${record.quantity}</td>
+                    <td>${price}</td>
+                    <td>${branch}</td>
+                    <td>${reason}</td>
+                    <td>${notes}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        historyContent.innerHTML = html;
     }
 
     // Save stock adjustment

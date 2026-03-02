@@ -627,41 +627,56 @@ Route::get('/dashboard/widgets', function (Request $request) {
             $biggestExpenseCategory = (object) ['name' => 'N/A', 'total' => 0];
         }
 
-        // 4. Low Stock / Critical Stock Count
+        // 4. Stock level counts aligned with stock management (per product+branch with stock_ins records)
         try {
-            $subquery = DB::table('products')
-                ->leftJoinSub(
-                    DB::table('stock_ins')
-                        ->select('product_id', DB::raw('SUM(quantity) as total_in'))
-                        ->groupBy('product_id'),
-                    'stock_in_totals',
-                    'products.id',
-                    '=',
-                    'stock_in_totals.product_id'
-                )
-                ->leftJoinSub(
-                    DB::table('stock_outs')
-                        ->select('product_id', DB::raw('SUM(quantity) as total_out'))
-                        ->groupBy('product_id'),
-                    'stock_out_totals',
-                    'products.id',
-                    '=',
-                    'stock_out_totals.product_id'
-                )
+            $stockAgg = DB::table('stock_ins')
+                ->groupBy('product_id', 'branch_id')
+                ->selectRaw('
+                    product_id,
+                    branch_id,
+                    COALESCE(SUM(quantity - sold), 0) as current_stock
+                ');
+
+            $stockExpr = 'COALESCE(stock.current_stock, 0)';
+            $minExpr = '(CASE WHEN COALESCE(products.min_stock_level, 0) <= 0 THEN 10 ELSE products.min_stock_level END)';
+            $lowExpr = '(CASE WHEN COALESCE(products.low_stock_threshold, 0) <= 0 THEN '.$minExpr.' ELSE GREATEST('.$minExpr.', products.low_stock_threshold) END)';
+
+            $stockBase = DB::table('products')
+                ->joinSub($stockAgg, 'stock', function ($join) {
+                    $join->on('products.id', '=', 'stock.product_id');
+                })
                 ->select(
                     'products.id',
-                    'products.product_name',
-                    DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
+                    'stock.branch_id',
+                    DB::raw($stockExpr.' as current_stock')
                 );
 
-            $criticalStock = DB::table(DB::raw('('.$subquery->toSql().') as product_stocks'))
-                ->whereRaw('current_stock <= 15')
+            $outOfStockItems = (clone $stockBase)
+                ->whereRaw($stockExpr.' <= 0')
                 ->count();
 
-            Log::info('Critical stock calculated', ['count' => $criticalStock]);
+            $criticalStockItems = (clone $stockBase)
+                ->whereRaw($stockExpr.' > 0 AND '.$stockExpr.' <= '.$minExpr)
+                ->count();
+
+            $lowStockItems = (clone $stockBase)
+                ->whereRaw($stockExpr.' > '.$minExpr.' AND '.$stockExpr.' <= '.$lowExpr)
+                ->count();
+
+            $criticalStockKpi = $outOfStockItems + $criticalStockItems + $lowStockItems;
+
+            Log::info('Stock level counts calculated', [
+                'out_of_stock' => $outOfStockItems,
+                'critical' => $criticalStockItems,
+                'low' => $lowStockItems,
+                'kpi_total' => $criticalStockKpi,
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error calculating critical stock: '.$e->getMessage());
-            $criticalStock = 0;
+            Log::error('Error calculating stock levels for dashboard: '.$e->getMessage());
+            $outOfStockItems = 0;
+            $criticalStockItems = 0;
+            $lowStockItems = 0;
+            $criticalStockKpi = 0;
         }
 
         // 5. Cash on Hand / Expected Cash (Yearly)
@@ -754,42 +769,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
             $topBranches = collect([]);
         }
 
-        // 9. Alerts Panel - Out of Stock Items
-        try {
-            $subquery = DB::table('products')
-                ->leftJoinSub(
-                    DB::table('stock_ins')
-                        ->select('product_id', DB::raw('SUM(quantity) as total_in'))
-                        ->groupBy('product_id'),
-                    'stock_in_totals',
-                    'products.id',
-                    '=',
-                    'stock_in_totals.product_id'
-                )
-                ->leftJoinSub(
-                    DB::table('stock_outs')
-                        ->select('product_id', DB::raw('SUM(quantity) as total_out'))
-                        ->groupBy('product_id'),
-                    'stock_out_totals',
-                    'products.id',
-                    '=',
-                    'stock_out_totals.product_id'
-                )
-                ->select(
-                    'products.id',
-                    'products.product_name',
-                    DB::raw('(COALESCE(stock_in_totals.total_in, 0) - COALESCE(stock_out_totals.total_out, 0)) as current_stock')
-                );
-
-            $outOfStockItems = DB::table(DB::raw('('.$subquery->toSql().') as product_stocks'))
-                ->whereRaw('current_stock <= 15')
-                ->count();
-
-            Log::info('Out of stock items calculated', ['count' => $outOfStockItems]);
-        } catch (\Exception $e) {
-            Log::error('Error calculating out of stock items: '.$e->getMessage());
-            $outOfStockItems = 0;
-        }
+        // 9. Alerts Panel stock counts reuse the same values computed above
 
         // 10. Negative Profit Items (items sold below cost)
         try {
@@ -929,7 +909,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
                     'biggestCategory' => $biggestExpenseCategory,
                 ],
                 'criticalStock' => [
-                    'count' => $criticalStock,
+                    'count' => $criticalStockKpi,
                 ],
                 'cashOnHand' => [
                     'amount' => (float) $yearlyCashSales,
@@ -944,6 +924,8 @@ Route::get('/dashboard/widgets', function (Request $request) {
 
             'alerts' => [
                 'outOfStock' => $outOfStockItems,
+                'criticalStock' => $criticalStockItems,
+                'lowStock' => $lowStockItems,
                 'negativeProfit' => $negativeProfitItems,
                 'voidedSales' => $voidedSalesToday,
                 'belowCostSales' => $belowCostSales,
@@ -1081,6 +1063,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
         Route::get('/sales/voided', [\App\Http\Controllers\Admin\SalesController::class, 'voidedSales'])->name('sales.voided');
+        Route::get('/sales/below-cost', [\App\Http\Controllers\Admin\SalesController::class, 'belowCostSalesReport'])->name('sales.below-cost');
         Route::get('/sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
         Route::get('/sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
         Route::get('/sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
@@ -1102,7 +1085,7 @@ Route::middleware('auth')->group(function () {
     // Admin routes
     Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
         // Stock In routes
-        Route::get('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInIndex'])->name('stockin.index');
+        Route::get('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.index');
         Route::get('stockin/create', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.create');
         Route::post('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInStore'])->name('stockin.store');
         Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');

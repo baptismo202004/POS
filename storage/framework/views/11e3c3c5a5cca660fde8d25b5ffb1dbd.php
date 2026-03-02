@@ -2177,7 +2177,14 @@
     const totalAlertsElement = $('totalAlertsCount');
     
     if (totalAlertsElement) {
-      const totalAlerts = alerts.outOfStock + alerts.negativeProfit + alerts.voidedSales + alerts.belowCostSales + alerts.highDiscountUsage + alerts.refunds;
+      const totalAlerts = 
+        (alerts.outOfStock || 0) +
+        (alerts.criticalStock || 0) +
+        (alerts.lowStock || 0) +
+        (alerts.belowCostSales || 0) +
+        (alerts.voidedSales || 0) +
+        (alerts.highDiscountUsage || 0) +
+        (alerts.refunds || 0);
       totalAlertsElement.textContent = totalAlerts;
     }
     
@@ -2189,11 +2196,16 @@
       console.log('Voided sales count:', alerts.voidedSales);
       
       if (alerts.outOfStock > 0) {
-        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory/out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
+        // Route to stock management with the out_of_stock filter applied
+        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory/stock-management?stock_levels[]=out_of_stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
       }
-      
-      if (alerts.negativeProfit > 0) {
-        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-arrow-trend-down alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.negativeProfit} items sold below cost</div><div class="alert-description">Review pricing</div></div></div>`);
+
+      if (alerts.criticalStock > 0) {
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/inventory/stock-management?stock_levels[]=critical_stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#FF9800"></i><div class="alert-content"><div class="alert-title">${alerts.criticalStock} items on critical stock</div><div class="alert-description">Monitor and restock soon</div></div></div>`);
+      }
+
+      if (alerts.lowStock > 0) {
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/inventory/stock-management?stock_levels[]=low_stock'"><i class="fas fa-exclamation-circle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.lowStock} items on low stock</div><div class="alert-description">Plan replenishment</div></div></div>`);
       }
       
       if (alerts.voidedSales > 0) {
@@ -2201,7 +2213,7 @@
       }
       
       if (alerts.belowCostSales > 0) {
-        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below cost</div><div class="alert-description">Check margins</div></div></div>`);
+        alertItems.push(`<div class="alert-item warning clickable" onclick="window.location.href='/superadmin/sales/below-cost'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#C6FF00"></i><div class="alert-content"><div class="alert-title">${alerts.belowCostSales} items sold below purchase price</div><div class="alert-description">Review pricing and margins</div></div></div>`);
       }
       
       if (alerts.highDiscountUsage > 0) {

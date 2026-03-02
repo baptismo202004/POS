@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class PosAdminController extends Controller
 {
@@ -88,35 +89,59 @@ class PosAdminController extends Controller
             }
 
             $items = $matches->map(function ($p) {
-                // Calculate available stock: quantity - sold
-                $stockRecords = StockIn::where('product_id', $p->id)->get();
+                // Calculate available stock and branch-specific latest prices from stock_ins
+                $stockRecords = StockIn::where('product_id', $p->id)
+                    ->orderBy('id', 'asc') // ensure later records override earlier ones
+                    ->get();
                 $totalStock = 0;
-                $branches = [];
-                
+                $branchStocks = [];
+
                 foreach ($stockRecords as $stock) {
                     $availableStock = $stock->quantity - $stock->sold;
                     $totalStock += $availableStock;
-                    
+
                     if ($availableStock > 0) {
-                        $branch = Branch::find($stock->branch_id);
-                        $branches[] = [
-                            'branch_id' => $stock->branch_id,
-                            'branch_name' => optional($branch)->name,
-                            'stock' => (int) $availableStock,
-                        ];
+                        if (!isset($branchStocks[$stock->branch_id])) {
+                            $branch = Branch::find($stock->branch_id);
+                            $branchStocks[$stock->branch_id] = [
+                                'branch_id' => $stock->branch_id,
+                                'branch_name' => optional($branch)->branch_name,
+                                'stock' => 0,
+                                'latest_price' => 0.00,
+                            ];
+                        }
+
+                        $branchStocks[$stock->branch_id]['stock'] += (int) $availableStock;
+
+                        // For price, always take the latest non-zero price per branch (records are ordered by id)
+                        if (!is_null($stock->price) && $stock->price > 0) {
+                            $branchStocks[$stock->branch_id]['latest_price'] = (float) $stock->price;
+                        }
                     }
                 }
-                
-                $latestStockIn = StockIn::where('product_id', $p->id)->orderBy('id', 'desc')->first();
-                $price = $latestStockIn && isset($latestStockIn->price) ? (float) $latestStockIn->price : 0.00;
-                
+
+                // Finalize branch list with latest price per branch
+                $branches = array_values(array_map(function ($branchData) {
+                    $price = (float) ($branchData['latest_price'] ?? 0.00);
+
+                    return [
+                        'branch_id' => $branchData['branch_id'],
+                        'branch_name' => $branchData['branch_name'],
+                        'stock' => $branchData['stock'],
+                        'price' => $price,
+                    ];
+                }, $branchStocks));
+
+                // Default price shown for the product row is the first branch's price
+                $defaultPrice = isset($branches[0]) ? (float) ($branches[0]['price'] ?? 0) : 0.00;
+
                 Log::info("[POS_ADMIN_LOOKUP] Product: {$p->product_name} (ID: {$p->id}) - Available Stock: {$totalStock}");
                 
                 return [
                     'product_id' => $p->id,
                     'name' => $p->product_name,
                     'barcode' => $p->barcode,
-                    'price' => $price,
+                    'price' => $defaultPrice,
                     'total_stock' => (int) $totalStock,
                     'branches' => $branches,
                 ];
@@ -141,37 +166,58 @@ class PosAdminController extends Controller
             return response()->json(['error' => 'Product not found'], 404);
         }
 
-        // Calculate available stock: quantity - sold
-        $stockRecords = StockIn::where('product_id', $product->id)->get();
+        // Calculate available stock and branch-specific latest prices from stock_ins
+        $stockRecords = StockIn::where('product_id', $product->id)
+            ->orderBy('id', 'asc') // ensure later records override earlier ones
+            ->get();
         $totalStock = 0;
-        $byBranch = [];
-        
+        $branchStocks = [];
+
         foreach ($stockRecords as $stock) {
             $availableStock = $stock->quantity - $stock->sold;
             $totalStock += $availableStock;
-            
+
             if ($availableStock > 0) {
-                $branch = Branch::find($stock->branch_id);
-                $byBranch[] = [
-                    'branch_id' => $stock->branch_id,
-                    'branch_name' => optional($branch)->name,
-                    'stock' => (int) $availableStock,
-                ];
+                if (!isset($branchStocks[$stock->branch_id])) {
+                    $branch = Branch::find($stock->branch_id);
+                    $branchStocks[$stock->branch_id] = [
+                        'branch_id' => $stock->branch_id,
+                        'branch_name' => optional($branch)->branch_name,
+                        'stock' => 0,
+                        'latest_price' => 0.00,
+                    ];
+                }
+
+                $branchStocks[$stock->branch_id]['stock'] += (int) $availableStock;
+
+                // For price, always take the latest non-zero price per branch (records are ordered by id)
+                if (!is_null($stock->price) && $stock->price > 0) {
+                    $branchStocks[$stock->branch_id]['latest_price'] = (float) $stock->price;
+                }
             }
         }
+
+        $byBranch = array_values(array_map(function ($branchData) {
+            $price = (float) ($branchData['latest_price'] ?? 0.00);
+
+            return [
+                'branch_id' => $branchData['branch_id'],
+                'branch_name' => $branchData['branch_name'],
+                'stock' => $branchData['stock'],
+                'price' => $price,
+            ];
+        }, $branchStocks));
 
         if ($totalStock <= 0) {
             return response()->json(['error' => 'Product is out of stock'], 422);
         }
 
-        $latestStockIn = StockIn::where('product_id', $product->id)->orderBy('id', 'desc')->first();
-        $price = $latestStockIn && isset($latestStockIn->price) ? (float) $latestStockIn->price : 0.00;
-
         return response()->json([
             'product_id' => $product->id,
             'name' => $product->product_name,
             'barcode' => $product->barcode,
-            'price' => $price,
+            // Default to first branch price for single-result lookup
+            'price' => isset($byBranch[0]) ? (float) ($byBranch[0]['price'] ?? 0) : 0.00,
             'total_stock' => (int) $totalStock,
             'branches' => $byBranch,
         ]);
@@ -364,19 +410,23 @@ class PosAdminController extends Controller
     }
 
     // Stock In methods for Admin
-    public function stockInIndex()
-    {
-        $stockIns = StockIn::with(['product', 'purchase', 'branch'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
-            
-        return view('Admin.stockin.index', compact('stockIns'));
-    }
-
     public function stockInCreate()
     {
-        $purchases = \App\Models\Purchase::with(['branch'])
-            ->orderBy('purchase_date', 'desc')
+        // Only show purchases that still have remaining quantity to be stocked in
+        $purchases = DB::table('purchases')
+            ->join('purchase_items', 'purchase_items.purchase_id', '=', 'purchases.id')
+            ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            ->leftJoin('stock_ins', 'stock_ins.purchase_id', '=', 'purchases.id')
+            ->select(
+                'purchases.id',
+                'purchases.reference_number',
+                'purchases.purchase_date',
+                'suppliers.supplier_name as supplier_name',
+                DB::raw('SUM(purchase_items.quantity) - COALESCE(SUM(stock_ins.quantity), 0) as remaining_quantity')
+            )
+            ->groupBy('purchases.id', 'purchases.reference_number', 'purchases.purchase_date', 'suppliers.supplier_name')
+            ->havingRaw('SUM(purchase_items.quantity) > COALESCE(SUM(stock_ins.quantity), 0)')
+            ->orderBy('purchases.purchase_date', 'desc')
             ->get();
             
         $branches = \App\Models\Branch::orderBy('branch_name')->get();
@@ -388,41 +438,48 @@ class PosAdminController extends Controller
     {
         try {
             $purchaseItems = $purchase->items()->with(['product.unitTypes', 'unitType'])->get();
-            
+
             $items = $purchaseItems->map(function ($item) {
+                // Calculate how many units have already been stocked in for this purchase + product
+                $alreadyStocked = StockIn::where('purchase_id', $item->purchase_id)
+                    ->where('product_id', $item->product_id)
+                    ->sum('quantity');
+
+                $remainingQuantity = ($item->quantity ?? 0) - ($alreadyStocked ?? 0);
+
+                // Skip items that are already fully stocked in
+                if ($remainingQuantity <= 0) {
+                    return null;
+                }
+
                 // Debug: Log the unit types data
-                Log::info("Product ID: {$item->product_id}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
-                
+                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingQuantity}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
+
                 $unitTypes = $item->product->unitTypes ?? [];
-                
+
                 // If no unit types, get all unit types as fallback
                 if (empty($unitTypes)) {
                     $unitTypes = \App\Models\UnitType::all();
                 }
-                
+
                 $result = [
                     'product_id' => $item->product_id,
                     'product' => $item->product,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_cost, // Fixed: use unit_cost instead of unit_price
+                    // Send remaining quantity to the frontend
+                    'quantity' => $remainingQuantity,
+                    'unit_price' => $item->unit_cost, // use unit_cost from purchase item
                     'unit_types' => $unitTypes,
                     'unit_type' => $item->unitType
                 ];
-                
-                Log::info("Result for item {$item->product_id}: " . json_encode($result));
-                return $result;
-            });
 
-            Log::info("Final items data: " . json_encode($items->toArray()));
+                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
+                return $result;
+            })->filter()->values();
+
+            Log::info("[STOCK_IN_PRODUCTS] Final items data: " . json_encode($items->toArray()));
             
-            // For debugging: Return raw data
             return response()->json([
                 'items' => $items,
-                'debug' => [
-                    'purchase_id' => $purchase->id,
-                    'items_count' => $items->count(),
-                    'raw_items' => $items->toArray()
-                ]
             ]);
             
         } catch (\Exception $e) {
@@ -435,6 +492,7 @@ class PosAdminController extends Controller
     {
         try {
             $data = $request->validate([
+                'purchase_id' => 'required|exists:purchases,id',
                 'items' => 'required|array|min:1',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.unit_type_id' => 'required|exists:unit_types,id',
@@ -444,6 +502,7 @@ class PosAdminController extends Controller
             ]);
 
             $items = $data['items'];
+            $purchaseId = $data['purchase_id'];
             $stockIns = [];
 
             foreach ($items as $item) {
@@ -458,7 +517,10 @@ class PosAdminController extends Controller
                 $stockIn = StockIn::create([
                     'product_id' => $item['product_id'],
                     'branch_id' => $item['branch_id'],
+                    'purchase_id' => $purchaseId,
+                    'unit_type_id' => $item['unit_type_id'],
                     'quantity' => $item['quantity'],
+                    'initial_quantity' => $item['quantity'],
                     'price' => $item['new_price'],
                     'user_id' => Auth::id()
                 ]);

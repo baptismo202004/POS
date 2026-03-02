@@ -358,4 +358,56 @@ class SalesController extends Controller
             'endDate'
         ));
     }
+
+    public function belowCostSalesReport(Request $request)
+    {
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+
+        if ($startDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+        } else {
+            $start = Carbon::today()->startOfDay();
+        }
+
+        if ($endDate) {
+            $end = Carbon::parse($endDate)->endOfDay();
+        } else {
+            $end = Carbon::today()->endOfDay();
+        }
+
+        $items = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+            ->leftJoin('users', 'sales.cashier_id', '=', 'users.id')
+            ->leftJoin('stock_ins', function ($join) {
+                $join->on('sale_items.product_id', '=', 'stock_ins.product_id')
+                    ->on('sales.branch_id', '=', 'stock_ins.branch_id');
+            })
+            ->whereBetween('sales.created_at', [$start, $end])
+            ->whereRaw('sale_items.quantity * stock_ins.price > sale_items.subtotal')
+            ->select([
+                'sale_items.id as sale_item_id',
+                'sales.id as sale_id',
+                'sales.reference_number',
+                'sales.created_at',
+                'products.product_name',
+                'branches.branch_name',
+                'users.name as cashier_name',
+                'sale_items.quantity',
+                'sale_items.unit_price as sold_unit_price',
+                'sale_items.subtotal as sold_total',
+                DB::raw('COALESCE(stock_ins.price, 0) as purchase_price'),
+                DB::raw('sale_items.quantity * COALESCE(stock_ins.price, 0) as purchase_total'),
+            ])
+            ->orderByDesc('sales.created_at')
+            ->paginate(50);
+
+        return view('Admin.sales.below-cost', [
+            'items' => $items,
+            'startDate' => $start,
+            'endDate' => $end,
+        ]);
+    }
 }

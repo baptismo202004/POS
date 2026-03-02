@@ -538,9 +538,9 @@
                 tableBody.innerHTML = items.map(it => {
                     const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => `
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" ${index === 0 ? 'checked' : ''}>
+                            <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
                             <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
-                                ${b.branch_name || 'Branch #' + b.branch_id} <span class="badge bg-secondary">${b.stock}</span>
+                                ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
                             </label>
                         </div>
                     `).join('') : '<span class="text-muted">No stock</span>';
@@ -560,14 +560,27 @@
                             </span>
                         </td>
                         <td>${branchesHtml}</td>
-                        <td class="text-end price-display">₱${(it.price||0).toFixed(2)}</td>
+                        <td class="text-end price-display" data-product-id="${it.product_id}">₱${(it.price||0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${it.name.replace(/'/g, "\\'")}', ${it.price||0})" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${it.name.replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
                     </tr>`;
                 }).join('');
+
+                // After rendering rows, attach listeners to branch radios to update price display per product
+                items.forEach(it => {
+                    const radios = document.querySelectorAll(`input[name="branch_${it.product_id}"]`);
+                    radios.forEach(r => {
+                        r.addEventListener('change', () => {
+                            updateProductPriceDisplay(it.product_id);
+                        });
+                    });
+
+                    // Ensure initial price matches the initially checked branch
+                    updateProductPriceDisplay(it.product_id);
+                });
 
             } catch (error) {
                 console.error('Search error:', error);
@@ -583,9 +596,19 @@
 
         // Shopping cart functionality
         let cart = [];
+
+        function updateProductPriceDisplay(productId) {
+            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
+            const priceCell = document.querySelector(`td.price-display[data-product-id="${productId}"]`);
+
+            if (!priceCell || !selectedBranchRadio) return;
+
+            const branchPrice = parseFloat(selectedBranchRadio.dataset.price || '0');
+            priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
+        }
         
         // Make functions globally accessible for onclick handlers
-        window.addToOrder = function(button, productId, name, price) {
+        window.addToOrder = function(button, productId, name) {
             const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
             
             if (!selectedBranchRadio) {
@@ -595,7 +618,8 @@
             
             const branchId = parseInt(selectedBranchRadio.value);
             const stock = parseInt(selectedBranchRadio.dataset.stock);
-            const branchName = selectedBranchRadio.labels[0].innerText.split(' ')[0];
+            const branchName = selectedBranchRadio.dataset.branchName || selectedBranchRadio.labels[0].innerText.trim();
+            const price = parseFloat(selectedBranchRadio.dataset.price || '0');
 
             if (stock <= 0) {
                 Swal.fire('Out of Stock', `This product is out of stock at ${branchName}.`, 'warning');
