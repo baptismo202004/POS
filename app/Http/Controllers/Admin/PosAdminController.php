@@ -455,11 +455,11 @@ class PosAdminController extends Controller
                 // Debug: Log the unit types data
                 Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingQuantity}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
 
-                $unitTypes = $item->product->unitTypes ?? [];
+                $unitTypes = $item->product->unitTypes ?? collect();
 
-                // If no unit types, get all unit types as fallback
-                if (empty($unitTypes)) {
-                    $unitTypes = \App\Models\UnitType::all();
+                // If the product has no unit types assigned, fallback to all unit types
+                if ($unitTypes instanceof \Illuminate\Support\Collection ? $unitTypes->isEmpty() : empty($unitTypes)) {
+                    $unitTypes = \App\Models\UnitType::orderBy('unit_name')->get();
                 }
 
                 $result = [
@@ -468,7 +468,7 @@ class PosAdminController extends Controller
                     // Send remaining quantity to the frontend
                     'quantity' => $remainingQuantity,
                     'unit_price' => $item->unit_cost, // use unit_cost from purchase item
-                    'unit_types' => $unitTypes,
+                    'unit_types' => $unitTypes->values(),
                     'unit_type' => $item->unitType
                 ];
 
