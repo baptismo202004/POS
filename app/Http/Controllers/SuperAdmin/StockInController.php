@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Branch;
 use App\Models\Purchase;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class StockInController extends Controller
 {
@@ -89,7 +90,25 @@ class StockInController extends Controller
                                      ->sum('quantity');
 
             $availableQuantity = $purchaseItem->quantity - $totalStockedIn;
-            $currentStockInQuantity = $items->sum('quantity');
+
+            $currentStockInQuantity = 0;
+            foreach ($items as $item) {
+                $qty = (int) ($item['quantity'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $unitTypeId = !empty($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
+                $factor = 1;
+                if ($unitTypeId) {
+                    $factor = (float) (DB::table('product_unit_type')
+                        ->where('product_id', $productId)
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+                }
+
+                $currentStockInQuantity += (int) round($qty * $factor);
+            }
 
             if ($currentStockInQuantity > $availableQuantity) {
                 $productName = $purchaseItem->product->product_name;
@@ -102,12 +121,23 @@ class StockInController extends Controller
                     continue;
                 }
 
+                $unitTypeId = !empty($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
+                $factor = 1;
+                if ($unitTypeId) {
+                    $factor = (float) (DB::table('product_unit_type')
+                        ->where('product_id', $item['product_id'])
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+                }
+
+                $baseQty = (int) round(((int) $item['quantity']) * $factor);
+
                 StockIn::create([
                     'product_id' => $item['product_id'],
                     'branch_id' => $validated['branch_id'],
                     'purchase_id' => $validated['purchase_id'],
-                    'unit_type_id' => !empty($item['unit_type_id']) ? $item['unit_type_id'] : null,
-                    'quantity' => $item['quantity'],
+                    'unit_type_id' => $unitTypeId,
+                    'quantity' => $baseQty,
                     'price' => $item['price'],
                 ]);
                 $stockInCount++;

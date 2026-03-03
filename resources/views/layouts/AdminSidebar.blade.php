@@ -588,17 +588,12 @@
                     <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.index') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Report</span>
                     </a>
-                    <a href="{{ route('superadmin.inventory.out-of-stock') }}" class="{{ request()->routeIs('superadmin.inventory.out-of-stock') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Out of Stock Alert ({{ session('out_of_stock_count', 0) }}/{{ session('out_of_stock_total', 0) }})</span>
-                    </a>
+
                     <a href="{{ route('superadmin.inventory.stock-management') }}" class="{{ request()->routeIs('superadmin.inventory.stock-management') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock Management</span>
                     </a>
                     <a href="{{ route('admin.stockin.create') }}" class="{{ request()->routeIs('admin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
-                    </a>
-                    <a href="{{ route('stocktransfer.index') }}" class="{{ request()->routeIs('stocktransfer.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Stock Transfer (Branch to Branch)</span>
                     </a>
                 </div>
             </div>
@@ -735,13 +730,13 @@
                 </a>
                 <div class="submenu {{ $isSettingsActive ? 'show' : '' }}" id="settingsMenu">
                     <div class="d-flex flex-column ms-4 mt-1">
-                        <a href="{{ route('brands.index') }}" class="{{ request()->routeIs('brands.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.brands.index') }}" class="{{ request()->routeIs('superadmin.brands.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Brands</span>
                         </a>
-                        <a href="{{ route('branches.index') }}" class="{{ request()->routeIs('branches.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.branches.index') }}" class="{{ request()->routeIs('superadmin.branches.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Branch</span>
                         </a>
-                        <a href="{{ route('unit-types.index') }}" class="{{ request()->routeIs('unit-types.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
+                        <a href="{{ route('superadmin.unit-types.index') }}" class="{{ request()->routeIs('unit-types.*') ? 'd-flex align-items-center py-2 text-decoration-none active' : 'd-flex align-items-center py-2 text-decoration-none' }}">
                             <span class="small">Unit Types</span>
                         </a>
                     </div>

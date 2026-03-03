@@ -14,6 +14,7 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {
@@ -40,18 +41,59 @@ class PurchaseController extends Controller
         return view('SuperAdmin.purchases.create', compact('products', 'brands', 'categories', 'product_types', 'unit_types', 'suppliers', 'branches'));
     }
 
+    public function getProductUnitTypes(Product $product)
+    {
+        $productUnits = $product->unitTypes()
+            ->select('unit_types.id', 'unit_types.unit_name')
+            ->withPivot('conversion_factor', 'is_base')
+            ->get();
+
+        if ($productUnits->isEmpty()) {
+            $units = UnitType::all()->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->unit_name,
+                    'conversion_factor' => 1.0,
+                    'is_base' => false,
+                ];
+            });
+        } else {
+            $units = $productUnits->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->unit_name,
+                    'conversion_factor' => isset($unit->pivot->conversion_factor) ? (float) $unit->pivot->conversion_factor : 1.0,
+                    'is_base' => isset($unit->pivot->is_base) ? (bool) $unit->pivot->is_base : false,
+                ];
+            });
+        }
+
+        return response()->json([
+            'units' => $units,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
             'purchase_date' => 'required|date',
             'supplier_id' => 'nullable|exists:suppliers,id',
-            'reference_number' => 'nullable|string|max:255',
+            'reference_number' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('purchases', 'reference_number')->where(function ($query) {
+                    return $query->whereNotNull('reference_number')->where('reference_number', '!=', '');
+                }),
+            ],
             'payment_status' => 'required|in:pending,paid',
             'items' => 'required|array|min:1',
             'items.*.is_new' => 'nullable|boolean',
             'items.*.product_id' => 'required_if:items.*.is_new,null|exists:products,id',
             'items.*.product_name' => 'required_if:items.*.is_new,1|string|max:255|unique:products,product_name',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.primary_quantity' => 'required|numeric|min:1',
+            'items.*.multiplier' => 'required|numeric|min:1',
+            'items.*.base_quantity' => 'required|numeric|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
         ]);
@@ -76,12 +118,19 @@ class PurchaseController extends Controller
                     $productId = $item['product_id'];
                 }
 
-                $subtotal = $item['quantity'] * $item['cost'];
+                $primaryQty = (float) $item['primary_quantity'];
+                $multiplier = (float) $item['multiplier'];
+                $baseQty = (float) $item['base_quantity'];
+
+                $computedBase = $primaryQty * $multiplier;
+                $baseQty = $computedBase;
+
+                $subtotal = $primaryQty * $item['cost'];
                 $totalCost += $subtotal;
 
                 $purchaseItemsData[] = [
                     'product_id' => $productId,
-                    'quantity' => $item['quantity'],
+                    'quantity' => $baseQty,
                     'unit_type_id' => $item['unit_type_id'],
                     'unit_cost' => $item['cost'],
                     'subtotal' => $subtotal,
@@ -93,7 +142,7 @@ class PurchaseController extends Controller
                 'supplier_id' => $validated['supplier_id'],
                 'total_cost' => $totalCost,
                 'payment_status' => $validated['payment_status'],
-                'reference_number' => $validated['reference_number'] ?? null,
+                'reference_number' => !empty($validated['reference_number']) ? $validated['reference_number'] : null,
             ]);
 
             $purchase->items()->createMany($purchaseItemsData);

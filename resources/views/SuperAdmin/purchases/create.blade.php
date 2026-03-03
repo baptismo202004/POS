@@ -44,6 +44,9 @@
                             <div class="col-md-4">
                                 <label class="form-label">Reference No.</label>
                                 <input type="text" name="reference_number" class="form-control">
+                                @error('reference_number')
+                                    <div class="text-danger small">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
 
@@ -102,20 +105,28 @@
                         <option value="electronic">Electronic</option>
                     </select>
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">Quantity</label>
-                    <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
+
+                <div class="col-md-3">
+                    <label class="form-label">Qty - Unit</label>
+                    <div class="input-group">
+                        <input type="number" name="items[][primary_quantity]" class="form-control primary-qty-input" min="1" value="1" required>
+                        <select name="items[][unit_type_id]" class="form-select unit-type-select" required>
+                            <option value="">-- Select Unit --</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="col-md-2">
-                    <label class="form-label">Unit Type</label>
-                    <select name="items[][unit_type_id]" class="form-select" required>
-                        <option value="">-- Select Unit --</option>
-                        @foreach($unit_types as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
-                        @endforeach
-                    </select>
+                <div class="col-md-3">
+                    <label class="form-label">× Base</label>
+                    <div class="input-group">
+                        <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
+                        <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
+                            <option value="">Base</option>
+                        </select>
+                    </div>
                 </div>
+
+                <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
 
                 <div class="col-md-2">
                     <label class="form-label">Cost</label>
@@ -157,19 +168,27 @@
                         <option value="electronic">Electronic</option>
                     </select>
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">Quantity</label>
-                    <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
+                <div class="col-md-3">
+                    <label class="form-label">Qty - Unit</label>
+                    <div class="input-group">
+                        <input type="number" name="items[][primary_quantity]" class="form-control primary-qty-input" min="1" value="1" required>
+                        <select name="items[][unit_type_id]" class="form-select unit-type-select" required>
+                            <option value="">-- Select Unit --</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Unit Type</label>
-                    <select name="items[][unit_type_id]" class="form-select" required>
-                        <option value="">-- Select Unit --</option>
-                        @foreach($unit_types as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
-                        @endforeach
-                    </select>
+                <div class="col-md-3">
+                    <label class="form-label">× Base</label>
+                    <div class="input-group">
+                        <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
+                        <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
+                            <option value="">Base</option>
+                        </select>
+                    </div>
                 </div>
+
+                <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
+
                 <div class="col-md-2">
                     <label class="form-label">Cost</label>
                     <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
@@ -399,6 +418,16 @@
                 width: '100%'
             });
 
+            // Load unit types whenever a product is selected
+            select.on('change', function () {
+                const row = $(this).closest('.item-row')[0];
+                const productId = this.value;
+                console.log('Product changed, loading units for product ID:', productId);
+                if (row && productId) {
+                    loadProductUnits(row, productId);
+                }
+            });
+
             select.on('select2:open', function () {
                 lastSelect = select;
 
@@ -439,9 +468,19 @@
             const newRow = container.querySelector('.item-row:last-child');
             initProductSelect(newRow);
 
+            const primaryInput = newRow.querySelector('.primary-qty-input');
+            const multiplierInput = newRow.querySelector('.multiplier-input');
+            const baseInput = newRow.querySelector('.base-qty-input');
+
+            if (primaryInput && multiplierInput && baseInput) {
+                const primaryVal = parseFloat(primaryInput.value) || 0;
+                const multVal = parseFloat(multiplierInput.value) || 1;
+                baseInput.value = primaryVal * multVal;
+            }
+
             if (productData) {
                 $(newRow).find('.product-select').val(productData.id).trigger('change');
-                $(newRow).find('input[name$="[quantity]"]').val(productData.quantity);
+                $(newRow).find('input[name$="[primary_quantity]"]').val(productData.quantity);
                 $(newRow).find('input[name$="[cost]"]').val(productData.cost);
             }
 
@@ -463,14 +502,92 @@
             container.appendChild(node);
             const newRow = container.querySelector('.item-row:last-child');
 
+            const primaryInput = newRow.querySelector('.primary-qty-input');
+            const multiplierInput = newRow.querySelector('.multiplier-input');
+            const baseInput = newRow.querySelector('.base-qty-input');
+
+            if (primaryInput && multiplierInput && baseInput) {
+                const primaryVal = parseFloat(primaryInput.value) || 0;
+                const multVal = parseFloat(multiplierInput.value) || 1;
+                baseInput.value = primaryVal * multVal;
+            }
+
             if (productData) {
                 $(newRow).find('input[name$="[product_name]"]').val(productData.name);
-                $(newRow).find('input[name$="[quantity]"]').val(productData.quantity);
+                $(newRow).find('input[name$="[primary_quantity]"]').val(productData.quantity);
                 $(newRow).find('input[name$="[cost]"]').val(productData.cost);
             }
 
             itemIndex++;
             updateTotals();
+        }
+
+        function recalcBaseQuantity(row) {
+            if (!row) return;
+            const primaryInput = row.querySelector('.primary-qty-input');
+            const multiplierInput = row.querySelector('.multiplier-input');
+            const baseInput = row.querySelector('.base-qty-input');
+            if (!primaryInput || !multiplierInput || !baseInput) return;
+            const primaryVal = parseFloat(primaryInput.value) || 0;
+            const multVal = parseFloat(multiplierInput.value) || 1;
+            baseInput.value = primaryVal * multVal;
+        }
+
+        function loadProductUnits(row, productId) {
+            const unitSelect = row.querySelector('.unit-type-select');
+            const baseUnitSelect = row.querySelector('.base-unit-select');
+            const multiplierInput = row.querySelector('.multiplier-input');
+
+            if (!unitSelect || !baseUnitSelect || !multiplierInput) {
+                console.warn('Missing unit/base/multiplier controls for row, cannot load units');
+                return;
+            }
+
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+            baseUnitSelect.innerHTML = '<option value="">Base</option>';
+            multiplierInput.value = 1;
+            recalcBaseQuantity(row);
+
+            if (!productId) {
+                console.warn('No productId passed to loadProductUnits');
+                return;
+            }
+
+            console.log('Requesting unit types for product ID:', productId);
+
+            $.getJSON(`/superadmin/products/${productId}/unit-types`, function (response) {
+                console.log('Unit types response for product', productId, response);
+                const units = response.units || [];
+
+                units.forEach(function (unit) {
+                    const option = document.createElement('option');
+                    option.value = unit.id;
+                    option.textContent = unit.name;
+                    option.dataset.conversionFactor = unit.conversion_factor || 1;
+                    unitSelect.appendChild(option);
+
+                    const baseOpt = document.createElement('option');
+                    baseOpt.value = unit.id;
+                    baseOpt.textContent = unit.name;
+                    baseUnitSelect.appendChild(baseOpt);
+                });
+
+                // Auto-select base unit in the base-unit-select dropdown if defined
+                const baseUnit = units.find(u => u.is_base);
+                if (baseUnit) {
+                    baseUnitSelect.value = String(baseUnit.id);
+                }
+
+                // If only one unit, auto-select it as the primary unit and set multiplier
+                if (units.length === 1) {
+                    unitSelect.value = units[0].id;
+                    const conv = units[0].conversion_factor || 1;
+                    multiplierInput.value = conv;
+                    recalcBaseQuantity(row);
+                }
+            }).fail(function () {
+                // On failure, keep the select empty but leave the controls usable
+            });
         }
 
         // --- SERIALS VISIBILITY ---
@@ -488,12 +605,31 @@
                     }
                 }
             }
+
+            if (e.target.classList.contains('product-select')) {
+                const row = e.target.closest('.item-row');
+                const productId = e.target.value;
+                loadProductUnits(row, productId);
+            }
+
+            if (e.target.classList.contains('unit-type-select')) {
+                const row = e.target.closest('.item-row');
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const conv = selectedOption ? parseFloat(selectedOption.dataset.conversionFactor || '1') : 1;
+                const multiplierInput = row.querySelector('.multiplier-input');
+                if (multiplierInput) {
+                    multiplierInput.value = conv;
+                }
+                recalcBaseQuantity(row);
+                updateTotals();
+            }
         });
 
         function updateTotals() {
             let grandTotal = 0;
             document.querySelectorAll('.item-row').forEach(row => {
-                const quantity = parseFloat(row.querySelector('input[name$="[quantity]"]').value) || 0;
+                const primaryInput = row.querySelector('input[name$="[primary_quantity]"]');
+                const quantity = primaryInput ? (parseFloat(primaryInput.value) || 0) : 0;
                 const cost = parseFloat(row.querySelector('.item-cost').value) || 0;
                 grandTotal += quantity * cost;
             });
@@ -502,6 +638,10 @@
 
         container.addEventListener('input', function(e) {
             if (e.target.matches('input[name^="items["]') || e.target.matches('.item-cost')) {
+                if (e.target.classList.contains('primary-qty-input') || e.target.classList.contains('multiplier-input')) {
+                    const row = e.target.closest('.item-row');
+                    recalcBaseQuantity(row);
+                }
                 updateTotals();
             }
         });

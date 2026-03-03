@@ -22,6 +22,7 @@
                                                 <th>Payment Status</th>
                                                 <th>Items</th>
                                                 <th>Total Cost</th>
+                                                <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -40,10 +41,13 @@
                                                     </td>
                                                     <td>{{ $purchase->items->count() }} item(s)</td>
                                                     <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
+                                                    <td>
+                                                        <a href="{{ route('superadmin.purchases.show', $purchase) }}" class="btn btn-sm btn-outline-primary">View Items</a>
+                                                    </td>
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="5" class="text-center">No purchases found.</td>
+                                                    <td colspan="6" class="text-center">No purchases found.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>

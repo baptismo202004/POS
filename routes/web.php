@@ -1089,6 +1089,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->name('purchases.ocr-product-match');
+        Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
     });
@@ -1124,7 +1125,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/stocktransfer/{stockTransfer}', [\App\Http\Controllers\SuperAdmin\StockTransferController::class, 'update'])->middleware('ability:inventory,edit')->name('stocktransfer.update');
 
     // Settings routes (guard at least with view-level ability)
-    Route::middleware('ability:settings,view')->group(function () {
+    Route::middleware('ability:settings,view')->name('superadmin.')->group(function () {
         Route::resource('brands', \App\Http\Controllers\SuperAdmin\BrandController::class);
         Route::resource('product-types', \App\Http\Controllers\ProductTypeController::class);
         Route::resource('unit-types', \App\Http\Controllers\UnitTypeController::class);

@@ -140,10 +140,16 @@ class SalesController extends Controller
                     $itemSubtotal = $item['quantity'] * $item['unit_price'];
                     $subtotal += $itemSubtotal;
 
+                    $factor = (float) (DB::table('product_unit_type')
+                        ->where('product_id', $item['product_id'])
+                        ->where('unit_type_id', $item['unit_type_id'])
+                        ->value('conversion_factor') ?? 1);
+                    $baseQty = (int) round(((int) $item['quantity']) * $factor);
+
                     // Check stock availability at the specified branch
                     $currentStock = $this->getCurrentStock($item['product_id'], $itemBranchId);
-                    if ($currentStock < $item['quantity']) {
-                        throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentStock}, Required: {$item['quantity']}");
+                    if ($currentStock < $baseQty) {
+                        throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentStock}, Required: {$baseQty}");
                     }
 
                     if (! isset($itemsByBranch[$itemBranchId])) {
@@ -155,7 +161,7 @@ class SalesController extends Controller
 
                     $itemsByBranch[$itemBranchId]['items'][] = [
                         'product_id' => $item['product_id'],
-                        'quantity' => $item['quantity'],
+                        'quantity' => $baseQty,
                         'unit_price' => $item['unit_price'],
                         'subtotal' => $itemSubtotal,
                         'unit_type_id' => $item['unit_type_id'],
@@ -459,11 +465,20 @@ class SalesController extends Controller
     private function addStock($items, $branchId)
     {
         foreach ($items as $item) {
+            $factor = 1;
+            if (!empty($item['unit_type_id'])) {
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', $item['product_id'])
+                    ->where('unit_type_id', $item['unit_type_id'])
+                    ->value('conversion_factor') ?? 1);
+            }
+            $baseQty = (int) round(((int) $item['quantity']) * $factor);
+
             // Record stock in for voided sales
             DB::table('stock_ins')->insert([
                 'product_id' => $item['product_id'],
                 'branch_id' => $branchId,
-                'quantity' => $item['quantity'],
+                'quantity' => $baseQty,
                 'unit_type_id' => $item['unit_type_id'],
                 'price' => 0, // No cost for voided sales
                 'reason' => 'sale_voided',
@@ -489,6 +504,30 @@ class SalesController extends Controller
 
         $productsWithStock = $products->map(function ($product) use ($branchId) {
             $product->current_stock = $this->getCurrentStock($product->id, $branchId);
+
+            $unitRows = DB::table('product_unit_type')
+                ->join('unit_types', 'unit_types.id', '=', 'product_unit_type.unit_type_id')
+                ->where('product_unit_type.product_id', $product->id)
+                ->select('unit_types.id', 'unit_types.unit_name', 'product_unit_type.conversion_factor', 'product_unit_type.is_base')
+                ->get();
+
+            $baseUnit = $unitRows->firstWhere('is_base', 1);
+            $packUnit = $unitRows
+                ->filter(fn ($u) => (int) ($u->is_base ?? 0) !== 1 && (float) ($u->conversion_factor ?? 0) > 1)
+                ->sortByDesc('conversion_factor')
+                ->first();
+
+            if ($baseUnit && $packUnit && (float) $packUnit->conversion_factor > 0) {
+                $packFactor = (float) $packUnit->conversion_factor;
+                $packs = (int) floor($product->current_stock / $packFactor);
+                $remainder = (int) ($product->current_stock - ($packs * $packFactor));
+                $product->stock_breakdown = [
+                    'unit' => $packUnit->unit_name,
+                    'packs' => $packs,
+                    'remainder_base_unit' => $baseUnit->unit_name,
+                    'remainder' => $remainder,
+                ];
+            }
 
             return $product;
         });
