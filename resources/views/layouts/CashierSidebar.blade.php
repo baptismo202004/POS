@@ -381,6 +381,67 @@
             pointer-events: none; /* Non-clickable */
             user-select: none;
         }
+
+        /* User dropdown menu styling to match Admin sidebar */
+        .user-dropdown-menu { 
+            min-width: 280px; 
+            max-width: 320px;
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(13, 71, 161, 0.15); 
+            background: #FFFFFF;
+            z-index: 1050;
+            position: relative;
+        }
+        
+        /* Ensure dropdown button is clickable */
+        #sidebarUserDropdown {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            position: relative;
+            z-index: 1051;
+        }
+        
+        #sidebarUserDropdown:hover {
+            background: rgba(0, 229, 255, 0.1) !important;
+        }
+        
+        .dropdown-item svg { 
+            opacity: 0.95; 
+            width: 18px; 
+            height: 18px; 
+            color: #0D47A1;
+        }
+        
+        .dropdown-item { 
+            border-radius: 8px; 
+            padding: 8px 12px;
+            color: #263238;
+        }
+        
+        .dropdown-item:hover { 
+            background: rgba(0, 229, 255, 0.1);
+            color: #0D47A1;
+        }
+        
+        .dropdown-toggle .username { 
+            font-weight: 700;
+            color: #FFFFFF; 
+        }
+        
+        .dropdown-toggle .role { 
+            font-size: 12px; 
+            color: rgba(255, 255, 255, 0.8);
+            margin-left: 2px; 
+            opacity: 0.8; 
+        }
+        
+        .dropdown-menu { 
+            list-style: none; 
+        }
+        
+        .dropdown-menu li { 
+            list-style: none; 
+        }
     </style>
 
     <div class="sidebar-bg-extension"></div>
@@ -448,6 +509,15 @@
                 </span>
                 <span>Inventory</span>
             </a>
+
+            @canAccess('stock_management','view')
+            <a href="{{ route('cashier.stock-management.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <i class="fas fa-warehouse sidebar-icon"></i>
+                </span>
+                <span>Stock Management</span>
+            </a>
+            @endcanAccess
             
             @canAccess('stock_transfer','view')
             <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none">
@@ -525,27 +595,80 @@
                     </nav>
     </div>
 
-    <!-- User Section -->
-    <div class="dropend">
-        <button class="btn dropdown-toggle w-100 d-flex align-items-center gap-2" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <div class="icon-badge">
-                <i class="fas fa-user-circle sidebar-icon"></i>
+    @php
+        $cashierUser = auth()->user();
+        $cashierAvatarUrl = null;
+        if ($cashierUser && !empty($cashierUser->profile_picture)) {
+            $av = $cashierUser->profile_picture;
+            if (\Illuminate\Support\Str::startsWith($av, ['http://', 'https://', '//'])) {
+                $cashierAvatarUrl = $av;
+            } elseif (\Illuminate\Support\Str::startsWith($av, 'storage/')) {
+                $cashierAvatarUrl = asset($av);
+            } else {
+                $candidate = ltrim($av, '/');
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($candidate)) {
+                    $cashierAvatarUrl = asset('storage/' . $candidate);
+                } elseif (file_exists(public_path($candidate))) {
+                    $cashierAvatarUrl = asset($candidate);
+                } else {
+                    $cashierAvatarUrl = asset($candidate);
+                }
+            }
+        }
+    @endphp
+
+    <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 0; margin-bottom: 12px;">
+
+    <div class="dropdown">
+        <button class="d-flex align-items-center gap-2 w-100 text-start p-2" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.9);">
+            @if(!empty($cashierAvatarUrl))
+                <img src="{{ $cashierAvatarUrl }}" alt="{{ $cashierUser->name ?? 'Cashier' }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover">
+            @else
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:linear-gradient(135deg, #2196F3, #00E5FF);color:#0D47A1;font-weight:700">
+                    {{ $cashierUser ? strtoupper(substr($cashierUser->name,0,1)) : 'C' }}
+                </div>
+            @endif
+            <div class="ms-2 text-start">
+                <div class="fw-semibold username">{{ $cashierUser->name ?? 'Cashier' }}</div>
             </div>
-            <span class="sidebar-text">{{ Auth::user()->name ?? 'Cashier' }}</span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="userDropdown">
-            <li><a class="dropdown-item" href="{{ route('profile.edit') }}">
-                <i class="fas fa-user me-2"></i>Profile
-            </a></li>
-            <li><a class="dropdown-item" href="{{ route('profile.password') }}">
-                <i class="fas fa-key me-2"></i>Change Password
-            </a></li>
+
+        <ul class="dropdown-menu user-dropdown-menu" aria-labelledby="sidebarUserDropdown">
+            <li class="px-3 py-2">
+                <div class="d-flex align-items-center gap-2">
+                    @if(!empty($cashierAvatarUrl))
+                        <img src="{{ $cashierAvatarUrl }}" alt="{{ $cashierUser->name ?? 'Cashier' }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover">
+                    @else
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:40px;height:40px;background:linear-gradient(135deg, #2196F3, #00E5FF);color:#0D47A1;font-weight:700">
+                            {{ $cashierUser ? strtoupper(substr($cashierUser->name,0,1)) : 'C' }}
+                        </div>
+                    @endif
+                    <div class="ms-2">
+                        <div class="small text-muted">{{ $cashierUser->userType->name ?? ($cashierUser->role ?? 'Cashier') }}</div>
+                        <div class="small text-muted">{{ $cashierUser->email ?? '' }}</div>
+                    </div>
+                </div>
+            </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-                <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('profile.edit') }}">
+                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20v-1c0-2.21 3.58-4 8-4s8 1.79 8 4v1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('profile.password') }}">
+                    <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                    <span>Change Password</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
-                    <button type="submit" class="dropdown-item text-danger">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
+                        <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 19V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Logout</span>
                     </button>
                 </form>
             </li>
@@ -611,6 +734,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         `;
         document.head.appendChild(style);
+    }
+
+    // Initialize user account dropdown explicitly (Bootstrap)
+    const userDropdown = document.getElementById('sidebarUserDropdown');
+    if (userDropdown && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+        new bootstrap.Dropdown(userDropdown, {
+            boundary: 'viewport',
+            reference: 'toggle',
+            display: 'dynamic'
+        });
     }
 });
 </script>

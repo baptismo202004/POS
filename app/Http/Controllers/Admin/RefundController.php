@@ -31,8 +31,9 @@ class RefundController extends Controller
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
 
-        // Get recent refunds for the table
+        // Get today's refunds for the table (to match the dashboard "refunds today" alert)
         $refunds = Refund::with(['sale', 'saleItem.product', 'product', 'cashier'])
+            ->whereDate('created_at', $today)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 

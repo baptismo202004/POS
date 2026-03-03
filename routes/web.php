@@ -147,6 +147,11 @@ Route::post('/cashier/suppliers', [CashierDashboardController::class, 'supplierS
 // Cashier Inventory
 Route::get('/cashier/inventory', [CashierDashboardController::class, 'inventoryIndex'])->middleware('auth')->name('cashier.inventory.index');
 
+// Cashier Stock Management (branch-scoped)
+Route::get('/cashier/stock-management', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'cashierIndex'])
+    ->middleware('auth')
+    ->name('cashier.stock-management.index');
+
 // Cashier Stock In (under Inventory)
 Route::get('/cashier/stockin', [CashierDashboardController::class, 'stockInIndex'])->middleware('auth')->name('cashier.stockin.index');
 Route::get('/cashier/stockin/create', [CashierDashboardController::class, 'stockInCreate'])->middleware('auth')->name('cashier.stockin.create');

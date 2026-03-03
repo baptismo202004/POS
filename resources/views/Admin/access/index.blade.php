@@ -15,7 +15,6 @@
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                 <i class="fas fa-user-plus me-2"></i>Add New User
             </button>
-            <a href="{{ route('admin.expenses.index') }}" class="btn btn-outline-primary">Back to Expenses</a>
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
                 <i class="fas fa-shield-alt me-2"></i>Add Role
             </button>
@@ -345,6 +344,7 @@ function getDefaultPermissions() {
         { module: 'product_category', view: true, create: true, edit: true, delete: true },
         { module: 'purchases', view: true, create: true, edit: true, delete: false },
         { module: 'inventory', view: true, create: false, edit: true, delete: false },
+        { module: 'stock_management', view: true, create: false, edit: true, delete: false },
         { module: 'stock_in', view: true, create: true, edit: false, delete: false },
         { module: 'stock_transfer', view: true, create: true, edit: true, delete: false },
         { module: 'sales', view: true, create: false, edit: false, delete: false },
@@ -376,6 +376,7 @@ function displayPermissions(roleId, permissions) {
         'product_category': 'Product Category',
         'purchases': 'Purchase',
         'inventory': 'Inventory',
+        'stock_management': 'Stock Management',
         'stock_in': 'Stock In',
         'stock_transfer': 'Stock Transfer',
         'sales': 'Sales',

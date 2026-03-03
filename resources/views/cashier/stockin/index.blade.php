@@ -22,7 +22,7 @@
                                 <table class="table table-striped table-hover">
                                     <thead>
                                         <tr>
-                                            <th><a href="{{ route('cashier.stockin.index', ['sort' => 'product', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
+                                            <th>Product</th>
                                             <th>Purchase Ref</th>
                                             <th>Quantity</th>
                                             <th>Price</th>
@@ -80,6 +80,5 @@
             confirmButtonColor: 'var(--theme-color)',
         });
     @endif
-});
 </script>
 @endpush

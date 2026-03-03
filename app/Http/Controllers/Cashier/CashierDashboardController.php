@@ -86,13 +86,12 @@ class CashierDashboardController extends Controller
         $todayCreditRevenue = (clone $todayCreditPaymentsQuery)->sum('payment_amount');
         $todayCreditPayments = $todayCreditPaymentsQuery->take(10)->get();
 
-        // Get low stock items count for the current branch
-        $lowStockCount = Product::whereHas('stockIns', function ($query) use ($branchId) {
-            $query->where('branch_id', $branchId)
-                ->whereRaw('stock_ins.quantity < products.low_stock_threshold');
-        })
+        // Cash on hand today: total cash sales for today (excluding credit)
+        $cashOnHandToday = DB::table('sales')
             ->where('branch_id', $branchId)
-            ->count();
+            ->whereDate('created_at', $today)
+            ->where('payment_method', 'cash')
+            ->sum('total_amount');
 
         // Get top products for the current branch
         $topProducts = DB::table('sale_items')
@@ -124,6 +123,7 @@ class CashierDashboardController extends Controller
             'product_category' => ['label' => 'Product Category', 'icon' => 'tags'],
             'purchases' => ['label' => 'Purchases', 'icon' => 'shopping-bag'],
             'inventory' => ['label' => 'Inventory', 'icon' => 'warehouse'],
+            'stock_management' => ['label' => 'Stock Management', 'icon' => 'warehouse'],
             'stock_in' => ['label' => 'Stock In', 'icon' => 'sign-in-alt'],
             'stock_transfer' => ['label' => 'Stock Transfer', 'icon' => 'exchange-alt'],
             'customer' => ['label' => 'Customers', 'icon' => 'users'],
@@ -157,7 +157,7 @@ class CashierDashboardController extends Controller
             'todayRefunds',
             'todayCreditRevenue',
             'todayCreditPayments',
-            'lowStockCount',
+            'cashOnHandToday',
             'topProducts',
             'recentSales',
             'modules',
@@ -259,11 +259,27 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $sortBy = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
+        // Use same parameter names as the Blade view and default to oldest first
+        $sortBy = $request->get('sort_by', 'id');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $dateFrom = $request->get('date_from');
+        $search = $request->get('search');
 
         $query = Sale::where('branch_id', $branchId)
             ->with(['saleItems.product', 'customer']);
+
+        // If a date is selected, show only sales from that specific date
+        if (!empty($dateFrom)) {
+            $query->whereDate('created_at', $dateFrom);
+        }
+
+        // If a search term is provided, filter by receipt # (id) or customer name
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%");
+            });
+        }
 
         // Apply sorting
         $allowedSorts = ['id', 'total_amount', 'created_at', 'payment_method'];
@@ -272,6 +288,9 @@ class CashierDashboardController extends Controller
         }
 
         $sales = $query->paginate(15);
+
+        // Preserve current query params in pagination links
+        $sales->appends($request->query());
 
         return view('cashier.sales.index', compact('sales', 'sortBy', 'sortDirection'));
     }
@@ -313,27 +332,40 @@ class CashierDashboardController extends Controller
 
         $validated = $request->validate([
             'reason' => 'required|string|max:255',
+            'quantity' => 'nullable|integer|min:1',
         ]);
 
         try {
             DB::transaction(function () use ($sale, $user, $validated) {
                 $saleItems = $sale->saleItems()->with('product')->get();
 
-                foreach ($saleItems as $item) {
-                    // Create refund record per item
-                    $refund = Refund::create([
+                $quantity = $validated['quantity'] ?? null;
+
+                // If a specific quantity is provided and there is exactly one item in the sale,
+                // perform a partial refund for that item only.
+                if ($quantity !== null && $saleItems->count() === 1) {
+                    $item = $saleItems->first();
+                    $qtyToRefund = min($quantity, $item->quantity);
+
+                    if ($qtyToRefund <= 0) {
+                        throw new \InvalidArgumentException('Invalid refund quantity.');
+                    }
+
+                    $unitPrice = $item->quantity > 0 ? ($item->subtotal / $item->quantity) : 0;
+                    $refundAmount = $unitPrice * $qtyToRefund;
+
+                    Refund::create([
                         'sale_id' => $sale->id,
                         'sale_item_id' => $item->id,
                         'product_id' => $item->product_id,
                         'cashier_id' => $user->id,
-                        'quantity_refunded' => $item->quantity,
-                        'refund_amount' => $item->subtotal,
+                        'quantity_refunded' => $qtyToRefund,
+                        'refund_amount' => $refundAmount,
                         'reason' => $validated['reason'],
                         'status' => 'approved',
                         'notes' => null,
                     ]);
 
-                    // Update inventory for each product similar to refundsStore
                     $product = Product::find($item->product_id);
                     if ($product) {
                         $stockIn = StockIn::where('product_id', $product->id)
@@ -341,17 +373,9 @@ class CashierDashboardController extends Controller
                             ->first();
 
                         if ($stockIn) {
-                            $newSold = max(0, $stockIn->sold - $item->quantity);
+                            $newSold = max(0, $stockIn->sold - $qtyToRefund);
                             $stockIn->sold = $newSold;
                             $stockIn->save();
-                        } else {
-                            StockIn::create([
-                                'product_id' => $product->id,
-                                'branch_id' => $sale->branch_id,
-                                'quantity' => $item->quantity,
-                                'sold' => 0,
-                                'price' => $item->unit_price,
-                            ]);
                         }
 
                         $stockOut = StockOut::where('sale_id', $sale->id)
@@ -359,7 +383,7 @@ class CashierDashboardController extends Controller
                             ->first();
 
                         if ($stockOut) {
-                            $newQuantity = max(0, $stockOut->quantity - $item->quantity);
+                            $newQuantity = max(0, $stockOut->quantity - $qtyToRefund);
                             if ($newQuantity <= 0) {
                                 $stockOut->delete();
                             } else {
@@ -368,17 +392,72 @@ class CashierDashboardController extends Controller
                             }
                         }
                     }
-                }
 
-                // Update sale totals; keep existing status to avoid enum/length issues
-                $sale->total_amount = 0;
-                $sale->save();
+                    // Reduce sale total by the refunded amount; leave status column unchanged
+                    $sale->total_amount = max(0, $sale->total_amount - $refundAmount);
+                    $sale->save();
+                } else {
+                    // Fallback: full-sale refund (existing behavior)
+                    foreach ($saleItems as $item) {
+                        Refund::create([
+                            'sale_id' => $sale->id,
+                            'sale_item_id' => $item->id,
+                            'product_id' => $item->product_id,
+                            'cashier_id' => $user->id,
+                            'quantity_refunded' => $item->quantity,
+                            'refund_amount' => $item->subtotal,
+                            'reason' => $validated['reason'],
+                            'status' => 'approved',
+                            'notes' => null,
+                        ]);
+
+                        $product = Product::find($item->product_id);
+                        if ($product) {
+                            $stockIn = StockIn::where('product_id', $product->id)
+                                ->where('branch_id', $sale->branch_id)
+                                ->first();
+
+                            if ($stockIn) {
+                                $newSold = max(0, $stockIn->sold - $item->quantity);
+                                $stockIn->sold = $newSold;
+                                $stockIn->save();
+                            } else {
+                                StockIn::create([
+                                    'product_id' => $product->id,
+                                    'branch_id' => $sale->branch_id,
+                                    'quantity' => $item->quantity,
+                                    'sold' => 0,
+                                    'price' => $item->unit_price,
+                                ]);
+                            }
+
+                            $stockOut = StockOut::where('sale_id', $sale->id)
+                                ->where('product_id', $product->id)
+                                ->first();
+
+                            if ($stockOut) {
+                                $newQuantity = max(0, $stockOut->quantity - $item->quantity);
+                                if ($newQuantity <= 0) {
+                                    $stockOut->delete();
+                                } else {
+                                    $stockOut->quantity = $newQuantity;
+                                    $stockOut->save();
+                                }
+                            }
+                        }
+                    }
+
+                    // Full refund: set total to zero; leave status column unchanged
+                    $sale->total_amount = 0;
+                    $sale->save();
+                }
             });
 
             return response()->json([
                 'success' => true,
                 'message' => 'Sale refunded successfully.',
-                'status' => $sale->status,
+                // For UI purposes, report status as 'refunded' even if the DB column is numeric/enum
+                'status' => 'refunded',
             ]);
         } catch (\Exception $e) {
             Log::error('Quick refund error: '.$e->getMessage());
@@ -1093,8 +1172,10 @@ class CashierDashboardController extends Controller
         }
 
         $stockIns = StockIn::with(['product', 'purchase'])
-            ->where('branch_id', $branchId)
-            ->orderBy('created_at', 'desc')
+            ->where('stock_ins.branch_id', $branchId)
+            ->join('products', 'stock_ins.product_id', '=', 'products.id')
+            ->orderBy('products.product_name', 'asc')
+            ->select('stock_ins.*')
             ->paginate(20);
 
         return view('cashier.stockin.index', compact('stockIns'));

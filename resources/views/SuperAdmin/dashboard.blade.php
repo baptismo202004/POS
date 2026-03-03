@@ -589,6 +589,7 @@
         .alerts-list {
             max-height: 100%;
             overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal scrollbar in widgets like Cashier Performance */
         }
         
         .grid-stack-item[gs-h="2"] .top-list,
@@ -2222,7 +2223,7 @@
       }
       
       if (alerts.refunds > 0) {
-        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/superadmin/admin/refunds'"><i class="fas fa-undo alert-icon" style="color:#FF9800"></i><div class="alert-content"><div class="alert-title">${alerts.refunds} refunds today</div><div class="alert-description">Review returns</div></div></div>`);
+        alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/admin/refunds'"><i class="fas fa-undo alert-icon" style="color:#FF9800"></i><div class="alert-content"><div class="alert-title">${alerts.refunds} refunds today</div><div class="alert-description">Review returns</div></div></div>`);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';

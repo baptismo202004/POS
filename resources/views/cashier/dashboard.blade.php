@@ -2,359 +2,880 @@
 @section('title', 'Cashier Dashboard')
 
 @push('stylesDashboard')
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Hide sidebar on dashboard only */
+        @font-face { font-family:'Geist'; src:url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+        @font-face { font-family:'Geist'; src:url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2'); font-weight:500; font-display:swap; }
+        @font-face { font-family:'Geist'; src:url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2'); font-weight:600; font-display:swap; }
+        @font-face { font-family:'Geist'; src:url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2'); font-weight:700; font-display:swap; }
+
+        aside#sidebar,
         aside.sidebar-fixed {
             display: none !important;
         }
+
         main.main-content {
             margin-left: 0 !important;
         }
-        
-        /* ========================================
-           ELECTRIC MODERN PALETTE - CASHIER DASHBOARD
-           Minimal, branch-scoped interface
-           ======================================== */
-        
-        :root {
-            /* Electric Modern Palette */
-            --electric-blue: #0D47A1;
-            --neon-blue: #2196F3;
-            --cyan-bright: #00E5FF;
-            --magenta: #E91E63;
-            --violet: #9C27B0;
-            --lime-electric: #C6FF00;
-            --slate-bg: #ECEFF1;
-            --ice-white: #FAFBFC;
-            
-            /* Dashboard Color Mapping */
-            --app-bg: linear-gradient(135deg, #ECEFF1 0%, #E8EAF6 100%);
-            --card-bg: #FAFBFC;
-            --card-border: rgba(13, 71, 161, 0.15);
-            --page-header: #263238;
-            
-            /* KPI Colors - Electric Theme */
-            --text-primary: #263238;
-            --text-secondary: #546E7A;
-            --success-teal: #43A047;
-            --danger-red: #E53935;
-            --warning-yellow: #C6FF00;
-            --attention-orange: #E91E63;
-            --info-blue: #2196F3;
-            --hover-blue: #00E5FF;
-            --inactive-text: #78909C;
+
+        /* Animations (KPI + Nav) */
+        .cd-kpi-card, .cd-nav-card {
+            will-change: transform, box-shadow;
         }
-        
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, var(--slate-bg) 0%, #E8EAF6 100%);
+
+        .cd-kpi-card::before,
+        .cd-nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.58) 50%, transparent 60%);
+            pointer-events: none;
+            z-index: 2;
         }
-        
-        .sidebar { width: 220px; }
-        
-        .dash-header { 
-            font-size: 24px; 
-            font-weight: 700; 
-            background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+
+        .cd-kpi-card:hover::before,
+        .cd-nav-card:hover::before {
+            animation: cd-shine-sweep .55s ease forwards;
+        }
+
+        @keyframes cd-shine-sweep {
+            0%   { left: -100%; opacity: 1; }
+            100% { left: 150%; opacity: 0; }
+        }
+
+        .cd-kpi-card::after,
+        .cd-nav-card::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            width: 0;
+            height: 0;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .cd-kpi-card[data-color="blue"]::after  { background: rgba(26,86,219,.20); }
+        .cd-kpi-card[data-color="mint"]::after  { background: rgba(16,185,129,.20); }
+        .cd-kpi-card[data-color="amber"]::after { background: rgba(245,158,11,.20); }
+        .cd-kpi-card[data-color="rose"]::after  { background: rgba(244,63,94,.20); }
+        .cd-nav-card::after { background: rgba(59,130,246,.18); }
+
+        .cd-kpi-card.is-clicked { animation: cd-kpi-bounce .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+        @keyframes cd-kpi-bounce {
+            0%   { transform: scale(1) translateY(0); }
+            18%  { transform: scale(.91) translateY(3px); }
+            45%  { transform: scale(.97) translateY(-5px); }
+            72%  { transform: scale(1.01) translateY(-1px); }
+            100% { transform: scale(1) translateY(0); }
+        }
+
+        .cd-kpi-card.is-clicked::after,
+        .cd-nav-card.is-clicked::after {
+            animation: cd-ripple .6s ease-out forwards;
+        }
+
+        @keyframes cd-ripple {
+            0%   { width: 0; height: 0; opacity: .55; transform: translate(-50%,-50%) scale(0); }
+            65%  { width: 290px; height: 290px; opacity: .2;  transform: translate(-50%,-50%) scale(1); }
+            100% { width: 330px; height: 330px; opacity: 0;   transform: translate(-50%,-50%) scale(1.1); }
+        }
+
+        .cd-kpi-card:hover .cd-kpi-icon,
+        .cd-nav-card:hover .cd-nav-icon {
+            transform: scale(1.08) rotate(-4deg);
+        }
+
+        .cd-nav-card.is-clicked { animation: cd-card-click .55s cubic-bezier(.34,1.56,.64,1) forwards; }
+        @keyframes cd-card-click {
+            0%   { transform: scale(1) translateY(0); }
+            18%  { transform: scale(.93) translateY(2px); }
+            45%  { transform: scale(.96) translateY(-2px); }
+            70%  { transform: scale(.99) translateY(-1px); }
+            100% { transform: scale(1) translateY(0); }
+        }
+
+        .cd-kpi-card, .cd-nav-card {
+            opacity: 0;
+            transform: translateY(16px);
+            animation: cd-entry-fade .5s ease forwards;
+        }
+
+        @keyframes cd-entry-fade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .cd-kpi-card:nth-child(1) { animation-delay: .05s; }
+        .cd-kpi-card:nth-child(2) { animation-delay: .12s; }
+        .cd-kpi-card:nth-child(3) { animation-delay: .19s; }
+        .cd-kpi-card:nth-child(4) { animation-delay: .26s; }
+
+        .cd-nav-card:nth-child(1)  { animation-delay: .32s; }
+        .cd-nav-card:nth-child(2)  { animation-delay: .37s; }
+        .cd-nav-card:nth-child(3)  { animation-delay: .42s; }
+        .cd-nav-card:nth-child(4)  { animation-delay: .47s; }
+        .cd-nav-card:nth-child(5)  { animation-delay: .52s; }
+        .cd-nav-card:nth-child(6)  { animation-delay: .57s; }
+        .cd-nav-card:nth-child(7)  { animation-delay: .62s; }
+        .cd-nav-card:nth-child(8)  { animation-delay: .67s; }
+        .cd-nav-card:nth-child(9)  { animation-delay: .72s; }
+        .cd-nav-card:nth-child(10) { animation-delay: .77s; }
+
+        /* Navigation overlay */
+        #nav-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(242,244,249,0);
+            z-index: 9999;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .4s;
+        }
+
+        #nav-overlay.active {
+            pointer-events: all;
+            background: rgba(242,244,249,.88);
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            opacity: 0;
+            transform: scale(.82);
+            transition: opacity .3s .1s, transform .3s .1s;
+        }
+
+        #nav-overlay.active .nav-loader {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .nav-loader-icon {
+            width: 62px;
+            height: 62px;
+            border-radius: 18px;
+            background: linear-gradient(135deg,#1A56DB,#06B6D4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            color: white;
+            box-shadow: 0 8px 30px rgba(26,86,219,.35);
+            animation: loader-bounce .7s ease-in-out infinite alternate;
+        }
+
+        @keyframes loader-bounce {
+            from { transform: translateY(0); }
+            to   { transform: translateY(-8px); }
+        }
+
+        .nav-loader-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1A56DB;
+            letter-spacing: -0.01em;
+        }
+
+        .nav-loader-dots { display: flex; gap: 6px; }
+        .nav-loader-dots span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,#1A56DB,#06B6D4);
+            animation: dot-bounce .7s ease-in-out infinite alternate;
+        }
+        .nav-loader-dots span:nth-child(2) { animation-delay: .15s; }
+        .nav-loader-dots span:nth-child(3) { animation-delay: .30s; }
+
+        @keyframes dot-bounce {
+            from { transform: translateY(0); opacity: .4; }
+            to   { transform: translateY(-5px); opacity: 1; }
+        }
+
+        .cashier-dashboard-page {
+            font-family: 'Geist', 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.02em;
+            background: #F2F4F9;
+            color: #0C0F1A;
+            min-height: calc(100vh - 1px);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .cashier-dashboard-page::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+              linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .cashier-dashboard-wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 28px 60px;
+        }
+
+        .cd-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .cd-breadcrumb-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .cd-breadcrumb-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #06B6D4;
+            animation: cd-pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes cd-pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .cd-breadcrumb-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: #8892AA;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .cd-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0C0F1A;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .cd-title span {
+            background: linear-gradient(135deg, #1A56DB, #06B6D4);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -0.02em;
         }
-        
-        .branch-badge {
-            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
-            color: var(--electric-blue);
-            padding: 4px 12px;
+
+        .cd-welcome {
+            margin-top: 6px;
+            font-size: 14px;
+            color: #8892AA;
+        }
+
+        .cd-welcome strong {
+            color: #384060;
+            font-weight: 500;
+        }
+
+        .cd-branch-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(135deg, #EFF6FF, #ECFEFF);
+            border: 1px solid rgba(59,130,246,0.25);
+            color: #1A56DB;
+            padding: 3px 10px 3px 7px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-left: 8px;
         }
-        
-        /* Minimal KPI Cards */
-        .kpi-card { 
-            border-radius: 12px; 
-            padding: 16px; 
-            background: var(--card-bg);
-            border: 2px solid var(--card-border);
-            box-shadow: 0 2px 8px rgba(13, 71, 161, 0.08);
-            transition: all 0.3s;
+
+        .cd-branch-chip::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10B981;
+        }
+
+        .cd-user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #FFFFFF;
+            border: 1px solid rgba(200, 207, 224, 0.6);
+            border-radius: 40px;
+            padding: 6px 14px 6px 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(12,15,26,0.06), 0 8px 32px rgba(12,15,26,0.04);
+        }
+
+        .cd-user-pill:hover {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+        }
+
+        .cd-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1A56DB, #06B6D4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .cd-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .cd-user-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #0C0F1A;
+            line-height: 1.15;
+        }
+
+        .cd-user-role {
+            font-size: 11px;
+            color: #8892AA;
+            line-height: 1.15;
+        }
+
+        .cd-date-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            padding: 12px 20px;
+            background: #FFFFFF;
+            border: 1px solid rgba(200, 207, 224, 0.6);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(12,15,26,0.06), 0 8px 32px rgba(12,15,26,0.04);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .cd-date-left {
+            font-size: 14px;
+            font-weight: 600;
+            color: #384060;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cd-live-time {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0C0F1A;
+            letter-spacing: -0.03em;
+        }
+
+        .cd-live-time-sub { font-size: 12px; color: #8892AA; font-weight: 400; }
+
+        .cd-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 1024px) { .cd-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px)  { .cd-kpi-grid { grid-template-columns: 1fr; } }
+
+        .cd-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(200, 207, 224, 0.6);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(12,15,26,0.06), 0 8px 32px rgba(12,15,26,0.04);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
             height: 100%;
         }
-        
-        .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.15);
-            border-color: var(--cyan-bright);
+
+        .cd-kpi-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(12,15,26,0.10); }
+
+        .cd-kpi-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
         }
-        
-        .kpi-icon { 
+
+        .cd-kpi-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .cd-kpi-icon.blue  { background: #EFF6FF; color: #1A56DB; }
+        .cd-kpi-icon.mint  { background: #ECFDF5; color: #10B981; }
+        .cd-kpi-icon.amber { background: #FFFBEB; color: #F59E0B; }
+        .cd-kpi-icon.rose  { background: #FFF1F2; color: #F43F5E; }
+
+        .cd-kpi-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0C0F1A;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .cd-kpi-label {
+            font-size: 12px;
+            color: #8892AA;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        .cd-kpi-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            border-radius: 16px 0 0 16px;
+        }
+
+        .cd-kpi-bar.blue  { background: linear-gradient(180deg, #1A56DB, #06B6D4); }
+        .cd-kpi-bar.mint  { background: linear-gradient(180deg, #10B981, #34D399); }
+        .cd-kpi-bar.amber { background: linear-gradient(180deg, #F59E0B, #FCD34D); }
+        .cd-kpi-bar.rose  { background: linear-gradient(180deg, #F43F5E, #FB7185); }
+
+        .cd-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8892AA;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cd-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(200, 207, 224, 0.6);
+        }
+
+        .cd-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1024px) { .cd-nav-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 640px)  { .cd-nav-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .cd-nav-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(200, 207, 224, 0.6);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #0C0F1A;
+            transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 1px 3px rgba(12,15,26,0.06), 0 8px 32px rgba(12,15,26,0.04);
+        }
+
+        .cd-nav-card:hover {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 12px 30px rgba(59,130,246,0.12);
+            border-color: rgba(59,130,246,0.35);
+            text-decoration: none;
+            color: #0C0F1A;
+        }
+
+        .cd-nav-icon {
             width: 40px;
             height: 40px;
             border-radius: 10px;
+            background: #F2F4F9;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(0, 229, 255, 0.15));
-            color: var(--neon-blue);
-            margin-bottom: 12px;
+            font-size: 16px;
+            color: #3B82F6;
+            transition: all 0.22s;
+            flex-shrink: 0;
         }
-        
-        .kpi-value {
-            font-size: 24px;
+
+        .cd-nav-card:hover .cd-nav-icon {
+            background: linear-gradient(135deg, #1A56DB, #06B6D4);
+            color: #FFFFFF;
+        }
+
+        .cd-nav-title {
+            font-size: 13px;
             font-weight: 700;
-            color: var(--electric-blue);
-            margin-bottom: 4px;
-            font-family: 'Inter', monospace;
+            color: #0C0F1A;
+            line-height: 1.2;
         }
-        
-        .kpi-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            font-weight: 600;
+
+        .cd-nav-arrow {
+            margin-left: auto;
+            color: #C8CFE0;
+            font-size: 11px;
+            transition: all 0.2s;
         }
-        
-        /* Navigation Cards */
-        .nav-card {
-            border-radius: 12px;
-            padding: 20px;
-            background: var(--card-bg);
-            border: 2px solid var(--card-border);
-            transition: all 0.3s;
-            cursor: pointer;
-            text-decoration: none;
-            color: var(--text-primary);
+
+        .cd-nav-card:hover .cd-nav-arrow {
+            color: #3B82F6;
+            transform: translateX(2px);
+        }
+
+        .cd-main-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) { .cd-main-grid { grid-template-columns: 1fr; } }
+
+        .cd-card-panel {
+            background: #FFFFFF;
+            border: 1px solid rgba(200, 207, 224, 0.6);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 1px 3px rgba(12,15,26,0.06), 0 8px 32px rgba(12,15,26,0.04);
+        }
+
+        .cd-panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0C0F1A;
+            margin-bottom: 18px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 8px;
         }
-        
-        .nav-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(33, 150, 243, 0.15);
-            border-color: var(--cyan-bright);
-            color: var(--text-primary);
-            text-decoration: none;
+
+        .cd-panel-title i {
+            color: #3B82F6;
+            font-size: 13px;
         }
-        
-        .nav-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+
+        .cd-chart-wrap { position: relative; height: 220px; }
+
+        .cd-sales-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--neon-blue), var(--cyan-bright));
-            color: var(--electric-blue);
-            font-size: 20px;
-        }
-        
-        .nav-content h5 {
-            margin: 0 0 4px 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--electric-blue);
-        }
-        
-        .nav-content p {
-            margin: 0;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        /* Chart Container */
-        .chart-container {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            height: 300px;
-            border: 2px solid var(--card-border);
-            box-shadow: 0 2px 8px rgba(13, 71, 161, 0.08);
-        }
-        
-        .chart-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--electric-blue);
-            margin-bottom: 16px;
-        }
-        
-        /* Recent Sales List */
-        .sales-list {
-            max-height: 200px;
+            flex-direction: column;
+            gap: 2px;
+            max-height: 260px;
             overflow-y: auto;
         }
-        
-        .sales-item {
+
+        .cd-sales-list::-webkit-scrollbar { width: 3px; }
+        .cd-sales-list::-webkit-scrollbar-thumb { background: #C8CFE0; border-radius: 3px; }
+
+        .cd-sale-row {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--card-border);
-        }
-        
-        .sales-item:last-child {
-            border-bottom: none;
-        }
-        
-        .sale-amount {
-            font-weight: 600;
-            color: var(--neon-blue);
-            font-family: 'Inter', monospace;
-        }
-        
-        .sale-time {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-        
-        /* Top Products */
-        .product-item {
-            display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--card-border);
-        }
-        
-        .product-item:last-child {
-            border-bottom: none;
-        }
-        
-        .product-name {
-            font-size: 13px;
-            color: var(--text-primary);
-            flex: 1;
-            margin-right: 8px;
-        }
-        
-        .product-revenue {
-            font-weight: 600;
-            color: var(--neon-blue);
-            font-family: 'Inter', monospace;
-            font-size: 12px;
-        }
-        
-        /* Alert Badge */
-        .alert-badge {
-            background: linear-gradient(135deg, var(--magenta), var(--violet));
-            color: white;
-            padding: 2px 8px;
+            padding: 10px 10px;
             border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-left: 8px;
+            transition: background 0.15s;
         }
-        
-        /* Low Stock Item Hover */
-        .low-stock-item:hover {
-            background-color: rgba(33, 150, 243, 0.1);
-            transition: background-color 0.3s ease;
+
+        .cd-sale-row:hover { background: #F2F4F9; }
+
+        .cd-sale-left { display: flex; align-items: center; gap: 10px; }
+
+        .cd-sale-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1A56DB, #06B6D4);
+            flex-shrink: 0;
         }
-        
-        .low-stock-item .badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
+
+        .cd-sale-id { font-size: 11px; color: #8892AA; font-weight: 500; }
+        .cd-sale-time { font-size: 11px; color: #C8CFE0; }
+
+        .cd-sale-amount {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0C0F1A;
         }
-        
-        /* Responsive */
-        @media (max-width: 767.98px) {
-            .kpi-card { margin-bottom: 12px; }
-            .nav-card { margin-bottom: 12px; }
-            .chart-container { margin-bottom: 16px; }
+
+        .cd-bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
+
+        @media (max-width: 768px) { .cd-bottom-grid { grid-template-columns: 1fr; } }
+
+        .cd-product-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background 0.15s;
+        }
+
+        .cd-product-row:hover { background: #F2F4F9; }
+
+        .cd-product-rank {
+            font-size: 11px;
+            font-weight: 700;
+            color: #C8CFE0;
+            width: 18px;
+            flex-shrink: 0;
+        }
+
+        .cd-product-bar-wrap { flex: 1; }
+
+        .cd-product-name {
+            font-size: 13px;
+            color: #0C0F1A;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cd-product-bar-bg {
+            height: 4px;
+            background: #F2F4F9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .cd-product-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1A56DB, #06B6D4);
+            border-radius: 4px;
+        }
+
+        .cd-product-revenue {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0C0F1A;
+            flex-shrink: 0;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .cd-stat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #F2F4F9;
+        }
+
+        .cd-stat-row:last-child { border-bottom: none; }
+        .cd-stat-left { display: flex; align-items: center; gap: 10px; }
+
+        .cd-stat-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .cd-stat-label { font-size: 13px; color: #384060; }
+        .cd-stat-value { font-size: 14px; font-weight: 700; color: #0C0F1A; }
+
+        .low-stock-item:hover { background-color: rgba(59,130,246,0.08); transition: background-color 0.3s ease; }
+        .low-stock-item .badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
     </style>
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <!-- Header -->
-    <div class="d-flex flex-wrap align-items-start justify-content-between mb-4">
-        <div>
-            <div class="dash-header mb-2">Cashier Dashboard</div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="text-muted small">Welcome back, {{ auth()->user()->name }}</span>
-                @if($branch)
-                    <span class="branch-badge">{{ $branch->branch_name }}</span>
-                @endif
-            </div>
-        </div>
+@php
+    $cashierUser = auth()->user();
+    $cashierAvatarUrl = null;
+    if ($cashierUser && !empty($cashierUser->profile_picture)) {
+        $av = $cashierUser->profile_picture;
+        if (\Illuminate\Support\Str::startsWith($av, ['http://', 'https://', '//'])) {
+            $cashierAvatarUrl = $av;
+        } elseif (\Illuminate\Support\Str::startsWith($av, 'storage/')) {
+            $cashierAvatarUrl = asset($av);
+        } else {
+            $candidate = ltrim($av, '/');
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($candidate)) {
+                $cashierAvatarUrl = asset('storage/' . $candidate);
+            } elseif (file_exists(public_path($candidate))) {
+                $cashierAvatarUrl = asset($candidate);
+            } else {
+                $cashierAvatarUrl = asset($candidate);
+            }
+        }
+    }
+@endphp
 
-        <!-- User Dropdown -->
-        <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: white;">
-                <i class="fas fa-user me-2"></i>
-                {{ auth()->user()->name }}
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <a class="dropdown-item" href="{{ route('logout') }}"
-                           onclick="event.preventDefault(); this.closest('form').submit();">
-                            Logout
-                        </a>
-                    </form>
-                </li>
-            </ul>
+<div class="cashier-dashboard-page">
+    <div id="nav-overlay">
+        <div class="nav-loader">
+            <div class="nav-loader-icon" id="loaderIcon"><i class="fas fa-gauge-high"></i></div>
+            <div class="nav-loader-label" id="loaderLabel">Loading…</div>
+            <div class="nav-loader-dots"><span></span><span></span><span></span></div>
         </div>
     </div>
-
-    <!-- KPI Cards -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card" onclick="showSalesSummaryModal()" style="cursor: pointer;">
-                <div class="kpi-icon">
-                    <i class="fas fa-cash-register"></i>
+    <div class="cashier-dashboard-wrap">
+        <div class="cd-header">
+            <div>
+                <div class="cd-breadcrumb-line">
+                    <div class="cd-breadcrumb-dot"></div>
+                    <span class="cd-breadcrumb-text">Point of Sale · Branch View</span>
                 </div>
-                <div class="kpi-value">₱{{ number_format($todaySales->total_revenue ?? 0, 2) }}</div>
-                <div class="kpi-label">Today's Sales</div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card" onclick="showCreditRevenueModal()" style="cursor: pointer;">
-                <div class="kpi-icon">
-                    <i class="fas fa-coins"></i>
-                </div>
-                <div class="kpi-value">₱{{ number_format($todayCreditRevenue ?? 0, 2) }}</div>
-                <div class="kpi-label">Credit Payments Today</div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card" onclick="showExpensesSummaryModal()" style="cursor: pointer;">
-                <div class="kpi-icon">
-                    <i class="fas fa-wallet"></i>
-                </div>
-                <div class="kpi-value">₱{{ number_format($todayExpenses, 2) }}</div>
-                <div class="kpi-label">Today's Expenses</div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="kpi-card" onclick="showLowStockModal()" style="cursor: pointer;">
-                <div class="kpi-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="kpi-value">
-                    {{ $lowStockCount }}
-                    @if($lowStockCount > 0)
-                        <span class="alert-badge">Alert</span>
+                <div class="cd-title">Cashier <span>Dashboard</span></div>
+                <div class="cd-welcome">
+                    Welcome back, <strong>{{ $cashierUser->name ?? 'Cashier' }}</strong>
+                    @if($branch)
+                        <span class="cd-branch-chip">{{ $branch->branch_name }}</span>
                     @endif
                 </div>
-                <div class="kpi-label">Low Stock Items</div>
+            </div>
+
+            <div class="dropdown">
+                <button class="cd-user-pill" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="cd-avatar">
+                        @if(!empty($cashierAvatarUrl))
+                            <img src="{{ $cashierAvatarUrl }}" alt="{{ $cashierUser->name ?? 'Cashier' }}">
+                        @else
+                            {{ $cashierUser ? strtoupper(substr($cashierUser->name,0,1)) : 'C' }}
+                        @endif
+                    </div>
+                    <div>
+                        <div class="cd-user-name">{{ $cashierUser->name ?? 'Cashier' }}</div>
+                        <div class="cd-user-role">Cashier</div>
+                    </div>
+                    <i class="fas fa-chevron-down" style="color:#8892AA;font-size:10px;margin-left:4px;"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown" style="border-radius: 14px; border: 1px solid rgba(200, 207, 224, 0.6); box-shadow: 0 20px 60px rgba(12,15,26,0.12); overflow: hidden;">
+                    <li class="px-3 py-2" style="border-bottom: 1px solid #F2F4F9;">
+                        <div class="small fw-semibold">{{ $cashierUser->name ?? 'Cashier' }}</div>
+                        <div class="small text-muted">{{ $cashierUser->email ?? '' }}</div>
+                    </li>
+                    <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-user" style="width:14px;color:#3B82F6"></i> Profile</a></li>
+                    <li><hr class="dropdown-divider" style="margin: 4px 0;"></li>
+                    <li>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();" style="color:#F43F5E;">
+                                <i class="fas fa-sign-out-alt" style="width:14px"></i> Logout
+                            </a>
+                        </form>
+                    </li>
+                </ul>
             </div>
         </div>
-    </div>
 
-    <!-- Navigation Cards -->
-    <div class="row mb-4">
+        <div class="cd-date-bar">
+            <div class="cd-date-left">
+                <i class="fas fa-calendar-day" style="color:#3B82F6"></i>
+                <span id="liveDate"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-clock" style="color:#06B6D4;font-size:13px;"></i>
+                <span class="cd-live-time" id="liveTime">--:--:-- --</span>
+                <span class="cd-live-time-sub">local time</span>
+            </div>
+        </div>
+
+        <div class="cd-kpi-grid">
+            <div class="cd-kpi-card" data-color="blue" data-label="Today's Sales" data-icon="cash-register" onclick="showSalesSummaryModal()">
+                <div class="cd-kpi-bar blue"></div>
+                <div class="cd-kpi-top">
+                    <div class="cd-kpi-icon blue"><i class="fas fa-cash-register"></i></div>
+                </div>
+                <div class="cd-kpi-value">₱{{ number_format($todaySales->total_revenue ?? 0, 2) }}</div>
+                <div class="cd-kpi-label">Today's Sales</div>
+            </div>
+
+            <div class="cd-kpi-card" data-color="mint" data-label="Credit Payments" data-icon="coins" onclick="showCreditRevenueModal()">
+                <div class="cd-kpi-bar mint"></div>
+                <div class="cd-kpi-top">
+                    <div class="cd-kpi-icon mint"><i class="fas fa-coins"></i></div>
+                </div>
+                <div class="cd-kpi-value">₱{{ number_format($todayCreditRevenue ?? 0, 2) }}</div>
+                <div class="cd-kpi-label">Credit Payments Today</div>
+            </div>
+
+            <div class="cd-kpi-card" data-color="amber" data-label="Today's Expenses" data-icon="wallet" onclick="showExpensesSummaryModal()">
+                <div class="cd-kpi-bar amber"></div>
+                <div class="cd-kpi-top">
+                    <div class="cd-kpi-icon amber"><i class="fas fa-wallet"></i></div>
+                </div>
+                <div class="cd-kpi-value">₱{{ number_format($todayExpenses, 2) }}</div>
+                <div class="cd-kpi-label">Today's Expenses</div>
+            </div>
+
+            <div class="cd-kpi-card" data-color="rose" data-label="Cash on Hand" data-icon="money-bill-wave" style="cursor: default;">
+                <div class="cd-kpi-bar rose"></div>
+                <div class="cd-kpi-top">
+                    <div class="cd-kpi-icon rose"><i class="fas fa-money-bill-wave"></i></div>
+                </div>
+                <div class="cd-kpi-value">₱{{ number_format($cashOnHandToday, 2) }}</div>
+                <div class="cd-kpi-label">Cash on Hand Today</div>
+            </div>
+        </div>
+
+        <div class="cd-section-label">Quick Access</div>
         @php
             $dashboardRoutes = [
                 'products' => route('cashier.products.index'),
                 'product_category' => route('cashier.categories.index'),
                 'purchases' => route('cashier.purchases.index'),
                 'inventory' => route('cashier.inventory.index'),
+                'stock_management' => route('cashier.stock-management.index'),
                 'stock_in' => route('cashier.stockin.index'),
                 'customer' => route('cashier.customers.index'),
                 'refund_return' => route('cashier.refunds.index'),
@@ -365,42 +886,49 @@
             ];
         @endphp
 
-        @foreach ($modules as $moduleKey => $moduleData)
-            @canAccess($moduleKey, 'view')
-                <div class="col-lg-3 col-md-4 col-sm-6 mb-3 {{ in_array($moduleKey, ['stock_in','product_category']) ? 'd-none' : '' }}">
-                    <a href="{{ $dashboardRoutes[$moduleKey] ?? '#' }}" class="nav-card">
-                        <div class="nav-icon">
-                            <i class="fas fa-{{ $moduleData['icon'] ?? 'cogs' }}"></i>
-                        </div>
-                        <div class="nav-content">
-                            <h5>{{ $moduleData['label'] }}</h5>
-                        </div>
+        <div class="cd-nav-grid">
+            @foreach ($modules as $moduleKey => $moduleData)
+                @canAccess($moduleKey, 'view')
+                    <a href="{{ $dashboardRoutes[$moduleKey] ?? '#' }}" class="cd-nav-card {{ in_array($moduleKey, ['stock_in','product_category']) ? 'd-none' : '' }}" data-label="{{ $moduleData['label'] }}" data-icon="{{ $moduleData['icon'] ?? 'gauge-high' }}">
+                        <div class="cd-nav-icon"><i class="fas fa-{{ $moduleData['icon'] ?? 'cogs' }}"></i></div>
+                        <span class="cd-nav-title">{{ $moduleData['label'] }}</span>
+                        <i class="fas fa-arrow-right cd-nav-arrow"></i>
                     </a>
-                </div>
-            @endif
-        @endforeach
-    </div>
-
-    <!-- Charts and Lists -->
-    <div class="row">
-        <div class="col-lg-8 mb-4">
-            <div class="chart-container">
-                <div class="chart-title">Sales Trend (Last 7 Days)</div>    
-                <canvas id="salesChart"></canvas>
-            </div>
+                @endif
+            @endforeach
         </div>
-        <div class="col-lg-4 mb-4">
-            <div class="chart-container">
-                <div class="chart-title">Recent Sales</div>
-                <div class="sales-list">
+
+        <div class="cd-section-label">Analytics</div>
+        <div class="cd-main-grid">
+            <div class="cd-card-panel">
+                <div class="cd-panel-title">
+                    <i class="fas fa-chart-line"></i>
+                    Sales Trend
+                    <span style="margin-left:auto;font-family:'Inter';font-size:12px;color:#8892AA;">Last 7 Days</span>
+                </div>
+                <div class="cd-chart-wrap">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="cd-card-panel">
+                <div class="cd-panel-title">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    Recent Sales
+                    <span style="margin-left:auto;font-size:11px;font-weight:500;color:#8892AA;background:#F2F4F9;padding:2px 8px;border-radius:10px;">Today</span>
+                </div>
+                <div class="cd-sales-list">
                     @if($recentSales->count() > 0)
                         @foreach($recentSales as $sale)
-                            <div class="sales-item">
-                                <div>
-                                    <div class="sale-amount">₱{{ number_format($sale->total_amount, 2) }}</div>
-                                    <div class="sale-time">{{ \Carbon\Carbon::parse($sale->created_at)->format('h:i A') }}</div>
+                            <div class="cd-sale-row">
+                                <div class="cd-sale-left">
+                                    <div class="cd-sale-dot"></div>
+                                    <div>
+                                        <div class="cd-sale-id">#{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</div>
+                                        <div class="cd-sale-time">{{ \Carbon\Carbon::parse($sale->created_at)->format('h:i A') }}</div>
+                                    </div>
                                 </div>
-                                <div class="text-muted small">#{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</div>
+                                <div class="cd-sale-amount">₱{{ number_format($sale->total_amount, 2) }}</div>
                             </div>
                         @endforeach
                     @else
@@ -409,28 +937,77 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Top Products -->
-    @if($topProducts->count() > 0)
-        <div class="row">
-            <div class="col-12">
-                <div class="chart-container">
-                    <div class="chart-title">Top Products Today</div>
-                    <div class="row">
-                        @foreach($topProducts as $product)
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="product-item">
-                                    <div class="product-name">{{ $product->product_name }}</div>
-                                    <div class="product-revenue">₱{{ number_format($product->revenue, 2) }}</div>
+        <div class="cd-bottom-grid">
+            <div class="cd-card-panel">
+                <div class="cd-panel-title">
+                    <i class="fas fa-trophy"></i>
+                    Top Products Today
+                </div>
+                @if($topProducts->count() > 0)
+                    @php $topMaxRevenue = (float) ($topProducts->max('revenue') ?? 0); @endphp
+                    @foreach($topProducts as $i => $product)
+                        @php
+                            $pct = $topMaxRevenue > 0 ? round(((float) $product->revenue / $topMaxRevenue) * 100) : 0;
+                        @endphp
+                        <div class="cd-product-row">
+                            <span class="cd-product-rank">#{{ $i + 1 }}</span>
+                            <div class="cd-product-bar-wrap">
+                                <div class="cd-product-name">{{ $product->product_name }}</div>
+                                <div class="cd-product-bar-bg">
+                                    <div class="cd-product-bar-fill" style="width: {{ $pct }}%"></div>
                                 </div>
                             </div>
-                        @endforeach
+                            <span class="cd-product-revenue">₱{{ number_format($product->revenue, 2) }}</span>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="text-center text-muted py-4">No products sold today</div>
+                @endif
+            </div>
+
+            <div class="cd-card-panel">
+                <div class="cd-panel-title">
+                    <i class="fas fa-gauge-high"></i>
+                    Quick Stats
+                </div>
+                @php
+                    $totalTransactions = (int) ($todaySales->total_sales ?? 0);
+                    $refundsApproved = (int) ($todayRefunds->total_refunds ?? 0);
+                    $totalRevenue = (float) ($todaySales->total_revenue ?? 0);
+                    $avgTransaction = $totalTransactions > 0 ? ($totalRevenue / $totalTransactions) : 0;
+                @endphp
+                <div class="cd-stat-row">
+                    <div class="cd-stat-left">
+                        <div class="cd-stat-icon" style="background:#EFF6FF;color:#1A56DB"><i class="fas fa-receipt"></i></div>
+                        <span class="cd-stat-label">Total Transactions</span>
                     </div>
+                    <span class="cd-stat-value">{{ $totalTransactions }}</span>
+                </div>
+                <div class="cd-stat-row">
+                    <div class="cd-stat-left">
+                        <div class="cd-stat-icon" style="background:#FFF1F2;color:#F43F5E"><i class="fas fa-undo"></i></div>
+                        <span class="cd-stat-label">Refunds Approved</span>
+                    </div>
+                    <span class="cd-stat-value">{{ $refundsApproved }}</span>
+                </div>
+                <div class="cd-stat-row">
+                    <div class="cd-stat-left">
+                        <div class="cd-stat-icon" style="background:#F0FDF4;color:#16A34A"><i class="fas fa-hand-holding-usd"></i></div>
+                        <span class="cd-stat-label">Avg. Transaction</span>
+                    </div>
+                    <span class="cd-stat-value">₱{{ number_format($avgTransaction, 2) }}</span>
+                </div>
+                <div class="cd-stat-row">
+                    <div class="cd-stat-left">
+                        <div class="cd-stat-icon" style="background:#ECFDF5;color:#10B981"><i class="fas fa-money-bill-wave"></i></div>
+                        <span class="cd-stat-label">Cash on Hand</span>
+                    </div>
+                    <span class="cd-stat-value">₱{{ number_format($cashOnHandToday, 2) }}</span>
                 </div>
             </div>
         </div>
-    @endif
+    </div>
 </div>
 @endsection
 
@@ -504,9 +1081,110 @@ function showExpensesSummaryModal() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Dashboard should not inject/restore the animated sidebar
-    sessionStorage.removeItem('cashierSidebarHTML');
-    localStorage.removeItem('cashierSidebarHTML');
+    const dateEl = document.getElementById('liveDate');
+    const timeEl = document.getElementById('liveTime');
+    if (dateEl) {
+        dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    if (timeEl) {
+        const tick = () => {
+            const now = new Date();
+            const h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            timeEl.textContent = `${h12}:${m}:${s} ${ampm}`;
+        };
+        tick();
+        setInterval(tick, 1000);
+    }
+
+    (function () {
+        const overlay = document.getElementById('nav-overlay');
+        const loaderIcon = document.getElementById('loaderIcon');
+        const loaderLabel = document.getElementById('loaderLabel');
+        let busy = false;
+
+        function resetAll() {
+            document.querySelectorAll('.cd-kpi-card, .cd-nav-card').forEach(c => {
+                c.classList.remove('is-clicked');
+                c.style.pointerEvents = '';
+                c.style.opacity = '';
+                c.style.transform = '';
+            });
+            busy = false;
+        }
+
+        function showOverlay(label, icon, href) {
+            if (!overlay || !loaderIcon || !loaderLabel) {
+                window.location.href = href;
+                return;
+            }
+            loaderIcon.innerHTML = `<i class="fas fa-${icon}"></i>`;
+            loaderLabel.textContent = `Opening ${label}…`;
+            overlay.classList.add('active');
+
+            setTimeout(() => {
+                window.location.href = href;
+            }, 650);
+        }
+
+        function fadeOthers(clicked, selector) {
+            document.querySelectorAll(selector).forEach((other, idx) => {
+                if (other === clicked) return;
+                other.style.transition = `opacity .32s ${idx * 28}ms ease, transform .32s ${idx * 28}ms ease`;
+                other.style.opacity = '0';
+                other.style.transform = 'translateY(7px) scale(.96)';
+                other.style.pointerEvents = 'none';
+            });
+        }
+
+        function dimGroup(selector) {
+            document.querySelectorAll(selector).forEach((c, idx) => {
+                c.style.transition = `opacity .28s ${idx * 22}ms ease`;
+                c.style.opacity = '0.28';
+                c.style.pointerEvents = 'none';
+            });
+        }
+
+        document.querySelectorAll('.cd-kpi-card').forEach(card => {
+            card.addEventListener('click', function () {
+                if (busy) return;
+                busy = true;
+
+                this.classList.remove('is-clicked');
+                void this.offsetWidth;
+                this.classList.add('is-clicked');
+
+                fadeOthers(this, '.cd-kpi-card');
+                dimGroup('.cd-nav-card');
+
+                setTimeout(resetAll, 900);
+            }, { capture: true });
+        });
+
+        document.querySelectorAll('.cd-nav-card').forEach(card => {
+            card.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (!href || href === '#') return;
+                e.preventDefault();
+                if (busy) return;
+                busy = true;
+
+                this.classList.remove('is-clicked');
+                void this.offsetWidth;
+                this.classList.add('is-clicked');
+
+                fadeOthers(this, '.cd-nav-card');
+                dimGroup('.cd-kpi-card');
+
+                const label = this.dataset.label || 'Loading';
+                const icon = this.dataset.icon || 'gauge-high';
+                setTimeout(() => showOverlay(label, icon, href), 320);
+            });
+        });
+    })();
 
     // Sales Chart
     const ctx = document.getElementById('salesChart');
@@ -936,5 +1614,4 @@ function animateAndNavigate(event, module) {
 }
 
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 @endpush

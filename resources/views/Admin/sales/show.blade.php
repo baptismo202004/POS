@@ -7,14 +7,16 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">Sale Details</h2>
-                <a href="{{ request()->referer() ?: route('superadmin.sales.index') }}" class="btn btn-secondary">
+                <a href="{{ request()->header('referer') ?: route('superadmin.sales.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>
             </div>
             
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Receipt #{{ $sale->receipt_number ?? 'N/A' }}</h5>
+                    <h5 class="card-title mb-0">
+                        Receipt #{{ $sale->reference_number ?? $sale->id }}
+                    </h5>
                     <div class="badge bg-{{ $sale->payment_method == 'cash' ? 'success' : 'info' }}">
                         {{ ucfirst($sale->payment_method) }}
                     </div>

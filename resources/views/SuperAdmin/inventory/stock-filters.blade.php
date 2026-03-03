@@ -422,8 +422,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadSuppliers() {
-        // Options are rendered server-side in the Blade template; no dynamic loading needed here.
-        return;
+        // Load suppliers from the correct SuperAdmin API route
+        fetch('/superadmin/api/suppliers')
+            .then(response => response.json())
+            .then(data => {
+                supplierFilter.innerHTML = '<option value="">All Suppliers</option>';
+                data.forEach(supplier => {
+                    // API returns { id, supplier_name }, so use supplier_name for the label
+                    const label = supplier.supplier_name ?? supplier.name ?? '';
+                    supplierFilter.innerHTML += `<option value="${supplier.id}">${label}</option>`;
+                });
+            })
+            .catch(error => console.error('Error loading suppliers:', error));
     }
     
     function debounceSearch() {

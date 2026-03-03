@@ -13,7 +13,18 @@ class SaleController extends Controller
 {
     public function show(Sale $sale)
     {
-        return view('Admin.sales.show', compact('sale'));
+        // Load related data needed for the summary and items table
+        $sale->load(['saleItems.product', 'saleItems.refunds', 'branch', 'cashier']);
+
+        // Total quantity of items in this sale
+        $totalQuantity = $sale->saleItems->sum('quantity');
+
+        // Total refunded amount (only approved refunds)
+        $totalRefunds = $sale->saleItems->sum(function ($item) {
+            return $item->refunds->where('status', 'approved')->sum('refund_amount');
+        });
+
+        return view('Admin.sales.show', compact('sale', 'totalQuantity', 'totalRefunds'));
     }
 
     public function receipt(Sale $sale)

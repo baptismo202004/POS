@@ -506,7 +506,7 @@
                                             <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
                                         </div>
                                         <div class="mb-2">
-                                            <label class="form-label">Date:</label>
+                                            <label class="form-label">Credit Date:</label>
                                             <input type="date" class="form-control" id="credit_due_date" value="{{ date('Y-m-d') }}">
                                         </div>
                                         <div class="mb-2">
@@ -719,7 +719,7 @@ function checkout() {
                                         <strong style="color: #2563eb; font-size: 1.2em;">${totalAmount}</strong>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="text-muted">Due Date:</span>
+                                        <span class="text-muted">Credit Date:</span>
                                         <strong>${new Date(creditDueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
@@ -729,11 +729,11 @@ function checkout() {
                                 </div>
                                 <div class="alert alert-info mb-3" style="border-radius: 10px;">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Credit Reference:</strong> A credit record has been created and the customer can pay this amount on or before the due date.
+                                    <strong>Credit Reference:</strong> A credit record has been created for this sale. Use this reference when recording payments for this credit.
                                 </div>
                                 <div class="mt-3">
                                     <button class="btn btn-success btn-lg me-2" onclick="window.location.reload()">
-                                        <i class="fas fa-plus-circle me-2"></i>New Sale
+                                        <i class="fas fa-plus-circle me-2"></i>Okay
                                     </button>
                                     <button class="btn btn-outline-secondary btn-lg" onclick="window.location.href='/cashier/sales'">
                                         <i class="fas fa-list me-2"></i>View Sales
