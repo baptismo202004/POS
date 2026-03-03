@@ -43,6 +43,12 @@ return [
             'description' => 'Track and manage stock levels',
             'permissions' => ['view', 'create', 'edit', 'delete'],
         ],
+        'stock_management' => [
+            'label' => 'Stock Management',
+            'icon' => 'warehouse',
+            'description' => 'Advanced stock overview, alerts and adjustments',
+            'permissions' => ['view', 'create', 'edit', 'delete'],
+        ],
         'stock_in' => [
             'label' => 'Stock In',
             'icon' => 'plus-circle',
@@ -157,18 +163,7 @@ return [
             'description' => 'Manage product units',
             'permissions' => ['view', 'create', 'edit', 'delete'],
         ],
-        'tax' => [
-            'label' => 'Tax',
-            'icon' => 'percent',
-            'description' => 'Manage tax rates',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
-        ],
-        'receipt_templates' => [
-            'label' => 'Receipt Templates',
-            'icon' => 'receipt',
-            'description' => 'Customize receipt layouts',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
-        ],
+        
     ],
     'super_roles' => [
         'Admin',

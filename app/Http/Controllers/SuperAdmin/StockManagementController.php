@@ -92,6 +92,93 @@ class StockManagementController extends Controller
     }
 
     /**
+     * Branch-scoped stock management for cashiers.
+     * Uses the authenticated user's branch_id so a cashier only sees their own branch.
+     */
+    public function cashierIndex(Request $request)
+    {
+        $user = $request->user();
+        $branchId = (int) optional($user)->branch_id;
+
+        if (! $branchId) {
+            abort(403, 'No branch assigned to this cashier');
+        }
+
+        // Aggregate stock for this specific branch only
+        $query = $this->baseStockQuery($branchId);
+
+        if ($request->filled('search')) {
+            $searchTerm = trim((string) $request->string('search'));
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('products.product_name', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.barcode', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.model_number', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('products.category_id', $request->integer('category_id'));
+        }
+
+        if ($request->filled('supplier_id')) {
+            $supplierId = $request->integer('supplier_id');
+
+            // Supplier is determined from: stock_ins.purchase_id -> purchases.supplier_id
+            $query->whereExists(function ($exists) use ($branchId, $supplierId) {
+                $exists->select(DB::raw(1))
+                    ->from('stock_ins')
+                    ->join('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
+                    ->whereColumn('stock_ins.product_id', 'products.id')
+                    ->where('stock_ins.branch_id', $branchId)
+                    ->where('purchases.supplier_id', $supplierId);
+            });
+        }
+
+        $stockLevels = $request->input('stock_levels');
+        if (is_array($stockLevels) && count($stockLevels) > 0) {
+            $this->applyStockLevelFilters($query, $stockLevels);
+        }
+
+        if ($request->filled('date_range')) {
+            $this->applyDateRangeFilter($query, (string) $request->string('date_range'));
+        }
+
+        if ($request->filled('movement')) {
+            $this->applyMovementFilter($query, (string) $request->string('movement'));
+        }
+
+        $this->applySorting(
+            $query,
+            (string) $request->string('sort_by', 'product_name'),
+            Str::lower((string) $request->string('sort_direction', 'asc')) === 'desc' ? 'desc' : 'asc'
+        );
+
+        $products = $query->paginate(15)->appends($request->query());
+
+        $categories = DB::table('categories')
+            ->orderBy('category_name')
+            ->pluck('category_name', 'id');
+
+        $suppliers = DB::table('suppliers')
+            ->orderBy('supplier_name')
+            ->pluck('supplier_name', 'id');
+
+        $branches = DB::table('branches')->orderBy('branch_name')->get();
+
+        // Statistics for this cashier's branch only
+        $stockStats = $this->calculateStockStatistics($branchId);
+
+        return view('superadmin.inventory.stock-management', [
+            'products' => $products,
+            'categories' => $categories,
+            'suppliers' => $suppliers,
+            'branches' => $branches,
+            'stockStats' => $stockStats,
+            'selectedBranchId' => $branchId,
+        ]);
+    }
+
+    /**
      * API endpoint for suppliers
      */
     public function getSuppliers()

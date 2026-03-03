@@ -245,6 +245,7 @@ class AccessPermissionController extends Controller
             ['module' => 'product_category', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'purchases', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'inventory', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
+            ['module' => 'stock_management', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'stock_in', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'stock_transfer', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'sales', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],

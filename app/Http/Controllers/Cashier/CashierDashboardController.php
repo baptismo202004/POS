@@ -123,6 +123,7 @@ class CashierDashboardController extends Controller
             'product_category' => ['label' => 'Product Category', 'icon' => 'tags'],
             'purchases' => ['label' => 'Purchases', 'icon' => 'shopping-bag'],
             'inventory' => ['label' => 'Inventory', 'icon' => 'warehouse'],
+            'stock_management' => ['label' => 'Stock Management', 'icon' => 'warehouse'],
             'stock_in' => ['label' => 'Stock In', 'icon' => 'sign-in-alt'],
             'stock_transfer' => ['label' => 'Stock Transfer', 'icon' => 'exchange-alt'],
             'customer' => ['label' => 'Customers', 'icon' => 'users'],

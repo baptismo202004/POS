@@ -509,6 +509,15 @@
                 </span>
                 <span>Inventory</span>
             </a>
+
+            @canAccess('stock_management','view')
+            <a href="{{ route('cashier.stock-management.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <i class="fas fa-warehouse sidebar-icon"></i>
+                </span>
+                <span>Stock Management</span>
+            </a>
+            @endcanAccess
             
             @canAccess('stock_transfer','view')
             <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none">

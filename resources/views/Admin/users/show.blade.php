@@ -7,9 +7,6 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">User Details</h2>
-                <a href="{{ request()->header('referer') ?: route('superadmin.users.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Users
-                </a>
             </div>
             
             <div class="card">
@@ -61,7 +58,12 @@
                                         @forelse ($user->sales->take(10) as $sale)
                                             <tr>
                                                 <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}</td>
-                                                <td>{{ $sale->reference_number ?? 'N/A' }}</td>
+                                                <td>
+                                                    <strong>#{{ $sale->id }}</strong>
+                                                    @if($sale->receipt_group_id)
+                                                        <br><small class="text-muted">Group: {{ $sale->receipt_group_id }}</small>
+                                                    @endif
+                                                </td>
                                                 <td>₱{{ number_format($sale->total_amount, 2) }}</td>
                                                 <td>
                                                     <a href="/superadmin/sales/{{ $sale->id }}" class="btn btn-sm btn-primary">
