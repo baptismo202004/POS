@@ -1029,21 +1029,94 @@ class CashierDashboardController extends Controller
             'reference_number' => 'nullable|string|max:255',
             'purchase_date' => 'required|date',
             'payment_status' => 'required|in:pending,paid',
-            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.primary_quantity' => 'required|numeric|min:1',
+            'items.*.multiplier' => 'required|numeric|min:1',
+            'items.*.base_quantity' => 'required|numeric|min:1',
+            'items.*.unit_type_id' => 'required|exists:unit_types,id',
+            'items.*.cost' => 'required|numeric|min:0',
         ]);
 
-        $purchaseId = DB::table('purchases')->insertGetId([
-            'supplier_id' => $validated['supplier_id'],
-            'branch_id' => $branchId,
-            'reference_number' => $validated['reference_number'],
-            'purchase_date' => $validated['purchase_date'],
-            'payment_status' => $validated['payment_status'],
-            'notes' => $validated['notes'],
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $purchaseId = null;
+        DB::transaction(function () use ($validated, $branchId, &$purchaseId) {
+            $totalCost = 0;
+            $purchaseId = DB::table('purchases')->insertGetId([
+                'supplier_id' => $validated['supplier_id'],
+                'branch_id' => $branchId,
+                'reference_number' => $validated['reference_number'],
+                'purchase_date' => $validated['purchase_date'],
+                'payment_status' => $validated['payment_status'],
+                'total_cost' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        return redirect()->route('cashier.purchases.show', ['purchase_id' => $purchaseId])->with('success', 'Purchase created successfully');
+            $itemsToInsert = [];
+            foreach ($validated['items'] as $item) {
+                $primaryQty = (float) $item['primary_quantity'];
+                $multiplier = (float) $item['multiplier'];
+                $baseQty = $primaryQty * $multiplier;
+                $cost = (float) $item['cost'];
+
+                $subtotal = $primaryQty * $cost;
+                $totalCost += $subtotal;
+
+                $itemsToInsert[] = [
+                    'purchase_id' => $purchaseId,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $baseQty,
+                    'unit_type_id' => $item['unit_type_id'],
+                    'unit_cost' => $cost,
+                    'subtotal' => $subtotal,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if (!empty($itemsToInsert)) {
+                DB::table('purchase_items')->insert($itemsToInsert);
+            }
+
+            DB::table('purchases')->where('id', $purchaseId)->update([
+                'total_cost' => $totalCost,
+                'updated_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('cashier.purchases.show', ['purchase' => $purchaseId])->with('success', 'Purchase created successfully');
+    }
+
+    public function getProductUnitTypes(Product $product)
+    {
+        $productUnits = $product->unitTypes()
+            ->select('unit_types.id', 'unit_types.unit_name')
+            ->withPivot('conversion_factor', 'is_base')
+            ->get();
+
+        if ($productUnits->isEmpty()) {
+            $units = UnitType::orderBy('unit_name')->get()->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->unit_name,
+                    'conversion_factor' => 1.0,
+                    'is_base' => false,
+                ];
+            });
+        } else {
+            $units = $productUnits->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->unit_name,
+                    'conversion_factor' => isset($unit->pivot->conversion_factor) ? (float) $unit->pivot->conversion_factor : 1.0,
+                    'is_base' => isset($unit->pivot->is_base) ? (bool) $unit->pivot->is_base : false,
+                ];
+            });
+        }
+
+        return response()->json([
+            'units' => $units,
+        ]);
     }
 
     public function purchasesShow($purchase)
@@ -1055,15 +1128,17 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $purchase = DB::table('purchases')
+        $purchase = \App\Models\Purchase::with('items')
             ->where('id', $purchase)
             ->where('branch_id', $branchId)
-            ->with(['supplier', 'items'])
             ->first();
 
         if (! $purchase) {
             abort(404, 'Purchase not found');
         }
+
+        // Load supplier manually since relationship not defined
+        $purchase->supplier = \App\Models\Supplier::find($purchase->supplier_id);
 
         return view('cashier.purchase.show', compact('purchase'));
     }
@@ -1193,13 +1268,15 @@ class CashierDashboardController extends Controller
         // Get purchases for current branch that have available stock
         $purchases = DB::table('purchases')
             ->where('branch_id', $branchId)
-            ->where('payment_status', 'paid')
             ->leftJoin('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->select('purchases.*', 'suppliers.supplier_name')
             ->orderBy('purchase_date', 'desc')
             ->get();
 
-        return view('cashier.stockin.create', compact('purchases', 'branchId'));
+        // Get branches for dropdown (admin allows branch selection per item)
+        $branches = \App\Models\Branch::where('status', 'active')->get();
+
+        return view('cashier.stockin.create', compact('purchases', 'branchId', 'branches'));
     }
 
     public function stockInStore(Request $request)
@@ -1211,26 +1288,88 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $validated = $request->validate([
-            'purchase_id' => 'required|exists:purchases,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'expiry_date' => 'nullable|date|after:today',
-        ]);
+        try {
+            $data = $request->validate([
+                'purchase_id' => 'required|exists:purchases,id',
+                'items' => 'required|array|min:1',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.unit_type_id' => 'required|exists:unit_types,id',
+                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.new_price' => 'required|numeric|min:0',
+                'items.*.branch_id' => 'required|exists:branches,id',
+            ]);
 
-        StockIn::create([
-            'purchase_id' => $validated['purchase_id'],
-            'product_id' => $validated['product_id'],
-            'branch_id' => $branchId,
-            'quantity' => $validated['quantity'],
-            'price' => $validated['price'],
-            'expiry_date' => $validated['expiry_date'],
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            $purchaseId = $data['purchase_id'];
+            $items = $data['items'];
 
-        return redirect()->route('cashier.stockin.index')->with('success', 'Stock added successfully');
+            $purchase = \App\Models\Purchase::where('id', $purchaseId)
+                ->where('branch_id', $branchId)
+                ->first();
+
+            if (!$purchase) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Purchase not found for this branch'
+                ], 403);
+            }
+
+            // Sum requested quantities per product
+            $requestedByProduct = [];
+            foreach ($items as $item) {
+                $pid = (int) $item['product_id'];
+                $qty = (int) $item['quantity'];
+                $requestedByProduct[$pid] = ($requestedByProduct[$pid] ?? 0) + $qty;
+            }
+
+            // Validate remaining quantity per product
+            $purchaseItems = $purchase->items()->whereIn('product_id', array_keys($requestedByProduct))->get();
+            foreach ($requestedByProduct as $pid => $requestedQty) {
+                $pi = $purchaseItems->firstWhere('product_id', $pid);
+                $purchasedQty = $pi ? (float) ($pi->quantity ?? 0) : 0;
+                $alreadyStocked = \App\Models\StockIn::where('purchase_id', $purchaseId)
+                    ->where('product_id', $pid)
+                    ->sum('quantity');
+                $remaining = $purchasedQty - (float) $alreadyStocked;
+                if ($remaining < 0) {
+                    $remaining = 0;
+                }
+
+                if ($requestedQty > $remaining) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Stock-in quantity exceeds remaining for one or more products.'
+                    ], 422);
+                }
+            }
+
+            $stockIns = [];
+            foreach ($items as $item) {
+                $stockIn = \App\Models\StockIn::create([
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $item['branch_id'],
+                    'purchase_id' => $purchaseId,
+                    'unit_type_id' => $item['unit_type_id'],
+                    'quantity' => $item['quantity'],
+                    'initial_quantity' => $item['quantity'],
+                    'price' => $item['new_price'],
+                    'user_id' => Auth::id()
+                ]);
+
+                $stockIns[] = $stockIn->id;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($stockIns) . ' items added successfully',
+                'stock_in_ids' => $stockIns
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error adding stock: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function stockInProductsByPurchase($purchase)
@@ -1242,13 +1381,55 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $stockIns = DB::table('stock_ins')
-            ->where('purchase_id', $purchase)
-            ->where('branch_id', $branchId)
-            ->with('product')
-            ->get();
+        try {
+            $purchaseModel = \App\Models\Purchase::findOrFail($purchase);
 
-        return response()->json($stockIns);
+            // Ensure the purchase belongs to the cashier's branch
+            if ($purchaseModel->branch_id != $branchId) {
+                abort(403, 'Purchase not found for this branch');
+            }
+
+            $purchaseItems = $purchaseModel->items()->with(['product.unitTypes', 'unitType'])->get();
+
+            $items = $purchaseItems->map(function ($item) {
+                // Calculate how many units have already been stocked in for this purchase + product
+                $alreadyStocked = \App\Models\StockIn::where('purchase_id', $item->purchase_id)
+                    ->where('product_id', $item->product_id)
+                    ->sum('quantity');
+
+                $remainingQuantity = ($item->quantity ?? 0) - ($alreadyStocked ?? 0);
+
+                // Skip items that are already fully stocked in
+                if ($remainingQuantity <= 0) {
+                    return null;
+                }
+
+                $unitTypes = $item->product->unitTypes ?? collect();
+
+                // If the product has no unit types assigned, fallback to all unit types
+                if ($unitTypes instanceof \Illuminate\Support\Collection ? $unitTypes->isEmpty() : empty($unitTypes)) {
+                    $unitTypes = \App\Models\UnitType::orderBy('unit_name')->get();
+                }
+
+                $result = [
+                    'product_id' => $item->product_id,
+                    'product' => $item->product,
+                    'quantity' => $remainingQuantity,
+                    'unit_price' => $item->unit_cost,
+                    'unit_types' => $unitTypes->values(),
+                    'unit_type' => $item->unitType
+                ];
+
+                return $result;
+            })->filter()->values();
+
+            return response()->json([
+                'items' => $items,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['items' => [], 'error' => $e->getMessage()]);
+        }
     }
 
     /**

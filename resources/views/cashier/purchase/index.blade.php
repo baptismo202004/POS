@@ -31,7 +31,7 @@
                                 <tr>
                                     <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
                                     <td>
-                                        <a href="{{ route('cashier.purchases.show', $purchase) }}">
+                                        <a href="{{ route('cashier.purchases.show', $purchase->id) }}">
                                             {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
                                         </a>
                                     </td>
@@ -40,7 +40,7 @@
                                             {{ ucfirst($purchase->payment_status) }}
                                         </span>
                                     </td>
-                                    <td>{{ $purchase->items->count() }} item(s)</td>
+                                    <td>{{ $purchase->items_count ?? 0 }} item(s)</td>
                                     <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
                                 </tr>
                             @empty
