@@ -12,13 +12,20 @@ class PurchaseItem extends Model
     protected $fillable = [
         'purchase_id',
         'product_id',
+        'primary_quantity',
+        'multiplier',
+        'base_quantity',
         'quantity',
         'unit_type_id',
+        'base_unit_type_id',
         'unit_cost',
         'subtotal',
     ];
 
     protected $casts = [
+        'primary_quantity' => 'decimal:4',
+        'multiplier' => 'decimal:4',
+        'base_quantity' => 'decimal:4',
         'unit_cost' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];

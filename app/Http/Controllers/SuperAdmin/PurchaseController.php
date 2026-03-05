@@ -95,6 +95,7 @@ class PurchaseController extends Controller
             'items.*.multiplier' => 'required|numeric|min:1',
             'items.*.base_quantity' => 'required|numeric|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
+            'items.*.base_unit_type_id' => 'nullable|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
         ]);
 
@@ -130,8 +131,12 @@ class PurchaseController extends Controller
 
                 $purchaseItemsData[] = [
                     'product_id' => $productId,
+                    'primary_quantity' => $primaryQty,
+                    'multiplier' => $multiplier,
+                    'base_quantity' => $baseQty,
                     'quantity' => $baseQty,
                     'unit_type_id' => $item['unit_type_id'],
+                    'base_unit_type_id' => $item['base_unit_type_id'] ?? null,
                     'unit_cost' => $item['cost'],
                     'subtotal' => $subtotal,
                 ];

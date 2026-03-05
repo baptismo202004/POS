@@ -12,6 +12,7 @@ use App\Models\Credit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -445,15 +446,20 @@ class PosAdminController extends Controller
                     ->where('product_id', $item->product_id)
                     ->sum('quantity');
 
-                $remainingQuantity = ($item->quantity ?? 0) - ($alreadyStocked ?? 0);
+                $remainingBase = (float) ($item->quantity ?? 0) - (float) ($alreadyStocked ?? 0);
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
 
-                // Skip items that are already fully stocked in
-                if ($remainingQuantity <= 0) {
-                    return null;
+                $primaryPurchased = (float) ($item->primary_quantity ?? 0);
+                $primaryRemaining = $primaryPurchased;
+                if ($primaryPurchased > 0 && (float) ($item->quantity ?? 0) > 0) {
+                    $ratio = $remainingBase / (float) ($item->quantity ?? 0);
+                    $primaryRemaining = $primaryPurchased * $ratio;
                 }
 
                 // Debug: Log the unit types data
-                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingQuantity}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
+                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
 
                 $unitTypes = $item->product->unitTypes ?? [];
 
@@ -462,19 +468,38 @@ class PosAdminController extends Controller
                     $unitTypes = \App\Models\UnitType::all();
                 }
 
+                $unitTypesPayload = collect($unitTypes)->map(function ($ut) {
+                    return [
+                        'id' => $ut->id,
+                        'unit_name' => $ut->unit_name,
+                        'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
+                        'is_base' => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
+                    ];
+                })->values();
+
                 $result = [
                     'product_id' => $item->product_id,
                     'product' => $item->product,
-                    // Send remaining quantity to the frontend
-                    'quantity' => $remainingQuantity,
+                    // Remaining quantity (base units) - authoritative for validation
+                    'quantity' => $remainingBase,
+                    'purchased_quantity' => (float) ($item->quantity ?? 0),
+                    'remaining_quantity' => $remainingBase,
+                    // Entered unit quantity (for toggle display)
+                    'primary_purchased_quantity' => (float) ($item->primary_quantity ?? 0),
+                    'primary_remaining_quantity' => round($primaryRemaining, 4),
+                    'base_purchased_quantity' => (float) ($item->base_quantity ?? $item->quantity ?? 0),
+                    'base_remaining_quantity' => $remainingBase,
                     'unit_price' => $item->unit_cost, // use unit_cost from purchase item
-                    'unit_types' => $unitTypes,
-                    'unit_type' => $item->unitType
+                    'unit_types' => $unitTypesPayload,
+                    'unit_type' => $item->unitType,
+                    'primary_unit_name' => $item->unitType ? $item->unitType->unit_name : null,
+                    'base_unit_type' => $item->base_unit_type_id ? \App\Models\UnitType::find($item->base_unit_type_id) : null,
+                    'base_unit_type_id' => $item->base_unit_type_id,
                 ];
 
                 Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
                 return $result;
-            })->filter()->values();
+            })->values();
 
             Log::info("[STOCK_IN_PRODUCTS] Final items data: " . json_encode($items->toArray()));
             
@@ -496,14 +521,69 @@ class PosAdminController extends Controller
                 'items' => 'required|array|min:1',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.unit_type_id' => 'required|exists:unit_types,id',
-                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.quantity' => 'required|numeric|min:0.0001',
                 'items.*.new_price' => 'required|numeric|min:0',
+                'items.*.unit_prices' => 'required|array|min:1',
+                'items.*.unit_prices.*' => 'required|numeric|min:0',
+                'items.*.original_price' => 'required|numeric|min:0',
                 'items.*.branch_id' => 'required|exists:branches,id',
             ]);
+
+            foreach ($data['items'] as $item) {
+                $originalPrice = (float) ($item['original_price'] ?? 0);
+
+                $unitPrices = $item['unit_prices'] ?? [];
+                foreach ($unitPrices as $unitTypeId => $unitPrice) {
+                    $unitPrice = (float) $unitPrice;
+                    $unitTypeId = (int) $unitTypeId;
+
+                    // Enforce the requested rule: unit price must not be smaller than purchased price converted to that unit.
+                    $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
+                        ->where('product_id', (int) $item['product_id'])
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+
+                    $minAllowed = $originalPrice * $factor;
+                    if ($unitPrice < $minAllowed) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'New Price must not be smaller than the Purchased Price for the selected unit type.',
+                        ], 422);
+                    }
+                }
+            }
 
             $items = $data['items'];
             $purchaseId = $data['purchase_id'];
             $stockIns = [];
+
+            $purchase = \App\Models\Purchase::with('items')->findOrFail($purchaseId);
+
+            $itemsByProduct = collect($items)->groupBy('product_id');
+            foreach ($itemsByProduct as $productId => $rows) {
+                $purchaseItem = $purchase->items->firstWhere('product_id', (int) $productId);
+                if (! $purchaseItem) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid product found in the stock-in request.',
+                    ], 422);
+                }
+
+                $alreadyStocked = StockIn::where('purchase_id', $purchaseId)
+                    ->where('product_id', (int) $productId)
+                    ->sum('quantity');
+
+                $remainingBase = (float) ($purchaseItem->quantity ?? 0) - (float) ($alreadyStocked ?? 0);
+                if ($remainingBase < 0) $remainingBase = 0;
+
+                $requestedBase = (float) $rows->sum('quantity');
+                if ($requestedBase > $remainingBase) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Total Stock-In Qty for this product exceeds remaining to stock.',
+                    ], 422);
+                }
+            }
 
             foreach ($items as $item) {
                 Log::info("[STOCK_IN] Processing item", [
@@ -514,16 +594,26 @@ class PosAdminController extends Controller
                 ]);
 
                 // Create stock in record
+                $qtyBase = (float) ($item['quantity'] ?? 0);
                 $stockIn = StockIn::create([
                     'product_id' => $item['product_id'],
                     'branch_id' => $item['branch_id'],
                     'purchase_id' => $purchaseId,
                     'unit_type_id' => $item['unit_type_id'],
-                    'quantity' => $item['quantity'],
-                    'initial_quantity' => $item['quantity'],
+                    'quantity' => $qtyBase,
+                    'initial_quantity' => $qtyBase,
+                    // Keep stock_ins.price as base unit price for backward compatibility. Prefer base unit price when provided.
                     'price' => $item['new_price'],
                     'user_id' => Auth::id()
                 ]);
+
+                $unitPrices = $item['unit_prices'] ?? [];
+                foreach ($unitPrices as $unitTypeId => $unitPrice) {
+                    $stockIn->unitPrices()->updateOrCreate(
+                        ['unit_type_id' => (int) $unitTypeId],
+                        ['price' => (float) $unitPrice]
+                    );
+                }
 
                 $stockIns[] = $stockIn->id;
 

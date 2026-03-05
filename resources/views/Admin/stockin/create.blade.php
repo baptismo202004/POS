@@ -6,6 +6,26 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11?v={{ rand(1000, 9999) }}"></script>
     <style>
         .card-rounded{ border-radius: 12px; }
+
+        .stockin-active-row {
+            background-color: #fff8e1 !important;
+        }
+
+        .stockin-active-row > td {
+            background-color: transparent !important;
+        }
+
+        .stockin-table-scroll {
+            max-height: 60vh;
+            overflow: auto;
+        }
+
+        .stockin-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #fff;
+        }
     </style>
 @endpush
 
@@ -76,18 +96,16 @@
 
                                 <div id="purchase-items-form-container" class="mb-3" style="display: none;">
                                     <h5 class="mt-4">Items to Stock In</h5>
-                                    <div class="table-responsive">
+                                    <div class="table-responsive stockin-table-scroll">
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
                                                     <th>Product</th>
                                                     <th>Purchased Qty</th>
                                                     <th>Remaining to Stock</th>
-                                                    <th>Unit Type</th>
+                                                    <th>Stock Price and Quantity</th>
                                                     <th>Branch</th>
-                                                    <th>Stock-In Qty</th>
                                                     <th>Original Price</th>
-                                                    <th>New Price</th>
                                                     <th style="width: 80px;">Actions</th>
                                                 </tr>
                                             </thead>
@@ -120,10 +138,11 @@
                     confirmButtonColor: 'var(--theme-color)',
                 });
             }
+
         @endif
 
         var purchaseSelect = document.getElementById('purchase_id');
-        var tableBody = document.getElementById('purchase-items-table-body');
+        var tableBody = document.getElementById('purchase-items-table-body') || document.getElementById('stockin-items-tbody');
         var container = document.getElementById('purchase-items-form-container');
         var form = document.querySelector('form[action*="stockin"]');
         var stockInRowIndex = 0; // global index for items[] rows
@@ -136,6 +155,59 @@
         var productsPanel = document.getElementById('purchase-products-panel');
         var productsCheckboxes = document.getElementById('purchase-products-checkboxes');
         var selectAllBtn = document.getElementById('select-all-products-btn');
+
+        function updateNewPriceValidityAll() {
+            if (!tableBody) return;
+            var rows = tableBody.querySelectorAll('tr');
+            rows.forEach(function(row) {
+                var hidden = row.querySelector('input.js-selected-new-price');
+                var originalInput = row.querySelector('input.js-original-price');
+                if (!hidden || !originalInput) return;
+                var original = parseFloat(originalInput.value || '0') || 0;
+                var val = parseFloat(hidden.value || '0') || 0;
+                hidden.setCustomValidity('');
+
+                // Clear all per-unit inputs validity first
+                var unitPriceInputs = row.querySelectorAll('input.js-new-price-unit');
+                unitPriceInputs.forEach(function(inp) {
+                    inp.setCustomValidity('');
+                });
+
+                var unitIdInput = row.querySelector('input.js-unit-type-id');
+                var unitId = unitIdInput ? String(unitIdInput.value || '') : '';
+                var factorEl = unitId ? row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]') : null;
+                var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+
+                // Purchase price is stored as base unit cost (per base unit).
+                // When selling/stocking by a larger unit (kg/box/case/etc.), the minimum allowed is base_price * factor.
+                var minAllowed = original * factor;
+
+                if (val < minAllowed) {
+                    var msg = 'Please select an item in the list.';
+                    hidden.setCustomValidity(msg);
+                    var priceInput = unitId ? row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]') : null;
+                    if (priceInput) {
+                        priceInput.setCustomValidity(msg);
+                    }
+                }
+            });
+        }
+
+        function syncSelectedUnitPricesToHidden() {
+            if (!tableBody) return;
+            var rows = tableBody.querySelectorAll('tr');
+            rows.forEach(function(row) {
+                var hidden = row.querySelector('input.js-selected-new-price');
+                if (!hidden) return;
+
+                var unitIdInput = row.querySelector('input.js-unit-type-id');
+                if (!unitIdInput) return;
+
+                var unitId = String(unitIdInput.value || '');
+                var priceInput = row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]');
+                hidden.value = priceInput ? (priceInput.value || '0.00') : '0.00';
+            });
+        }
 
         function setProductsPanelOpen(open) {
             if (!productsPanel) return;
@@ -217,18 +289,57 @@
             latestPurchaseItems
                 .filter(function(item) { return selected.indexOf(String(item.product_id)) !== -1; })
                 .forEach(function(item) {
+                    var idx = stockInRowIndex++;
                     var productName = item.product ? item.product.product_name : 'N/A';
-                    var purchasedQty = item.quantity || 0;
-                    var purchasedQtyDisplay = purchasedQty;
-                    if (item.unit_type && item.unit_type.unit_name) {
-                        purchasedQtyDisplay += ' ' + item.unit_type.unit_name;
+                    var remainingBaseQty = parseFloat(item.base_remaining_quantity != null ? item.base_remaining_quantity : (item.quantity || 0)) || 0;
+                    var purchasedQty = parseFloat(item.primary_remaining_quantity != null ? item.primary_remaining_quantity : 0) || 0;
+                    var purchasedQtyDisplay = String(purchasedQty);
+                    var purchasedUnitLabel = (item.unit_type && item.unit_type.unit_name) ? item.unit_type.unit_name : '';
+                    if (purchasedUnitLabel) {
+                        purchasedQtyDisplay += ' ' + purchasedUnitLabel;
                     }
 
-                    var unitTypeOptions = '<option value="">No unit types</option>';
-                    if (item.unit_types && item.unit_types.length > 0) {
-                        unitTypeOptions = item.unit_types.map(function(ut) {
-                            return '<option value="' + ut.id + '">' + ut.unit_name + '</option>';
-                        }).join('');
+                    var baseUnit = null;
+                    var unitTypes = Array.isArray(item.unit_types) ? item.unit_types : [];
+                    unitTypes.forEach(function(ut) {
+                        if (ut && ut.is_base) baseUnit = ut;
+                    });
+                    if (!baseUnit && unitTypes.length > 0) {
+                        baseUnit = unitTypes[0];
+                    }
+
+                    var unitTypesHtml = '<div class="text-muted small">No unit types</div>';
+                    if (unitTypes.length > 0) {
+                        var defaultUnitId = baseUnit ? baseUnit.id : unitTypes[0].id;
+
+                        unitTypesHtml =
+                            '<input type="hidden" class="js-unit-type-id" name="items[' + idx + '][unit_type_id]" value="' + defaultUnitId + '">' +
+                            unitTypes.map(function(ut) {
+                                    var utName = ut.unit_name || 'Unit';
+                                    var factor = parseFloat(ut.conversion_factor || '1') || 1;
+                                    return (
+                                        '<div class="border rounded p-2 mb-2">' +
+                                            '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                                                '<div class="fw-semibold">' + escapeHtml(utName) + '</div>' +
+                                                '<span class="js-unit-factor d-none" data-unit-id="' + ut.id + '" data-factor="' + factor + '"></span>' +
+                                            '</div>' +
+                                            '<div class="row g-2">' +
+                                                '<div class="col-6">' +
+                                                    '<label class="small text-muted mb-1">New Price</label>' +
+                                                    '<input type="number" class="form-control form-control-sm js-new-price-unit" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" data-original-price="' + (item.unit_price || '0.00') + '" name="items[' + idx + '][unit_prices][' + ut.id + ']" min="0" step="0.01" value="0.00" required>' +
+                                                '</div>' +
+                                                '<div class="col-6">' +
+                                                    '<label class="small text-muted mb-1">Stock In</label>' +
+                                                    '<input type="number" class="form-control form-control-sm js-stockin-qty-unit" data-product-id="' + item.product_id + '" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" min="0" value="0">' +
+                                                '</div>' +
+                                            '</div>' +
+                                        '</div>'
+                                    );
+                                }).join('') 
+                            ;
+
+                        // Hidden field required by backend (new_price). We keep it inside Unit Types column.
+                        unitTypesHtml += '<input type="hidden" class="js-selected-new-price" data-row-idx="' + idx + '" name="items[' + idx + '][new_price]" value="0.00">';
                     }
 
                     var branchSelectOptions = '';
@@ -238,7 +349,6 @@
                         });
                     }
 
-                    var idx = stockInRowIndex++;
                     var rowHtml =
                         '<tr>' +
                             '<td>' +
@@ -247,12 +357,13 @@
                             '</td>' +
                             '<td>' + escapeHtml(purchasedQtyDisplay) + '</td>' +
                             '<td>' +
-                                '<span class="fw-semibold js-remaining-to-stock" data-product-id="' + item.product_id + '" data-original-remaining="' + purchasedQty + '">' + escapeHtml(String(purchasedQty)) + '</span>' +
+                                '<span class="fw-semibold js-remaining-to-stock" data-product-id="' + item.product_id + '" data-original-remaining="' + remainingBaseQty + '">' + escapeHtml(String(remainingBaseQty)) + '</span>' +
+                                '<span class="text-muted"> </span>' +
                             '</td>' +
                             '<td>' +
-                                '<select class="form-select" name="items[' + idx + '][unit_type_id]">' +
-                                    unitTypeOptions +
-                                '</select>' +
+                                '<input type="hidden" class="js-stockin-qty-base" data-product-id="' + item.product_id + '" name="items[' + idx + '][quantity]" value="0">' +
+                                unitTypesHtml +
+                                '<input type="hidden" class="js-selected-new-price" data-row-idx="' + idx + '" name="items[' + idx + '][new_price]" value="0.00">' +
                             '</td>' +
                             '<td>' +
                                 '<select class="form-select" name="items[' + idx + '][branch_id]" required>' +
@@ -261,33 +372,44 @@
                                 '</select>' +
                             '</td>' +
                             '<td>' +
-                                '<input type="number" class="form-control js-stockin-qty" data-product-id="' + item.product_id + '" data-original-remaining="' + purchasedQty + '" name="items[' + idx + '][quantity]" min="0" value="0">' +
-                            '</td>' +
-                            '<td>' +
-                                '<input type="number" class="form-control" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
-                            '</td>' +
-                            '<td>' +
-                                '<input type="number" class="form-control" name="items[' + idx + '][new_price]" min="0" step="0.01" value="0.00" required>' +
+                                '<input type="number" class="form-control js-original-price" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
                             '</td>' +
                             '<td>' +
                                 '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Branch</button>' +
+                                '<button type="button" class="btn btn-sm btn-outline-danger mt-1 js-remove-row">Remove</button>' +
                             '</td>' +
                         '</tr>';
 
                     tableBody.insertAdjacentHTML('beforeend', rowHtml);
+
+                    var insertedRow = tableBody.querySelector('tr:last-child');
+                    if (insertedRow) {
+                        insertedRow.dataset.primaryRemaining = String(parseFloat(item.primary_remaining_quantity || 0) || 0);
+                        insertedRow.dataset.unitUnitName = item.unit_type && item.unit_type.unit_name ? item.unit_type.unit_name : '';
+                        insertedRow.dataset.baseUnitName = item.base_unit_type && item.base_unit_type.unit_name ? item.base_unit_type.unit_name : (purchasedUnitLabel || '');
+                        var remainingEl = insertedRow.querySelector('.js-remaining-to-stock');
+                        if (remainingEl) {
+                            remainingEl.dataset.originalRemaining = String(remainingBaseQty);
+                            remainingEl.dataset.remainingBase = String(remainingBaseQty);
+                        }
+                    }
                 });
 
             container.style.display = '';
 
             updateRemainingToStockAll();
+            syncSelectedUnitPricesToHidden();
+            updateNewPriceValidityAll();
         }
 
         function updateRemainingToStockAll() {
             if (!tableBody) return;
-            var inputs = tableBody.querySelectorAll('input.js-stockin-qty');
+            var baseInputs = tableBody.querySelectorAll('input.js-stockin-qty-base');
             var totals = {};
 
-            inputs.forEach(function(input) {
+            var originalByProduct = {};
+
+            baseInputs.forEach(function(input) {
                 var pid = String(input.dataset.productId || '');
                 if (!pid) return;
                 var qty = parseFloat(input.value || '0') || 0;
@@ -298,10 +420,56 @@
             remainingEls.forEach(function(el) {
                 var pid = String(el.dataset.productId || '');
                 var original = parseFloat(el.dataset.originalRemaining || '0') || 0;
+                if (originalByProduct[pid] == null) {
+                    originalByProduct[pid] = original;
+                }
+            });
+
+            remainingEls.forEach(function(el) {
+                var pid = String(el.dataset.productId || '');
+                var original = parseFloat(el.dataset.originalRemaining || '0') || 0;
                 var used = totals[pid] || 0;
-                var remaining = original - used;
-                if (remaining < 0) remaining = 0;
-                el.textContent = String(remaining);
+                var remainingBase = original - used;
+                if (remainingBase < 0) remainingBase = 0;
+                el.dataset.remainingBase = String(remainingBase);
+            });
+
+            baseInputs.forEach(function(input) {
+                var pid = String(input.dataset.productId || '');
+                if (!pid) return;
+                var original = originalByProduct[pid] || 0;
+                var total = totals[pid] || 0;
+                input.setCustomValidity('');
+                if (total > original) {
+                    input.setCustomValidity('Total Stock-In Qty for this product exceeds remaining to stock.');
+                }
+            });
+
+            updateRemainingDisplayInSelectedUnit();
+        }
+
+        function updateRemainingDisplayInSelectedUnit() {
+            // Intentionally kept as a no-op now that we display Remaining to Stock in base units only.
+        }
+
+        function syncStockInQtyToBaseAll() {
+            if (!tableBody) return;
+            var rows = tableBody.querySelectorAll('tr');
+            rows.forEach(function(row) {
+                var baseInput = row.querySelector('input.js-stockin-qty-base');
+                if (!baseInput) return;
+
+                var totalBase = 0;
+                var qtyInputs = row.querySelectorAll('input.js-stockin-qty-unit');
+                qtyInputs.forEach(function(inp) {
+                    var entered = parseFloat(inp.value || '0') || 0;
+                    var unitId = String(inp.dataset.unitId || '');
+                    var factorEl = unitId ? row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]') : null;
+                    var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+                    totalBase += (entered * factor);
+                });
+
+                baseInput.value = String(totalBase);
             });
         }
 
@@ -393,6 +561,37 @@
             });
         }
 
+        // Active row highlight (helps user see the row they're currently editing)
+        if (tableBody) {
+            var setActiveRow = function(row) {
+                if (!row) return;
+                tableBody.querySelectorAll('tr.stockin-active-row').forEach(function(r) {
+                    r.classList.remove('stockin-active-row');
+                });
+                row.classList.add('stockin-active-row');
+            };
+
+            tableBody.addEventListener('focusin', function(e) {
+                var row = e.target && e.target.closest ? e.target.closest('tr') : null;
+                if (!row) return;
+                setActiveRow(row);
+            });
+
+            tableBody.addEventListener('click', function(e) {
+                var row = e.target && e.target.closest ? e.target.closest('tr') : null;
+                if (!row) return;
+                setActiveRow(row);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target || !e.target.closest) return;
+                if (e.target.closest('#purchase-items-table-body')) return;
+                tableBody.querySelectorAll('tr.stockin-active-row').forEach(function(r) {
+                    r.classList.remove('stockin-active-row');
+                });
+            });
+        }
+
         // Delegated handler for Add Branch button
         if (tableBody) {
             tableBody.addEventListener('click', function(e) {
@@ -421,6 +620,9 @@
                     }
                     if (name.endsWith('[new_price]')) {
                         el.value = '0.00';
+                        if (el.classList && el.classList.contains('js-new-price')) {
+                            el.setCustomValidity('New Price must be greater than Original Price.');
+                        }
                     }
                 });
 
@@ -428,18 +630,80 @@
                 currentRow.parentNode.insertBefore(clone, currentRow.nextSibling);
 
                 updateRemainingToStockAll();
+                updateNewPriceValidityAll();
+            });
+        }
+
+        if (tableBody) {
+            tableBody.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('js-remove-row')) return;
+                var row = e.target.closest('tr');
+                if (!row) return;
+                row.remove();
+                updateRemainingToStockAll();
+                syncSelectedUnitPricesToHidden();
+                updateNewPriceValidityAll();
             });
         }
 
         if (tableBody) {
             tableBody.addEventListener('input', function(e) {
-                if (!e.target.classList.contains('js-stockin-qty')) return;
-                updateRemainingToStockAll();
+                if (e.target.classList.contains('js-new-price-unit')) {
+                    syncSelectedUnitPricesToHidden();
+                    updateNewPriceValidityAll();
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                    }
+
+                    if (e.target && typeof e.target.reportValidity === 'function') {
+                        e.target.reportValidity();
+                    }
+                    return;
+                }
+
+                if (e.target.classList.contains('js-stockin-qty-unit')) {
+                    syncStockInQtyToBaseAll();
+                    updateRemainingToStockAll();
+                    return;
+                }
             });
         }
 
+        // Unit type selection radio buttons were removed; no change handler needed.
+
         if (form) {
             form.addEventListener('submit', async function(e) {
+                syncStockInQtyToBaseAll();
+                updateRemainingToStockAll();
+                updateNewPriceValidityAll();
+
+                var qtyInputs = form.querySelectorAll('input.js-stockin-qty-base');
+                var totalAll = 0;
+                qtyInputs.forEach(function(inp) {
+                    totalAll += (parseFloat(inp.value || '0') || 0);
+                });
+
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    form.reportValidity();
+                    return;
+                }
+
+                if (totalAll <= 0) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'No Stock-In Quantity',
+                            text: 'Please enter Stock-In Qty for at least one item.',
+                            confirmButtonColor: 'var(--theme-color)'
+                        });
+                    } else {
+                        alert('Please enter Stock-In Qty for at least one item.');
+                    }
+                    return;
+                }
+
                 e.preventDefault();
                 
                 var formData = new FormData(form);

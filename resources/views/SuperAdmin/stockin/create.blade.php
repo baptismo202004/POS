@@ -23,10 +23,10 @@
                 <div class="card card-rounded shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="m-0">Add Stock In</h4>
-                        <a href="{{ route('superadmin.stockin.index') }}" class="btn btn-outline-primary">Back to Stock List</a>
+                        <a href="{{ route('superadmin.inventory.stock-management') }}" class="btn btn-outline-primary">Back to Stock List</a>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('superadmin.stockin.store') }}" method="POST">
+                        <form action="{{ route('superadmin.inventory.stock-in', ['product' => 0]) }}" method="POST">
                             @csrf
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -55,10 +55,10 @@
                                             <thead>
                                                 <tr>
                                                     <th>Product</th>
-                                                    <th>Unit Type</th>
+                                                    <th>New Price by Unit Type</th>
                                                     <th>Purchased Qty</th>
-                                                    <th>Stock-In Qty</th>
-                                                    <th>Price</th>
+                                                    <th>Stock-In Qty by Unit</th>
+                                                    <th>Purchased Price</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="purchase-items-table-body"></tbody>

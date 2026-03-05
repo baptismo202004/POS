@@ -46,4 +46,9 @@ class StockIn extends Model
     {
         return $this->hasMany(StockOut::class);
     }
+
+    public function unitPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StockInUnitPrice::class);
+    }
 }
