@@ -1044,6 +1044,7 @@ class CashierDashboardController extends Controller
             $purchaseId = DB::table('purchases')->insertGetId([
                 'supplier_id' => $validated['supplier_id'],
                 'branch_id' => $branchId,
+                'cashier_id' => Auth::id(),
                 'reference_number' => $validated['reference_number'],
                 'purchase_date' => $validated['purchase_date'],
                 'payment_status' => $validated['payment_status'],
