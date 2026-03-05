@@ -16,8 +16,11 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 Route::get('/', function () {
     return view('login');
@@ -140,6 +143,7 @@ Route::post('/cashier/purchases', [CashierDashboardController::class, 'purchases
 Route::get('/cashier/purchases/{purchase}', [CashierDashboardController::class, 'purchasesShow'])->middleware('auth')->name('cashier.purchases.show');
 Route::post('/cashier/purchases/ocr-product-match', [CashierDashboardController::class, 'purchasesOcrProductMatch'])->middleware('auth')->name('cashier.purchases.ocr-product-match');
 Route::post('/cashier/test-ocr', [CashierDashboardController::class, 'testOcr'])->middleware('auth')->name('cashier.test.ocr');
+Route::get('/cashier/products/{product}/unit-types', [CashierDashboardController::class, 'getProductUnitTypes'])->middleware('auth')->name('cashier.products.unit-types');
 
 // Cashier Suppliers
 Route::post('/cashier/suppliers', [CashierDashboardController::class, 'supplierStore'])->middleware('auth')->name('cashier.suppliers.store');
@@ -1224,6 +1228,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/access/users/{id}', [\App\Http\Controllers\Admin\AccessController::class, 'editUser'])->name('access.users.edit');
         Route::put('/access/users/{id}', [\App\Http\Controllers\Admin\AccessController::class, 'updateUser'])->name('access.users.update');
         Route::delete('/access/users/{id}', [\App\Http\Controllers\Admin\AccessController::class, 'deleteUser'])->name('access.users.delete');
+        Route::get('/access/users/{id}/activity', [\App\Http\Controllers\Admin\AccessController::class, 'userActivity'])->name('access.users.activity');
 
         // Permission management
         Route::post('/access/permissions/update', [\App\Http\Controllers\Admin\AccessPermissionController::class, 'updatePermission'])->name('access.permissions.update');
@@ -1301,10 +1306,39 @@ Route::get('/password/reset', function () {
 
 Route::post('/password/email', function (Request $request) {
     $request->validate(['email' => 'required|email']);
-    $user = \App\Models\User::where('email', $request->input('email'))->first();
-    if ($user) {
-        // dispatch reset email here if implemented
-    }
 
-    return redirect()->route('login')->with('success', 'If an account exists for that email, a password reset link has been sent.');
+    $status = Password::sendResetLink($request->only('email'));
+
+    return $status === Password::RESET_LINK_SENT
+        ? back()->with('success', __($status))
+        : back()->with('error', __($status));
 })->name('password.email');
+
+Route::get('/password/reset/{token}', function (string $token, Request $request) {
+    return view('auth.passwords.reset', [
+        'token' => $token,
+        'email' => $request->query('email'),
+    ]);
+})->name('password.reset');
+
+Route::post('/password/reset', function (Request $request) {
+    $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|confirmed|min:8',
+    ]);
+
+    $status = Password::reset(
+        $request->only('email', 'password', 'password_confirmation', 'token'),
+        function ($user) use ($request) {
+            $user->forceFill([
+                'password' => Hash::make($request->input('password')),
+                'remember_token' => Str::random(60),
+            ])->save();
+        }
+    );
+
+    return $status === Password::PASSWORD_RESET
+        ? redirect()->route('login')->with('success', __($status))
+        : back()->with('error', __($status));
+})->name('password.update');

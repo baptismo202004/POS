@@ -74,7 +74,7 @@
 <template id="item-template">
     <div class="item-row border rounded p-3 mb-3">
         <div class="row g-3 align-items-end">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Product</label>
                 <select name="items[][product_id]" class="form-select product-select" required>
                     <option value="">-- Select Product --</option>
@@ -85,29 +85,43 @@
             </div>
 
             <div class="col-md-2">
-                <label class="form-label">Quantity</label>
-                <input type="number" name="items[][quantity]" class="form-control quantity-input" min="1" value="1" required>
+                <label class="form-label">Product Type</label>
+                <select name="items[][product_type]" class="form-select product-type-select">
+                    <option value="non-electronic" selected>Non-Electronic</option>
+                    <option value="electronic">Electronic</option>
+                </select>
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Unit Type</label>
-                <select name="items[][unit_type_id]" class="form-select" required>
-                    <option value="">-- Select Unit --</option>
-                    @foreach($unit_types as $unit)
-                        <option value="{{ $unit->id }}">{{ $unit->unit_name }}</option>
-                    @endforeach
-                </select>
+                <label class="form-label">Qty - Unit</label>
+                <div class="input-group">
+                    <input type="number" name="items[][primary_quantity]" class="form-control primary-qty-input" min="1" value="1" required>
+                    <select name="items[][unit_type_id]" class="form-select unit-type-select" required>
+                        <option value="">-- Select Unit --</option>
+                    </select>
+                </div>
             </div>
+
+            <div class="col-md-3">
+                <label class="form-label">× Base</label>
+                <div class="input-group">
+                    <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
+                    <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
+                        <option value="">Base</option>
+                    </select>
+                </div>
+            </div>
+
+            <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
 
             <div class="col-md-2">
                 <label class="form-label">Cost</label>
                 <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
             </div>
-        </div>
 
-        <div class="row g-3 mt-2">
-            <div class="col-12 d-flex justify-content-end">
-                <button type="button" class="btn btn-danger remove-item-btn">Remove</button>
+            <div class="col-md-1">
+                <label class="form-label invisible">Remove</label>
+                <button type="button" class="btn btn-danger remove-item-btn w-100">Remove</button>
             </div>
         </div>
     </div>
@@ -236,42 +250,104 @@ document.addEventListener('DOMContentLoaded', function () {
     const template = document.getElementById('item-template');
     const addBtn = document.getElementById('add-item-btn');
     const grandTotal = document.getElementById('grand-total');
+    let itemIndex = 0;
 
-    function recalcTotal() {
+    function recalcBaseQuantity(row) {
+        if (!row) return;
+        const primaryInput = row.querySelector('.primary-qty-input');
+        const multiplierInput = row.querySelector('.multiplier-input');
+        const baseInput = row.querySelector('.base-qty-input');
+        if (!primaryInput || !multiplierInput || !baseInput) return;
+        const primaryVal = parseFloat(primaryInput.value) || 0;
+        const multVal = parseFloat(multiplierInput.value) || 1;
+        baseInput.value = primaryVal * multVal;
+    }
+
+    function updateTotals() {
         let total = 0;
         itemsContainer.querySelectorAll('.item-row').forEach(row => {
-            const qty = parseFloat(row.querySelector('.quantity-input')?.value || '0');
+            const qty = parseFloat(row.querySelector('.primary-qty-input')?.value || '0');
             const cost = parseFloat(row.querySelector('.item-cost')?.value || '0');
             total += (qty * cost);
         });
         grandTotal.value = total.toFixed(2);
     }
 
-    function wireRow(row) {
-        row.querySelectorAll('.quantity-input, .item-cost').forEach(input => {
-            input.addEventListener('input', recalcTotal);
+    function loadProductUnits(row, productId) {
+        const unitSelect = row.querySelector('.unit-type-select');
+        const baseUnitSelect = row.querySelector('.base-unit-select');
+        const multiplierInput = row.querySelector('.multiplier-input');
+
+        if (!unitSelect || !baseUnitSelect || !multiplierInput) return;
+
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+        baseUnitSelect.innerHTML = '<option value="">Base</option>';
+        multiplierInput.value = 1;
+        recalcBaseQuantity(row);
+
+        if (!productId) return;
+
+        $.getJSON(`/cashier/products/${productId}/unit-types`, function (response) {
+            const units = response.units || [];
+
+            units.forEach(function (unit) {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.name;
+                option.dataset.conversionFactor = unit.conversion_factor || 1;
+                unitSelect.appendChild(option);
+
+                const baseOpt = document.createElement('option');
+                baseOpt.value = unit.id;
+                baseOpt.textContent = unit.name;
+                baseUnitSelect.appendChild(baseOpt);
+            });
+
+            const baseUnit = units.find(u => u.is_base);
+            if (baseUnit) {
+                baseUnitSelect.value = String(baseUnit.id);
+            }
+
+            if (units.length === 1) {
+                unitSelect.value = units[0].id;
+                const conv = units[0].conversion_factor || 1;
+                multiplierInput.value = conv;
+                recalcBaseQuantity(row);
+                updateTotals();
+            }
+        }).fail(function () {
         });
+    }
+
+    function wireRow(row) {
         const removeBtn = row.querySelector('.remove-item-btn');
         if (removeBtn) {
             removeBtn.addEventListener('click', () => {
                 row.remove();
-                recalcTotal();
+                updateTotals();
             });
         }
     }
 
     function addRow() {
         const node = template.content.cloneNode(true);
-        const row = node.querySelector('.item-row');
+        node.querySelectorAll('[name^="items[]"]').forEach(el => {
+            const name = el.getAttribute('name').replace('[]', `[${itemIndex}]`);
+            el.setAttribute('name', name);
+        });
+        itemsContainer.appendChild(node);
+        const row = itemsContainer.querySelector('.item-row:last-child');
         if (!row) return;
-        itemsContainer.appendChild(row);
         wireRow(row);
-        recalcTotal();
+        recalcBaseQuantity(row);
+        itemIndex++;
+        updateTotals();
     }
 
-    addBtn.addEventListener('click', addRow);
+    if (addBtn) {
+        addBtn.addEventListener('click', addRow);
+    }
 
-    // Add first row by default
     addRow();
 
     // ----------------- SUPPLIER SELECT2 FUNCTIONALITY -----------------
@@ -348,6 +424,36 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    if (itemsContainer) {
+        itemsContainer.addEventListener('change', function(e) {
+            if (e.target.classList.contains('product-select')) {
+                const row = e.target.closest('.item-row');
+                const productId = e.target.value;
+                loadProductUnits(row, productId);
+            }
+
+            if (e.target.classList.contains('unit-type-select')) {
+                const row = e.target.closest('.item-row');
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const conv = selectedOption ? parseFloat(selectedOption.dataset.conversionFactor || '1') : 1;
+                const multiplierInput = row.querySelector('.multiplier-input');
+                if (multiplierInput) {
+                    multiplierInput.value = conv;
+                }
+                recalcBaseQuantity(row);
+                updateTotals();
+            }
+        });
+
+        itemsContainer.addEventListener('input', function(e) {
+            if (e.target.classList.contains('primary-qty-input') || e.target.classList.contains('multiplier-input') || e.target.classList.contains('item-cost')) {
+                const row = e.target.closest('.item-row');
+                recalcBaseQuantity(row);
+                updateTotals();
+            }
+        });
+    }
 });
 </script>
 @endpush

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\Sale;
+use App\Models\Purchase;
 use App\Models\User;
 use App\Models\RolePermission;
 use App\Models\UserType;
@@ -11,6 +14,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\QueryException;
 
 class AccessController extends Controller
 {
@@ -272,6 +276,117 @@ class AccessController extends Controller
         return response()->json([
             'success' => true,
             'user' => $user
+        ]);
+    }
+
+    public function userActivity($id)
+    {
+        $user = User::with('userType')->find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $salesSummary = [
+            'count' => 0,
+            'total_amount' => 0,
+            'recent' => [],
+        ];
+
+        $purchaseSummary = [
+            'count' => 0,
+            'total_cost' => 0,
+            'recent' => [],
+        ];
+
+        try {
+            $salesQuery = Sale::query()->where('cashier_id', $user->id);
+            $salesSummary['count'] = (int) $salesQuery->count();
+            $salesSummary['total_amount'] = (float) ($salesQuery->sum('total_amount') ?? 0);
+            $salesSummary['recent'] = Sale::query()
+                ->where('cashier_id', $user->id)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'reference_number',
+                    'total_amount',
+                    'payment_method',
+                    'status',
+                    'created_at',
+                ]);
+        } catch (QueryException $e) {
+            // Ignore: keep empty sales summary
+        }
+
+        try {
+            $purchaseQuery = Purchase::query()->where('cashier_id', $user->id);
+            $purchaseSummary['count'] = (int) $purchaseQuery->count();
+            $purchaseSummary['total_cost'] = (float) ($purchaseQuery->sum('total_cost') ?? 0);
+            $purchaseSummary['recent'] = Purchase::query()
+                ->where('cashier_id', $user->id)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'reference_number',
+                    'total_cost',
+                    'payment_status',
+                    'purchase_date',
+                    'created_at',
+                ]);
+        } catch (QueryException $e) {
+            // Ignore: keep empty purchase summary
+        }
+
+        try {
+            $logs = ActivityLog::query()
+                ->where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get([
+                    'id',
+                    'method',
+                    'route_name',
+                    'path',
+                    'action',
+                    'ip_address',
+                    'created_at',
+                    'payload',
+                ]);
+        } catch (QueryException $e) {
+            return response()->json([
+                'success' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->userType->name ?? null,
+                    'employee_id' => $user->employee_id ?? null,
+                    'branch_id' => $user->branch_id ?? null,
+                ],
+                'sales' => $salesSummary,
+                'purchases' => $purchaseSummary,
+                'logs' => [],
+                'warning' => 'Activity logs table is not created yet. Run: php artisan migrate',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->userType->name ?? null,
+                'employee_id' => $user->employee_id ?? null,
+                'branch_id' => $user->branch_id ?? null,
+            ],
+            'sales' => $salesSummary,
+            'purchases' => $purchaseSummary,
+            'logs' => $logs,
         ]);
     }
 
