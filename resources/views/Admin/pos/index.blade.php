@@ -536,14 +536,41 @@
                 }
 
                 tableBody.innerHTML = items.map(it => {
-                    const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => `
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
-                            <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
-                                ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
-                            </label>
-                        </div>
-                    `).join('') : '<span class="text-muted">No stock</span>';
+                    const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => {
+                        const units = Array.isArray(b.stock_units) ? b.stock_units : [];
+                        const unitsBadgesHtml = units.length > 0
+                            ? units.map(u => {
+                                const unitName = (u && u.unit_name) ? u.unit_name : '';
+                                const unitStock = (u && u.stock != null) ? u.stock : 0;
+                                return `<span class="badge bg-light text-dark border me-1">${unitStock}${unitName ? ' ' + unitName : ''}</span>`;
+                            }).join('')
+                            : '';
+
+                        const unitsSelectHtml = units.length > 0
+                            ? `
+                                <select class="form-select form-select-sm mt-1 js-unit-select" data-product-id="${it.product_id}" data-branch-id="${b.branch_id}">
+                                    ${units.map((u, uidx) => {
+                                        const unitName = (u && u.unit_name) ? u.unit_name : '';
+                                        const unitStock = (u && u.stock != null) ? u.stock : 0;
+                                        const unitPrice = (u && u.price != null) ? u.price : 0;
+                                        const unitTypeId = (u && u.unit_type_id != null) ? u.unit_type_id : '';
+                                        return `<option value="${unitTypeId}" data-stock="${unitStock}" data-price="${Number(unitPrice).toFixed(2)}" data-unit-name="${unitName}" ${uidx === 0 ? 'selected' : ''}>${unitName || 'Unit'} - ₱${Number(unitPrice).toFixed(2)}</option>`;
+                                    }).join('')}
+                                </select>
+                            `
+                            : '';
+
+                        return `
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
+                                <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
+                                    ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
+                                    ${unitsBadgesHtml ? `<div class="mt-1">${unitsBadgesHtml}</div>` : ''}
+                                    ${unitsSelectHtml ? `<div class="mt-1">${unitsSelectHtml}</div>` : ''}
+                                </label>
+                            </div>
+                        `;
+                    }).join('') : '<span class="text-muted">No stock</span>';
 
                     const canBeAdded = it.branches && it.branches.length > 0 && it.total_stock > 0;
 
@@ -578,6 +605,13 @@
                         });
                     });
 
+                    const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${it.product_id}"]`);
+                    unitSelects.forEach(sel => {
+                        sel.addEventListener('change', () => {
+                            updateProductPriceDisplay(it.product_id);
+                        });
+                    });
+
                     // Ensure initial price matches the initially checked branch
                     updateProductPriceDisplay(it.product_id);
                 });
@@ -603,6 +637,16 @@
 
             if (!priceCell || !selectedBranchRadio) return;
 
+            const branchId = selectedBranchRadio.value;
+            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+
+            if (unitSelect && unitSelect.value) {
+                const opt = unitSelect.options[unitSelect.selectedIndex];
+                const unitPrice = parseFloat(opt.dataset.price || '0');
+                priceCell.textContent = `₱${unitPrice.toFixed(2)}`;
+                return;
+            }
+
             const branchPrice = parseFloat(selectedBranchRadio.dataset.price || '0');
             priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
         }
@@ -617,16 +661,28 @@
             }
             
             const branchId = parseInt(selectedBranchRadio.value);
-            const stock = parseInt(selectedBranchRadio.dataset.stock);
             const branchName = selectedBranchRadio.dataset.branchName || selectedBranchRadio.labels[0].innerText.trim();
-            const price = parseFloat(selectedBranchRadio.dataset.price || '0');
+
+            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+            let unitTypeId = null;
+            let unitName = null;
+            let stock = parseFloat(selectedBranchRadio.dataset.stock || '0');
+            let price = parseFloat(selectedBranchRadio.dataset.price || '0');
+
+            if (unitSelect && unitSelect.value) {
+                const opt = unitSelect.options[unitSelect.selectedIndex];
+                unitTypeId = parseInt(unitSelect.value);
+                unitName = opt.dataset.unitName || opt.dataset.unit_name || opt.textContent;
+                stock = parseFloat(opt.dataset.stock || '0');
+                price = parseFloat(opt.dataset.price || '0');
+            }
 
             if (stock <= 0) {
                 Swal.fire('Out of Stock', `This product is out of stock at ${branchName}.`, 'warning');
                 return;
             }
 
-            const cartIdentifier = `${productId}-${branchId}`;
+            const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}`;
             const existingItem = cart.find(item => item.cartIdentifier === cartIdentifier);
             
             if (existingItem) {
@@ -640,6 +696,8 @@
                     cartIdentifier: cartIdentifier,
                     product_id: productId,
                     branch_id: branchId,
+                    unit_type_id: unitTypeId,
+                    unit_name: unitName,
                     name: name,
                     branchName: branchName,
                     price: price,
@@ -783,6 +841,9 @@
                     items: cart.map(item => ({
                         product_id: item.product_id,
                         branch_id: item.branch_id,
+                        unit_type_id: item.unit_type_id,
+                        unit_name: item.unit_name,
+                        name: item.name,
                         quantity: item.quantity,
                         price: item.price
                     })),
@@ -872,12 +933,13 @@
             cartItems.innerHTML = cart.map(item => {
                 const itemTotal = item.price * item.quantity;
                 total += itemTotal;
+                const unitLabel = item.unit_name ? ` ${item.unit_name}` : '';
                 
                 return `
                     <div class="cart-item d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
                         <div class="flex-grow-1">
                             <div class="fw-semibold">${item.name}</div>
-                            <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x ${item.quantity}</div>
+                            <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x ${item.quantity}${unitLabel}</div>
                         </div>
                         <div class="d-flex align-items-center">
                             <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity('${item.cartIdentifier}', -1)">
@@ -900,44 +962,17 @@
             
             totalAmount.textContent = `₱${total.toFixed(2)}`;
         }
-        
-        function updateQuantity(productId, change) {
-            const item = cart.find(item => item.product_id === productId);
-            if (!item) return;
-            
-            const newQuantity = item.quantity + change;
-            
-            if (newQuantity <= 0) {
-                removeFromCart(productId);
-                return;
-            }
-            
-            if (newQuantity > item.stock) {
-                alert(`Cannot add more. Only ${item.stock} available in stock.`);
-                return;
-            }
-            
-            item.quantity = newQuantity;
-            updateCartDisplay();
+
+        function updateQuantity(cartIdentifier, change) {
+            return window.updateQuantity(cartIdentifier, change);
         }
-        
-        function removeFromCart(productId) {
-            const item = cart.find(item => item.product_id === productId);
-            if (item) {
-                cart = cart.filter(item => item.product_id !== productId);
-                updateCartDisplay();
-                showNotification(`${item.name} removed from cart`, 'info');
-            }
+
+        function removeFromCart(cartIdentifier) {
+            return window.removeFromCart(cartIdentifier);
         }
-        
+
         function clearCart() {
-            if (cart.length === 0) return;
-            
-            if (confirm('Are you sure you want to clear the entire cart?')) {
-                cart = [];
-                updateCartDisplay();
-                showNotification('Cart cleared', 'info');
-            }
+            return window.clearCart();
         }
         
         // Payment method toggle

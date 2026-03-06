@@ -330,7 +330,7 @@
                                                 '</div>' +
                                                 '<div class="col-6">' +
                                                     '<label class="small text-muted mb-1">Stock In</label>' +
-                                                    '<input type="number" class="form-control form-control-sm js-stockin-qty-unit" data-product-id="' + item.product_id + '" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" min="0" value="0">' +
+                                                    '<input type="number" class="form-control form-control-sm js-stockin-qty-unit" data-product-id="' + item.product_id + '" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" name="items[' + idx + '][unit_quantities][' + ut.id + ']" min="0" value="0">' +
                                                 '</div>' +
                                             '</div>' +
                                         '</div>'

@@ -162,6 +162,23 @@ class PurchaseController extends Controller
         return view('SuperAdmin.purchases.show', compact('purchase'));
     }
 
+    public function markPaid(Purchase $purchase)
+    {
+        if ($purchase->payment_status === 'paid') {
+            return redirect()
+                ->route('superadmin.purchases.show', $purchase)
+                ->with('success', 'Purchase is already marked as paid.');
+        }
+
+        $purchase->update([
+            'payment_status' => 'paid',
+        ]);
+
+        return redirect()
+            ->route('superadmin.purchases.show', $purchase)
+            ->with('success', 'Purchase marked as paid successfully.');
+    }
+
     public function matchProduct(Request $request)
     {
         $normalizeForCompare = function (string $s): string {

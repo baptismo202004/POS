@@ -1097,6 +1097,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('purchases.create');
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
+        Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
         Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->name('purchases.ocr-product-match');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 

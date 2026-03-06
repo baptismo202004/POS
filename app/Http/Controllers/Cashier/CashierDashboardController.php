@@ -1295,8 +1295,10 @@ class CashierDashboardController extends Controller
                 'items' => 'required|array|min:1',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.unit_type_id' => 'required|exists:unit_types,id',
-                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.quantity' => 'required|numeric|min:0.0001',
                 'items.*.new_price' => 'required|numeric|min:0',
+                'items.*.unit_quantities' => 'nullable|array',
+                'items.*.unit_quantities.*' => 'nullable|numeric|min:0',
                 'items.*.branch_id' => 'required|exists:branches,id',
             ]);
 
@@ -1314,12 +1316,33 @@ class CashierDashboardController extends Controller
                 ], 403);
             }
 
-            // Sum requested quantities per product
+            // Sum requested quantities per product (base units)
             $requestedByProduct = [];
             foreach ($items as $item) {
                 $pid = (int) $item['product_id'];
-                $qty = (int) $item['quantity'];
-                $requestedByProduct[$pid] = ($requestedByProduct[$pid] ?? 0) + $qty;
+                $unitQuantities = $item['unit_quantities'] ?? [];
+
+                if (is_array($unitQuantities) && count($unitQuantities) > 0) {
+                    $sumBase = 0.0;
+                    foreach ($unitQuantities as $unitTypeId => $enteredQty) {
+                        $enteredQty = (float) $enteredQty;
+                        $unitTypeId = (int) $unitTypeId;
+                        if ($enteredQty <= 0) continue;
+
+                        $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
+                            ->where('product_id', $pid)
+                            ->where('unit_type_id', $unitTypeId)
+                            ->value('conversion_factor') ?? 1);
+                        if ($factor <= 0) $factor = 1;
+                        $sumBase += ($enteredQty * $factor);
+                    }
+
+                    $requestedByProduct[$pid] = ($requestedByProduct[$pid] ?? 0) + $sumBase;
+                    continue;
+                }
+
+                $qtyBase = (float) ($item['quantity'] ?? 0);
+                $requestedByProduct[$pid] = ($requestedByProduct[$pid] ?? 0) + $qtyBase;
             }
 
             // Validate remaining quantity per product
@@ -1345,18 +1368,52 @@ class CashierDashboardController extends Controller
 
             $stockIns = [];
             foreach ($items as $item) {
-                $stockIn = \App\Models\StockIn::create([
-                    'product_id' => $item['product_id'],
-                    'branch_id' => $item['branch_id'],
-                    'purchase_id' => $purchaseId,
-                    'unit_type_id' => $item['unit_type_id'],
-                    'quantity' => $item['quantity'],
-                    'initial_quantity' => $item['quantity'],
-                    'price' => $item['new_price'],
-                    'user_id' => Auth::id()
-                ]);
+                $unitQuantities = $item['unit_quantities'] ?? [];
 
-                $stockIns[] = $stockIn->id;
+                // Legacy cashier UI: create one stock_in row.
+                if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
+                    $qtyBase = (float) ($item['quantity'] ?? 0);
+                    $stockIn = \App\Models\StockIn::create([
+                        'product_id' => $item['product_id'],
+                        'branch_id' => $item['branch_id'],
+                        'purchase_id' => $purchaseId,
+                        'unit_type_id' => $item['unit_type_id'],
+                        'quantity' => $qtyBase,
+                        'initial_quantity' => $qtyBase,
+                        'price' => $item['new_price'],
+                        'user_id' => Auth::id()
+                    ]);
+
+                    $stockIns[] = $stockIn->id;
+                    continue;
+                }
+
+                // Per-unit quantities: create one stock_in row per unit type with qty > 0
+                foreach ($unitQuantities as $unitTypeId => $enteredQty) {
+                    $enteredQty = (float) $enteredQty;
+                    $unitTypeId = (int) $unitTypeId;
+                    if ($enteredQty <= 0) continue;
+
+                    $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
+                        ->where('product_id', (int) $item['product_id'])
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+                    if ($factor <= 0) $factor = 1;
+
+                    $qtyBase = $enteredQty * $factor;
+                    $stockIn = \App\Models\StockIn::create([
+                        'product_id' => $item['product_id'],
+                        'branch_id' => $item['branch_id'],
+                        'purchase_id' => $purchaseId,
+                        'unit_type_id' => $unitTypeId,
+                        'quantity' => $qtyBase,
+                        'initial_quantity' => $qtyBase,
+                        'price' => $item['new_price'],
+                        'user_id' => Auth::id()
+                    ]);
+
+                    $stockIns[] = $stockIn->id;
+                }
             }
 
             return response()->json([
