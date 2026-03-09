@@ -136,6 +136,61 @@
     flex-shrink: 0;
 }
 
+.table-responsive {
+    max-height: 500px;
+    overflow: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.products-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.products-table thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 3;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
+
+/* Sticky checkbox column (works with horizontal scroll) */
+.products-table thead th:first-child,
+.products-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 4;
+}
+
+/* Ensure sticky header + sticky first column intersection stays on top */
+.products-table thead th:first-child {
+    z-index: 5;
+}
+
+/* Better row hover and focus */
+.products-table tbody tr {
+    transition: background-color 120ms ease-in-out;
+}
+
+.products-table tbody tr:hover {
+    background-color: #f6f9ff;
+}
+
+.products-table tbody tr:hover td:first-child {
+    background-color: #f6f9ff;
+}
+
+.products-table tbody tr:focus-within {
+    background-color: #eef5ff;
+}
+
+.products-table tbody tr:focus-within td:first-child {
+    background-color: #eef5ff;
+}
+
 /* Ensure proper alignment at all screen sizes */
 @media (min-width: 1200px) {
     .products-header-card .d-flex:first-child {
@@ -238,7 +293,7 @@
                                 </div>
                             </div>
 
-                            <div class="table-container">
+                            <div class="table-container"style="padding-top:20px;">
                                 <div class="table-responsive">
                                     <table class="table products-table">
                                         <thead>
@@ -267,7 +322,7 @@
                                                 <th>Product Type</th>
                                                 <th>Unit Type</th>
                                                 <th>Status</th>
-                                                <th>View</th>
+                                                <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="product-table-body">
