@@ -608,6 +608,7 @@ class PosAdminController extends Controller
                 'items' => 'required|array|min:1',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.unit_type_id' => 'required|exists:unit_types,id',
+                'items.*.base_unit_type_id' => 'nullable|exists:unit_types,id',
                 'items.*.quantity' => 'required|numeric|min:0.0001',
                 'items.*.new_price' => 'required|numeric|min:0',
                 'items.*.unit_prices' => 'required|array|min:1',
@@ -621,10 +622,58 @@ class PosAdminController extends Controller
             foreach ($data['items'] as $item) {
                 $originalPrice = (float) ($item['original_price'] ?? 0);
 
+                // Prefer using existing stock_in.price (base unit price) as the authoritative base price reference
+                // when stocking in the same product for the same purchase+branch (ensures consistency across entries).
+                $existingBasePrice = (float) (StockIn::where('purchase_id', (int) $data['purchase_id'])
+                    ->where('product_id', (int) $item['product_id'])
+                    ->where('branch_id', (int) $item['branch_id'])
+                    ->orderByDesc('id')
+                    ->value('price') ?? 0);
+
+                $baseReferencePrice = $existingBasePrice > 0 ? $existingBasePrice : $originalPrice;
+
+                // If frontend provided base unit type, prefer using it for stock_ins.unit_type_id (backward compatibility)
+                $baseUnitTypeId = isset($item['base_unit_type_id']) ? (int) $item['base_unit_type_id'] : (int) ($item['unit_type_id'] ?? 0);
+
                 $unitPrices = $item['unit_prices'] ?? [];
+
+                // Arbitrage prevention across unit types (flexible retail pricing)
+                // Allow smaller units to be more expensive per base unit, but never cheaper.
+                // Compute base-equivalent: base_equiv = unit_price / factor
+                // Enforce: for smaller factor (smaller unit), base_equiv must be >= larger-unit base_equiv.
+                $pricePoints = [];
+
+                // If there is no existing stock_in base price, derive a base reference price from submitted unit prices
+                // by taking the cheapest per-base-unit price (bulk). This supports flexible pricing where smaller
+                // units can be more expensive, but not cheaper than bulk.
+                if ($existingBasePrice <= 0 && count($unitPrices) > 0) {
+                    $derived = [];
+                    foreach ($unitPrices as $uId => $uPrice) {
+                        $uPrice = (float) $uPrice;
+                        $uId = (int) $uId;
+                        if ($uPrice <= 0) continue;
+                        $f = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
+                            ->where('product_id', (int) $item['product_id'])
+                            ->where('unit_type_id', $uId)
+                            ->value('conversion_factor') ?? 1);
+                        $f = $f > 0 ? $f : 1;
+                        $derived[] = $uPrice / $f;
+                    }
+                    if (count($derived) > 0) {
+                        $baseReferencePrice = min($derived);
+                    }
+                }
+
                 foreach ($unitPrices as $unitTypeId => $unitPrice) {
                     $unitPrice = (float) $unitPrice;
                     $unitTypeId = (int) $unitTypeId;
+
+                    if ($unitPrice <= 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'All unit prices must be greater than zero.',
+                        ], 422);
+                    }
 
                     // Enforce the requested rule: unit price must not be smaller than purchased price converted to that unit.
                     $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
@@ -632,12 +681,39 @@ class PosAdminController extends Controller
                         ->where('unit_type_id', $unitTypeId)
                         ->value('conversion_factor') ?? 1);
 
-                    $minAllowed = $originalPrice * $factor;
+                    $factor = $factor > 0 ? $factor : 1;
+                    $baseEquiv = $unitPrice / $factor;
+                    $pricePoints[] = ['factor' => $factor, 'base_equiv' => $baseEquiv];
+
+                    $minAllowed = $baseReferencePrice * $factor;
                     if ($unitPrice < $minAllowed) {
                         return response()->json([
                             'success' => false,
-                            'message' => 'New Price must not be smaller than the Purchased Price for the selected unit type.',
+                            'message' => 'New Price must not be smaller than the base price reference for the selected unit type.',
                         ], 422);
+                    }
+                }
+
+                if (count($pricePoints) >= 2) {
+                    usort($pricePoints, function($a, $b) {
+                        // larger units first (bigger factor)
+                        return $b['factor'] <=> $a['factor'];
+                    });
+
+                    $tolerance = 0.001; // allow tiny rounding differences
+                    $prev = null;
+                    foreach ($pricePoints as $p) {
+                        if ($prev !== null) {
+                            // If current unit is smaller (factor decreased), it may be more expensive per base unit,
+                            // but must not be cheaper. Therefore base_equiv must be non-increasing as factor decreases.
+                            if ($p['base_equiv'] - $tolerance > $prev['base_equiv']) {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Smaller units must not be cheaper than larger units after conversion (no arbitrage).',
+                                ], 422);
+                            }
+                        }
+                        $prev = $p;
                     }
                 }
             }
@@ -702,32 +778,32 @@ class PosAdminController extends Controller
                 // If per-unit quantities are not provided (older UI), fallback to single stock_in row.
                 if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
                     Log::info("[STOCK_IN] Processing item (legacy)", [
-                        'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'quantity' => $item['quantity'],
-                        'new_price' => $item['new_price']
-                    ]);
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $item['branch_id'],
+                    'quantity' => $item['quantity'],
+                    'new_price' => $item['new_price']
+                ]);
 
-                    $qtyBase = (float) ($item['quantity'] ?? 0);
-                    $stockIn = StockIn::create([
-                        'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'purchase_id' => $purchaseId,
-                        'unit_type_id' => $item['unit_type_id'],
-                        'quantity' => $qtyBase,
-                        'initial_quantity' => $qtyBase,
-                        'price' => $item['new_price'],
-                        'user_id' => Auth::id()
-                    ]);
+                $qtyBase = (float) ($item['quantity'] ?? 0);
+                $stockIn = StockIn::create([
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $item['branch_id'],
+                    'purchase_id' => $purchaseId,
+                    'unit_type_id' => $baseUnitTypeId ?: $item['unit_type_id'],
+                    'quantity' => $qtyBase,
+                    'initial_quantity' => $qtyBase,
+                    'price' => $baseReferencePrice,
+                    'user_id' => Auth::id()
+                ]);
 
-                    foreach ($unitPrices as $unitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $unitTypeId],
-                            ['price' => (float) $unitPrice]
-                        );
-                    }
+                foreach ($unitPrices as $unitTypeId => $unitPrice) {
+                    $stockIn->unitPrices()->updateOrCreate(
+                        ['unit_type_id' => (int) $unitTypeId],
+                        ['price' => (float) $unitPrice]
+                    );
+                }
 
-                    $stockIns[] = $stockIn->id;
+                $stockIns[] = $stockIn->id;
                     continue;
                 }
 
@@ -759,7 +835,7 @@ class PosAdminController extends Controller
                     ]);
 
                     $stockIn = StockIn::create([
-                        'product_id' => $item['product_id'],
+                    'product_id' => $item['product_id'],
                         'branch_id' => $item['branch_id'],
                         'purchase_id' => $purchaseId,
                         'unit_type_id' => $unitTypeId,

@@ -1080,14 +1080,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/product-sales/{productId}', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'getProductSales']);
 
         // Sales routes
-        Route::get('/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('superadmin.main.sales.index');
         Route::get('/sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
         Route::get('/sales/voided', [\App\Http\Controllers\Admin\SalesController::class, 'voidedSales'])->name('sales.voided');
         Route::get('/sales/below-cost', [\App\Http\Controllers\Admin\SalesController::class, 'belowCostSalesReport'])->name('sales.below-cost');
         Route::get('/sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
         Route::get('/sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
         Route::get('/sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
-        Route::get('/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+        Route::get('/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('superadmin.main.sales.show');
         Route::get('/sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
         Route::get('/sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
         Route::post('/sales/{sale}/void', [\App\Http\Controllers\Admin\SalesController::class, 'voidSale'])->name('sales.void');
@@ -1113,10 +1113,10 @@ Route::middleware('auth')->group(function () {
         Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
 
         // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
+        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('admin.main.sales.index');
         Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
         Route::get('sales/graph-data', [\App\Http\Controllers\Admin\SalesController::class, 'getGraphData'])->name('sales.graph-data');
-        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('admin.main.sales.show');
         Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
         Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
         Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
@@ -1255,8 +1255,8 @@ Route::middleware('auth')->group(function () {
         Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
 
         // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('sales.index');
-        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('sales.show');
+        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('admin.customers.sales.index');
+        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('admin.customers.sales.show');
         Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
         Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
         Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
