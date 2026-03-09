@@ -551,23 +551,63 @@ let products = [];
 // Global DOM element references
 let input, btn, tableBody, resultsCount, orderItems, totalAmount, creditDetails, paymentCash, paymentCredit;
 
+function getProductPrimaryBranch(product) {
+    if (!product) return null;
+    if (Array.isArray(product.branches) && product.branches.length > 0) return product.branches[0];
+    return null;
+}
+
+function getSelectedUnitForProduct(productId) {
+    const select = document.getElementById(`unit-type-${productId}`);
+    const unitTypeId = select ? parseInt(select.value || '0', 10) : 0;
+    if (!unitTypeId) return null;
+
+    const product = products.find(p => p.id === productId);
+    const branch = getProductPrimaryBranch(product);
+    const units = branch && Array.isArray(branch.stock_units) ? branch.stock_units : [];
+    return units.find(u => parseInt(u.unit_type_id, 10) === unitTypeId) || null;
+}
+
+function getCartKey(productId, unitTypeId) {
+    return `${productId}:${unitTypeId}`;
+}
+
 function addToCart(productId) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const existingItem = saleData.items.find(item => item.id === productId);
-    
+    const unit = getSelectedUnitForProduct(productId);
+    if (!unit || !unit.unit_type_id) {
+        alert('Please select unit type first');
+        return;
+    }
+
+    const unitTypeId = parseInt(unit.unit_type_id, 10);
+    const unitPrice = parseFloat(unit.price || 0);
+    const unitStock = parseFloat(unit.stock || 0);
+
+    if (unitStock <= 0) {
+        alert('Out of stock for selected unit type');
+        return;
+    }
+
+    const key = getCartKey(productId, unitTypeId);
+    const existingItem = saleData.items.find(item => item.key === key);
+
     if (existingItem) {
         existingItem.quantity++;
     } else {
         saleData.items.push({
+            key: key,
             id: product.id,
+            unit_type_id: unitTypeId,
+            unit_name: unit.unit_name || '',
             name: product.product_name,
-            price: parseFloat(product.selling_price),
+            price: unitPrice,
             quantity: 1
         });
     }
-    
+
     updateOrderDisplay();
 }
 
@@ -582,13 +622,13 @@ function updateOrderDisplay() {
         <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
                 <div class="fw-bold">${item.name}</div>
-                <small class="text-muted">₱${item.price.toFixed(2)} × ${item.quantity}</small>
+                <small class="text-muted">${item.unit_name ? `(${item.unit_name}) ` : ''}₱${item.price.toFixed(2)} × ${item.quantity}</small>
             </div>
             <div class="d-flex align-items-center">
-                <button class="btn btn-sm btn-outline-secondary me-2" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
                 <span class="mx-2">${item.quantity}</span>
-                <button class="btn btn-sm btn-outline-secondary me-2" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.id})">
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.key}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -605,21 +645,21 @@ function updateOrderDisplay() {
     totalAmount.textContent = `₱${total.toFixed(2)}`;
 }
 
-function updateQuantity(productId, newQuantity) {
+function updateQuantity(itemKey, newQuantity) {
     if (newQuantity <= 0) {
-        removeFromCart(productId);
+        removeFromCart(itemKey);
         return;
     }
     
-    const item = saleData.items.find(item => item.id === productId);
+    const item = saleData.items.find(item => item.key === itemKey);
     if (item) {
         item.quantity = newQuantity;
         updateOrderDisplay();
     }
 }
 
-function removeFromCart(productId) {
-    saleData.items = saleData.items.filter(item => item.id !== productId);
+function removeFromCart(itemKey) {
+    saleData.items = saleData.items.filter(item => item.key !== itemKey);
     updateOrderDisplay();
 }
 
@@ -660,6 +700,7 @@ function checkout() {
         formData.append(`products[${index}][id]`, item.id);
         formData.append(`products[${index}][quantity]`, item.quantity);
         formData.append(`products[${index}][price]`, item.price);
+        formData.append(`products[${index}][unit_type_id]`, item.unit_type_id);
     });
 
     // Calculate totals
@@ -808,24 +849,44 @@ function displayProducts(productsList) {
         return;
     }
 
-    tableBody.innerHTML = productsList.map(product => `
+    tableBody.innerHTML = productsList.map(product => {
+        const branch = getProductPrimaryBranch(product);
+        const units = branch && Array.isArray(branch.stock_units) ? branch.stock_units : [];
+        const defaultUnit = units.length > 0 ? units[0] : null;
+        const defaultUnitId = defaultUnit ? parseInt(defaultUnit.unit_type_id || '0', 10) : 0;
+        const defaultStock = defaultUnit ? parseFloat(defaultUnit.stock || 0) : (product.total_stock ?? 0);
+        const defaultPrice = defaultUnit ? parseFloat(defaultUnit.price || 0) : parseFloat(product.selling_price || 0);
+
+        const unitOptions = units.map(u => {
+            const id = parseInt(u.unit_type_id || '0', 10);
+            const name = u.unit_name || '';
+            const selected = id === defaultUnitId ? 'selected' : '';
+            return `<option value="${id}" ${selected}>${name}</option>`;
+        }).join('');
+
+        const unitSelect = units.length > 0
+            ? `<select class="form-select form-select-sm mt-1" id="unit-type-${product.id}" onchange="onUnitTypeChange(${product.id})">${unitOptions}</select>`
+            : '';
+
+        return `
         <tr class="animate-in">
             <td>
                 <div class="d-flex align-items-center">
                     ${product.image ? `<img src="/storage/${product.image}" alt="${product.product_name}" class="me-2" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">` : '<i class="fas fa-box me-2 text-muted"></i>'}
                     <div>
                         <div class="fw-bold">${product.product_name}</div>
+                        ${unitSelect}
                     </div>
                 </div>
             </td>
             <td>${product.barcode || 'N/A'}</td>
             <td class="text-end">
-                <span class="badge ${product.total_stock > 10 ? 'bg-success' : 'bg-warning'}">
-                    ${product.total_stock ?? 0}
+                <span id="stock-${product.id}" class="badge ${(defaultStock > 10) ? 'bg-success' : 'bg-warning'}">
+                    ${defaultStock ?? 0}
                 </span>
             </td>
             <td class="text-end">
-                <span class="price-display">₱${parseFloat(product.selling_price).toFixed(2)}</span>
+                <span id="price-${product.id}" class="price-display">₱${defaultPrice.toFixed(2)}</span>
             </td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="addToCart(${product.id})">
@@ -833,7 +894,32 @@ function displayProducts(productsList) {
                 </button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function onUnitTypeChange(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const unit = getSelectedUnitForProduct(productId);
+    if (!unit) return;
+
+    const stockEl = document.getElementById(`stock-${productId}`);
+    const priceEl = document.getElementById(`price-${productId}`);
+
+    const stock = parseFloat(unit.stock || 0);
+    const price = parseFloat(unit.price || 0);
+
+    if (stockEl) {
+        stockEl.textContent = `${stock}`;
+        stockEl.classList.remove('bg-success', 'bg-warning');
+        stockEl.classList.add(stock > 10 ? 'bg-success' : 'bg-warning');
+    }
+
+    if (priceEl) {
+        priceEl.textContent = `₱${price.toFixed(2)}`;
+    }
 }
 
 // Initialize when DOM is loaded
