@@ -183,7 +183,7 @@
                 var minAllowed = original * factor;
 
                 if (val < minAllowed) {
-                    var msg = 'Please select an item in the list.';
+                    var msg = 'New price must be at least ' + minAllowed.toFixed(2) + '.';
                     hidden.setCustomValidity(msg);
                     var priceInput = unitId ? row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]') : null;
                     if (priceInput) {

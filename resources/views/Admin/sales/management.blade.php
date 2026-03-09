@@ -112,7 +112,7 @@
                             <thead>
                                 <tr>
                                     <th>Sale ID</th>
-                                    <th>Product Name</th>
+                                    <th>Reference Number</th>
                                     <th>Cashier</th>
                                     <th>Items</th>
                                     <th>Total Amount</th>
@@ -125,7 +125,7 @@
                                 @forelse($recentSales as $sale)
                                     <tr>
                                         <td>#{{ $sale->id }}</td>
-                                        <td>{{ $sale->product_names ?: 'No products' }}</td>
+                                        <td>{{ $sale->reference_number ?: ('PR-' . $sale->created_at->format('Ymd') . $sale->id) }}</td>
                                         <td>{{ $sale->cashier->name ?? 'Unknown' }}</td>
                                         <td>{{ $sale->saleItems->sum('quantity') }} items</td>
                                         <td>₱{{ number_format($sale->total_amount, 2) }}</td>

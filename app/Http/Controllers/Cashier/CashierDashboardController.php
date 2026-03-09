@@ -2303,31 +2303,70 @@ class CashierDashboardController extends Controller
             $products = Product::whereHas('stockIns', function ($query) use ($mcsBranchId) {
                 $query->where('branch_id', $mcsBranchId);
             })
-                ->with(['unitTypes', 'stockIns' => function ($query) use ($mcsBranchId) {
-                    $query->where('branch_id', $mcsBranchId);
-                }])
+                ->with([
+                    'unitTypes',
+                    'stockIns' => function ($query) use ($mcsBranchId) {
+                        $query->where('branch_id', $mcsBranchId);
+                    },
+                ])
                 ->get()
                 ->map(function ($product) use ($mcsBranchId) {
                     $stockIns = $product->stockIns->where('branch_id', $mcsBranchId);
-                    $totalStock = $stockIns->sum('quantity');
-                    $price = $stockIns->first()->price ?? 0; // Get price from StockIn
 
-                    $branches = collect([
+                    $totalStock = (int) $stockIns->sum(function ($s) {
+                        $qty = (float) ($s->quantity ?? 0);
+                        $sold = (float) ($s->sold ?? 0);
+                        return max(0, $qty - $sold);
+                    });
+
+                    $stockUnits = $stockIns
+                        ->groupBy('unit_type_id')
+                        ->map(function ($rows, $unitTypeId) use ($product) {
+                            $unitType = $product->unitTypes->firstWhere('id', (int) $unitTypeId);
+                            $latestPrice = 0;
+                            foreach ($rows as $r) {
+                                if (!is_null($r->price) && (float) $r->price > 0) {
+                                    $latestPrice = (float) $r->price;
+                                }
+                            }
+
+                            $stock = (int) $rows->sum(function ($s) {
+                                $qty = (float) ($s->quantity ?? 0);
+                                $sold = (float) ($s->sold ?? 0);
+                                return max(0, $qty - $sold);
+                            });
+
+                            return [
+                                'unit_type_id' => (int) $unitTypeId,
+                                'unit_name' => $unitType ? $unitType->unit_name : null,
+                                'stock' => $stock,
+                                'price' => $latestPrice,
+                            ];
+                        })
+                        ->values()
+                        ->toArray();
+
+                    $defaultUnit = !empty($stockUnits) ? $stockUnits[0] : null;
+                    $defaultPrice = $defaultUnit ? (float) ($defaultUnit['price'] ?? 0) : 0;
+
+                    $branches = [
                         [
                             'branch_id' => $mcsBranchId,
                             'branch_name' => 'MCS',
                             'stock' => $totalStock,
+                            'price' => $defaultPrice,
+                            'stock_units' => $stockUnits,
                         ],
-                    ]);
+                    ];
 
                     return [
                         'id' => $product->id,
                         'product_name' => $product->product_name,
                         'barcode' => $product->barcode,
                         'model_number' => $product->model_number,
-                        'selling_price' => $price, // Use price from StockIn
+                        'selling_price' => $defaultPrice,
                         'total_stock' => $totalStock,
-                        'branches' => $branches->toArray(),
+                        'branches' => $branches,
                     ];
                 });
 
@@ -2354,16 +2393,51 @@ class CashierDashboardController extends Controller
 
         $product = $products->first();
         $stockIns = $product->stockIns->where('branch_id', $mcsBranchId);
-        $totalStock = $stockIns->sum('quantity');
-        $price = $stockIns->first()->price ?? 0; // Get price from StockIn
+        $totalStock = (int) $stockIns->sum(function ($s) {
+            $qty = (float) ($s->quantity ?? 0);
+            $sold = (float) ($s->sold ?? 0);
+            return max(0, $qty - $sold);
+        });
 
-        $branches = collect([
+        $stockUnits = $stockIns
+            ->groupBy('unit_type_id')
+            ->map(function ($rows, $unitTypeId) use ($product) {
+                $unitType = $product->unitTypes->firstWhere('id', (int) $unitTypeId);
+                $latestPrice = 0;
+                foreach ($rows as $r) {
+                    if (!is_null($r->price) && (float) $r->price > 0) {
+                        $latestPrice = (float) $r->price;
+                    }
+                }
+
+                $stock = (int) $rows->sum(function ($s) {
+                    $qty = (float) ($s->quantity ?? 0);
+                    $sold = (float) ($s->sold ?? 0);
+                    return max(0, $qty - $sold);
+                });
+
+                return [
+                    'unit_type_id' => (int) $unitTypeId,
+                    'unit_name' => $unitType ? $unitType->unit_name : null,
+                    'stock' => $stock,
+                    'price' => $latestPrice,
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $defaultUnit = !empty($stockUnits) ? $stockUnits[0] : null;
+        $price = $defaultUnit ? (float) ($defaultUnit['price'] ?? 0) : 0;
+
+        $branches = [
             [
                 'branch_id' => $mcsBranchId,
                 'branch_name' => 'MCS',
                 'stock' => $totalStock,
+                'price' => $price,
+                'stock_units' => $stockUnits,
             ],
-        ]);
+        ];
 
         return response()->json([
             'success' => true,
@@ -2374,7 +2448,7 @@ class CashierDashboardController extends Controller
                 'model_number' => $product->model_number,
                 'selling_price' => $price, // Use price from StockIn
                 'total_stock' => $totalStock,
-                'branches' => $branches->toArray(),
+                'branches' => $branches,
             ]]
         ]);
     }
@@ -2414,27 +2488,77 @@ class CashierDashboardController extends Controller
                 'updated_at' => now(),
             ]);
 
+            // Force use MCS branch (ID 3) for cashier POS stock deduction
+            $mcsBranchId = 3;
+
             // Create sale items and update stock
             foreach ($items as $item) {
-                $subtotal = $item['quantity'] * $item['price'];
-                SaleItem::create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $item['id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['price'],
-                    'subtotal' => $subtotal,
-                ]);
+                $productId = (int) ($item['id'] ?? 0);
+                $quantity = (int) ($item['quantity'] ?? 0);
+                $price = (float) ($item['price'] ?? 0);
+                $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
 
-                // Deduct stock
-                $stockIn = StockIn::where('product_id', $item['id'])
-                    ->where('branch_id', 3) // MCS branch
-                    ->where('quantity', '>', 0)
-                    ->first();
-
-                if ($stockIn) {
-                    $stockIn->quantity -= $item['quantity'];
-                    $stockIn->save();
+                if (! $productId || $quantity <= 0) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Invalid item payload.']);
                 }
+
+                if (empty($unitTypeId)) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Unit type is required for each item.'], 422);
+                }
+
+                // Deduct stock by unit type (FIFO), using sold tracking
+                $stockRecords = StockIn::where('product_id', $productId)
+                    ->where('branch_id', $mcsBranchId)
+                    ->where('unit_type_id', $unitTypeId)
+                    ->where('quantity', '>', DB::raw('sold'))
+                    ->orderBy('id', 'asc')
+                    ->get();
+
+                $remainingQuantity = $quantity;
+                foreach ($stockRecords as $stock) {
+                    if ($remainingQuantity <= 0) break;
+
+                    $availableStock = (float) $stock->quantity - (float) $stock->sold;
+                    $toDeduct = min($remainingQuantity, $availableStock);
+
+                    $stock->sold = (float) $stock->sold + $toDeduct;
+                    $stock->save();
+
+                    $remainingQuantity -= $toDeduct;
+
+                    StockOut::create([
+                        'stock_in_id' => $stock->id,
+                        'product_id' => $productId,
+                        'sale_id' => $sale->id,
+                        'quantity' => $toDeduct,
+                        'branch_id' => $mcsBranchId,
+                    ]);
+                }
+
+                if ($remainingQuantity > 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Insufficient stock for selected unit type.',
+                    ], 422);
+                }
+
+                $subtotal = $quantity * $price;
+                $saleItemPayload = [
+                    'sale_id' => $sale->id,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                    'unit_price' => $price,
+                    'subtotal' => $subtotal,
+                ];
+
+                if (Schema::hasColumn('sale_items', 'unit_type_id')) {
+                    $saleItemPayload['unit_type_id'] = $unitTypeId;
+                }
+
+                SaleItem::create($saleItemPayload);
             }
 
             // Create credit record if needed
