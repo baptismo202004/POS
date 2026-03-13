@@ -7,12 +7,12 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Use CashierSidebar */
         .main-content {
             margin-left: 280px !important;
         }
-
         :root {
             --primary-color: #2563eb;
             --secondary-color: #64748b;
@@ -98,8 +98,18 @@
         }
 
         .stats-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .stats-card.stats-card-clickable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .stats-card.stats-card-clickable:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 28px rgba(13,71,161,0.12);
         }
 
         .status-badge {
@@ -124,12 +134,120 @@
             background: var(--danger-color);
             color: white;
         }
+
+        .credit-theme {
+            position: relative;
+            min-height: 100vh;
+            background: #f0f6ff;
+            color: #1a2744;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .credit-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .credit-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .credit-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .credit-theme .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .credit-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .credit-theme .credit-card {
+            border-radius: 20px;
+            border: 1px solid rgba(25,118,210,0.13);
+            box-shadow: 0 4px 28px rgba(13,71,161,0.09);
+        }
+
+        .credit-theme .card-header-custom {
+            background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        .credit-theme .card-header-custom h5,
+        .credit-theme .card-header-custom .card-title {
+            color: #fff !important;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+        }
+        .credit-theme .card-header-custom i { color: rgba(0,229,255,.85); }
+
+        .credit-theme .stats-card {
+            background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+            box-shadow: 0 8px 22px rgba(13,71,161,0.18);
+        }
+
+        .credit-theme .table-custom thead th {
+            background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+            color: rgba(255,255,255,0.92);
+        }
+
+        .credit-theme .table-custom {
+            min-width: 0;
+        }
+
+        .credit-theme .table-responsive {
+            overflow-x: hidden;
+        }
+
+        .credit-theme .btn-primary {
+            background: linear-gradient(135deg, #0D47A1, #1976D2);
+            border: none;
+            box-shadow: 0 4px 14px rgba(13,71,161,0.26);
+        }
+
+        .credit-theme .btn-info {
+            background: rgba(25,118,210,0.10);
+            color: #0D47A1;
+            border: 1px solid rgba(25,118,210,0.20);
+        }
+
+        .credit-theme .btn-outline-primary {
+            color: #0D47A1;
+            border-color: rgba(25,118,210,0.45);
+        }
+
+        .credit-theme .card-footer.bg-light {
+            background: rgba(240,246,255,0.55) !important;
+        }
+
+        .credit-theme .status-active { background: #f59e0b; }
+        .credit-theme .status-paid { background: #10b981; }
+        .credit-theme .status-overdue { background: #ef4444; }
+
+        .credit-theme .swal2-popup {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
     </style>
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="container-fluid">
+<div class="credit-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
+
+    <div class="p-3 p-lg-4" style="position: relative; z-index: 1;">
+        <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -147,15 +265,30 @@
         </div>
 
         <!-- Statistics Cards -->
+        @php
+            $pendingCreditsData = $credits->getCollection()
+                ->where('status', 'active')
+                ->map(function ($credit) {
+                    return [
+                        'customer' => $credit->customer?->full_name ?? $credit->customer_name ?? 'Customer',
+                        'amount' => (float) ($credit->credit_amount ?? 0),
+                    ];
+                })
+                ->values();
+        @endphp
         <div class="row mb-4">
             <div class="col-md-4">
-                <div class="stats-card">
+                <div class="stats-card stats-card-clickable" role="button" tabindex="0"
+                     onclick="showTotalCreditsModal({{ $credits->total() }}, {{ $credits->where('status', 'active')->count() }}, {{ $credits->where('status', 'active')->sum('remaining_balance') }})"
+                     onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); this.click(); }">
                     <div class="stats-number">{{ $credits->total() }}</div>
                     <div class="stats-label">Total Credits</div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="stats-card">
+                <div class="stats-card stats-card-clickable" role="button" tabindex="0"
+                     onclick='showPendingCreditsModal(@json($pendingCreditsData))'
+                     onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); this.click(); }">
                     <div class="stats-number">{{ $credits->where('status', 'active')->count() }}</div>
                     <div class="stats-label">Pending Credits</div>
                 </div>
@@ -263,18 +396,39 @@
         </div>
     </div>
 </div>
+</div>
 @endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function recordPayment(creditId, customerName, remainingBalance) {
+    const balance = parseFloat(remainingBalance || '0');
+    const hasBalance = balance > 0;
+
+    if (!hasBalance) {
+        Swal.fire({
+            title: 'Record Payment',
+            html: `
+                <div class="text-start">
+                    <p><strong>Customer:</strong> ${customerName}</p>
+                    <p><strong>Current Balance:</strong> ₱${balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                    <div class="alert alert-success py-2 mb-0" role="alert" style="margin-top: 10px;">
+                        No outstanding balance.
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Close',
+        });
+        return;
+    }
+
     Swal.fire({
         title: 'Record Payment',
         html: `
             <div class="text-start">
                 <p><strong>Customer:</strong> ${customerName}</p>
-                <p><strong>Current Balance:</strong> ₱${parseFloat(remainingBalance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                <p><strong>Current Balance:</strong> ₱${balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
                 <div class="mb-3 text-start">
                     <label class="form-label">Payment Amount (₱)</label>
                     <input type="number" id="swal-payment-amount" class="swal2-input" min="0.01" step="0.01" placeholder="Enter amount">
@@ -300,7 +454,7 @@ function recordPayment(creditId, customerName, remainingBalance) {
                 return false;
             }
 
-            if (amount > parseFloat(remainingBalance)) {
+            if (amount > balance) {
                 Swal.showValidationMessage('Payment amount cannot be greater than remaining balance');
                 return false;
             }
@@ -358,6 +512,64 @@ function recordPayment(creditId, customerName, remainingBalance) {
                 text: 'An error occurred while recording the payment. Please try again.',
             });
         });
+    });
+}
+
+function showTotalCreditsModal(totalCredits, pendingCredits, pendingAmount) {
+    const pending = parseFloat(pendingAmount || '0');
+    Swal.fire({
+        title: 'Total Credits',
+        html: `
+            <div class="text-start">
+                <p><strong>Total Credits:</strong> ${parseInt(totalCredits || 0).toLocaleString()}</p>
+                <p><strong>Pending Credits:</strong> ${parseInt(pendingCredits || 0).toLocaleString()}</p>
+                <p><strong>Pending Amount:</strong> ₱${pending.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+            </div>
+        `,
+        confirmButtonText: 'Close',
+    });
+}
+
+function showPendingCreditsModal(items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const rows = safeItems.length
+        ? safeItems.map((it) => {
+            const name = (it && it.customer) ? String(it.customer) : 'Customer';
+            const amount = parseFloat((it && it.amount) ? it.amount : 0);
+            return `
+                <tr>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid rgba(25,118,210,0.13);">${name}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid rgba(25,118,210,0.13); text-align: right; white-space: nowrap;">₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        }).join('')
+        : `
+            <tr>
+                <td colspan="2" style="padding: 12px; text-align: center; color: #6b84aa;">No pending credits found.</td>
+            </tr>
+        `;
+
+    Swal.fire({
+        title: 'Pending Credits',
+        html: `
+            <div class="text-start">
+                <div style="max-height: 360px; overflow: auto; border: 1px solid rgba(25,118,210,0.13); border-radius: 12px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 10px 12px; text-align: left; position: sticky; top: 0; background: #f0f6ff; border-bottom: 1px solid rgba(25,118,210,0.13);">Customer</th>
+                                <th style="padding: 10px 12px; text-align: right; position: sticky; top: 0; background: #f0f6ff; border-bottom: 1px solid rgba(25,118,210,0.13);">Credit Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'Close',
+        width: 700,
     });
 }
 
@@ -475,46 +687,45 @@ function displayCreditLimitsModal(data) {
     }
 
     const modalHtml = `
-        <div class="modal fade" id="creditLimitsModal" tabindex="-1">
-            <div class="modal-dialog modal-xl">
+        <div class="modal fade credit-limits-modal" id="creditLimitsModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">
-                            <i class="fas fa-chart-bar me-2"></i>Credit Limits Management
+                            <i class="fas fa-chart-bar"></i>
+                            Credit Limits Management
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
+                        <div class="limits-toolbar">
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-primary btn-sm" onclick="updateSelectedLimits()">
-                                    <i class="fas fa-save me-1"></i> Update Selected
+                                    <i class="fas fa-save me-1"></i>Update Selected
                                 </button>
-                                <button class="btn btn-secondary btn-sm ms-2" onclick="resetAllLimits()">
-                                    <i class="fas fa-undo me-1"></i> Reset All
+                                <button class="btn btn-secondary btn-sm" onclick="resetAllLimits()">
+                                    <i class="fas fa-undo me-1"></i>Reset All
                                 </button>
                             </div>
-                            <div class="col-md-6 text-end">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Set credit limits for customers. Leave at 0 for no limit.
-                                </small>
+                            <div class="hint">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Set credit limits for customers. Leave at 0 for no limit.
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
+                            <table class="table">
+                                <thead>
                                     <tr>
-                                        <th>
-                                            <input type="checkbox" id="selectAllCustomers" onchange="toggleAllCustomers()">
+                                        <th style="width: 44px;">
+                                            <input type="checkbox" id="selectAllCustomers" class="form-check-input" onchange="toggleAllCustomers()">
                                         </th>
-                                        <th>Customer</th>
-                                        <th>Total Credits</th>
-                                        <th>Current Limit</th>
-                                        <th>Max Credit Limit</th>
-                                        <th>Total Paid</th>
-                                        <th>Remaining</th>
-                                        <th>Status</th>
+                                        <th style="width: 180px;">Customer</th>
+                                        <th style="width: 110px;">Total Credits</th>
+                                        <th style="width: 130px;">Current Limit</th>
+                                        <th style="width: 170px;">Max Credit Limit</th>
+                                        <th style="width: 120px;">Total Paid</th>
+                                        <th style="width: 120px;">Remaining</th>
+                                        <th style="width: 170px;">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>

@@ -1,6 +1,137 @@
 @extends('layouts.app')
 
 @section('content')
+@push('stylesDashboard')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --navy:    #0D47A1;
+        --blue:    #1976D2;
+        --blue-lt: #42A5F5;
+        --cyan:    #00E5FF;
+        --green:   #10b981;
+        --red:     #ef4444;
+        --amber:   #f59e0b;
+        --bg:      #EBF3FB;
+        --card:    #ffffff;
+        --border:  rgba(25,118,210,0.12);
+        --text:    #1a2744;
+        --muted:   #6b84aa;
+    }
+
+    .sp-page { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); }
+
+    .sp-bg { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg); }
+    .sp-bg::before {
+        content:'';position:absolute;inset:0;
+        background:
+            radial-gradient(ellipse 60% 50% at 0% 0%,    rgba(13,71,161,0.09) 0%,transparent 60%),
+            radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.07) 0%,transparent 55%);
+    }
+    .sp-blob { position:absolute;border-radius:50%;filter:blur(60px);opacity:.11; }
+    .sp-blob-1 { width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite; }
+    .sp-blob-2 { width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite; }
+    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+
+    .sp-wrap { position:relative; z-index:1; padding:18px 24px 44px; }
+
+    .sp-page-head {
+        display:flex;align-items:center;justify-content:space-between;
+        margin-bottom:16px;flex-wrap:wrap;gap:12px;
+        animation:spUp .4s ease both;
+    }
+    .sp-ph-left { display:flex;align-items:center;gap:13px; }
+    .sp-ph-icon {
+        width:48px;height:48px;border-radius:14px;
+        background:linear-gradient(135deg,var(--navy),var(--blue-lt));
+        display:flex;align-items:center;justify-content:center;
+        font-size:20px;color:#fff;
+        box-shadow:0 6px 20px rgba(13,71,161,0.28);
+    }
+    .sp-ph-crumb { font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.75;margin-bottom:3px;font-family:'Nunito',sans-serif; }
+    .sp-ph-title { font-family:'Nunito',sans-serif;font-size:24px;font-weight:900;color:var(--navy);line-height:1.1; }
+    .sp-ph-sub   { font-size:12px;color:var(--muted);margin-top:2px; }
+    .sp-ph-actions { display:flex;align-items:center;gap:9px;flex-wrap:wrap; }
+
+    .sp-btn {
+        display:inline-flex;align-items:center;gap:7px;
+        padding:9px 18px;border-radius:11px;
+        font-size:13px;font-weight:700;cursor:pointer;
+        font-family:'Nunito',sans-serif;
+        border:none;transition:all .2s ease;text-decoration:none;white-space:nowrap;
+    }
+    .sp-btn-primary { background:linear-gradient(135deg,var(--navy),var(--blue)); color:#fff; box-shadow:0 4px 14px rgba(13,71,161,0.26); }
+    .sp-btn-primary:hover { transform:translateY(-2px); box-shadow:0 7px 20px rgba(13,71,161,0.36); color:#fff; }
+    .sp-btn-outline { background:var(--card); color:var(--navy); border:1.5px solid var(--border); }
+    .sp-btn-outline:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    .sp-card {
+        background:var(--card);border-radius:20px;
+        border:1px solid var(--border);
+        box-shadow:0 4px 28px rgba(13,71,161,0.09);
+        overflow:hidden;animation:spUp .45s ease both;
+    }
+    .sp-card-head {
+        padding:15px 22px;
+        background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);
+        display:flex;align-items:center;justify-content:space-between;
+        position:relative;overflow:hidden;
+    }
+    .sp-card-head::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none; }
+    .sp-card-head::after  { content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none; }
+    .sp-card-head-title { font-family:'Nunito',sans-serif;font-size:14.5px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1; }
+    .sp-card-body { padding: 18px 22px; }
+
+    .sp-search {
+        border-radius:11px !important;
+        border:1.5px solid var(--border) !important;
+        padding:9px 14px !important;
+        font-size:13px !important;
+        font-family:'Plus Jakarta Sans',sans-serif !important;
+        box-shadow:none !important;
+    }
+    .sp-search:focus { border-color:var(--blue-lt) !important; box-shadow:0 0 0 3px rgba(66,165,245,0.12) !important; }
+
+    .sp-table-wrap { overflow-x:auto; }
+    .sp-table-wrap::-webkit-scrollbar{height:5px;width:5px;}
+    .sp-table-wrap::-webkit-scrollbar-thumb{background:rgba(13,71,161,0.15);border-radius:4px;}
+    .sp-table { width:100%;border-collapse:separate;border-spacing:0;font-family:'Plus Jakarta Sans',sans-serif; }
+    .sp-table thead th {
+        background:linear-gradient(135deg, rgba(13,71,161,0.92), rgba(25,118,210,0.92));
+        padding:11px 16px;
+        font-size:11px;font-weight:800;color:#fff;
+        letter-spacing:.06em;text-transform:uppercase;
+        border-bottom:1px solid var(--border);white-space:nowrap;
+    }
+    .sp-table tbody td {
+        padding:13px 16px;font-size:13.5px;color:var(--text);
+        border-bottom:1px solid rgba(25,118,210,0.06);
+        vertical-align:middle;
+    }
+    .sp-table tbody tr:nth-child(even) td { background:rgba(240,246,255,0.55); }
+    .sp-table tbody tr:hover td { background:rgba(21,101,192,0.05); }
+    .sp-table tfoot td, .sp-table tfoot th { padding:13px 16px; }
+
+    .sp-modal .modal-content { border:none;border-radius:18px;box-shadow:0 16px 50px rgba(13,71,161,0.18);overflow:hidden; }
+    .sp-modal .modal-header {
+        padding:18px 24px;
+        background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);
+        border:none;position:relative;overflow:hidden;
+    }
+    .sp-modal .modal-title { font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;color:#fff;position:relative;z-index:1; }
+    .sp-modal .btn-close { filter:brightness(0) invert(1);opacity:.75;position:relative;z-index:1; }
+    .sp-modal .btn-close:hover { opacity:1; }
+    .sp-modal .modal-body { padding:22px 24px; }
+    .sp-modal .modal-footer { border-top:1px solid var(--border);padding:16px 24px;background:rgba(13,71,161,0.02); }
+    .sp-modal .form-control,
+    .sp-modal .form-select { border-radius:11px;border:1.5px solid var(--border);padding:10px 14px;box-shadow:none; }
+
+    @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+@endpush
+
 <style>
 .modal-body {
     position: relative;
@@ -32,32 +163,45 @@
 }
 </style>
 
-<div class="d-flex min-vh-100">
-    <main class="flex-fill p-4">
-        <div class="container-fluid">
-            <div class="row mb-6">
-                <div class="col-12">
-                    <div class="p-4 card-rounded shadow-sm bg-white">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div>
-                                <h2 class="m-0">Admin Sales Management</h2>
-                                <p class="mb-0 text-muted">
-                                    @if(isset($selectedDate))
-                                        Sales for {{ $selectedDate->format('F d, Y') }}
-                                        <a href="{{ route('admin.sales.management.index') }}" class="text-primary text-decoration-none">
-                                            <small>(Show Today)</small>
-                                        </a>
-                                    @else
-                                        Manage and monitor all sales transactions
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('pos.index') }}" class="btn btn-primary">Go to POS</a>
+<div class="sp-page">
+    <div class="sp-bg">
+        <div class="sp-blob sp-blob-1"></div>
+        <div class="sp-blob sp-blob-2"></div>
+    </div>
+
+    <div class="d-flex min-vh-100">
+        <main class="flex-fill p-4" style="position:relative;z-index:1;">
+            <div class="sp-wrap">
+                <div class="sp-page-head">
+                    <div class="sp-ph-left">
+                        <div class="sp-ph-icon"><i class="fas fa-chart-line"></i></div>
+                        <div>
+                            <div class="sp-ph-crumb">Sales</div>
+                            <div class="sp-ph-title">Sales Management</div>
+                            <div class="sp-ph-sub">
+                                @if(isset($selectedDate))
+                                    Sales for {{ $selectedDate->format('F d, Y') }}
+                                    <a href="{{ route('admin.sales.management.index') }}" style="color:inherit;text-decoration:underline;">
+                                        <small>(Show Today)</small>
+                                    </a>
+                                @else
+                                    Manage and monitor all sales transactions
+                                @endif
                             </div>
                         </div>
+                    </div>
+                    <div class="sp-ph-actions">
+                        <a href="{{ route('pos.index') }}" class="sp-btn sp-btn-primary">
+                            <i class="fas fa-cash-register"></i> Go to POS
+                        </a>
+                    </div>
+                </div>
 
-                        <!-- Summary Cards -->
+                <div class="sp-card" style="margin-bottom:16px;">
+                    <div class="sp-card-head">
+                        <div class="sp-card-head-title"><i class="fas fa-gauge"></i> Summary</div>
+                    </div>
+                    <div class="sp-card-body">
                         <div class="row">
                             <div class="col-xl-4 col-md-6 mb-4">
                                 <div class="card border-left-primary shadow h-100 py-2">
@@ -95,20 +239,18 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Sales Management Table -->
-            <div class="card shadow mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-white">Sales Management</h6>
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="text" id="salesSearchInput" class="form-control form-control-sm" placeholder="Search sales..." onkeyup="searchSales()">
-                        <input type="date" id="salesDateFilter" class="form-control form-control-sm" value="{{ isset($selectedDate) ? $selectedDate->format('Y-m-d') : '' }}" placeholder="Filter by date" onchange="filterSalesByDate()">
+                <div class="sp-card">
+                    <div class="sp-card-head">
+                        <div class="sp-card-head-title"><i class="fas fa-table"></i> Sales Management</div>
+                        <div class="d-flex align-items-center gap-2" style="position:relative;z-index:1;">
+                            <input type="text" id="salesSearchInput" class="form-control form-control-sm sp-search" placeholder="Search sales..." onkeyup="searchSales()">
+                            <input type="date" id="salesDateFilter" class="form-control form-control-sm sp-search" value="{{ isset($selectedDate) ? $selectedDate->format('Y-m-d') : '' }}" placeholder="Filter by date" onchange="filterSalesByDate()">
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
+                    <div class="sp-card-body">
+                        <div class="sp-table-wrap">
+                        <table class="sp-table table table-bordered" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>Sale ID</th>
@@ -167,15 +309,16 @@
                                 </tr>
                             </tfoot>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 </div>
 
 <!-- Modal 1: Sale Details Modal -->
-<div class="modal fade" id="saleDetailsModal" tabindex="-1" aria-labelledby="saleDetailsModalLabel" aria-hidden="true">
+<div class="modal fade sp-modal" id="saleDetailsModal" tabindex="-1" aria-labelledby="saleDetailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -194,15 +337,15 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="printSaleReceipt()">Print Receipt</button>
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="sp-btn sp-btn-primary" onclick="printSaleReceipt()">Print Receipt</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Modal 3: Sale History Modal -->
-<div class="modal fade" id="saleHistoryModal" tabindex="-1" aria-labelledby="saleHistoryModalLabel" aria-hidden="true">
+<div class="modal fade sp-modal" id="saleHistoryModal" tabindex="-1" aria-labelledby="saleHistoryModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -221,14 +364,14 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Modal 4: Delete Sale Modal -->
-<div class="modal fade" id="deleteSaleModal" tabindex="-1" aria-labelledby="deleteSaleModalLabel" aria-hidden="true">
+<div class="modal fade sp-modal" id="deleteSaleModal" tabindex="-1" aria-labelledby="deleteSaleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -254,8 +397,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteSale()">Delete Sale</button>
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="sp-btn sp-btn-primary" onclick="confirmDeleteSale()">Delete Sale</button>
             </div>
         </div>
     </div>

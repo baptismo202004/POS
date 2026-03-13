@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'Create Product')
+@section('title', 'Edit Product')
 
 @php
     $isCashierContext = request()->is('cashier/*');
-    $isEdit = false;
+    $isEdit = true;
 @endphp
 
 @push('stylesDashboard')
@@ -32,7 +32,7 @@
             --shadow:  0 4px 24px rgba(13,71,161,0.08);
         }
 
-        .products-create-page {
+        .products-edit-page {
             position: relative;
             min-height: 100vh;
             background: var(--bg);
@@ -41,14 +41,14 @@
             overflow-x: hidden;
         }
 
-        .products-create-page .bg-layer {
+        .products-edit-page .bg-layer {
             position: fixed;
             inset: 0;
             z-index: 0;
             pointer-events: none;
             overflow: hidden;
         }
-        .products-create-page .bg-layer::before {
+        .products-edit-page .bg-layer::before {
             content: '';
             position: absolute;
             inset: 0;
@@ -56,19 +56,19 @@
                 radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
                 radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
         }
-        .products-create-page .bg-blob {
+        .products-edit-page .bg-blob {
             position: absolute;
             border-radius: 50%;
             filter: blur(60px);
             opacity: .11;
             pointer-events: none;
         }
-        .products-create-page .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
-        .products-create-page .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        .products-edit-page .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .products-edit-page .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
         @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
         @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
 
-        .products-create-page .wrap {
+        .products-edit-page .wrap {
             position: relative;
             z-index: 1;
             max-width: 1180px;
@@ -76,7 +76,7 @@
             padding: 28px 24px 56px;
         }
 
-        .products-create-page .page-head {
+        .products-edit-page .page-head {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -84,8 +84,8 @@
             flex-wrap: wrap;
             gap: 14px;
         }
-        .products-create-page .ph-left { display: flex; align-items: center; gap: 13px; }
-        .products-create-page .ph-icon {
+        .products-edit-page .ph-left { display: flex; align-items: center; gap: 13px; }
+        .products-edit-page .ph-icon {
             width: 46px;
             height: 46px;
             border-radius: 14px;
@@ -97,17 +97,17 @@
             color: #fff;
             box-shadow: 0 6px 18px rgba(13,71,161,0.28);
         }
-        .products-create-page .ph-title { font-family:'Nunito',sans-serif; font-size:24px; font-weight:900; color:var(--navy); }
-        .products-create-page .ph-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+        .products-edit-page .ph-title { font-family:'Nunito',sans-serif; font-size:24px; font-weight:900; color:var(--navy); }
+        .products-edit-page .ph-sub { font-size:12px; color:var(--muted); margin-top:2px; }
 
-        .products-create-page .main-card {
+        .products-edit-page .main-card {
             background: var(--card);
             border-radius: 20px;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
             overflow: hidden;
         }
-        .products-create-page .c-head {
+        .products-edit-page .c-head {
             padding: 15px 22px;
             background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
             display: flex;
@@ -116,7 +116,7 @@
             position: relative;
             overflow: hidden;
         }
-        .products-create-page .c-head::after {
+        .products-edit-page .c-head::after {
             content: '';
             position: absolute;
             width: 220px;
@@ -127,14 +127,14 @@
             right:-50px;
             pointer-events:none;
         }
-        .products-create-page .c-head::before {
+        .products-edit-page .c-head::before {
             content: '';
             position: absolute;
             inset: 0;
             background: radial-gradient(ellipse 80% 120% at 85% 50%, rgba(0,229,255,0.14), transparent);
             pointer-events:none;
         }
-        .products-create-page .c-head-title {
+        .products-edit-page .c-head-title {
             font-family:'Nunito',sans-serif;
             font-size:14.5px;
             font-weight:800;
@@ -145,22 +145,18 @@
             position:relative;
             z-index:1;
         }
-        .products-create-page .c-head-title i { color:rgba(0,229,255,.85); }
+        .products-edit-page .c-head-title i { color:rgba(0,229,255,.85); }
 
-        .products-create-page .card-body-pad { padding: 18px 22px 22px; }
+        .products-edit-page .card-body-pad { padding: 18px 22px 22px; }
 
-        .card-rounded {
-            border-radius: 12px;
-        }
-
-        .products-create-page .form-label {
+        .products-edit-page .form-label {
             font-weight: 700;
             color: var(--navy);
             font-family: 'Nunito', sans-serif;
             font-size: 13px;
         }
 
-        .products-create-page .form-control {
+        .products-edit-page .form-control {
             border-radius: 11px;
             border: 1.5px solid var(--border);
             background: #fff;
@@ -168,12 +164,12 @@
             font-size: 13px;
             padding: 10px 12px;
         }
-        .products-create-page .form-control:focus {
+        .products-edit-page .form-control:focus {
             border-color: var(--blue-lt);
             box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
         }
 
-        .products-create-page .btn {
+        .products-edit-page .btn {
             display: inline-flex;
             align-items: center;
             gap: 7px;
@@ -189,30 +185,30 @@
             white-space: nowrap;
         }
 
-        .products-create-page .btn-primary {
+        .products-edit-page .btn-primary {
             background: linear-gradient(135deg, var(--navy), var(--blue));
             color: #fff;
             box-shadow: 0 4px 14px rgba(13,71,161,0.26);
         }
-        .products-create-page .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(13,71,161,0.34); }
+        .products-edit-page .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(13,71,161,0.34); }
 
-        .products-create-page .btn-secondary {
+        .products-edit-page .btn-secondary {
             background: #fff;
             color: var(--navy);
             border: 1.5px solid var(--border);
         }
-        .products-create-page .btn-secondary:hover { border-color: var(--blue-lt); background: rgba(66,165,245,0.06); }
+        .products-edit-page .btn-secondary:hover { border-color: var(--blue-lt); background: rgba(66,165,245,0.06); }
 
-        .products-create-page .alert {
+        .products-edit-page .alert {
             border-radius: 14px;
             border: 1px solid transparent;
         }
-        .products-create-page .alert-success { border-color: rgba(16,185,129,0.24); }
-        .products-create-page .alert-danger { border-color: rgba(239,68,68,0.20); }
+        .products-edit-page .alert-success { border-color: rgba(16,185,129,0.24); }
+        .products-edit-page .alert-danger { border-color: rgba(239,68,68,0.20); }
 
-        .products-create-page .text-muted { color: var(--muted) !important; }
+        .products-edit-page .text-muted { color: var(--muted) !important; }
 
-        .products-create-page .actions-row {
+        .products-edit-page .actions-row {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
@@ -276,7 +272,7 @@
 @endpush
 
 @section('content')
-<div class="products-create-page">
+<div class="products-edit-page">
     <div class="bg-layer">
         <div class="bg-blob bb1"></div>
         <div class="bg-blob bb2"></div>
@@ -287,15 +283,15 @@
             <div class="ph-left">
                 <div class="ph-icon"><i class="fas fa-box"></i></div>
                 <div>
-                    <div class="ph-title">Add Product</div>
-                    <div class="ph-sub">Create a new item in your catalog</div>
+                    <div class="ph-title">Edit Product</div>
+                    <div class="ph-sub">Update product information</div>
                 </div>
             </div>
         </div>
 
         <div class="main-card">
             <div class="c-head">
-                <div class="c-head-title"><i class="fas fa-plus"></i> Product Details</div>
+                <div class="c-head-title"><i class="fas fa-pen"></i> Product Details</div>
             </div>
 
             <div class="card-body-pad">
@@ -321,18 +317,19 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('cashier.products.store') }}" enctype="multipart/form-data" id="productForm">
+                    <form method="POST" action="{{ route('cashier.products.update', $product->id) }}" enctype="multipart/form-data" id="productForm">
                         @csrf
-                        
+                        @method('PUT')
+
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Product Name</label>
-                                <input type="text" name="product_name" class="form-control" required>
+                                <input type="text" name="product_name" class="form-control" value="{{ old('product_name', $product->product_name) }}" required>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Barcode</label>
-                                <input type="text" name="barcode" class="form-control" required>
+                                <input type="text" name="barcode" class="form-control" value="{{ old('barcode', $product->barcode) }}" required>
                             </div>
 
                             <div class="col-md-3">
@@ -340,7 +337,7 @@
                                 <select name="brand_id" id="brandSelect" class="form-control select2-tags" style="width:100%">
                                     <option value="">-- Select Brand --</option>
                                     @foreach($brands ?? [] as $brand)
-                                        <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                        <option value="{{ $brand->id }}" @selected((string)old('brand_id', $product->brand_id) === (string)$brand->id)>{{ $brand->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -350,32 +347,35 @@
                                 <select name="category_id" id="categorySelect" class="form-control select2-tags" style="width:100%">
                                     <option value="">-- Select Category --</option>
                                     @foreach($categories ?? [] as $cat)
-                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                        <option value="{{ $cat->id }}" @selected((string)old('category_id', $product->category_id) === (string)$cat->id)>{{ $cat->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
                             <div class="col-md-3 product-type-field">
                                 <label class="form-label">Product Type</label>
-                                <select name="product_type_id" id="productType" class="form-control select2-tags" style="width:100%">
+                                <select name="product_type_id" id="productType" class="form-control select2-tags" style="width:100%" required>
                                     <option value="">-- Select Type --</option>
-                                    <option value="electronic" data-electronic="1">Electronic</option>
-                                    <option value="non-electronic" data-electronic="0" selected>Non-Electronic</option>
+                                    <option value="electronic" data-electronic="1" @selected(old('product_type_id', $product->product_type_id) === 'electronic')>Electronic</option>
+                                    <option value="non-electronic" data-electronic="0" @selected(old('product_type_id', $product->product_type_id) === 'non-electronic')>Non-Electronic</option>
                                 </select>
                             </div>
 
                             <div class="col-md-3">
                                 <label class="form-label">Unit Types</label>
                                 <select name="unit_type_ids[]" id="unitTypeSelect" class="form-control" style="width:100%" multiple>
+                                    @php
+                                        $selectedUnitTypes = collect(old('unit_type_ids', $product->unitTypes->pluck('id')->all() ?? []))->map(fn($v) => (string)$v)->all();
+                                    @endphp
                                     @foreach($unitTypes ?? [] as $ut)
-                                        <option value="{{ $ut->id }}">{{ $ut->name }}</option>
+                                        <option value="{{ $ut->id }}" @selected(in_array((string)$ut->id, $selectedUnitTypes, true))>{{ $ut->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
                             <div class="col-md-4 electronic-field d-none">
                                 <label class="form-label">Model Number</label>
-                                <input type="text" name="model_number" class="form-control">
+                                <input type="text" name="model_number" class="form-control" value="{{ old('model_number', $product->model_number) }}">
                             </div>
 
                             <div class="col-md-4">
@@ -387,31 +387,41 @@
                             <div class="col-md-4 electronic-field d-none">
                                 <label class="form-label">Warranty Type</label>
                                 <select name="warranty_type" class="form-control">
-                                    <option value="none">None</option>
-                                    <option value="shop">Shop</option>
-                                    <option value="manufacturer">Manufacturer</option>
+                                    <option value="none" @selected(old('warranty_type', $product->warranty_type) === 'none')>None</option>
+                                    <option value="shop" @selected(old('warranty_type', $product->warranty_type) === 'shop')>Shop</option>
+                                    <option value="manufacturer" @selected(old('warranty_type', $product->warranty_type) === 'manufacturer')>Manufacturer</option>
                                 </select>
                             </div>
 
                             <div class="col-md-3 electronic-field d-none">
                                 <label class="form-label">Warranty Coverage (months)</label>
-                                <input type="number" name="warranty_coverage_months" min="0" class="form-control" placeholder="e.g. 12">
+                                <input type="number" name="warranty_coverage_months" min="0" class="form-control" placeholder="e.g. 12" value="{{ old('warranty_coverage_months', $product->warranty_coverage_months) }}">
                             </div>
 
                             <div class="col-md-3 electronic-field d-none">
                                 <label class="form-label">Voltage Specs</label>
-                                <input type="text" name="voltage_specs" class="form-control" placeholder="e.g. 110-220V">
+                                <input type="text" name="voltage_specs" class="form-control" placeholder="e.g. 110-220V" value="{{ old('voltage_specs', $product->voltage_specs) }}">
                             </div>
 
                             <div class="col-md-3 non-electronic-field">
                                 <label class="form-label">Branches</label>
-                                @if($userBranch)
+                                @php
+                                    $defaultBranches = $product->branches->pluck('id')->all();
+                                    if (empty($defaultBranches) && !empty($product->branch_id)) {
+                                        $defaultBranches = [$product->branch_id];
+                                    }
+                                    if (empty($defaultBranches) && isset($userBranch) && $userBranch) {
+                                        $defaultBranches = [$userBranch->id];
+                                    }
+                                    $selectedBranches = collect(old('branch_ids', $defaultBranches ?? []))->map(fn($v) => (string)$v)->all();
+                                @endphp
+                                @if(isset($userBranch) && $userBranch)
                                     <input type="text" class="form-control" value="{{ $userBranch->branch_name }}" readonly>
                                     <input type="hidden" name="branch_ids[]" value="{{ $userBranch->id }}">
                                 @else
                                     <select name="branch_ids[]" id="branchSelect" class="form-control" style="width:100%" multiple>
                                         @foreach($branches ?? [] as $branch)
-                                            <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                                            <option value="{{ $branch->id }}" @selected(in_array((string)$branch->id, $selectedBranches, true))>{{ $branch->branch_name }}</option>
                                         @endforeach
                                     </select>
                                 @endif
@@ -420,15 +430,15 @@
                             <div class="col-md-3">
                                 <label class="form-label">Status</label>
                                 <select name="status" class="form-control">
-                                    <option value="active" selected>Active</option>
-                                    <option value="inactive">Inactive</option>
+                                    <option value="active" @selected(old('status', $product->status) === 'active')>Active</option>
+                                    <option value="inactive" @selected(old('status', $product->status) === 'inactive')>Inactive</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mt-4 actions-row">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Save Product
+                                <i class="fas fa-save me-2"></i>Update Product
                             </button>
                             <a href="{{ route('cashier.products.index') }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-2"></i>Cancel
@@ -445,8 +455,6 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
-        console.log('jQuery and Select2 loaded successfully');
-        
         // Initialize all select2 dropdowns
         $('#brandSelect, #categorySelect').select2({
             tags: true,
@@ -468,9 +476,7 @@
             width: 'resolve'
         });
 
-        // --- Conditional Visibility Logic ---
         const productType = $('#productType');
-        const productTypeField = $('.product-type-field');
         const electronicFields = $('.electronic-field');
         const nonElectronicFields = $('.non-electronic-field');
         const categorySelect = $('#categorySelect');
@@ -485,9 +491,6 @@
             const categoryName = categorySelect.find('option:selected').text();
             const required = requiresElectronicCategory(categoryName);
 
-            productTypeField.toggleClass('d-none', false);
-            productType.prop('required', true);
-
             if (required) {
                 productType.val('electronic').trigger('change');
             } else {
@@ -498,41 +501,15 @@
         function toggleElectronicFields() {
             const selectedOption = productType.find('option:selected');
             const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === 'electronic';
-            
-            console.log('Product type changed:', {
-                value: productType.val(),
-                isElectronic: isElectronic,
-                selectedOption: selectedOption.text()
-            });
-            
-            // Show electronic fields for electronic products
+
             electronicFields.toggleClass('d-none', !isElectronic);
-            
-            // Show non-electronic fields (Branches) for non-electronic products only
             nonElectronicFields.toggleClass('d-none', isElectronic);
-            
-            // Log field visibility for debugging
-            electronicFields.each(function() {
-                console.log('Electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-            });
-            nonElectronicFields.each(function() {
-                console.log('Non-electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-            });
         }
 
-        // Attach event listener to select2's change event
         productType.on('change', function() {
-            console.log('Select2 change event triggered');
             toggleElectronicFields();
         });
 
-        // Also listen for select2:select event
-        productType.on('select2:select', function(e) {
-            console.log('Select2 select event triggered:', e.params.data);
-            toggleElectronicFields();
-        });
-
-        // Initial call to set the correct visibility on page load
         setTimeout(function() {
             toggleProductTypeField();
             toggleElectronicFields();

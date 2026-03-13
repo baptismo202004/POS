@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Support\Access;
 
 class CashierDashboardController extends Controller
 {
@@ -546,8 +547,17 @@ class CashierDashboardController extends Controller
         }
 
         // Apply branch filtering
-        $query->whereHas('stockIns', function ($query) use ($branchId) {
-            $query->where('branch_id', $branchId);
+        // Support multiple branch-scoping strategies:
+        // - product_branch pivot (branches relationship)
+        // - legacy products.branch_id column
+        // - stock_ins records
+        $query->where(function ($q) use ($branchId) {
+            $q->whereHas('branches', function ($qb) use ($branchId) {
+                $qb->where('branches.id', $branchId);
+            })->orWhere('branch_id', $branchId)
+              ->orWhereHas('stockIns', function ($qs) use ($branchId) {
+                  $qs->where('branch_id', $branchId);
+              });
         });
 
         // Apply sorting
@@ -559,6 +569,10 @@ class CashierDashboardController extends Controller
         $products = $query->with(['brand', 'category', 'unitTypes'])
             ->orderBy($sortBy, $sortDirection)
             ->paginate(15);
+
+        if ($request->ajax()) {
+            return view('cashier.products._product_table', compact('products'));
+        }
 
         return view('cashier.products.index', compact('products', 'sortBy', 'sortDirection'));
     }
@@ -591,33 +605,81 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $validated = $request->validate([
+        // Select2 tags support: if a cashier types a new Brand/Category, Select2 will submit a string.
+        // Convert that into a real ID by creating (or finding) the record.
+        if ($request->filled('brand_id') && ! is_numeric($request->input('brand_id'))) {
+            $brandName = trim((string) $request->input('brand_id'));
+            if ($brandName !== '') {
+                $brand = Brand::firstOrCreate(
+                    ['brand_name' => $brandName],
+                    ['status' => 'active']
+                );
+                $request->merge(['brand_id' => $brand->id]);
+            }
+        }
+
+        if ($request->filled('category_id') && ! is_numeric($request->input('category_id'))) {
+            $categoryName = trim((string) $request->input('category_id'));
+            if ($categoryName !== '') {
+                $category = Category::firstOrCreate(
+                    ['category_name' => $categoryName],
+                    ['status' => 'active']
+                );
+                $request->merge(['category_id' => $category->id]);
+            }
+        }
+
+        $rules = [
             'product_name' => 'required|string|max:255',
-            'barcode' => 'nullable|string|max:255|unique:products',
+            'barcode' => 'required|string|max:255|unique:products,barcode',
             'description' => 'nullable|string',
-            'selling_price' => 'required|numeric|min:0',
-            'cost_price' => 'required|numeric|min:0',
-            'reorder_level' => 'required|integer|min:0',
             'brand_id' => 'nullable|exists:brands,id',
             'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'nullable|exists:product_types,id',
+            'product_type_id' => 'required|string|in:electronic,non-electronic',
+            'unit_type_ids' => 'nullable|array',
+            'unit_type_ids.*' => 'integer|exists:unit_types,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'status' => 'required|in:active,inactive',
-        ]);
+        ];
 
-        Product::create([
+        $categoryName = null;
+        if ($request->filled('category_id')) {
+            $categoryName = optional(Category::find($request->input('category_id')))->name;
+        }
+
+        $requiresElectronicType = $categoryName
+            && in_array(mb_strtolower($categoryName), ['electronics', 'computers', 'appliances'], true);
+
+        $validated = $request->validate($rules);
+
+        $validated['product_type_id'] = $requiresElectronicType ? 'electronic' : 'non-electronic';
+
+        $product = Product::create([
             'product_name' => $validated['product_name'],
             'barcode' => $validated['barcode'],
-            'description' => $validated['description'],
-            'selling_price' => $validated['selling_price'],
-            'cost_price' => $validated['cost_price'],
-            'reorder_level' => $validated['reorder_level'],
-            'brand_id' => $validated['brand_id'],
-            'category_id' => $validated['category_id'],
+            'description' => $validated['description'] ?? null,
+            'brand_id' => $validated['brand_id'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
             'product_type_id' => $validated['product_type_id'],
             'status' => $validated['status'],
+            'branch_id' => $branchId,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Persist pivot relations so the product is visible in branch-scoped lists.
+        // Branch assignment
+        if (!empty($validated['branch_ids'])) {
+            $product->branches()->sync($validated['branch_ids']);
+        } else {
+            $product->branches()->sync([$branchId]);
+        }
+
+        // Unit types assignment
+        if (!empty($validated['unit_type_ids'])) {
+            $product->unitTypes()->sync($validated['unit_type_ids']);
+        }
 
         return redirect()->route('cashier.products.index')->with('success', 'Product created successfully');
     }
@@ -650,8 +712,10 @@ class CashierDashboardController extends Controller
         $categories = Category::all();
         $productTypes = ProductType::all();
         $unitTypes = UnitType::all();
+        $branches = Branch::all();
+        $userBranch = Branch::find($branchId);
 
-        return view('cashier.products.edit', compact('product', 'brands', 'categories', 'productTypes', 'unitTypes'));
+        return view('cashier.products.edit', compact('product', 'brands', 'categories', 'productTypes', 'unitTypes', 'branches', 'userBranch'));
     }
 
     public function updateProduct(Request $request, $id)
@@ -665,32 +729,77 @@ class CashierDashboardController extends Controller
 
         $product = Product::findOrFail($id);
 
-        $validated = $request->validate([
+        // Select2 tags support: convert typed Brand/Category to IDs
+        if ($request->filled('brand_id') && ! is_numeric($request->input('brand_id'))) {
+            $brandName = trim((string) $request->input('brand_id'));
+            if ($brandName !== '') {
+                $brand = Brand::firstOrCreate(
+                    ['brand_name' => $brandName],
+                    ['status' => 'active']
+                );
+                $request->merge(['brand_id' => $brand->id]);
+            }
+        }
+
+        if ($request->filled('category_id') && ! is_numeric($request->input('category_id'))) {
+            $categoryName = trim((string) $request->input('category_id'));
+            if ($categoryName !== '') {
+                $category = Category::firstOrCreate(
+                    ['category_name' => $categoryName],
+                    ['status' => 'active']
+                );
+                $request->merge(['category_id' => $category->id]);
+            }
+        }
+
+        $rules = [
             'product_name' => 'required|string|max:255',
-            'barcode' => 'nullable|string|max:255|unique:products,barcode,'.$id,
+            'barcode' => 'required|string|max:255|unique:products,barcode,'.$id,
             'description' => 'nullable|string',
-            'selling_price' => 'required|numeric|min:0',
-            'cost_price' => 'required|numeric|min:0',
-            'reorder_level' => 'required|integer|min:0',
             'brand_id' => 'nullable|exists:brands,id',
             'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'nullable|exists:product_types,id',
+            'product_type_id' => 'required|string|in:electronic,non-electronic',
+            'unit_type_ids' => 'nullable|array',
+            'unit_type_ids.*' => 'integer|exists:unit_types,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'status' => 'required|in:active,inactive',
-        ]);
+        ];
+
+        $categoryName = null;
+        if ($request->filled('category_id')) {
+            $categoryName = optional(Category::find($request->input('category_id')))->name;
+        }
+
+        $requiresElectronicType = $categoryName
+            && in_array(mb_strtolower($categoryName), ['electronics', 'computers', 'appliances'], true);
+
+        $validated = $request->validate($rules);
+
+        $validated['product_type_id'] = $requiresElectronicType ? 'electronic' : 'non-electronic';
 
         $product->update([
             'product_name' => $validated['product_name'],
             'barcode' => $validated['barcode'],
-            'description' => $validated['description'],
-            'selling_price' => $validated['selling_price'],
-            'cost_price' => $validated['cost_price'],
-            'reorder_level' => $validated['reorder_level'],
-            'brand_id' => $validated['brand_id'],
-            'category_id' => $validated['category_id'],
+            'description' => $validated['description'] ?? null,
+            'brand_id' => $validated['brand_id'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
             'product_type_id' => $validated['product_type_id'],
             'status' => $validated['status'],
+            'branch_id' => $branchId,
             'updated_at' => now(),
         ]);
+
+        // Keep pivot relations in sync
+        if (!empty($validated['branch_ids'])) {
+            $product->branches()->sync($validated['branch_ids']);
+        } else {
+            $product->branches()->sync([$branchId]);
+        }
+
+        if (!empty($validated['unit_type_ids'])) {
+            $product->unitTypes()->sync($validated['unit_type_ids']);
+        }
 
         return redirect()->route('cashier.products.index')->with('success', 'Product updated successfully');
     }
@@ -705,9 +814,34 @@ class CashierDashboardController extends Controller
         }
 
         $product = Product::findOrFail($id);
-        $product->delete();
 
-        return redirect()->route('cashier.products.index')->with('success', 'Product deleted successfully');
+        try {
+            $product->delete();
+
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()->route('cashier.products.index')->with('success', 'Product deleted successfully');
+        } catch (\Throwable $e) {
+            $message = 'Failed to delete product.';
+
+            if ($e instanceof \Illuminate\Database\QueryException) {
+                $sqlState = $e->errorInfo[0] ?? null;
+                if ($sqlState === '23000') {
+                    $message = 'Cannot delete this product because it has related records (sales/stock/etc.).';
+                }
+            }
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 409);
+            }
+
+            return redirect()->route('cashier.products.index')->with('error', $message);
+        }
     }
 
     // PRODUCT CATEGORIES METHODS
@@ -891,8 +1025,9 @@ class CashierDashboardController extends Controller
         $dateFrom = $request->query('date_from');
         $dateTo = $request->query('date_to');
 
-        $query = DB::table('purchases')
-            ->where('branch_id', $branchId);
+        $query = \App\Models\Purchase::query()
+            ->where('branch_id', $branchId)
+            ->withCount('items');
 
         // Apply search
         if ($search) {
@@ -1496,6 +1631,10 @@ class CashierDashboardController extends Controller
     public function refundsIndex()
     {
         $user = Auth::user();
+
+        if (! Access::can($user, 'refund_return', 'view')) {
+            abort(403);
+        }
         $branchId = $user->branch_id;
 
         if (! $branchId) {
@@ -1544,6 +1683,14 @@ class CashierDashboardController extends Controller
     {
         try {
             $user = Auth::user();
+
+            if (! Access::can($user, 'refund_return', 'create')) {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+                }
+
+                abort(403);
+            }
             $branchId = $user->branch_id;
 
             if (! $branchId) {
@@ -1817,7 +1964,7 @@ class CashierDashboardController extends Controller
             }
 
             // Use selected branch from form
-            $branchId = (int) $request->branch_id;
+            $branchId = (int) $userBranchId;
 
             // Generate a unique reference number for this credit
             $referenceNumber = 'CR-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4));

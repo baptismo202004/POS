@@ -7,6 +7,7 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Use CashierSidebar */
         .main-content {
@@ -92,12 +93,99 @@
             padding: 15px;
             margin-bottom: 20px;
         }
+
+        .credit-theme {
+            position: relative;
+            min-height: 100vh;
+            background: #f0f6ff;
+            color: #1a2744;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .credit-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .credit-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .credit-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .credit-theme .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .credit-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .credit-theme .form-card {
+            border-radius: 20px;
+            border: 1px solid rgba(25,118,210,0.13);
+            box-shadow: 0 4px 28px rgba(13,71,161,0.09);
+        }
+        .credit-theme .card-header-custom {
+            background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        .credit-theme .card-header-custom h5 {
+            color: #fff;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+        }
+        .credit-theme .card-header-custom i { color: rgba(0,229,255,.85); }
+
+        .credit-theme .form-control,
+        .credit-theme .form-select {
+            border-radius: 11px;
+            border: 1.5px solid rgba(25,118,210,0.18);
+            font-size: 13px;
+            padding: 10px 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .credit-theme .form-control:focus,
+        .credit-theme .form-select:focus {
+            border-color: #42A5F5;
+            box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
+        }
+
+        .credit-theme .btn-primary {
+            background: linear-gradient(135deg, #0D47A1, #1976D2);
+            border: none;
+            border-radius: 11px;
+            box-shadow: 0 4px 14px rgba(13,71,161,0.26);
+        }
+        .credit-theme .btn-outline-secondary {
+            border-radius: 11px;
+        }
+
+        .credit-theme .swal2-popup {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
     </style>
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="container-fluid">
+<div class="credit-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
+
+    <div class="p-3 p-lg-4" style="position: relative; z-index: 1;">
+        <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -175,6 +263,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection
 

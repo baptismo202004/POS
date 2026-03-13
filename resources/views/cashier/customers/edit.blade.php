@@ -7,33 +7,117 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Use CashierSidebar */
         .main-content {
             margin-left: 280px !important;
         }
+
+        :root {
+            --navy: #0D47A1;
+            --blue: #1976D2;
+            --blue-lt: #42A5F5;
+            --bg: #f0f6ff;
+            --card: #ffffff;
+            --border: rgba(25,118,210,0.13);
+            --text: #1a2744;
+            --muted: #6b84aa;
+            --shadow: 0 4px 28px rgba(13,71,161,0.09);
+        }
+
+        .customers-theme {
+            position: relative;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+        .customers-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .customers-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .customers-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .customers-theme .bb1 { width:420px; height:420px; background: var(--blue); top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .customers-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .customers-theme h2 { font-family: 'Nunito', sans-serif; font-weight: 900; letter-spacing: .2px; }
+        .customers-theme .text-muted { color: var(--muted) !important; }
+
+        .customers-theme .card {
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .customers-theme .btn-warning {
+            background: linear-gradient(135deg, #1976D2, #0D47A1);
+            border: none;
+            box-shadow: 0 10px 20px rgba(13,71,161,0.16);
+        }
+        .customers-theme .btn-warning:hover {
+            filter: brightness(1.03);
+            transform: translateY(-1px);
+        }
+
+        .customers-theme .form-control,
+        .customers-theme .form-select {
+            border: 1px solid rgba(25,118,210,0.20);
+            border-radius: 12px;
+        }
+        .customers-theme .form-control:focus,
+        .customers-theme .form-select:focus {
+            border-color: rgba(25,118,210,0.55);
+            box-shadow: 0 0 0 4px rgba(66,165,245,0.22);
+        }
+        .customers-theme .input-group-text {
+            background: rgba(13,71,161,0.08);
+            border: 1px solid rgba(25,118,210,0.20);
+            color: var(--navy);
+            font-weight: 700;
+        }
         
-        .form-control:focus {
+        .customers-theme .form-control:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
         }
         
-        .btn-primary {
+        .customers-theme .btn-primary {
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             border: none;
         }
         
-        .btn-primary:hover {
+        .customers-theme .btn-primary:hover {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             transform: translateY(-1px);
         }
         
-        .btn-warning {
+        .customers-theme .btn-warning {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             border: none;
         }
         
-        .btn-warning:hover {
+        .customers-theme .btn-warning:hover {
             background: linear-gradient(135deg, #d97706, #b45309);
             transform: translateY(-1px);
         }
@@ -41,8 +125,14 @@
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="container-fluid">
+<div class="customers-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
+
+    <div class="p-3 p-lg-4" style="position: relative; z-index: 1;">
+        <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -136,6 +226,7 @@
                     </div>
                 </form>
             </div>
+        </div>
         </div>
     </div>
 </div>

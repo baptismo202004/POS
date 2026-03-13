@@ -28,47 +28,146 @@
             }
         }
 
-        /* Sidebar styles - Electric Modern Palette */
+        /* Sidebar styles - match CashierSidebar blue mesh/blob design */
         .sidebar { 
-            width: 260px; 
-            min-height: 100vh; 
-            background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
-            border-radius: 0 16px 16px 0;
-            padding: 1rem 0.5rem 1rem 0.5rem; /* minimal padding */
-            color: #FFFFFF;
+            width: 270px;
+            min-height: 100vh;
+            background: #0a1628;
+            color: white;
             position: relative;
-            overflow: hidden; /* contain content within background */
+            z-index: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top-right-radius: 28px;
+            border-bottom-right-radius: 28px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
             font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             font-weight: 500;
             letter-spacing: -0.01em;
-            box-shadow: 4px 0 20px rgba(13, 71, 161, 0.15);
-            box-sizing: border-box; /* ensure padding doesn't affect total width */
+            box-sizing: border-box;
         }
-        
-        /* Subtle radial glow effect */
+
+        /* Animated mesh background */
         .sidebar::before {
             content: '';
             position: absolute;
-            top: -10px;
-            left: -10px;
-            right: -10px;
-            bottom: -10px;
-            background: radial-gradient(circle at 100% 0%, rgba(0, 229, 255, 0.2), transparent 70%);
-            pointer-events: none;
-            z-index: -1;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 160% 120% at 10% 0%, #1a3a6e 0%, transparent 55%),
+                radial-gradient(ellipse 120% 100% at 90% 100%, #0d2b5e 0%, transparent 60%),
+                radial-gradient(ellipse 80% 60% at 50% 50%, #0f2044 0%, transparent 70%);
+            z-index: -2;
         }
-        
+
         /* Extended background container */
         .sidebar-bg-extension {
             position: absolute;
             top: 0;
             left: 0;
-            right: -150px;
+            right: 0;
             bottom: 0;
-            background: linear-gradient(180deg, #0D47A1 0%, #1565C0 100%);
-            border-radius: 0 16px 16px 0;
+            background: transparent;
             z-index: -3;
         }
+
+        /* Decorative blob shapes */
+        .sidebar-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(40px);
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .sidebar-blob-1 {
+            width: 200px;
+            height: 200px;
+            background: #00c6ff;
+            top: -60px;
+            left: -60px;
+            animation: blobFloat1 8s ease-in-out infinite;
+        }
+        .sidebar-blob-2 {
+            width: 160px;
+            height: 160px;
+            background: #7b2ff7;
+            bottom: 120px;
+            right: -50px;
+            animation: blobFloat2 10s ease-in-out infinite;
+        }
+        .sidebar-blob-3 {
+            width: 120px;
+            height: 120px;
+            background: #00e5ff;
+            top: 45%;
+            left: 20%;
+            animation: blobFloat3 12s ease-in-out infinite;
+        }
+        @keyframes blobFloat1 {
+            0%, 100% { transform: translate(0,0) scale(1); }
+            50% { transform: translate(20px, 30px) scale(1.1); }
+        }
+        @keyframes blobFloat2 {
+            0%, 100% { transform: translate(0,0) scale(1); }
+            50% { transform: translate(-15px, -25px) scale(1.08); }
+        }
+        @keyframes blobFloat3 {
+            0%, 100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(10px, -15px) scale(0.95); }
+            66% { transform: translate(-8px, 10px) scale(1.05); }
+        }
+
+        /* Diagonal accent stripe */
+        .sidebar-stripe {
+            position: absolute;
+            width: 400px;
+            height: 8px;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.25), transparent);
+            top: 155px;
+            left: -60px;
+            transform: rotate(-8deg);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Logo area */
+        .sidebar-logo-wrap {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 16px 0 8px;
+        }
+
+        /* Logo bottom separator */
+        .sidebar-wave-divider {
+            display: block;
+            width: 100%;
+            line-height: 0;
+            position: relative;
+            z-index: 2;
+        }
+        .sidebar-wave-divider svg {
+            width: 100%;
+            height: 18px;
+            display: block;
+        }
+
+        /* Scroll container */
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 4px 12px 12px;
+            position: relative;
+            z-index: 2;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,229,255,0.2) transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.25); border-radius: 4px; }
         
         .sidebar .sidebar-icon { 
             width: 20px; 
@@ -95,20 +194,18 @@
         }
 
         /* Icon badge */
-        .icon-badge { 
-            width: 32px; 
-            height: 32px; 
-            border-radius: 8px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            background: transparent;
-            box-shadow: none; 
-            padding: 0 !important; 
-            border: none;
-            transition: all 0.18s ease;
+        .icon-badge {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+            background: rgba(255,255,255,0.07);
+            transition: all 0.22s ease;
             margin: 0 !important;
+            padding: 0 !important;
         }
         
         /* User dropdown sits at bottom with visual separation */
@@ -139,38 +236,46 @@
             opacity: 0.8;
         }
 
-        /* Sidebar navigation links - visually dominant */
+        /* Sidebar navigation links */
         .sidebar nav a { 
-            font-size: 14px; 
-            font-weight: 500;
-            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            letter-spacing: -0.01em;
-            color: rgba(255, 255, 255, 0.9);
-            border-radius: 8px; 
-            min-height: 44px;
-            padding: 0 6px; /* minimal padding */
-            transition: all 0.18s ease;
-            position: relative;
-            z-index: 1;
-            white-space: nowrap; /* prevent text wrapping */
-            overflow: hidden; /* contain text within background */
             display: flex;
             align-items: center;
-            gap: 6px; /* minimal gap */
-            cursor: pointer;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            text-decoration: none;
+            color: rgba(255,255,255,0.72);
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: 'Nunito', sans-serif;
+            position: relative;
+            transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+            border: 1px solid transparent;
+            min-height: 44px;
+            width: 100%;
+            box-sizing: border-box;
             margin: 0 !important;
-            box-sizing: border-box; /* ensure padding doesn't affect total width */
-            width: 100%; /* use full available width */
         }
+
+        .sidebar nav a::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+            border-radius: inherit;
+        }
+        .sidebar nav a:hover::before { transform: translateX(100%); }
         
         /* Force override any Bootstrap margins */
         .sidebar nav a.d-flex {
             margin: 0 !important;
-            padding: 0 6px !important;
-            gap: 6px !important;
+            padding: 10px 12px !important;
+            gap: 10px !important;
             box-sizing: border-box !important;
             width: 100% !important;
-            white-space: nowrap !important;
             overflow: hidden !important;
         }
         
@@ -179,8 +284,8 @@
             margin: 0 !important;
             padding: 0 !important;
             flex-shrink: 0;
-            width: 32px;
-            height: 44px;
+            width: 30px;
+            height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -290,35 +395,43 @@
             font-weight: 700;
         }
 
-        /* Hover state - Background fade with icon color shift */
+        /* Hover state */
         .sidebar nav a:hover { 
-            color: #FFFFFF; 
-            background: rgba(0, 229, 255, 0.15);
-            transform: none;
+            color: #ffffff;
+            background: rgba(0, 198, 255, 0.12);
+            border-color: rgba(0, 229, 255, 0.15);
+            transform: translateX(4px);
         }
+        .sidebar nav a:hover .icon-badge { background: rgba(0, 229, 255, 0.15); }
+        .sidebar nav a:hover .sidebar-icon { color: #00e5ff; }
         
-        .sidebar nav a:hover .icon-badge {
-            background: transparent;
-            transform: none;
-        }
-        
-        .sidebar nav a:hover .sidebar-icon {
-            color: #00E5FF;
-            transform: none;
-        }
-        
-        /* Active state - Immediately identifiable with all indicators */
+        /* Active state */
         .sidebar nav a.active { 
-            background: rgba(0, 229, 255, 0.15) !important; /* Soft background highlight */
-            color: #00E5FF !important; /* Icon color change */
-            border-left: 4px solid #00E5FF !important; /* Left border accent */
-            font-weight: 600 !important; /* Increased text weight */
-            border-radius: 0 8px 8px 0; /* Adjusted for left border */
-            transition: none; /* Instant change - no delay */
+            background: linear-gradient(135deg, rgba(0,198,255,0.22), rgba(0,100,200,0.18)) !important;
+            color: #00e5ff !important;
+            border-color: rgba(0, 229, 255, 0.35) !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 20px rgba(0, 198, 255, 0.15), inset 0 0 0 1px rgba(0,229,255,0.1);
+            transform: translateX(3px);
+            border-left: none !important;
+            border-radius: 14px;
+        }
+
+        .sidebar nav a.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 20%;
+            bottom: 20%;
+            width: 3px;
+            background: linear-gradient(180deg, #00c6ff, #00e5ff, #7b2ff7);
+            border-radius: 0 3px 3px 0;
+            box-shadow: 0 0 10px rgba(0,229,255,0.8);
         }
         
         .sidebar nav a.active .icon-badge {
-            background: transparent;
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
             border-color: transparent;
         }
         
@@ -327,26 +440,12 @@
         }
         
         .sidebar nav a.active span {
-            font-weight: 600 !important; /* Increased text weight */
+            font-weight: 700 !important;
         }
         
         .sidebar nav a.active .submenu-indicator {
             opacity: 1;
             color: #00E5FF !important;
-        }
-
-        /* Section label styling - smaller, lighter, uppercase, non-clickable */
-        .section-label { 
-            font-size: 9px; /* Smaller than menu items */
-            font-weight: 600;
-            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            letter-spacing: 0.15em;
-            text-transform: uppercase; 
-            color: rgba(255, 255, 255, 0.4); /* Lighter color */
-            margin: 16px 8px 8px; /* Increased vertical spacing */
-            padding: 4px 8px;
-            pointer-events: none; /* Non-clickable */
-            user-select: none;
         }
 
         /* User dropdown menu */
@@ -505,13 +604,77 @@
         .text-muted {
             color: #6B7280 !important;
         }
+
+        /* Section label */
+        .section-label { 
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(0, 229, 255, 0.45);
+            margin: 18px 4px 6px;
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(0,229,255,0.3), transparent);
+            border-radius: 2px;
+        }
+
+        /* Bottom wave */
+        .sidebar-bottom-wave {
+            position: relative;
+            z-index: 2;
+            line-height: 0;
+        }
+        .sidebar-bottom-wave svg { width: 100%; height: 20px; display: block; }
+
+        /* User panel */
+        .sidebar-user-panel {
+            position: relative;
+            z-index: 2;
+            padding: 6px 12px 16px;
+        }
+
+        /* Keep existing settings submenu arrow aligned to the Cashier submenu indicators */
+        .submenu-arrow {
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
     </style>
-    
-    <div class="d-flex align-items-center justify-content-center mb-3" style="overflow: hidden;">
-        <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:180px;height:70px;object-fit:contain;border-radius:8px;max-width:100%;">
+
+    <div class="sidebar-bg-extension"></div>
+    <div class="sidebar-blob sidebar-blob-1"></div>
+    <div class="sidebar-blob sidebar-blob-2"></div>
+    <div class="sidebar-blob sidebar-blob-3"></div>
+    <div class="sidebar-stripe"></div>
+
+    <!-- Logo/Brand Section -->
+    <div class="sidebar-logo-wrap">
+        <div class="d-flex align-items-center justify-content-center" style="overflow: hidden;">
+            <img src="/images/BGH LOGO.png" alt="BGH logo" style="width:180px;height:70px;object-fit:contain;border-radius:8px;max-width:100%;">
+        </div>
     </div>
 
-    <div class="grow" style="overflow-y: auto; overflow-x: hidden;">
+    <div class="sidebar-wave-divider">
+        <svg viewBox="0 0 270 18" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,9 C45,18 90,0 135,9 C180,18 225,0 270,9 L270,18 L0,18 Z" fill="rgba(0,229,255,0.07)"/>
+            <path d="M0,12 C45,20 90,4 135,12 C180,20 225,4 270,12" fill="none" stroke="rgba(0,229,255,0.18)" stroke-width="1"/>
+        </svg>
+    </div>
+
+    <div class="sidebar-scroll">
         <nav class="d-flex flex-column gap-1" style="width: 100%; overflow: hidden;">
             @php
                 $user = auth()->user();
@@ -619,10 +782,7 @@
                     <a href="{{ route('admin.sales.management.index') }}" class="{{ request()->routeIs('admin.sales.management.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Sales</span>
                     </a>
-                    <a href="{{ route('superadmin.sales.voided') }}" class="{{ request()->routeIs('superadmin.sales.voided') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Voided Sales</span>
-                    </a>
-                    <a href="{{ route('admin.refunds.index') }}" class="{{ request()->routeIs('admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                      <a href="{{ route('admin.refunds.index') }}" class="{{ request()->routeIs('admin.refunds.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Refund/Return</span>
                     </a>
                     <a href="{{ route('admin.credits.index') }}" class="{{ request()->routeIs('admin.credits.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
@@ -767,9 +927,14 @@
         }
     @endphp
 
-    <!-- HR line above account -->
-    <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 0; margin-bottom: 12px;">
-    
+    <div class="sidebar-bottom-wave">
+        <svg viewBox="0 0 270 20" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,10 C45,0 90,20 135,10 C180,0 225,20 270,10 L270,0 L0,0 Z" fill="rgba(0,229,255,0.06)"/>
+            <path d="M0,10 C45,0 90,20 135,10 C180,0 225,20 270,10" fill="none" stroke="rgba(0,229,255,0.18)" stroke-width="1"/>
+        </svg>
+    </div>
+
+    <div class="sidebar-user-panel">
     <div class="dropdown">
         <button class="d-flex align-items-center gap-2 w-100 text-start p-2" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.9);">
             @if(!empty($sidebarAvatarUrl))
@@ -820,6 +985,7 @@
                 </form>
             </li>
         </ul>
+    </div>
     </div>
 </aside>
 

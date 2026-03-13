@@ -7,20 +7,77 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Use CashierSidebar */
         .main-content {
             margin-left: 280px !important;
         }
-        
+
+        :root {
+            --navy: #0D47A1;
+            --blue: #1976D2;
+            --blue-lt: #42A5F5;
+            --bg: #f0f6ff;
+            --card: #ffffff;
+            --border: rgba(25,118,210,0.13);
+            --text: #1a2744;
+            --muted: #6b84aa;
+            --shadow: 0 4px 28px rgba(13,71,161,0.09);
+        }
+
+        .customers-theme {
+            position: relative;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+        .customers-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .customers-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .customers-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .customers-theme .bb1 { width:420px; height:420px; background: var(--blue); top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .customers-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .customers-theme h2 { font-family: 'Nunito', sans-serif; font-weight: 900; letter-spacing: .2px; }
+        .customers-theme .text-muted { color: var(--muted) !important; }
+
+        .customers-theme .card {
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
         .customer-header {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, var(--navy), var(--blue));
             color: white;
             border-radius: 12px;
         }
         
         .info-card {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 8px;
             transition: all 0.3s ease;
         }
@@ -48,8 +105,14 @@
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="container-fluid">
+<div class="customers-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
+
+    <div class="p-3 p-lg-4" style="position: relative; z-index: 1;">
+        <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -158,6 +221,7 @@
                     <p>Customer activity tracking will be available soon.</p>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </div>

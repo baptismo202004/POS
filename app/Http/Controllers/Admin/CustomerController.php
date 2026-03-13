@@ -33,7 +33,7 @@ class CustomerController extends Controller
                 ->leftJoin('credits', 'customers.id', '=', 'credits.customer_id')
                 ->leftJoin('users', 'customers.created_by', '=', 'users.id')
                 ->groupBy('customers.id', 'customers.full_name', 'customers.status', 'customers.created_at', 'users.name')
-                ->orderBy('customers.created_at', 'desc')
+                ->orderBy('customers.id', 'asc')
                 ->paginate(20);
 
             return view('Admin.customers.index', compact('customers'));
@@ -42,7 +42,7 @@ class CustomerController extends Controller
             Log::error('Error loading customers: ' . $e->getMessage());
             
             // Fallback to basic customer list
-            $customers = Customer::with('user')->orderBy('created_at', 'desc')->paginate(20);
+            $customers = Customer::with('user')->orderBy('id', 'asc')->paginate(20);
             return view('Admin.customers.index', compact('customers'));
         }
     }

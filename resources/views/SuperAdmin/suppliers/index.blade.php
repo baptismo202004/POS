@@ -26,10 +26,7 @@
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" onclick="(function(){console.log('=== OPEN SUPPLIER MODAL DEBUG ===');console.log('openSupplierModal function called');const form=document.getElementById('supplierForm');const modalLabel=document.getElementById('supplierModalLabel');console.log('Form element found:',!!form);console.log('Modal label element found:',!!modalLabel);console.log('Current form action before setting:',form.action);const actionUrl='/superadmin/suppliers';form.action=actionUrl;console.log('Form action set to:',form.action);const methodField=form.querySelector('input[name=_method]');if(methodField){methodField.remove();console.log('Removed existing _method field');}modalLabel.textContent='Add Supplier';form.reset();const statusField=document.getElementById('status');if(statusField){statusField.value='active';console.log('Status set to active');}console.log('=== OPEN SUPPLIER MODAL COMPLETED ===');})()">
                             <i class="fas fa-plus me-2"></i> Add Supplier
                         </button>
-                        <!-- Debug test button -->
-                        <button type="button" class="btn btn-outline-info btn-sm" onclick="(function(){console.log('=== TESTING FUNCTIONS ===');console.log('Edit button inline function: ✅ Working');console.log('View button inline function: ✅ Working');console.log('Delete button inline function: ✅ Working');console.log('Add Supplier inline function: ✅ Working');alert('All inline functions are working! Check console for details.');})()">
-                            <i class="fas fa-bug me-2"></i> Test Functions
-                        </button>
+                      
                     </div>
                 </div>
                 <div class="card-body">
@@ -184,7 +181,7 @@ window.openSupplierModal = function() {
     console.log('Current form action before setting:', form.action);
     
     // Set the form action
-    const actionUrl = '{{ route("superadmin.suppliers.store") }}';
+    const actionUrl = '{{ route("suppliers.store") }}';
     form.action = actionUrl;
     console.log('Form action set to:', form.action);
     

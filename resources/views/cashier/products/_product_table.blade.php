@@ -4,13 +4,13 @@
             <input type="checkbox" class="form-check-input product-select" name="selected_ids[]" value="{{ $product->id }}">
         </td>
         <td>
-            <span style="color: #7f8c8d; font-family: monospace; font-weight: 600;">#{{ $product->id }}</span>
+            <span style="color: #6b84aa; font-family: monospace; font-weight: 700;">#{{ $product->id }}</span>
         </td>
         <td>
             <div class="product-name">{{ $product->product_name }}</div>
         </td>
         <td>
-            <small style="color: #7f8c8d; font-family: monospace;">{{ $product->barcode ?? 'N/A' }}</small>
+            <small style="color: #6b84aa; font-family: monospace;">{{ $product->barcode ?? 'N/A' }}</small>
         </td>
         <td style="color: #34495e;">
             {{ $product->brand->name ?? 'N/A' }}
@@ -27,7 +27,7 @@
                     <span class="badge-unit me-1">{{ $unitType->name }}</span>
                 @endforeach
             @else
-                <span style="color: #95a5a6;">N/A</span>
+                <span style="color: #6b84aa;">N/A</span>
             @endif
         </td>
         <td>

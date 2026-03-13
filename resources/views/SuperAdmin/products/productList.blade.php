@@ -25,23 +25,146 @@
 @endpush
 @endif
 
+@push('stylesDashboard')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --navy:    #0D47A1;
+        --blue:    #1976D2;
+        --blue-lt: #42A5F5;
+        --cyan:    #00E5FF;
+        --green:   #10b981;
+        --red:     #ef4444;
+        --bg:      #EBF3FB;
+        --card:    #ffffff;
+        --border:  rgba(25,118,210,0.12);
+        --text:    #1a2744;
+        --muted:   #6b84aa;
+        --amber:   #f59e0b;
+    }
+
+    .sp-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--bg); }
+    .sp-bg::before {
+        content: ''; position: absolute; inset: 0;
+        background:
+            radial-gradient(ellipse 60% 50% at 0% 0%,    rgba(13,71,161,0.09) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.07) 0%, transparent 55%);
+    }
+    .sp-blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .11; }
+    .sp-blob-1 { width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite; }
+    .sp-blob-2 { width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite; }
+    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+
+    .sp-wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:28px 24px 56px;font-family:'Plus Jakarta Sans',sans-serif;}
+
+    .sp-page-head {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 22px; flex-wrap: wrap; gap: 14px;
+        animation: spUp .4s ease both;
+    }
+    .sp-ph-left { display: flex; align-items: center; gap: 13px; }
+    .sp-ph-icon {
+        width: 46px; height: 46px; border-radius: 14px;
+        background: linear-gradient(135deg, var(--navy), var(--blue-lt));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 19px; color: #fff;
+        box-shadow: 0 6px 18px rgba(13,71,161,0.28);
+    }
+    .sp-ph-crumb{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.7;margin-bottom:3px;font-family:'Nunito',sans-serif;}
+    .sp-ph-title{font-family:'Nunito',sans-serif;font-size:24px;font-weight:900;color:var(--navy);line-height:1.1;}
+    .sp-ph-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    .sp-btn-back{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:11px;border:1.5px solid var(--border);background:var(--card);color:var(--navy);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;transition:all .2s ease;font-family:'Nunito',sans-serif;}
+    .sp-btn-back:hover{background:var(--navy);color:#fff;border-color:var(--navy);transform:translateX(-3px);}
+
+    .sp-card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:0 4px 28px rgba(13,71,161,0.09);overflow:hidden;animation:spUp .45s ease both;}
+
+    .sp-card-head{padding:16px 26px;background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;}
+    .sp-card-head::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 88% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none;}
+    .sp-card-head::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none;}
+    .sp-card-head-title{font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+    .sp-card-head-title i{color:rgba(0,229,255,.85);}
+
+    .sp-form-body{padding:28px 26px;}
+
+    .sp-form-body .form-label{font-size:11.5px;font-weight:700;color:var(--navy);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;display:block;font-family:'Nunito',sans-serif;}
+
+    .sp-form-body .form-control,
+    .sp-form-body .form-select,
+    .sp-form-body select.form-control{
+        width:100%;padding:10px 14px;
+        border-radius:11px;border:1.5px solid var(--border);
+        font-size:13.5px;color:var(--text);background:#fafcff;
+        font-family:'Plus Jakarta Sans',sans-serif;
+        transition:border-color .18s,box-shadow .18s;outline:none;
+        appearance:none;
+    }
+
+    .sp-form-body .form-control:focus,
+    .sp-form-body .form-select:focus,
+    .sp-form-body select.form-control:focus{
+        border-color:var(--blue-lt);
+        box-shadow:0 0 0 3px rgba(66,165,245,0.12);
+        background:#fff;
+    }
+
+    .sp-form-body input[type="file"].form-control{
+        padding:8px 12px;
+        cursor:pointer;
+    }
+
+    .sp-section{display:flex;align-items:center;gap:10px;margin:24px 0 16px;}
+    .sp-section-label{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--blue);white-space:nowrap;font-family:'Nunito',sans-serif;}
+    .sp-section::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
+
+    .sp-hidden-note{background:rgba(66,165,245,0.08);border:1.5px dashed rgba(66,165,245,0.3);border-radius:11px;padding:10px 14px;font-size:12.5px;color:var(--blue);font-style:italic;display:flex;align-items:center;gap:8px;}
+
+    .sp-btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 9px 16px; border-radius: 11px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        font-family: 'Nunito', sans-serif;
+        border: none; transition: all .2s ease; text-decoration: none; white-space: nowrap;
+    }
+    .sp-btn-outline {
+        background: transparent;
+        color: var(--navy);
+        border: 1.5px solid var(--border);
+    }
+    .sp-btn-outline:hover { background: rgba(13,71,161,0.06); border-color: var(--blue-lt); }
+
+    @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+@endpush
+
 @include('layouts.theme-base')
 
 @section('content')
 
-    <div class="d-flex min-vh-100">
+    <div class="d-flex min-vh-100" style="background: var(--bg);">
+        <div class="sp-bg">
+            <div class="sp-blob sp-blob-1"></div>
+            <div class="sp-blob sp-blob-2"></div>
+        </div>
 
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="row mb-6">
-                    <div class="col-12">
-                        <div class="p-4 card-rounded shadow-sm bg-white">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h2 class="m-0">{{ $isEdit ? 'Edit Product' : 'Add Product' }}</h2>
-                                <a href="{{ $isCashierContext ? route('cashier.products.index') : route('superadmin.products.index') }}" class="btn btn-outline" style="border-color:var(--theme-color); color:var(--theme-color)">Back to products</a>
-                            </div>
+        <main class="flex-fill p-4" style="position: relative; z-index: 1;">
+            <div class="sp-wrap">
+                <div class="sp-page-head">
+                    <div class="sp-ph-left">
+                        <div class="sp-ph-icon"><i class="fas {{ $isEdit ? 'fa-pen' : 'fa-plus' }}"></i></div>
+                        <div>
+                            <div class="sp-ph-title">{{ $isEdit ? 'Edit Product' : 'Add Product' }}</div>
+                            <div class="sp-ph-sub">Manage your product information</div>
+                        </div>
+                    </div>
+                    <a href="{{ $isCashierContext ? route('cashier.products.index') : route('superadmin.products.index') }}" class="sp-btn-back"><i class="fas fa-arrow-left"></i> Back to products</a>
+                </div>
 
-                            <form method="POST" action="{{ $isEdit ? ($isCashierContext ? route('cashier.products.update', $product) : route('superadmin.products.update', $product)) : ($isCashierContext ? route('cashier.products.store') : route('superadmin.products.store')) }}" enctype="multipart/form-data" id="productForm">
+                <div class="sp-card">
+                    <div class="sp-form-body">
+                        <form method="POST" action="{{ $isEdit ? ($isCashierContext ? route('cashier.products.update', $product) : route('superadmin.products.update', $product)) : ($isCashierContext ? route('cashier.products.store') : route('superadmin.products.store')) }}" enctype="multipart/form-data" id="productForm">
                                 @if($isEdit) @method('PUT') @endif
                                 @csrf
 
@@ -154,11 +277,9 @@
                                     <button type="submit" class="btn" style="background-color:var(--theme-color); color:white">{{ $isEdit ? 'Update Product' : 'Save Product' }}</button>
                                 </div>
 
-                            </form>
-                        </div>
+                        </form>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
