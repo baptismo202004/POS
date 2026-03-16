@@ -50,26 +50,55 @@ class SalesController extends Controller
         
         // Get filter type from request
         $filter = $request->get('filter', 'all');
+
+        $excludeVoided = $filter !== 'voided';
         
         // Get sales data for selected date
-        $todaySales = Sale::whereDate('created_at', $selectedDate)
+        $todaySalesQuery = Sale::whereDate('created_at', $selectedDate);
+
+        if ($excludeVoided) {
+            $todaySalesQuery->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            });
+        }
+
+        $todaySales = $todaySalesQuery
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
         // Get sales items count for selected date
-        $todayItems = SaleItem::whereHas('sale', function($query) use ($selectedDate) {
+        $todayItems = SaleItem::whereHas('sale', function($query) use ($selectedDate, $excludeVoided) {
             $query->whereDate('created_at', $selectedDate);
+            if ($excludeVoided) {
+                $query->where(function ($q) {
+                    $q->whereNull('voided')->orWhere('voided', false);
+                });
+            }
         })->sum('quantity');
         
         // Get this month's sales
         $thisMonth = Carbon::now()->startOfMonth();
-        $monthlySales = Sale::whereDate('created_at', '>=', $thisMonth)
+        $monthlySalesQuery = Sale::whereDate('created_at', '>=', $thisMonth);
+
+        if ($excludeVoided) {
+            $monthlySalesQuery->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            });
+        }
+
+        $monthlySales = $monthlySalesQuery
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
         // Get recent sales for table (showing yesterday, today, and tomorrow)
         $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
             ->orderBy('created_at', 'desc');
+
+        if ($excludeVoided) {
+            $recentSalesQuery->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            });
+        }
             
         // Default: show sales from yesterday, today, and tomorrow
         $startDate = Carbon::yesterday()->startOfDay();
@@ -274,23 +303,36 @@ class SalesController extends Controller
         
         // Get sales data for selected date
         $todaySales = Sale::whereDate('created_at', $selectedDate)
+            ->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            })
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
         // Get sales items count for selected date
         $todayItems = SaleItem::whereHas('sale', function($query) use ($selectedDate) {
-            $query->whereDate('created_at', $selectedDate);
+            $query->whereDate('created_at', $selectedDate)
+                ->where(function ($q) {
+                    $q->whereNull('voided')->orWhere('voided', false);
+                });
         })->sum('quantity');
         
         // Get this month's sales
         $thisMonth = Carbon::now()->startOfMonth();
         $monthlySales = Sale::whereDate('created_at', '>=', $thisMonth)
+            ->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            })
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         
         // Get recent sales for table (showing yesterday, today, and tomorrow)
         $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
             ->orderBy('created_at', 'desc');
+
+        $recentSalesQuery->where(function ($q) {
+            $q->whereNull('voided')->orWhere('voided', false);
+        });
             
         // Default: show sales from yesterday, today, and tomorrow
         $startDate = Carbon::yesterday()->startOfDay();
@@ -318,6 +360,9 @@ class SalesController extends Controller
         
         // Get all branches today's sales
         $allBranchesTodaySales = Sale::whereDate('created_at', Carbon::today())
+            ->where(function ($q) {
+                $q->whereNull('voided')->orWhere('voided', false);
+            })
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
         

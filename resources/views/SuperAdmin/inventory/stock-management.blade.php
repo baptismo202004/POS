@@ -2,49 +2,282 @@
 
 @section('title', 'Stock Management')
 
+@push('stylesDashboard')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --navy:    #0D47A1;
+        --blue:    #1976D2;
+        --blue-lt: #42A5F5;
+        --cyan:    #00E5FF;
+        --green:   #10b981;
+        --red:     #ef4444;
+        --amber:   #f59e0b;
+        --bg:      #EBF3FB;
+        --card:    #ffffff;
+        --border:  rgba(25,118,210,0.12);
+        --text:    #1a2744;
+        --muted:   #6b84aa;
+    }
+
+    /* Background */
+    .sp-bg { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg); }
+    .sp-bg::before {
+        content:'';position:absolute;inset:0;
+        background:
+            radial-gradient(ellipse 60% 50% at 0% 0%,    rgba(13,71,161,0.09) 0%,transparent 60%),
+            radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.07) 0%,transparent 55%);
+    }
+    .sp-blob { position:absolute;border-radius:50%;filter:blur(60px);opacity:.11; }
+    .sp-blob-1 { width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite; }
+    .sp-blob-2 { width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite; }
+    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+
+    /* Wrap */
+    .sp-wrap { position:relative;z-index:1;padding:18px 24px 44px;font-family:'Plus Jakarta Sans',sans-serif; }
+
+    /* Page header */
+    .sp-page-head {
+        display:flex;align-items:center;justify-content:space-between;
+        margin-bottom:12px;flex-wrap:wrap;gap:12px;
+        animation:spUp .4s ease both;
+    }
+    .sp-ph-left { display:flex;align-items:center;gap:13px; }
+    .sp-ph-icon {
+        width:48px;height:48px;border-radius:14px;
+        background:linear-gradient(135deg,var(--navy),var(--blue-lt));
+        display:flex;align-items:center;justify-content:center;
+        font-size:20px;color:#fff;
+        box-shadow:0 6px 20px rgba(13,71,161,0.28);
+    }
+    .sp-ph-crumb { font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.75;margin-bottom:3px;font-family:'Nunito',sans-serif; }
+    .sp-ph-title { font-family:'Nunito',sans-serif;font-size:24px;font-weight:900;color:var(--navy);line-height:1.1; }
+    .sp-ph-sub   { font-size:12px;color:var(--muted);margin-top:2px; }
+    .sp-ph-actions { display:flex;align-items:center;gap:9px;flex-wrap:wrap; }
+
+    /* Search */
+    .sp-search-wrap { position:relative; }
+    .sp-search-wrap i { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;z-index:2; }
+    .sp-search-input {
+        padding:9px 14px 9px 36px;
+        border-radius:11px;border:1.5px solid var(--border);
+        font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;
+        background:var(--card);color:var(--text);outline:none;
+        width:260px;transition:border-color .18s, box-shadow .18s;
+    }
+    .sp-search-input:focus { border-color:var(--blue-lt); box-shadow:0 0 0 3px rgba(66,165,245,0.12); }
+
+    /* Filter button */
+    .sp-filter-btn {
+        display:inline-flex;align-items:center;gap:7px;
+        padding:9px 16px;border-radius:11px;
+        font-size:13px;font-weight:700;cursor:pointer;
+        font-family:'Nunito',sans-serif;
+        border:1.5px solid var(--border);
+        background:var(--card);color:var(--navy);
+        transition:all .2s ease;
+    }
+    .sp-filter-btn:hover { background:rgba(13,71,161,0.06); border-color:var(--blue-lt); }
+    .sp-filter-btn .badge { border-radius:999px; font-weight:800; }
+
+    /* Buttons (for modals/actions) */
+    .sp-btn {
+        display:inline-flex;align-items:center;gap:7px;
+        padding:9px 18px;border-radius:11px;
+        font-size:13px;font-weight:700;cursor:pointer;
+        font-family:'Nunito',sans-serif;
+        border:none;transition:all .2s ease;text-decoration:none;white-space:nowrap;
+    }
+    .sp-btn-primary { background:linear-gradient(135deg,var(--navy),var(--blue)); color:#fff; box-shadow:0 4px 14px rgba(13,71,161,0.26); }
+    .sp-btn-primary:hover { transform:translateY(-2px); box-shadow:0 7px 20px rgba(13,71,161,0.36); color:#fff; }
+    .sp-btn-outline { background:var(--card); color:var(--navy); border:1.5px solid var(--border); }
+    .sp-btn-outline:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    /* Card */
+    .sp-card {
+        background:var(--card);border-radius:20px;
+        border:1px solid var(--border);
+        box-shadow:0 4px 28px rgba(13,71,161,0.09);
+        overflow:hidden;animation:spUp .45s ease both;
+    }
+    .sp-card-head {
+        padding:15px 22px;
+        background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);
+        display:flex;align-items:center;justify-content:space-between;
+        position:relative;overflow:hidden;
+    }
+    .sp-card-head::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none; }
+    .sp-card-head::after  { content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none; }
+    .sp-card-head-title { font-family:'Nunito',sans-serif;font-size:14.5px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1; }
+    .sp-card-head-title i { color:rgba(0,229,255,.85); }
+    .sp-c-badge { position:relative;z-index:1;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;font-family:'Nunito',sans-serif; }
+
+    .sp-card-body { padding: 18px 22px; }
+
+    /* Reduce space from the included stock-filters wrapper */
+    .sp-wrap .card.mb-3.border-0.shadow-sm { margin-bottom: 10px; box-shadow: none; background: transparent; }
+
+    /* Table */
+    .sp-table-wrap { overflow-x:auto; }
+    .sp-table-wrap::-webkit-scrollbar{height:5px;width:5px;}
+    .sp-table-wrap::-webkit-scrollbar-thumb{background:rgba(13,71,161,0.15);border-radius:4px;}
+
+    .sp-table { width:100%;border-collapse:separate;border-spacing:0;font-family:'Plus Jakarta Sans',sans-serif; }
+    .sp-table thead th {
+        position:sticky;top:0;z-index:3;
+        background:linear-gradient(135deg, rgba(13,71,161,0.92), rgba(25,118,210,0.92));
+        padding:11px 16px;
+        font-size:11px;font-weight:800;color:#fff;
+        letter-spacing:.06em;text-transform:uppercase;
+        border-bottom:1px solid var(--border);white-space:nowrap;
+    }
+    .sp-table thead th a { color:#fff; text-decoration:none; }
+    .sp-table thead th a:hover { color:rgba(255,255,255,0.92); text-decoration:underline; }
+    .sp-table tbody td {
+        padding:13px 16px;font-size:13.5px;color:var(--text);
+        border-bottom:1px solid rgba(25,118,210,0.06);
+        vertical-align:middle;
+    }
+
+    /* Pagination */
+    .sp-pagination {
+        padding:14px 22px;
+        background:rgba(13,71,161,0.03);
+        border-top:1px solid var(--border);
+        display:flex;align-items:center;justify-content:center;
+    }
+    .sp-pagination .pagination { margin:0; }
+    .sp-pagination .page-link {
+        border-radius:8px !important;margin:0 2px;
+        border:1.5px solid var(--border);
+        color:var(--navy);font-weight:700;font-size:13px;
+        font-family:'Nunito',sans-serif;transition:all .18s ease;
+    }
+    .sp-pagination .page-link:hover { background:rgba(13,71,161,0.08);border-color:var(--blue-lt); }
+    .sp-pagination .page-item.active .page-link {
+        background:linear-gradient(135deg,var(--navy),var(--blue));
+        border-color:var(--navy);color:#fff;
+    }
+
+    /* Modal styling (Adjust Stock) */
+    .sp-modal .modal-content {
+        border:none;
+        border-radius:18px;
+        box-shadow:0 16px 50px rgba(13,71,161,0.18);
+        overflow:hidden;
+    }
+    .sp-modal .modal-header {
+        padding:18px 24px;
+        background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);
+        border:none;position:relative;overflow:hidden;
+    }
+    .sp-modal .modal-header::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 88% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none; }
+    .sp-modal .modal-header::after  { content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.05);top:-70px;right:-40px;pointer-events:none; }
+    .sp-modal .modal-title {
+        font-family:'Nunito',sans-serif;
+        font-size:16px;
+        font-weight:800;
+        color:#fff;
+        position:relative;
+        z-index:1;
+    }
+    .sp-modal .btn-close { filter:brightness(0) invert(1); opacity:.75; position:relative; z-index:1; }
+    .sp-modal .btn-close:hover { opacity:1; }
+
+    .sp-modal .modal-body { padding:22px 24px; }
+    .sp-modal .modal-footer {
+        border-top:1px solid var(--border);
+        padding:16px 24px;
+        background:rgba(13,71,161,0.02);
+    }
+
+    .sp-modal .form-label {
+        font-size:11.5px;
+        font-weight:700;
+        color:var(--navy);
+        letter-spacing:.05em;
+        text-transform:uppercase;
+        margin-bottom:6px;
+        font-family:'Nunito',sans-serif;
+    }
+    .sp-modal .form-control,
+    .sp-modal .form-select {
+        border-radius:11px;
+        border:1.5px solid var(--border);
+        padding:10px 14px;
+        font-size:13.5px;
+        background:#fafcff;
+        color:var(--text);
+        font-family:'Plus Jakarta Sans',sans-serif;
+        box-shadow:none;
+        transition:border-color .18s, box-shadow .18s;
+    }
+    .sp-modal .form-control:focus,
+    .sp-modal .form-select:focus {
+        border-color:var(--blue-lt);
+        box-shadow:0 0 0 3px rgba(66,165,245,0.12);
+        background:#fff;
+    }
+
+    @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <!-- Minimal Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h5 class="mb-1 fw-bold">
-                Stock Management
-            </h5>
-            <p class="text-muted mb-0 small">Intelligent inventory monitoring</p>
-        </div>
-        
-        <!-- Right Side Controls -->
-        <div class="d-flex align-items-center gap-2">
-            <!-- Search Bar -->
-            <div class="position-relative">
-                <input type="text" class="form-control form-control-sm" id="searchFilterHeader" 
-                       placeholder="Search..." style="width: 250px;" value="{{ request('search') }}">
-                <i class="fas fa-search position-absolute" style="right: 10px; top: 8px; color: #6c757d; font-size: 12px;"></i>
-            </div>
-            
-            <!-- Filter Button -->
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="filterDropdownBtn" data-bs-toggle="dropdown">
-                    <i class="fas fa-filter me-1"></i>
-                    Filters
-                    <span class="badge bg-secondary ms-1" id="activeFiltersCount">0</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
-                    <!-- Filter content will be included here -->
-                </ul>
-            </div>
-        </div>
+<div class="d-flex min-vh-100" style="background:var(--bg);">
+    <div class="sp-bg">
+        <div class="sp-blob sp-blob-1"></div>
+        <div class="sp-blob sp-blob-2"></div>
     </div>
-    
-    <!-- Include Advanced Filters Component -->
-    @include('SuperAdmin.inventory.stock-filters')
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>
-                                    <a href="{{ route('superadmin.inventory.stock-management', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none">
+
+    <main class="flex-fill p-4" style="position:relative;z-index:1;">
+        <div class="sp-wrap">
+            <div class="sp-page-head">
+                <div class="sp-ph-left">
+                    <div class="sp-ph-icon"><i class="fas fa-boxes-stacked"></i></div>
+                    <div>
+                        <div class="sp-ph-crumb">Inventory</div>
+                        <div class="sp-ph-title">Stock Management</div>
+                        <div class="sp-ph-sub">Intelligent inventory monitoring</div>
+                    </div>
+                </div>
+
+                <div class="sp-ph-actions">
+                    <div class="sp-search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="sp-search-input" id="searchFilterHeader" placeholder="Search..." value="{{ request('search') }}">
+                    </div>
+
+                    <div class="dropdown" style="position:relative;">
+                        <button class="sp-filter-btn dropdown-toggle" type="button" id="filterDropdownBtn" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter"></i>
+                            Filters
+                            <span class="badge bg-secondary ms-1" id="activeFiltersCount">0</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
+                            <!-- Filter content will be included here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @include('SuperAdmin.inventory.stock-filters')
+
+            <div class="sp-card">
+                <div class="sp-card-head">
+                    <div class="sp-card-head-title"><i class="fas fa-list"></i> Stock Overview</div>
+                    <span class="sp-c-badge">{{ $products->total() }} records</span>
+                </div>
+
+                <div class="sp-card-body">
+                    <div class="sp-table-wrap">
+                        <table class="sp-table table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <a href="{{ route('superadmin.inventory.stock-management', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none">
                                         Product {{ request('sort_by') == 'product_name' ? (request('sort_direction') == 'asc' ? '↑' : '↓') : '' }}
                                     </a>
                                 </th>
@@ -155,16 +388,17 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex justify-content-center mt-4">
-                    {{ $products->links() }}
-                </div>
+            </div>
+
+            <div class="sp-pagination">
+                {{ $products->links() }}
             </div>
         </div>
     </div>
 </div>
 
 <!-- Stock Adjustment Modal -->
-<div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
+<div class="modal fade sp-modal" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -279,8 +513,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="saveAdjustmentBtn">Save</button>
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="sp-btn sp-btn-primary" id="saveAdjustmentBtn">Save</button>
             </div>
         </div>
     </div>
@@ -324,7 +558,7 @@
 </div>
 
 <!-- Stock History Modal -->
-<div class="modal fade" id="stockHistoryModal" tabindex="-1" aria-labelledby="stockHistoryModalLabel" aria-hidden="true">
+<div class="modal fade sp-modal" id="stockHistoryModal" tabindex="-1" aria-labelledby="stockHistoryModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -355,7 +589,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

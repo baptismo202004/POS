@@ -6,8 +6,198 @@
 @extends('layouts.app')
 @section('title', 'Products')
 
-@push('styles')
+@push('stylesDashboard')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+        :root {
+            --navy:    #0D47A1;
+            --blue:    #1976D2;
+            --blue-lt: #42A5F5;
+            --cyan:    #00E5FF;
+            --green:   #10b981;
+            --red:     #ef4444;
+            --amber:   #f59e0b;
+            --bg:      #EBF3FB;
+            --card:    #ffffff;
+            --border:  rgba(25,118,210,0.12);
+            --text:    #1a2744;
+            --muted:   #6b84aa;
+        }
+
+        .products-page { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* Background */
+        .sp-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--bg); }
+        .sp-bg::before {
+            content: ''; position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%,    rgba(13,71,161,0.09) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.07) 0%, transparent 55%);
+        }
+        .sp-blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .11; }
+        .sp-blob-1 { width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite; }
+        .sp-blob-2 { width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite; }
+        @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+        @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+
+        /* Wrap */
+        .sp-wrap { position: relative; z-index: 1; padding: 28px 24px 56px; }
+
+        /* Page header */
+        .sp-page-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px; flex-wrap: wrap; gap: 14px;
+            animation: spUp .4s ease both;
+        }
+        .sp-ph-left { display: flex; align-items: center; gap: 13px; }
+        .sp-ph-icon {
+            width: 46px; height: 46px; border-radius: 14px;
+            background: linear-gradient(135deg, var(--navy), var(--blue-lt));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 19px; color: #fff;
+            box-shadow: 0 6px 18px rgba(13,71,161,0.28);
+        }
+        .sp-ph-title { font-family:'Nunito',sans-serif; font-size:24px; font-weight:900; color:var(--navy); }
+        .sp-ph-sub   { font-size:12px; color:var(--muted); margin-top:2px; }
+        .sp-ph-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+        /* Buttons */
+        .sp-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 16px; border-radius: 11px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            border: none; transition: all .2s ease; text-decoration: none; white-space: nowrap;
+        }
+        .sp-btn-primary { background: linear-gradient(135deg, var(--navy), var(--blue)); color: #fff; box-shadow: 0 4px 14px rgba(13,71,161,0.26); }
+        .sp-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(13,71,161,0.34); }
+        .sp-btn-amber { background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; box-shadow: 0 4px 14px rgba(245,158,11,0.28); }
+        .sp-btn-amber:hover { transform: translateY(-2px); }
+        .sp-btn-danger { background: transparent; color: var(--red); border: 1.5px solid rgba(239,68,68,0.30); }
+        .sp-btn-danger:hover { background: rgba(239,68,68,0.07); border-color: var(--red); }
+
+        /* Search */
+        .sp-search-wrap { position: relative; }
+        .sp-search-wrap i { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;z-index:2; }
+        .sp-search-input {
+            padding: 9px 14px 9px 36px;
+            border-radius: 11px; border: 1.5px solid var(--border);
+            font-size: 13px; font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--card); color: var(--text); outline: none;
+            width: 230px; transition: border-color .18s, box-shadow .18s;
+        }
+        .sp-search-input:focus { border-color: var(--blue-lt); box-shadow: 0 0 0 3px rgba(66,165,245,0.12); }
+        .sp-search-input::placeholder { color: #b0c0d8; }
+
+        /* Card */
+        .sp-card {
+            background: var(--card); border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(13,71,161,0.08);
+            overflow: hidden; animation: spUp .45s ease both;
+        }
+
+        /* Card header */
+        .sp-card-head {
+            padding: 15px 22px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+            display: flex; align-items: center; justify-content: space-between;
+            position: relative; overflow: hidden;
+        }
+        .sp-card-head::before {
+            content:'';position:absolute;inset:0;
+            background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);
+            pointer-events:none;
+        }
+        .sp-card-head::after {
+            content:'';position:absolute;width:220px;height:220px;border-radius:50%;
+            background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none;
+        }
+        .sp-card-head-title {
+            font-family:'Nunito',sans-serif;font-size:14.5px;font-weight:800;color:#fff;
+            display:flex;align-items:center;gap:8px;position:relative;z-index:1;
+        }
+        .sp-card-head-title i { color:rgba(0,229,255,.85); }
+        .sp-c-badge {
+            position:relative;z-index:1;
+            background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);
+            color:#fff;font-size:11px;font-weight:700;
+            padding:3px 10px;border-radius:20px;font-family:'Nunito',sans-serif;
+        }
+
+        /* Table */
+        .sp-table-wrap { overflow-x:auto; overflow-y:auto; max-height:420px; }
+        .sp-table-wrap::-webkit-scrollbar{height:5px;width:5px;}
+        .sp-table-wrap::-webkit-scrollbar-thumb{background:rgba(13,71,161,0.15);border-radius:4px;}
+
+        .sp-table { width:100%;border-collapse:separate;border-spacing:0;font-family:'Plus Jakarta Sans',sans-serif; }
+        .sp-table thead th {
+            position:sticky;top:0;z-index:3;
+            background:rgba(13,71,161,0.03);
+            padding:11px 14px;
+            font-size:11px;font-weight:700;
+            color:var(--navy);letter-spacing:.06em;text-transform:uppercase;
+            border-bottom:1px solid var(--border);white-space:nowrap;
+        }
+        .sp-table tbody td {
+            padding:11px 14px;font-size:13px;color:var(--text);
+            border-bottom:1px solid rgba(25,118,210,0.06);
+            vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .sp-table tbody tr:nth-child(even) td { background:rgba(240,246,255,0.55); }
+        .sp-table tbody tr:hover td { background:rgba(21,101,192,0.05); }
+
+        /* Badges */
+        .sp-badge { display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Nunito',sans-serif; }
+        .sp-badge-green { background:rgba(16,185,129,0.12);color:#047857; }
+        .sp-badge-red   { background:rgba(239,68,68,0.10);color:#b91c1c; }
+        .sp-badge-blue  { background:rgba(13,71,161,0.10);color:var(--navy); }
+        .sp-badge-amber { background:rgba(245,158,11,0.12);color:#92400e; }
+
+        /* Action buttons in table */
+        .sp-tbl-action {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:30px;height:30px;border-radius:8px;
+            font-size:12px;text-decoration:none;cursor:pointer;
+            border:none;transition:all .18s ease;
+        }
+        .sp-tbl-edit { color:var(--blue);background:rgba(13,71,161,0.08); }
+        .sp-tbl-edit:hover { background:rgba(13,71,161,0.16); }
+        .sp-tbl-del  { color:var(--red);background:rgba(239,68,68,0.08); }
+        .sp-tbl-del:hover { background:rgba(239,68,68,0.16); }
+
+        /* Pagination */
+        .sp-pagination {
+            padding:14px 22px;background:rgba(13,71,161,0.03);
+            border-top:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .sp-pag-info { font-size:12px;color:var(--muted);font-family:'Nunito',sans-serif; }
+        .sp-pagination .pagination { margin: 0; }
+        .sp-pagination .page-link {
+            border-radius: 8px;
+            border: 1.5px solid var(--border);
+            color: var(--navy);
+            font-weight: 700;
+            font-family:'Nunito',sans-serif;
+            min-width: 32px;
+            text-align: center;
+        }
+        .sp-pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--navy), var(--blue));
+            border-color: var(--navy);
+            color: #fff;
+        }
+        .sp-pagination .page-link:hover { background:rgba(13,71,161,0.08); border-color:var(--blue-lt); }
+
+        @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+        /* Checkbox */
+        input[type="checkbox"] { cursor:pointer;accent-color:var(--navy);width:15px;height:15px; }
+
 /* CSS-only fix without !important */
 .product-image {
     width: 25px;
@@ -249,93 +439,93 @@
 
 @section('content')
     <div class="d-flex min-vh-100 products-page">
+        <div class="sp-bg">
+            <div class="sp-blob sp-blob-1"></div>
+            <div class="sp-blob sp-blob-2"></div>
+        </div>
         <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="row mb-6">
-                    <div class="col-12">
-                        <div class="products-header-card">
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                                <div class="d-flex align-items-center gap-4">
-                                    <h2 class="m-0">Product List</h2>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <div class="search-wrapper">
-                                        <div class="input-group">
-                                            <span class="input-group-text">
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <circle cx="11" cy="11" r="8"></circle>
-                                                    <path d="m21 21-4.35-4.35"></path>
+            <div class="sp-wrap">
+                <div class="sp-page-head">
+                    <div class="sp-ph-left">
+                        <div class="sp-ph-icon"><i class="fas fa-box"></i></div>
+                        <div>
+                            <div class="sp-ph-title">Products</div>
+                            <div class="sp-ph-sub">Manage your product catalog</div>
+                        </div>
+                    </div>
+                    <div class="sp-ph-actions">
+                        <div class="sp-search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input type="text" name="search" id="product-search-input" class="sp-search-input" placeholder="Search products..." value="{{ request('search') }}">
+                        </div>
+                        <a href="{{ route('superadmin.products.create') }}" class="sp-btn sp-btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add New Product
+                        </a>
+                        <button type="button" id="editSelectedBtn" class="sp-btn sp-btn-amber">
+                            <i class="fas fa-pen"></i>
+                            Edit Selected
+                        </button>
+                        <button type="button" id="deleteSelectedBtn" class="sp-btn sp-btn-danger">
+                            <i class="fas fa-trash"></i>
+                            Delete Selected
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sp-card">
+                    <div class="sp-card-head">
+                        <div class="sp-card-head-title"><i class="fas fa-list"></i> Product List</div>
+                        <span class="sp-c-badge">{{ $products->total() }} products</span>
+                    </div>
+
+                    <div class="sp-table-wrap">
+                        <table class="sp-table products-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">
+                                        <input type="checkbox" class="form-check-input" id="selectAll">
+                                    </th>
+                                    <th style="width:60px;">
+                                        <a href="{{ route('superadmin.products.index', ['sort_by' => 'id', 'sort_direction' => ($sortBy == 'id' && $sortDirection == 'asc') ? 'desc' : 'asc']) }}" style="color: inherit; text-decoration: none;">
+                                            ID
+                                            @if ($sortBy == 'id')
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; opacity: .6;">
+                                                    @if ($sortDirection == 'asc')
+                                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                                    @else
+                                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                                    @endif
                                                 </svg>
-                                            </span>
-                                            <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
-                                        </div>
-                                    </div>
-                                    <a href="{{ route('superadmin.products.create') }}" class="btn btn-add-product d-flex align-items-center gap-2">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M12 5v14M5 12h14"/>
-                                        </svg>
-                                        Add New Product
-                                    </a>
-                                    <button type="button" id="editSelectedBtn" class="btn btn-edit-selected d-flex align-items-center gap-2">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                        Edit Selected
-                                    </button>
-                                    <button type="button" id="deleteSelectedBtn" class="btn btn-delete-selected d-flex align-items-center gap-2">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="3 6 5 6 21 6"></polyline>
-                                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
-                                        </svg>
-                                        Delete Selected
-                                    </button>
-                                </div>
-                            </div>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th style="width:55px;text-align:center;">Image</th>
+                                    <th style="width:250px;">Product Name</th>
+                                    <th style="width:100px;">Brand</th>
+                                    <th style="width:110px;">Category</th>
+                                    <th style="width:110px;">Product Type</th>
+                                    <th style="width:120px;">Unit Type</th>
+                                    <th style="width:80px;">Status</th>
+                                    <th style="width:90px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="product-table-body">
+                                @include('SuperAdmin.products._product_table', ['products' => $products])
+                            </tbody>
+                        </table>
+                    </div>
 
-                            <div class="table-container"style="padding-top:20px;">
-                                <div class="table-responsive">
-                                    <table class="table products-table">
-                                        <thead>
-                                            <tr>
-                                                <th>
-                                                    <input type="checkbox" class="form-check-input" id="selectAll">
-                                                </th>
-                                                <th>
-                                                    <a href="{{ route('superadmin.products.index', ['sort_by' => 'id', 'sort_direction' => ($sortBy == 'id' && $sortDirection == 'asc') ? 'desc' : 'asc']) }}">
-                                                        ID
-                                                        @if ($sortBy == 'id')
-                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle;">
-                                                                @if ($sortDirection == 'asc')
-                                                                    <polyline points="18 15 12 9 6 15"></polyline>
-                                                                @else
-                                                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                                                @endif
-                                                            </svg>
-                                                        @endif
-                                                    </a>
-                                                </th>
-                                                <th>Image</th>
-                                                <th>Product Name</th>
-                                                <th>Brand</th>
-                                                <th>Category</th>
-                                                <th>Product Type</th>
-                                                <th>Unit Type</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="product-table-body">
-                                            @include('SuperAdmin.products._product_table', ['products' => $products])
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {{-- Pagination --}}
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $products->links() }}
-                            </div>
+                    <div class="sp-pagination">
+                        <div class="sp-pag-info">
+                            @if($products->total() > 0)
+                                Showing {{ $products->firstItem() }}–{{ $products->lastItem() }} of {{ $products->total() }} products
+                            @else
+                                Showing 0 of 0 products
+                            @endif
+                        </div>
+                        <div>
+                            {{ $products->links() }}
                         </div>
                     </div>
                 </div>

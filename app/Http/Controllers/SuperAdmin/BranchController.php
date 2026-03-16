@@ -12,7 +12,7 @@ class BranchController extends Controller
 {
     public function index()
     {
-        $branches = Branch::with('assignedUser')->latest()->get();
+        $branches = Branch::with('assignedUser')->orderBy('id', 'asc')->get();
         $users = User::all();
         return view('SuperAdmin.branches.index', compact('branches', 'users'));
     }
@@ -20,7 +20,7 @@ class BranchController extends Controller
     public function apiIndex()
     {
         try {
-            $branches = Branch::all();
+            $branches = Branch::orderBy('id', 'asc')->get();
             return response()->json($branches);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch branches'], 500);

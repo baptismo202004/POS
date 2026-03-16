@@ -2,89 +2,148 @@
 @section('title', 'Reports')
 
 @section('content')
-<div class="container-fluid">
-    <div class="p-4 card-rounded shadow-sm bg-white">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0">Business Reports</h2>
-            <div class="d-flex gap-2">
-            </div>
-        </div>
+<style>
+    :root{
+        --navy:#0D47A1;--blue:#1976D2;--blue-lt:#42A5F5;--cyan:#00E5FF;
+        --green:#10b981;--red:#ef4444;--amber:#f59e0b;
+        --bg:#EBF3FB;--card:#ffffff;--border:rgba(25,118,210,0.12);
+        --text:#1a2744;--muted:#6b84aa;
+    }
 
-        <!-- Quick Stats Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card stat-card bg-primary text-white shadow-sm hover-card" onclick="showMonthlySalesModal()">
-                    <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-white-50 mb-2">Monthly Sales</h6>
-                                        <h4 class="mb-0" id="stat-card-sales">₱{{ number_format(\App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'), 2) }}</h4>
-                                    </div>
-                                    <div class="text-white-50">
-                                        <i class="fas fa-shopping-cart fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card bg-danger text-white shadow-sm hover-card" onclick="showTodaysExpensesModal()">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-white-50 mb-2">Today's Expenses</h6>
-                                        <h4 class="mb-0" id="stat-card-today-expenses">₱{{ number_format(\App\Models\Expense::whereDate('expense_date', today())->sum('amount'), 2) }}</h4>
-                                    </div>
-                                    <div class="text-white-50">
-                                        <i class="fas fa-money-bill-wave fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card bg-success text-white shadow-sm">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-white-50 mb-2">This Month's Expenses</h6>
-                                        <h4 class="mb-0" id="stat-card-month-expenses">₱{{ number_format(\App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount'), 2) }}</h4>
-                                    </div>
-                                    <div class="text-white-50">
-                                        <i class="fas fa-money-bill-wave fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card bg-info text-white shadow-sm hover-card" onclick="showTransactionsDetails()">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-white-50 mb-2">Transactions</h6>
-                                        <h4 class="mb-0" id="stat-card-transactions">{{ \App\Models\Sale::whereDate('created_at', today())->count() }}</h4>
-                                    </div>
-                                    <div class="text-white-50">
-                                        <i class="fas fa-receipt fa-2x"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    .sp-page{position:relative;}
+    .sp-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg);}
+    .sp-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 0% 0%,rgba(13,71,161,0.09) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 100% 100%,rgba(0,176,255,0.07) 0%,transparent 55%);}
+    .sp-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.11;}
+    .sp-blob-1{width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite;}
+    .sp-blob-2{width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite;}
+    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+
+    .sp-wrap{position:relative;z-index:1;padding:18px 10px 42px;}
+    @media (min-width: 992px){.sp-wrap{padding:24px 18px 54px;}}
+
+    .sp-page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
+    .sp-ph-left{display:flex;align-items:center;gap:13px;}
+    .sp-ph-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--blue-lt));display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 6px 20px rgba(13,71,161,0.28);}
+    .sp-ph-crumb{font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.75;margin-bottom:3px;}
+    .sp-ph-title{font-size:24px;font-weight:900;color:var(--navy);line-height:1.1;}
+    .sp-ph-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    .sp-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;transition:all .2s ease;text-decoration:none;white-space:nowrap;}
+    .sp-btn-primary{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;box-shadow:0 4px 14px rgba(13,71,161,0.26);}
+    .sp-btn-primary:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(13,71,161,0.36);color:#fff;}
+    .sp-btn-ghost{background:rgba(13,71,161,0.04);color:var(--navy);border:1.5px solid var(--border);}
+    .sp-btn-ghost:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+    .sp-card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:0 4px 28px rgba(13,71,161,0.09);overflow:hidden;}
+    .sp-card-head{padding:15px 22px;background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;}
+    .sp-card-head::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none;}
+    .sp-card-head::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none;}
+    .sp-card-head-title{font-size:14.5px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+    .sp-card-head-title i{color:rgba(0,229,255,.85);}
+    .sp-card-body{padding:18px 22px;}
+
+    .sp-stat{display:flex;align-items:stretch;gap:14px;padding:16px 16px;border-radius:18px;color:#fff;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.12);box-shadow:0 10px 26px rgba(13,71,161,0.12);cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;min-height:92px;}
+    .sp-stat:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(13,71,161,0.18);opacity:.98;}
+    .sp-stat::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 120% at 85% 50%,rgba(255,255,255,0.18),transparent);pointer-events:none;}
+    .sp-stat .sp-stat-meta{position:relative;z-index:1;flex:1;min-width:0;}
+    .sp-stat .sp-stat-k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:900;opacity:.88;margin:0 0 6px;}
+    .sp-stat .sp-stat-v{font-size:18px;font-weight:900;margin:0;line-height:1.15;}
+    .sp-stat .sp-stat-ic{position:relative;z-index:1;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.16);flex:0 0 auto;}
+    .sp-stat-blue{background:linear-gradient(135deg,#0D47A1,#1976D2);}
+    .sp-stat-red{background:linear-gradient(135deg,#b91c1c,#ef4444);}
+    .sp-stat-green{background:linear-gradient(135deg,#047857,#10b981);}
+    .sp-stat-cyan{background:linear-gradient(135deg,#0ea5e9,#22d3ee);}
+
+    .sp-table-wrap{overflow-x:auto;}
+    .sp-table{width:100%;border-collapse:separate;border-spacing:0;}
+    .sp-table thead th{background:rgba(13,71,161,0.03);padding:11px 14px;font-size:10.5px;font-weight:900;color:var(--navy);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+    .sp-table tbody td{padding:12px 14px;font-size:13px;color:var(--text);border-bottom:1px solid rgba(25,118,210,0.06);vertical-align:middle;}
+    .sp-table tbody tr:nth-child(even) td{background:rgba(240,246,255,0.55);}
+    .sp-table tbody tr:hover td{background:rgba(21,101,192,0.05);}
+
+    .sp-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.02em;border:1px solid transparent;}
+    .sp-badge-sale{background:rgba(25,118,210,0.10);color:var(--navy);border-color:rgba(25,118,210,0.18);}
+    .sp-badge-expense{background:rgba(239,68,68,0.10);color:#b91c1c;border-color:rgba(239,68,68,0.18);}
+    .sp-badge-done{background:rgba(16,185,129,0.12);color:#047857;border-color:rgba(16,185,129,0.22);}
+    .sp-badge-proc{background:rgba(245,158,11,0.12);color:#b45309;border-color:rgba(245,158,11,0.22);}
+
+    .sp-sum{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(25,118,210,0.10);}
+    @media (min-width: 768px){.sp-sum{grid-template-columns:repeat(3,minmax(0,1fr));}}
+    .sp-sum-item{background:rgba(235,243,251,0.60);border:1px solid rgba(25,118,210,0.10);border-radius:16px;padding:14px 14px;text-align:center;}
+    .sp-sum-item .k{font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+    .sp-sum-item .v{font-size:16px;font-weight:900;margin:0;}
+</style>
+
+<div class="sp-page">
+    <div class="sp-bg"><div class="sp-blob sp-blob-1"></div><div class="sp-blob sp-blob-2"></div></div>
+    <div class="container-fluid">
+        <div class="sp-wrap">
+
+            <div class="sp-page-head">
+                <div class="sp-ph-left">
+                    <div class="sp-ph-icon"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                        <div class="sp-ph-crumb">Admin</div>
+                        <div class="sp-ph-title">Reports</div>
+                        <div class="sp-ph-sub">Business reports and transaction insights</div>
                     </div>
                 </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="sp-btn sp-btn-primary" onclick="exportReport()"><i class="fas fa-download"></i> Export Report</button>
+                    <button type="button" class="sp-btn sp-btn-ghost" onclick="refreshData()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+            </div>
+
+            <!-- Quick Stats Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="sp-stat sp-stat-blue hover-card" onclick="showMonthlySalesModal()">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">Monthly Sales</div>
+                            <div class="sp-stat-v" id="stat-card-sales">₱{{ number_format(\App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'), 2) }}</div>
+                        </div>
+                        <div class="sp-stat-ic"><i class="fas fa-shopping-cart"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="sp-stat sp-stat-red hover-card" onclick="showTodaysExpensesModal()">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">Today's Expenses</div>
+                            <div class="sp-stat-v" id="stat-card-today-expenses">₱{{ number_format(\App\Models\Expense::whereDate('expense_date', today())->sum('amount'), 2) }}</div>
+                        </div>
+                        <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="sp-stat sp-stat-green">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">This Month's Expenses</div>
+                            <div class="sp-stat-v" id="stat-card-month-expenses">₱{{ number_format(\App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount'), 2) }}</div>
+                        </div>
+                        <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="sp-stat sp-stat-cyan hover-card" onclick="showTransactionsDetails()">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">Transactions</div>
+                            <div class="sp-stat-v" id="stat-card-transactions">{{ \App\Models\Sale::whereDate('created_at', today())->count() }}</div>
+                        </div>
+                        <div class="sp-stat-ic"><i class="fas fa-receipt"></i></div>
+                    </div>
+                </div>
+            </div>
 
                 <!-- Combined Reports Table -->
-                <div class="card card-rounded shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Business Transactions</h5>
-                        <div class="d-flex gap-2">
-                        </div>
+                <div class="sp-card">
+                    <div class="sp-card-head">
+                        <div class="sp-card-head-title"><i class="fas fa-list"></i> Business Transactions</div>
+                        <div class="d-flex gap-2" style="position:relative;z-index:1;"></div>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover" width="100%" cellspacing="0">
+                    <div class="sp-card-body">
+                        <div class="sp-table-wrap">
+                            <table class="sp-table" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Date & Time</th>
@@ -119,7 +178,7 @@
                                         @if($transaction instanceof \App\Models\Sale)
                                             <tr>
                                                 <td>{{ $transaction->created_at->format('M d, Y H:i') }}</td>
-                                                <td><span class="badge bg-primary">SALE</span></td>
+                                                <td><span class="sp-badge sp-badge-sale">SALE</span></td>
                                                 <td>
                                                     <div>
                                                         <strong>Sale Transaction</strong><br>
@@ -128,12 +187,12 @@
                                                 </td>
                                                 <td class="fw-bold text-success">₱{{ number_format($transaction->total_amount, 2) }}</td>
                                                 <td>{{ $transaction->user->name ?? 'N/A' }}</td>
-                                                <td><span class="badge bg-success">Completed</span></td>
+                                                <td><span class="sp-badge sp-badge-done">Completed</span></td>
                                             </tr>
                                         @else
                                             <tr>
                                                 <td>{{ $transaction->created_at->format('M d, Y H:i') }}</td>
-                                                <td><span class="badge bg-danger">EXPENSE</span></td>
+                                                <td><span class="sp-badge sp-badge-expense">EXPENSE</span></td>
                                                 <td>
                                                     <div>
                                                         <strong>{{ $transaction->description }}</strong><br>
@@ -148,7 +207,7 @@
                                                 </td>
                                                 <td class="fw-bold text-danger">₱{{ number_format($transaction->amount, 2) }}</td>
                                                 <td>System</td>
-                                                <td><span class="badge bg-warning">Processed</span></td>
+                                                <td><span class="sp-badge sp-badge-proc">Processed</span></td>
                                             </tr>
                                         @endif
                                     @empty
@@ -166,41 +225,25 @@
                         </div>
                         
                         <!-- Summary Row -->
-                        <div class="row mt-4 pt-3 border-top">
-                            <div class="col-md-4">
-                                <div class="text-center">
-                                    <h6 class="text-muted">Total Sales</h6>
-                                    <h5 class="text-success" id="summary-row-sales">₱{{ number_format($recentSales->sum('total_amount'), 2) }}</h5>
-                                </div>
+                        <div class="sp-sum">
+                            <div class="sp-sum-item">
+                                <div class="k">Total Sales</div>
+                                <p class="v text-success" id="summary-row-sales">₱{{ number_format($recentSales->sum('total_amount'), 2) }}</p>
                             </div>
-                            <div class="col-md-4">
-                                <div class="text-center">
-                                    <h6 class="text-muted">Total Expenses</h6>
-                                    <h5 class="text-danger" id="summary-row-expenses">₱{{ number_format($recentExpenses->sum('amount'), 2) }}</h5>
-                                </div>
+                            <div class="sp-sum-item">
+                                <div class="k">Total Expenses</div>
+                                <p class="v text-danger" id="summary-row-expenses">₱{{ number_format($recentExpenses->sum('amount'), 2) }}</p>
                             </div>
-                            <div class="col-md-4">
-                                <div class="text-center">
-                                    <h6 class="text-muted">Net Total</h6>
-                                    <h5 class="text-primary" id="summary-row-net">₱{{ number_format($recentSales->sum('total_amount') - $recentExpenses->sum('amount'), 2) }}</h5>
-                                </div>
+                            <div class="sp-sum-item">
+                                <div class="k">Net Total</div>
+                                <p class="v text-primary" id="summary-row-net">₱{{ number_format($recentSales->sum('total_amount') - $recentExpenses->sum('amount'), 2) }}</p>
                             </div>
-                        </div>
-                        
-                        <!-- Quick Actions -->
-                        <div class="text-center mt-4">
-                            <button type="button" class="btn btn-success me-2" onclick="exportReport()">
-                                <i class="fas fa-download me-2"></i>Export Report
-                            </button>
-                            <button type="button" class="btn btn-info" onclick="refreshData()">
-                                <i class="fas fa-sync-alt me-2"></i>Refresh Data
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+        </div>
     </div>
+</div>
 
 
     <!-- Bootstrap JS -->
@@ -208,8 +251,14 @@
     
     <script>
     function exportReport() {
-        const fromDate = document.getElementById('from_date').value;
-        const toDate = document.getElementById('to_date').value;
+        const fromEl = document.getElementById('from_date');
+        const toEl = document.getElementById('to_date');
+        const today = new Date();
+        const fromFallback = new Date(today);
+        fromFallback.setDate(fromFallback.getDate() - 30);
+
+        const fromDate = fromEl && fromEl.value ? fromEl.value : fromFallback.toISOString().split('T')[0];
+        const toDate = toEl && toEl.value ? toEl.value : today.toISOString().split('T')[0];
         
         // Create form and submit for download
         const form = document.createElement('form');
@@ -272,7 +321,7 @@
             if (transaction.cashier_id) { // It's a sale
                 row.innerHTML = `
                     <td>${transactionDate}</td>
-                    <td><span class="badge bg-primary">SALE</span></td>
+                    <td><span class="sp-badge sp-badge-sale">SALE</span></td>
                     <td>
                         <div>
                             <strong>Sale Transaction</strong><br>
@@ -281,12 +330,12 @@
                     </td>
                     <td class="fw-bold text-success">₱${parseFloat(transaction.total_amount).toFixed(2)}</td>
                     <td>${transaction.user ? transaction.user.name : 'N/A'}</td>
-                    <td><span class="badge bg-success">Completed</span></td>
+                    <td><span class="sp-badge sp-badge-done">Completed</span></td>
                 `;
             } else { // It's an expense
                 row.innerHTML = `
                     <td>${transactionDate}</td>
-                    <td><span class="badge bg-danger">EXPENSE</span></td>
+                    <td><span class="sp-badge sp-badge-expense">EXPENSE</span></td>
                     <td>
                         <div>
                             <strong>${transaction.description}</strong><br>
@@ -297,7 +346,7 @@
                     </td>
                     <td class="fw-bold text-danger">₱${parseFloat(transaction.amount).toFixed(2)}</td>
                     <td>System</td>
-                    <td><span class="badge bg-warning">Processed</span></td>
+                    <td><span class="sp-badge sp-badge-proc">Processed</span></td>
                 `;
             }
             

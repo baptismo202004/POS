@@ -3,71 +3,400 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy:    #0D47A1;
+            --blue:    #1976D2;
+            --blue-lt: #42A5F5;
+            --bg:      #f0f6ff;
+            --card:    #ffffff;
+            --border:  rgba(25,118,210,0.13);
+            --text:    #1a2744;
+            --muted:   #6b84aa;
+            --red:     #ef4444;
+            --green:   #10b981;
+            --amber:   #f59e0b;
+            --shadow:  0 4px 28px rgba(13,71,161,0.09);
+            --theme-color: var(--navy);
+        }
+
+        .purchases-create-page {
+            position: relative;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .purchases-create-page .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .purchases-create-page .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .purchases-create-page .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .purchases-create-page .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .purchases-create-page .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .purchases-create-page .wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 24px 56px;
+        }
+
+        .purchases-create-page .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .purchases-create-page .ph-left { display: flex; align-items: center; gap: 13px; }
+        .purchases-create-page .ph-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--navy), var(--blue-lt));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            box-shadow: 0 6px 18px rgba(13,71,161,0.28);
+            flex-shrink: 0;
+        }
+        .purchases-create-page .ph-title { font-family:'Nunito',sans-serif; font-size:24px; font-weight:900; color:var(--navy); }
+        .purchases-create-page .ph-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+        .purchases-create-page .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-wrap: wrap;
+        }
+
+        .purchases-create-page .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 16px;
+            border-radius: 11px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            border: none;
+            transition: all .2s ease;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .purchases-create-page .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+        .purchases-create-page .btn-primary,
+        .purchases-create-page .theme-bg {
+            background: linear-gradient(135deg, var(--navy), var(--blue));
+            color: #fff !important;
+            box-shadow: 0 4px 14px rgba(13,71,161,0.26);
+        }
+        .purchases-create-page .btn-primary:hover,
+        .purchases-create-page .theme-bg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(13,71,161,0.34);
+        }
+        .purchases-create-page .btn-secondary {
+            background: rgba(25,118,210,0.10);
+            color: var(--navy);
+            border: 1px solid rgba(25,118,210,0.20);
+            box-shadow: none;
+        }
+        .purchases-create-page .btn-secondary:hover { background: rgba(25,118,210,0.14); transform: translateY(-1px); }
+        .purchases-create-page .btn-danger {
+            background: linear-gradient(135deg, #dc2626, var(--red));
+            color: #fff !important;
+            border: none;
+            box-shadow: 0 4px 14px rgba(239,68,68,0.20);
+        }
+        .purchases-create-page .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(239,68,68,0.30); }
+
+        .purchases-create-page .main-card {
+            background: var(--card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .purchases-create-page .c-head {
+            padding: 15px 22px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        .purchases-create-page .c-head::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 120% at 88% 50%, rgba(0,229,255,0.15), transparent);
+            pointer-events: none;
+        }
+        .purchases-create-page .c-head::after {
+            content: '';
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            top: -90px;
+            right: -50px;
+            pointer-events: none;
+        }
+        .purchases-create-page .c-head-title {
+            font-family:'Nunito',sans-serif;
+            font-size:14.5px;
+            font-weight:800;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            position:relative;
+            z-index:1;
+        }
+        .purchases-create-page .c-head-title i { color:rgba(0,229,255,.85); }
+        .purchases-create-page .c-badge {
+            position:relative;
+            z-index:1;
+            background:rgba(255,255,255,0.15);
+            border:1px solid rgba(255,255,255,0.25);
+            color:#fff;
+            font-size:11px;
+            font-weight:700;
+            padding:3px 10px;
+            border-radius:20px;
+            font-family:'Nunito',sans-serif;
+        }
+
+        .purchases-create-page .card-body-pad { padding: 18px 22px 22px; }
+
+        .purchases-create-page .section-title {
+            font-family:'Nunito',sans-serif;
+            font-weight: 900;
+            color: var(--navy);
+            font-size: 14px;
+            margin: 16px 0 10px;
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
+        .purchases-create-page .section-title i { color: rgba(25,118,210,0.9); }
+
+        .purchases-create-page label.form-label {
+            font-size: 11px;
+            letter-spacing: .10em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+        }
+        .purchases-create-page .form-control,
+        .purchases-create-page .form-select {
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            font-size: 13px;
+            padding: 10px 12px;
+            background: #fff;
+            color: var(--text);
+            transition: border-color .18s, box-shadow .18s;
+        }
+        .purchases-create-page .form-control:focus,
+        .purchases-create-page .form-select:focus {
+            border-color: var(--blue-lt);
+            box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
+        }
+
+        .purchases-create-page #grand-total {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            color: var(--navy);
+            background: rgba(240,246,255,0.55);
+        }
+
+        .purchases-create-page .item-row {
+            border: 1px solid rgba(13,71,161,0.09) !important;
+            border-radius: 16px !important;
+            background: rgba(240,246,255,0.55);
+            box-shadow: 0 10px 26px rgba(13,71,161,0.06);
+        }
+
+        .purchases-modal .modal-content {
+            border-radius: 18px;
+            border: 1px solid rgba(25,118,210,0.18);
+            box-shadow: 0 18px 50px rgba(13,71,161,0.18);
+        }
+        .purchases-modal .modal-header {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+            color: #fff;
+            border-bottom: none;
+        }
+        .purchases-modal .modal-header h5,
+        .purchases-modal .modal-header .modal-title { color: #fff; font-family:'Nunito',sans-serif; font-weight: 900; }
+        .purchases-modal .btn-primary {
+            background: linear-gradient(135deg, var(--navy), var(--blue));
+            border: none;
+            box-shadow: 0 4px 14px rgba(13,71,161,0.26);
+            border-radius: 12px;
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+        }
+        .purchases-modal .btn-secondary {
+            background: rgba(25,118,210,0.10);
+            color: var(--navy);
+            border: 1px solid rgba(25,118,210,0.20);
+            border-radius: 12px;
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .purchases-create-page .select2-container--default .select2-selection--single {
+            height: 42px;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            display: flex;
+            align-items: center;
+        }
+        .purchases-create-page .select2-container--default .select2-selection--single .select2-selection__rendered {
+            padding-left: 12px;
+            color: var(--text);
+            font-size: 13px;
+        }
+        .purchases-create-page .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 42px;
+        }
+        .select2-dropdown {
+            border-radius: 14px;
+            border: 1px solid rgba(25,118,210,0.22);
+            overflow: hidden;
+        }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background: linear-gradient(135deg, rgba(13,71,161,0.12), rgba(25,118,210,0.12));
+            color: var(--text);
+        }
+        .select2-results__option.select2-add-supplier {
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+            color: var(--navy);
+        }
+    </style>
 @endpush
 
 @section('content')
-<div class="d-flex min-vh-100">
-    <div class="container-fluid purchase-page">
-        <main class="flex-fill p-4">
-            <div class="container-fluid">
-                <div class="row mb-6">
-                    <div class="col-12">
-                        <div class="p-4 card-rounded shadow-sm bg-white">
-                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                                <h2>Add New Purchase</h2>
-                            </div>
+<div class="purchases-create-page purchase-page">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
 
-                            <form method="POST" action="{{ route('cashier.purchases.store') }}">
-                                @csrf
-
-                                <div class="row g-3 mb-4">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Purchase Date</label>
-                                        <input type="date" name="purchase_date" class="form-control" required value="{{ date('Y-m-d') }}">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Supplier</label>
-                                        <select name="supplier_id" class="form-select supplier-select">
-                                            <option value="">-- Select Supplier --</option>
-                                            @foreach($suppliers as $supplier)
-                                                <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Reference No.</label>
-                                        <input type="text" name="reference_number" class="form-control">
-                                    </div>
-                                </div>
-
-                                <h5>Purchase Items</h5>
-                                <div id="items-container"></div>
-
-                                <div class="row mt-4 align-items-end">
-                                    <div class="col-md-auto ms-auto">
-                                        <label for="payment_status" class="form-label">Payment Status</label>
-                                        <select name="payment_status" id="payment_status" class="form-select">
-                                            <option value="pending" selected>Pending</option>
-                                            <option value="paid">Paid</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-auto">
-                                        <label class="form-label">Grand Total</label>
-                                        <input type="text" id="grand-total" class="form-control fs-5 fw-bold" readonly value="0.00">
-                                    </div>
-                                </div>
-
-                                <div class="d-flex justify-content-between mt-4">
-                                    <button type="button" id="add-item-btn" class="btn btn-secondary">Add Item</button>
-                                    <button type="submit" class="btn theme-bg text-white">Save Purchase</button>
-                                </div>
-                            </form>
-
-                        </div>
-                    </div>
+    <div class="wrap">
+        <div class="page-head">
+            <div class="ph-left">
+                <div class="ph-icon"><i class="fas fa-receipt"></i></div>
+                <div>
+                    <div class="ph-title">Add New Purchase</div>
+                    <div class="ph-sub">Create a new purchase and add items</div>
                 </div>
             </div>
-        </main>
+
+            <div class="action-bar">
+                <a href="{{ route('cashier.purchases.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </a>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <div class="c-head">
+                <div class="c-head-title"><i class="fas fa-pen-to-square"></i> Purchase Form</div>
+                <span class="c-badge">Step 1: Details</span>
+            </div>
+
+            <div class="card-body-pad">
+                <form method="POST" action="{{ route('cashier.purchases.store') }}">
+                    @csrf
+
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Purchase Date</label>
+                            <input type="date" name="purchase_date" class="form-control" required value="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Supplier</label>
+                            <select name="supplier_id" class="form-select supplier-select">
+                                <option value="">-- Select Supplier --</option>
+                                @foreach($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Reference No.</label>
+                            <input type="text" name="reference_number" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="section-title"><i class="fas fa-boxes-stacked"></i> Purchase Items</div>
+                    <div id="items-container"></div>
+
+                    <div class="row mt-4 align-items-end">
+                        <div class="col-md-auto ms-auto">
+                            <label for="payment_status" class="form-label">Payment Status</label>
+                            <select name="payment_status" id="payment_status" class="form-select">
+                                <option value="pending" selected>Pending</option>
+                                <option value="paid">Paid</option>
+                            </select>
+                        </div>
+                        <div class="col-md-auto">
+                            <label class="form-label">Grand Total</label>
+                            <input type="text" id="grand-total" class="form-control fs-5 fw-bold" readonly value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" id="add-item-btn" class="btn btn-secondary">
+                            <i class="fas fa-plus"></i>
+                            Add Item
+                        </button>
+                        <button type="submit" class="btn theme-bg text-white">
+                            <i class="fas fa-save"></i>
+                            Save Purchase
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -128,7 +457,7 @@
 </template>
 
 <!-- ADD SUPPLIER MODAL -->
-<div class="modal fade" id="addSupplierModal" tabindex="-1">
+<div class="modal fade purchases-modal" id="addSupplierModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">

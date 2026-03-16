@@ -7,6 +7,7 @@
 
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Use CashierSidebar */
         .main-content {
@@ -102,12 +103,87 @@
             font-weight: 600;
             text-transform: uppercase;
         }
+
+        .expenses-theme {
+            position: relative;
+            min-height: 100vh;
+            background: #f0f6ff;
+            color: #1a2744;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+        .expenses-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .expenses-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .expenses-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .expenses-theme .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .expenses-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .expenses-theme h2 { font-family: 'Nunito', sans-serif; font-weight: 900; letter-spacing: .2px; }
+
+        .expenses-theme .form-card {
+            border-radius: 20px;
+            border: 1px solid rgba(25,118,210,0.13);
+            box-shadow: 0 4px 28px rgba(13,71,161,0.09);
+        }
+        .expenses-theme .form-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 36px rgba(13,71,161,0.12);
+        }
+        .expenses-theme .card-header-custom {
+            background: linear-gradient(135deg, rgba(13,71,161,0.08), rgba(0,176,255,0.08));
+            border-bottom: 1px solid rgba(25,118,210,0.18);
+            color: #0D47A1;
+        }
+        .expenses-theme .btn-primary {
+            background: linear-gradient(135deg, #0D47A1, #1976D2);
+            border: none;
+            box-shadow: 0 10px 20px rgba(13,71,161,0.16);
+        }
+        .expenses-theme .btn-primary:hover {
+            filter: brightness(1.03);
+            transform: translateY(-1px);
+        }
+        .expenses-theme .form-control, .expenses-theme .form-select {
+            border: 1px solid rgba(25,118,210,0.20);
+            box-shadow: none;
+        }
+        .expenses-theme .form-control:focus, .expenses-theme .form-select:focus {
+            border-color: rgba(25,118,210,0.55);
+            box-shadow: 0 0 0 4px rgba(66,165,245,0.22);
+        }
     </style>
 @endpush
 
 @section('content')
-<div class="p-3 p-lg-4">
-    <div class="container-fluid">
+<div class="expenses-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
+
+    <div class="p-3 p-lg-4" style="position: relative; z-index: 1;">
+        <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -244,6 +320,7 @@
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </div>

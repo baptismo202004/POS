@@ -2,6 +2,257 @@
 @section('title', 'Sales History')
 
 @section('content')
+<style>
+    :root {
+        --navy:      #0D47A1;
+        --navy-mid:  #1565C0;
+        --blue:      #1976D2;
+        --blue-lt:   #42A5F5;
+        --cyan:      #00B0FF;
+        --cyan-glow: #00E5FF;
+        --bg:        #EBF3FB;
+        --card:      #ffffff;
+        --border:    rgba(25,118,210,0.13);
+        --text:      #1a2744;
+        --text-muted:#5a7499;
+        --shadow-card: 0 4px 28px rgba(13,71,161,0.10);
+        --shadow-hover: 0 8px 32px rgba(13,71,161,0.16);
+    }
+
+    .sales-page {
+        position: relative;
+        padding: 0 10px 36px;
+        color: var(--text);
+        margin-top: -18px;
+    }
+
+    .sales-page-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .sales-page-bg::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 70% 50% at 5%  10%,  rgba(21,101,192,0.13) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 40% at 95% 80%,  rgba(0,176,255,0.10)  0%, transparent 55%),
+            radial-gradient(ellipse 40% 35% at 60% 0%,   rgba(66,165,245,0.08) 0%, transparent 50%);
+    }
+    .sales-bg-circle {
+        position: absolute;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(21,101,192,0.08), rgba(0,176,255,0.06));
+        border: 1px solid rgba(21,101,192,0.07);
+    }
+    .sales-bg-circle-1 { width:520px; height:520px; top:-180px; left:-160px; }
+    .sales-bg-circle-2 { width:380px; height:380px; bottom:-120px; right:-100px; }
+    .sales-bg-circle-3 { width:200px; height:200px; top:38%; right:8%; opacity:.6; }
+    .sales-bg-stripe {
+        position: absolute;
+        width: 200%;
+        height: 6px;
+        background: linear-gradient(90deg, transparent, rgba(0,229,255,0.12), transparent);
+        top: 38%;
+        left: -50%;
+        transform: rotate(-4deg);
+    }
+
+    .sales-content {
+        position: relative;
+        z-index: 1;
+        max-width: none;
+        width: 100%;
+        margin: 0;
+    }
+
+    .sales-page .container-fluid {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .sales-page .row {
+        margin-top: 0;
+    }
+
+    .sales-page .card {
+        margin-top: 0;
+    }
+
+    .sales-page .card {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+        background: var(--card);
+    }
+
+    .sales-page .card-header {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+        position: relative;
+        overflow: hidden;
+        border-bottom: 0;
+    }
+    .sales-page .card-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 80% 100% at 90% 50%, rgba(0,229,255,0.18), transparent);
+    }
+    .sales-page .card-header::after {
+        content: '';
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.04);
+        top: -100px;
+        right: -60px;
+    }
+    .sales-page .card-header > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .sales-page .card-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: 0.01em;
+    }
+
+    .sales-page .btn-primary {
+        background: linear-gradient(135deg, var(--navy-mid), var(--blue));
+        border: none;
+        border-radius: 12px;
+        padding: 11px 18px;
+        font-weight: 800;
+        box-shadow: 0 4px 16px rgba(13,71,161,0.3);
+        transition: all 0.2s ease;
+    }
+    .sales-page .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(13,71,161,0.38);
+    }
+
+    .sales-page .card-body {
+        padding: 0;
+    }
+
+    .sales-page .sales-filter-bar {
+        padding: 16px 24px;
+        background: rgba(13,71,161,0.03);
+        border-bottom: 1px solid var(--border);
+    }
+    .sales-page .sales-filter-bar .form-control {
+        border-radius: 10px;
+        border: 1.5px solid var(--border);
+        height: 40px;
+        font-size: 13px;
+    }
+    .sales-page .sales-filter-bar .form-control:focus {
+        border-color: var(--blue-lt);
+        box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
+    }
+    .sales-page .sales-filter-bar .btn-outline-secondary {
+        border-radius: 10px;
+        border: 1.5px solid var(--border);
+        color: var(--text-muted);
+        font-weight: 700;
+        background: #fff;
+        height: 40px;
+        transition: all 0.18s ease;
+    }
+    .sales-page .sales-filter-bar .btn-outline-secondary:hover {
+        background: var(--bg);
+        border-color: var(--blue-lt);
+        color: var(--navy);
+    }
+
+    .sales-page .table-responsive {
+        padding: 0 0;
+        margin: 0;
+        overflow-x: hidden;
+    }
+
+    .sales-page table.table {
+        margin: 0;
+        border-collapse: collapse;
+        table-layout: fixed;
+        width: 100%;
+    }
+    .sales-page table.table thead th {
+        padding: 13px 18px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.92);
+        background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        white-space: normal;
+        word-break: break-word;
+    }
+    .sales-page table.table tbody td {
+        padding: 13px 18px;
+        font-size: 13.5px;
+        color: var(--text);
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(13,71,161,0.06);
+    }
+    .sales-page table.table tbody tr:nth-child(odd) { background: #fff; }
+    .sales-page table.table tbody tr:nth-child(even) { background: rgba(235,243,251,0.55); }
+    .sales-page table.table tbody tr:hover {
+        background: rgba(21,101,192,0.06) !important;
+        transform: translateX(2px);
+    }
+
+    .sales-page .badge {
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+        padding: 5px 11px;
+    }
+
+    .sales-page .btn-group.btn-group-sm .btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1);
+        border-width: 1.5px;
+    }
+    .sales-page .btn-group.btn-group-sm .btn:hover { transform: scale(1.15); }
+
+    .sales-page .pagination,
+    .sales-page .pagination * {
+        border-radius: 8px !important;
+    }
+
+    .sales-page .sales-pagination-bar {
+        padding: 16px 24px;
+        background: rgba(13,71,161,0.03);
+        border-top: 1px solid var(--border);
+    }
+</style>
+
+<div class="sales-page">
+    <div class="sales-page-bg">
+        <div class="sales-bg-circle sales-bg-circle-1"></div>
+        <div class="sales-bg-circle sales-bg-circle-2"></div>
+        <div class="sales-bg-circle sales-bg-circle-3"></div>
+        <div class="sales-bg-stripe"></div>
+    </div>
+
+    <div class="sales-content">
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -14,7 +265,8 @@
                 </div>
                 <div class="card-body">
                     <!-- Search and Filters -->
-                    <div class="row mb-3">
+                    <div class="sales-filter-bar">
+                    <div class="row">
                         <div class="col-md-2">
                             <input type="date" class="form-control" name="date_from" 
                                    value="{{ request('date_from') }}" placeholder="Date">
@@ -22,6 +274,7 @@
                         <div class="col-md-2">
                             <button class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
                         </div>
+                    </div>
                     </div>
                     <!-- Sales Table -->
                     <div class="table-responsive">
@@ -126,7 +379,7 @@
 
                     <!-- Pagination -->
                     @if($sales->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="sales-pagination-bar d-flex justify-content-between align-items-center">
                             <div>
                                 Showing {{ $sales->firstItem() }} to {{ $sales->lastItem() }} of {{ $sales->total() }} entries
                             </div>
@@ -136,6 +389,8 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
     </div>
 </div>
 

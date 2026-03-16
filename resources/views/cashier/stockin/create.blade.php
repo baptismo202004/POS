@@ -4,20 +4,286 @@
 @push('stylesDashboard')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v={{ time() }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11?v={{ rand(1000, 9999) }}"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --navy:    #0D47A1;
+            --blue:    #1976D2;
+            --blue-lt: #42A5F5;
+            --bg:      #f0f6ff;
+            --card:    #ffffff;
+            --border:  rgba(25,118,210,0.13);
+            --text:    #1a2744;
+            --muted:   #6b84aa;
+            --red:     #ef4444;
+            --green:   #10b981;
+            --amber:   #f59e0b;
+            --shadow:  0 4px 28px rgba(13,71,161,0.09);
+            --theme-color: var(--navy);
+        }
+
+        .stockin-create-theme {
+            position: relative;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .stockin-create-theme .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .stockin-create-theme .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 0% 0%, rgba(13,71,161,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.08) 0%, transparent 55%);
+        }
+        .stockin-create-theme .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .11;
+            pointer-events: none;
+        }
+        .stockin-create-theme .bb1 { width:420px; height:420px; background:#1976D2; top:-130px; left:-130px; animation: bf1 9s ease-in-out infinite; }
+        .stockin-create-theme .bb2 { width:300px; height:300px; background:#00B0FF; bottom:-90px; right:-90px; animation: bf2 11s ease-in-out infinite; }
+        @keyframes bf1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,18px)} }
+        @keyframes bf2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-22px)} }
+
+        .stockin-create-theme .wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 24px 56px;
+        }
+
+        .stockin-create-theme .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .stockin-create-theme .ph-left { display: flex; align-items: center; gap: 13px; }
+        .stockin-create-theme .ph-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--navy), var(--blue-lt));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            box-shadow: 0 6px 18px rgba(13,71,161,0.28);
+            flex-shrink: 0;
+        }
+        .stockin-create-theme .ph-title { font-family:'Nunito',sans-serif; font-size:24px; font-weight:900; color:var(--navy); }
+        .stockin-create-theme .ph-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+        .stockin-create-theme .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 16px;
+            border-radius: 11px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            border: none;
+            transition: all .2s ease;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .stockin-create-theme .btn-primary {
+            background: linear-gradient(135deg, var(--navy), var(--blue));
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(13,71,161,0.26);
+        }
+        .stockin-create-theme .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(13,71,161,0.34); }
+        .stockin-create-theme .btn-outline-secondary {
+            background: rgba(25,118,210,0.10);
+            color: var(--navy);
+            border: 1px solid rgba(25,118,210,0.20);
+        }
+
+        .stockin-create-theme .main-card {
+            background: var(--card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .stockin-create-theme .c-head {
+            padding: 15px 22px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        .stockin-create-theme .c-head::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 120% at 88% 50%, rgba(0,229,255,0.15), transparent);
+            pointer-events: none;
+        }
+        .stockin-create-theme .c-head::after {
+            content: '';
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            top: -90px;
+            right: -50px;
+            pointer-events: none;
+        }
+        .stockin-create-theme .c-head-title {
+            font-family:'Nunito',sans-serif;
+            font-size:14.5px;
+            font-weight:800;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            position:relative;
+            z-index:1;
+        }
+        .stockin-create-theme .c-head-title i { color:rgba(0,229,255,.85); }
+        .stockin-create-theme .card-body-pad { padding: 18px 22px 22px; }
+
+        .stockin-create-theme label.form-label {
+            font-size: 11px;
+            letter-spacing: .10em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+        }
+        .stockin-create-theme .form-control,
+        .stockin-create-theme .form-select {
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            font-size: 13px;
+            padding: 10px 12px;
+            background: #fff;
+            color: var(--text);
+            transition: border-color .18s, box-shadow .18s;
+        }
+        .stockin-create-theme .form-control:focus,
+        .stockin-create-theme .form-select:focus {
+            border-color: var(--blue-lt);
+            box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
+        }
+
+        .stockin-create-theme .table-responsive { overflow-x: hidden; }
+        .stockin-create-theme table.table { width: 100%; border-collapse: collapse; margin: 0; table-layout: fixed; }
+        .stockin-create-theme table.table thead th {
+            padding: 12px 14px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing:.12em;
+            text-transform:uppercase;
+            color: rgba(255,255,255,0.92);
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            white-space: normal;
+            word-break: break-word;
+        }
+        .stockin-create-theme table.table thead th:last-child,
+        .stockin-create-theme table.table td:last-child {
+            width: 190px;
+            white-space: nowrap;
+        }
+        .stockin-create-theme table.table td {
+            padding: 12px 14px;
+            font-size: 13px;
+            vertical-align: middle;
+            color: var(--text);
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .stockin-create-theme .add-branch {
+            white-space: nowrap;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .stockin-create-theme .remove-branch {
+            white-space: nowrap;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .stockin-create-theme .actions-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+        }
+
+        .stockin-create-theme #purchase-products-panel {
+            border: 1px solid rgba(25,118,210,0.18) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 18px 44px rgba(13,71,161,0.16) !important;
+        }
+
         .card-rounded{ border-radius: 12px; }
     </style>
 @endpush
 
 @section('content')
-<div class="container-fluid p-4">
-    <div class="row mb-6">
-        <div class="col-12">
-            <div class="p-4 card-rounded shadow-sm bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                    <h2 class="m-0">Add Stock In</h2>
-                </div>
+<div class="stockin-create-theme">
+    <div class="bg-layer">
+        <div class="bg-blob bb1"></div>
+        <div class="bg-blob bb2"></div>
+    </div>
 
+    <div class="wrap">
+        <div class="page-head">
+            <div class="ph-left">
+                <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
+                <div>
+                    <div class="ph-title">Add Stock In</div>
+                    <div class="ph-sub">Select purchase and stock items into branches</div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <a href="{{ route('cashier.stockin.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </a>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <div class="c-head">
+                <div class="c-head-title"><i class="fas fa-pen-to-square"></i> Stock In Form</div>
+            </div>
+
+            <div class="card-body-pad">
                 <form action="{{ route('cashier.stockin.store') }}" method="POST">
                                 @csrf
 
@@ -88,7 +354,7 @@
                                                     <th>Stock-In Qty</th>
                                                     <th>Original Price</th>
                                                     <th>New Price</th>
-                                                    <th style="width: 80px;">Actions</th>
+                                                    <th style="width: 190px;">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="purchase-items-table-body"></tbody>
@@ -98,11 +364,10 @@
 
                                 <button type="submit" class="btn btn-primary">Save Stock</button>
                             </form>
-
-                        </div>
-                    </div>
-                </div>
             </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -121,6 +386,8 @@
                 });
             }
         @endif
+
+        var cashierBranchId = @json(optional(Auth::user())->branch_id);
 
         var purchaseSelect = document.getElementById('purchase_id');
         var tableBody = document.getElementById('purchase-items-table-body');
@@ -234,7 +501,8 @@
                     var branchSelectOptions = '';
                     if (branchOptions && branchOptions.length > 0) {
                         branchOptions.forEach(function(branch) {
-                            branchSelectOptions += '<option value="' + branch.id + '">' + branch.name + '</option>';
+                            var selectedAttr = (cashierBranchId && String(branch.id) === String(cashierBranchId)) ? ' selected' : '';
+                            branchSelectOptions += '<option value="' + branch.id + '"' + selectedAttr + '>' + branch.name + '</option>';
                         });
                     }
 
@@ -270,7 +538,10 @@
                                 '<input type="number" class="form-control" name="items[' + idx + '][new_price]" min="0" step="0.01" value="0.00" required>' +
                             '</td>' +
                             '<td>' +
-                                '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Branch</button>' +
+                                '<div class="actions-cell">' +
+                                    '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Stock</button>' +
+                                    '<button type="button" class="btn btn-sm btn-outline-danger remove-branch" data-product-id="' + item.product_id + '">Remove</button>' +
+                                '</div>' +
                             '</td>' +
                         '</tr>';
 
@@ -403,7 +674,7 @@
 
                     // Reset values for branch, quantity, and new_price
                     if (name.endsWith('[branch_id]')) {
-                        el.value = '';
+                        el.value = cashierBranchId ? String(cashierBranchId) : '';
                     }
                     if (name.endsWith('[quantity]')) {
                         el.value = 0;
@@ -416,6 +687,17 @@
                 // Insert cloned row after the current one
                 currentRow.parentNode.insertBefore(clone, currentRow.nextSibling);
 
+                updateRemainingToStockAll();
+            });
+        }
+
+        // Delegated handler for Remove button
+        if (tableBody) {
+            tableBody.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('remove-branch')) return;
+                var currentRow = e.target.closest('tr');
+                if (!currentRow) return;
+                currentRow.remove();
                 updateRemainingToStockAll();
             });
         }
