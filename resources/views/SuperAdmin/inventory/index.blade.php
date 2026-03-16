@@ -19,7 +19,7 @@
                                 <strong>Filter Applied:</strong> Showing only out of stock items (≤ 15 units)
                             </div>
                         @endif
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
@@ -42,7 +42,7 @@
                                             <td>{{ $product->total_sold }}</td>
                                             <td>{{ number_format($product->total_revenue, 2) }}</td>
                                             <td>
-                                                <a href="{{ route('admin.stockin.index') }}" class="btn btn-sm btn-primary">Manage Stock</a>
+                                                <a href="{{ route('superadmin.inventory.stock-management') }}" class="btn btn-sm btn-primary">Manage Stock</a>
                                             </td>
                                         </tr>
                                     @empty

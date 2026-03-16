@@ -13,16 +13,46 @@ return new class extends Migration
     {
         Schema::create('credits', function (Blueprint $table) {
             $table->id();
+
             $table->string('reference_number')->unique();
+
+            // Customer info
+            $table->string('customer_name')->nullable();
             $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('sale_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('cashier_id')->constrained('users')->onDelete('cascade');
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->text('address')->nullable();
+
+            // Relationships
+            $table->foreignId('sale_id')
+                ->nullable()
+                ->constrained('sales')
+                ->cascadeOnDelete();
+
+            $table->foreignId('cashier_id')
+                ->constrained('users')
+                ->cascadeOnDelete();
+
+            $table->foreignId('branch_id')
+                ->nullable()
+                ->constrained('branches');
+
+            // Credit amounts
             $table->decimal('credit_amount', 10, 2);
             $table->decimal('paid_amount', 10, 2)->default(0);
             $table->decimal('remaining_balance', 10, 2);
-            $table->enum('status', ['active', 'paid', 'overdue'])->default('active');
-            $table->date('due_date');
+
+            // Status
+            $table->enum('status', ['active', 'paid', 'overdue'])
+                ->default('active');
+
+            // Credit date
+            $table->date('date');
+
             $table->text('notes')->nullable();
+
+            $table->string('credit_type')->default('cash');
+
             $table->timestamps();
         });
     }

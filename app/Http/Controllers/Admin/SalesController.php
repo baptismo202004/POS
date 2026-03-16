@@ -8,6 +8,7 @@ use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SalesController extends Controller
 {
@@ -88,12 +89,34 @@ class SalesController extends Controller
             switch ($filter) {
                 case 'below-price':
                     $recentSalesQuery->whereHas('saleItems', function($query) {
-                        $query->whereRaw('(sale_items.unit_price * sale_items.quantity) < (SELECT AVG(stock_ins.price) FROM stock_ins JOIN sale_items ON stock_ins.product_id = sale_items.product_id WHERE stock_ins.created_at <= sales.created_at LIMIT 1)');
+                        $query->whereRaw(
+                            '(sale_items.unit_price * sale_items.quantity) < (sale_items.quantity * COALESCE((
+                                SELECT pi.unit_cost
+                                FROM purchase_items pi
+                                JOIN purchases p ON p.id = pi.purchase_id
+                                WHERE pi.product_id = sale_items.product_id
+                                  AND p.branch_id = sales.branch_id
+                                  AND p.created_at <= sales.created_at
+                                ORDER BY p.created_at DESC, pi.id DESC
+                                LIMIT 1
+                            ), 0))'
+                        );
                     });
                     break;
                 case 'below-cost':
                     $recentSalesQuery->whereHas('saleItems', function($query) {
-                        $query->whereRaw('(sale_items.unit_price * sale_items.quantity) < (SELECT AVG(stock_ins.price) FROM stock_ins JOIN sale_items ON stock_ins.product_id = sale_items.product_id WHERE stock_ins.created_at <= sales.created_at LIMIT 1)');
+                        $query->whereRaw(
+                            '(sale_items.unit_price * sale_items.quantity) < (sale_items.quantity * COALESCE((
+                                SELECT pi.unit_cost
+                                FROM purchase_items pi
+                                JOIN purchases p ON p.id = pi.purchase_id
+                                WHERE pi.product_id = sale_items.product_id
+                                  AND p.branch_id = sales.branch_id
+                                  AND p.created_at <= sales.created_at
+                                ORDER BY p.created_at DESC, pi.id DESC
+                                LIMIT 1
+                            ), 0))'
+                        );
                     });
                     break;
                 case 'voided':
@@ -330,9 +353,9 @@ class SalesController extends Controller
             ->paginate(20);
         
         // Debug: Log what sales we found
-        \Log::info("Voided sales query returned: " . $voidedSales->count() . " sales");
+        Log::info("Voided sales query returned: " . $voidedSales->count() . " sales");
         foreach ($voidedSales as $sale) {
-            \Log::info("Sale ID: {$sale->id}, Items count: " . $sale->saleItems->count());
+            Log::info("Sale ID: {$sale->id}, Items count: " . $sale->saleItems->count());
         }
         
         // For voided sales, also get original items count
@@ -343,7 +366,7 @@ class SalesController extends Controller
             $sale->original_items_count = $originalItemsCount;
             
             // Debug logging
-            \Log::info("Sale ID {$sale->id}: Original items count = {$originalItemsCount}");
+            Log::info("Sale ID {$sale->id}: Original items count = {$originalItemsCount}");
         });
         
         // Calculate totals
@@ -381,12 +404,7 @@ class SalesController extends Controller
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
             ->leftJoin('users', 'sales.cashier_id', '=', 'users.id')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('sale_items.product_id', '=', 'stock_ins.product_id')
-                    ->on('sales.branch_id', '=', 'stock_ins.branch_id');
-            })
             ->whereBetween('sales.created_at', [$start, $end])
-            ->whereRaw('sale_items.quantity * stock_ins.price > sale_items.subtotal')
             ->select([
                 'sale_items.id as sale_item_id',
                 'sales.id as sale_id',
@@ -398,9 +416,39 @@ class SalesController extends Controller
                 'sale_items.quantity',
                 'sale_items.unit_price as sold_unit_price',
                 'sale_items.subtotal as sold_total',
-                DB::raw('COALESCE(stock_ins.price, 0) as purchase_price'),
-                DB::raw('sale_items.quantity * COALESCE(stock_ins.price, 0) as purchase_total'),
+                DB::raw('COALESCE((
+                    SELECT pi.unit_cost
+                    FROM purchase_items pi
+                    JOIN purchases p ON p.id = pi.purchase_id
+                    WHERE pi.product_id = sale_items.product_id
+                      AND p.branch_id = sales.branch_id
+                      AND p.created_at <= sales.created_at
+                    ORDER BY p.created_at DESC, pi.id DESC
+                    LIMIT 1
+                ), 0) as purchase_price'),
+                DB::raw('sale_items.quantity * COALESCE((
+                    SELECT pi.unit_cost
+                    FROM purchase_items pi
+                    JOIN purchases p ON p.id = pi.purchase_id
+                    WHERE pi.product_id = sale_items.product_id
+                      AND p.branch_id = sales.branch_id
+                      AND p.created_at <= sales.created_at
+                    ORDER BY p.created_at DESC, pi.id DESC
+                    LIMIT 1
+                ), 0) as purchase_total'),
             ])
+            ->whereRaw(
+                'sale_items.quantity * COALESCE((
+                    SELECT pi.unit_cost
+                    FROM purchase_items pi
+                    JOIN purchases p ON p.id = pi.purchase_id
+                    WHERE pi.product_id = sale_items.product_id
+                      AND p.branch_id = sales.branch_id
+                      AND p.created_at <= sales.created_at
+                    ORDER BY p.created_at DESC, pi.id DESC
+                    LIMIT 1
+                ), 0) > sale_items.subtotal'
+            )
             ->orderByDesc('sales.created_at')
             ->paginate(50);
 

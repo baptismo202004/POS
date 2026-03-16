@@ -13,51 +13,49 @@
                                 <a href="{{ route('superadmin.purchases.create') }}" class="btn" style="background-color:var(--theme-color); color:white">Add New Purchase</a>
                             </div>
 
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead>
+                            <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Reference Number</th>
+                                            <th>Purchase Date</th>
+                                            <th>Payment Status</th>
+                                            <th>Items</th>
+                                            <th>Total Cost</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($purchases as $purchase)
                                             <tr>
-                                                <th>Reference Number</th>
-                                                <th>Purchase Date</th>
-                                                <th>Payment Status</th>
-                                                <th>Items</th>
-                                                <th>Total Cost</th>
-                                                <th>Action</th>
+                                                <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
+                                                <td>
+                                                    <a href="{{ route('superadmin.purchases.show', $purchase) }}">
+                                                        {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">
+                                                        {{ ucfirst($purchase->payment_status) }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ $purchase->items->count() }} item(s)</td>
+                                                <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
+                                                <td>
+                                                    <a href="{{ route('superadmin.purchases.show', $purchase) }}" class="btn btn-sm btn-outline-primary">View Items</a>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($purchases as $purchase)
-                                                <tr>
-                                                    <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
-                                                    <td>
-                                                        <a href="{{ route('superadmin.purchases.show', $purchase) }}">
-                                                            {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
-                                                        </a>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">
-                                                            {{ ucfirst($purchase->payment_status) }}
-                                                        </span>
-                                                    </td>
-                                                    <td>{{ $purchase->items->count() }} item(s)</td>
-                                                    <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
-                                                    <td>
-                                                        <a href="{{ route('superadmin.purchases.show', $purchase) }}" class="btn btn-sm btn-outline-primary">View Items</a>
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <tr>
-                                                    <td colspan="6" class="text-center">No purchases found.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center">No purchases found.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                {{-- Pagination --}}
-                                <div class="d-flex justify-content-center mt-4">
-                                    {{ $purchases->links() }}
-                                </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                {{ $purchases->links() }}
                             </div>
                         </div>
                     </div>

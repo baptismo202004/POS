@@ -12,17 +12,21 @@ class BrandSeeder extends Seeder
      */
     public function run(): void
     {
+        $now = now();
+
         $brands = [
-            ['brand_name' => 'Apple', 'status' => 'active'],
-            ['brand_name' => 'Samsung', 'status' => 'active'],
-            ['brand_name' => 'Sony', 'status' => 'active'],
-            ['brand_name' => 'LG', 'status' => 'active'],
-            ['brand_name' => 'HP', 'status' => 'active'],
-            ['brand_name' => 'Dell', 'status' => 'active'],
+            ['brand_name' => 'Apple', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
+            ['brand_name' => 'Samsung', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
+            ['brand_name' => 'Sony', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
+            ['brand_name' => 'LG', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
+            ['brand_name' => 'HP', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
+            ['brand_name' => 'Dell', 'status' => 'active', 'created_at' => $now->copy()->subMonths(24), 'updated_at' => $now->copy()->subDays(20)],
         ];
 
-        foreach ($brands as $brand) {
-            \App\Models\Brand::create($brand);
-        }
+        \App\Models\Brand::upsert(
+            $brands,
+            ['brand_name'],
+            ['status', 'updated_at']
+        );
     }
 }

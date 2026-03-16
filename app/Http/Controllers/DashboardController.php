@@ -79,11 +79,21 @@ class DashboardController extends Controller
             ->sum('amount');
 
         // Get Cost of Goods Sold (COGS) for current month
+        // Dev-stage approximation: latest purchase unit_cost per product * sold quantity
         $cogs = DB::table('sale_items')
-            ->join('stock_ins', 'sale_items.product_id', '=', 'stock_ins.product_id')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->leftJoinSub(
+                DB::table('purchase_items')
+                    ->selectRaw('product_id, MAX(id) as last_purchase_item_id')
+                    ->groupBy('product_id'),
+                'last_purchase',
+                function ($join) {
+                    $join->on('sale_items.product_id', '=', 'last_purchase.product_id');
+                }
+            )
+            ->leftJoin('purchase_items as pi', 'pi.id', '=', 'last_purchase.last_purchase_item_id')
             ->whereBetween('sales.created_at', [$start, $end])
-            ->sum(DB::raw('stock_ins.price * sale_items.quantity'));
+            ->sum(DB::raw('COALESCE(pi.unit_cost, 0) * sale_items.quantity'));
 
         // Get transaction count for current month
         $transactionCount = DB::table('sales')
@@ -216,10 +226,19 @@ class DashboardController extends Controller
 
         // Get previous month COGS
         $previousCogs = DB::table('sale_items')
-            ->join('stock_ins', 'sale_items.product_id', '=', 'stock_ins.product_id')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->leftJoinSub(
+                DB::table('purchase_items')
+                    ->selectRaw('product_id, MAX(id) as last_purchase_item_id')
+                    ->groupBy('product_id'),
+                'last_purchase',
+                function ($join) {
+                    $join->on('sale_items.product_id', '=', 'last_purchase.product_id');
+                }
+            )
+            ->leftJoin('purchase_items as pi', 'pi.id', '=', 'last_purchase.last_purchase_item_id')
             ->whereBetween('sales.created_at', [$previousStart, $previousEnd])
-            ->sum(DB::raw('stock_ins.price * sale_items.quantity'));
+            ->sum(DB::raw('COALESCE(pi.unit_cost, 0) * sale_items.quantity'));
 
         $previousExpenses = DB::table('expenses')
             ->whereBetween('expense_date', [$previousStart->toDateString(), $previousEnd->toDateString()])
@@ -587,11 +606,20 @@ class DashboardController extends Controller
             
             // Get COGS for each month
             $monthlyCogs = DB::table('sale_items')
-                ->join('stock_ins', 'sale_items.product_id', '=', 'stock_ins.product_id')
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->leftJoinSub(
+                    DB::table('purchase_items')
+                        ->selectRaw('product_id, MAX(id) as last_purchase_item_id')
+                        ->groupBy('product_id'),
+                    'last_purchase',
+                    function ($join) {
+                        $join->on('sale_items.product_id', '=', 'last_purchase.product_id');
+                    }
+                )
+                ->leftJoin('purchase_items as pi', 'pi.id', '=', 'last_purchase.last_purchase_item_id')
                 ->selectRaw('
                     DATE_FORMAT(sales.created_at, "%Y-%m") as month,
-                    SUM(stock_ins.price * sale_items.quantity) as total_cogs
+                    SUM(COALESCE(pi.unit_cost, 0) * sale_items.quantity) as total_cogs
                 ')
                 ->whereBetween('sales.created_at', [$start, $end])
                 ->groupBy('month')

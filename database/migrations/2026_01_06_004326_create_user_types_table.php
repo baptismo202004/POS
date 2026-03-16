@@ -9,8 +9,16 @@ return new class extends Migration {
     {
         Schema::create('user_types', function (Blueprint $table) {
             $table->id();
+
+            // Self reference for hierarchy
+            $table->foreignId('parent_id')
+                ->nullable()
+                ->constrained('user_types')
+                ->cascadeOnDelete();
+
             $table->string('name'); // Admin, HR, Finance, etc.
             $table->string('description')->nullable();
+
             $table->timestamps();
         });
     }

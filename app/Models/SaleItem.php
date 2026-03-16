@@ -15,6 +15,12 @@ class SaleItem extends Model
         'subtotal',
     ];
 
+    protected $casts = [
+        'quantity' => 'decimal:6',
+        'unit_price' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+    ];
+
     public function sale()
     {
         return $this->belongsTo(Sale::class);
@@ -23,6 +29,11 @@ class SaleItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unitType()
+    {
+        return $this->belongsTo(UnitType::class);
     }
 
     public function refunds()

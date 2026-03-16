@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('expense_category_id')->constrained('expense_categories');
             $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();            
             $table->foreignId('purchase_id')->nullable()->constrained('purchases')->onDelete('set null');
             $table->string('reference_number')->nullable();
             $table->text('description')->nullable();

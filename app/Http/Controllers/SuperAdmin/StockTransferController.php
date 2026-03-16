@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Branch;
 use App\Models\StockTransfer;
+use App\Services\InventoryService;
 
 class StockTransferController extends Controller
 {
@@ -31,7 +32,7 @@ class StockTransferController extends Controller
         ]);
 
         $product = Product::find($request->product_id);
-        $stockAtSource = $product->getStockAtBranch($request->from_branch_id);
+        $stockAtSource = (float) $product->getStockAtBranch((int) $request->from_branch_id);
 
         if ($stockAtSource < $request->quantity) {
             if ($request->ajax()) {
@@ -69,27 +70,17 @@ class StockTransferController extends Controller
 
         if ($request->status == 'approved') {
             $product = $stockTransfer->product;
-            $stockAtSource = $product->getStockAtBranch($stockTransfer->from_branch_id);
+            $stockAtSource = (float) $product->getStockAtBranch((int) $stockTransfer->from_branch_id);
 
             if ($stockAtSource < $stockTransfer->quantity) {
                 $stockTransfer->update(['status' => 'rejected', 'notes' => 'Rejected due to insufficient stock at time of approval.']);
                 return back()->with('error', 'Transfer rejected due to insufficient stock.');
             }
 
-            // Deduct stock from source
-            $product->stockOuts()->create([
-                'branch_id' => $stockTransfer->from_branch_id,
-                'quantity' => $stockTransfer->quantity,
-                'reason' => 'Stock Transfer',
-            ]);
+            $service = app(InventoryService::class);
 
-            // Add stock to destination
-            $product->stockIns()->create([
-                'branch_id' => $stockTransfer->to_branch_id,
-                'quantity' => $stockTransfer->quantity,
-                'price' => 0, // Set a default price for transfers
-                'reason' => 'Stock Transfer',
-            ]);
+            $service->decreaseStock((int) $stockTransfer->from_branch_id, (int) $product->id, (float) $stockTransfer->quantity, 'transfer', 'stock_transfers', (int) $stockTransfer->id, now());
+            $service->increaseStock((int) $stockTransfer->to_branch_id, (int) $product->id, (float) $stockTransfer->quantity, 'transfer', 'stock_transfers', (int) $stockTransfer->id, now());
 
             $stockTransfer->update(['status' => 'approved']);
             return back()->with('success', 'Stock transfer approved and processed.');

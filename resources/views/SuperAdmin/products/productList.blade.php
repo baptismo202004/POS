@@ -97,6 +97,46 @@
                                         </select>
                                     </div>
 
+                                    @php
+                                        $pivotMap = [];
+                                        $baseUnitTypeId = null;
+                                        if ($isEdit) {
+                                            foreach ($product->unitTypes as $ut) {
+                                                $pivotMap[$ut->id] = [
+                                                    'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
+                                                    'is_base' => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
+                                                    'unit_name' => $ut->unit_name,
+                                                ];
+                                                if (!is_null($ut->pivot) && !empty($ut->pivot->is_base)) {
+                                                    $baseUnitTypeId = $ut->id;
+                                                }
+                                            }
+                                        }
+
+                                        $oldBaseUnitTypeId = old('base_unit_type_id');
+                                        if (!is_null($oldBaseUnitTypeId) && $oldBaseUnitTypeId !== '') {
+                                            $baseUnitTypeId = (int) $oldBaseUnitTypeId;
+                                        }
+                                    @endphp
+
+                                    <div class="col-12" id="unitConversionsSection" style="display:none;">
+                                        <div class="mt-2">
+                                            <div class="fw-semibold mb-2">Unit Conversions</div>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 30%;">Unit</th>
+                                                            <th style="width: 20%;">Base</th>
+                                                            <th>Conversion Factor</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="unitConversionsBody"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="col-md-4 electronic-field d-none">
                                         <label class="form-label">Model Number</label>
                                         <input type="text" name="model_number" class="form-control" value="{{ $isEdit ? $product->model_number : '' }}">
@@ -196,6 +236,156 @@
                 allowClear: true,
                 width: 'resolve'
             });
+
+            const unitTypesData = @json(($unitTypes ?? collect())->map(function($u){
+                return ['id' => $u->id, 'name' => $u->name, 'unit_name' => $u->unit_name];
+            })->values());
+
+            const pivotMap = @json($pivotMap ?? []);
+            const initialBaseUnitTypeId = @json($baseUnitTypeId);
+
+            function normalizeUnitName(name) {
+                return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            }
+
+            function unitScalar(unitName) {
+                const n = normalizeUnitName(unitName);
+                const count = {
+                    'pc': 1,
+                    'pcs': 1,
+                    'piece': 1,
+                    'pieces': 1,
+                    'can': 1,
+                    'cans': 1,
+                    'dozen': 12,
+                };
+                if (count[n] != null) return { type: 'count', scalar: count[n] };
+
+                const mass = {
+                    'mg': 0.001,
+                    'milligram': 0.001,
+                    'milligrams': 0.001,
+                    'g': 1,
+                    'gram': 1,
+                    'grams': 1,
+                    'kg': 1000,
+                    'kilogram': 1000,
+                    'kilograms': 1000,
+                };
+                if (mass[n] != null) return { type: 'mass', scalar: mass[n] };
+
+                const volume = {
+                    'ml': 1,
+                    'milliliter': 1,
+                    'milliliters': 1,
+                    'l': 1000,
+                    'liter': 1000,
+                    'liters': 1000,
+                    'kl': 1000000,
+                    'kiloliter': 1000000,
+                    'kiloliters': 1000000,
+                };
+                if (volume[n] != null) return { type: 'volume', scalar: volume[n] };
+
+                return null;
+            }
+
+            function computeFactor(unitName, baseUnitName) {
+                const u = unitScalar(unitName);
+                const b = unitScalar(baseUnitName);
+                if (!u || !b) return null;
+                if (u.type !== b.type) return null;
+                if (b.scalar <= 0 || u.scalar <= 0) return null;
+                return Math.round((u.scalar / b.scalar) * 1000000) / 1000000;
+            }
+
+            function selectedUnitTypeIds() {
+                const v = $('#unitTypeSelect').val() || [];
+                return v.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
+            }
+
+            function resolveBaseUnitTypeId(ids) {
+                const requested = parseInt($('input[name="base_unit_type_id"]:checked').val() || '', 10);
+                if (!isNaN(requested) && ids.includes(requested)) return requested;
+                if (initialBaseUnitTypeId && ids.includes(parseInt(initialBaseUnitTypeId, 10))) return parseInt(initialBaseUnitTypeId, 10);
+                return ids.length ? ids[0] : null;
+            }
+
+            function renderConversions() {
+                const ids = selectedUnitTypeIds();
+                const section = document.getElementById('unitConversionsSection');
+                const body = document.getElementById('unitConversionsBody');
+                const requestedBase = parseInt($('input[name="base_unit_type_id"]:checked').val() || '', 10);
+                const existingFactorInputs = {};
+                document.querySelectorAll('#unitConversionsBody input[name^="conversion_factor["]').forEach((el) => {
+                    const match = el.name.match(/^conversion_factor\[(\d+)\]$/);
+                    if (match && match[1]) {
+                        existingFactorInputs[parseInt(match[1], 10)] = el.value;
+                    }
+                });
+
+                body.innerHTML = '';
+
+                if (!ids.length || ids.length === 1) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                section.style.display = '';
+
+                const baseId = (!isNaN(requestedBase) && ids.includes(requestedBase))
+                    ? requestedBase
+                    : resolveBaseUnitTypeId(ids);
+                const baseUnit = unitTypesData.find(u => u.id === baseId);
+                const baseUnitName = baseUnit ? baseUnit.unit_name : null;
+
+                ids.forEach((id) => {
+                    const unit = unitTypesData.find(u => u.id === id);
+                    const displayName = unit ? unit.name : ('Unit #' + id);
+                    const unitName = unit ? unit.unit_name : null;
+
+                    const existing = pivotMap && pivotMap[id] ? pivotMap[id] : null;
+
+                    const isBase = (baseId === id);
+                    let factor = 1;
+                    if (isBase) {
+                        factor = 1;
+                    } else if (existingFactorInputs[id] != null && existingFactorInputs[id] !== '') {
+                        const v = parseFloat(existingFactorInputs[id]);
+                        factor = !isNaN(v) && v > 0 ? v : 1;
+                    } else if (existing && existing.conversion_factor) {
+                        factor = existing.conversion_factor;
+                    } else {
+                        const computed = computeFactor(unitName, baseUnitName);
+                        factor = computed != null ? computed : 1;
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${displayName}</td>
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="base_unit_type_id" value="${id}" ${isBase ? 'checked' : ''}>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="number" step="0.000001" min="0.000001" class="form-control form-control-sm" name="conversion_factor[${id}]" value="${factor}" ${isBase ? 'readonly' : ''}>
+                        </td>
+                    `;
+
+                    body.appendChild(tr);
+                });
+            }
+
+            $(document).on('change', '#unitTypeSelect', function() {
+                renderConversions();
+            });
+
+            $(document).on('change', 'input[name="base_unit_type_id"]', function() {
+                renderConversions();
+            });
+
+            renderConversions();
 
             // --- Conditional Visibility Logic ---
             const productType = $('#productType');

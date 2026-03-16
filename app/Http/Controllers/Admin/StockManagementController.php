@@ -34,13 +34,12 @@ class StockManagementController extends Controller
         if ($request->filled('supplier_id')) {
             $supplierId = $request->integer('supplier_id');
 
-            // Supplier is determined from: stock_ins.purchase_id -> purchases.supplier_id
             $query->whereExists(function ($exists) use ($branchId, $supplierId) {
                 $exists->select(DB::raw(1))
-                    ->from('stock_ins')
-                    ->join('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
-                    ->whereColumn('stock_ins.product_id', 'products.id')
-                    ->where('stock_ins.branch_id', $branchId)
+                    ->from('purchase_items')
+                    ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                    ->whereColumn('purchase_items.product_id', 'products.id')
+                    ->where('purchases.branch_id', $branchId)
                     ->where('purchases.supplier_id', $supplierId);
             });
         }
@@ -127,10 +126,10 @@ class StockManagementController extends Controller
             $supplierId = $request->integer('supplier_id');
             $query->whereExists(function ($exists) use ($branchId, $supplierId) {
                 $exists->select(DB::raw(1))
-                    ->from('stock_ins')
-                    ->join('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
-                    ->whereColumn('stock_ins.product_id', 'products.id')
-                    ->where('stock_ins.branch_id', $branchId)
+                    ->from('purchase_items')
+                    ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                    ->whereColumn('purchase_items.product_id', 'products.id')
+                    ->where('purchases.branch_id', $branchId)
                     ->where('purchases.supplier_id', $supplierId);
             });
         }
@@ -184,11 +183,10 @@ class StockManagementController extends Controller
         abort_if(! $product, 404);
 
         $branchId = $this->resolveBranchId(request());
-        $currentStock = (int) (DB::table('stock_ins')
+        $currentStock = (float) (DB::table('branch_stocks')
             ->where('product_id', (int) $id)
             ->where('branch_id', $branchId)
-            ->selectRaw('COALESCE(SUM(quantity - sold), 0) as current_stock')
-            ->value('current_stock') ?? 0);
+            ->value('quantity_base') ?? 0);
 
         $min = (int) ($product->min_stock_level ?? 0);
         $max = (int) ($product->max_stock_level ?? 0);
@@ -226,34 +224,19 @@ class StockManagementController extends Controller
 
         $branchId = $this->resolveBranchId(request());
 
-        $movements = DB::table('stock_ins')
+        $movements = DB::table('stock_movements')
             ->where('product_id', (int) $id)
             ->where('branch_id', $branchId)
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
-            ->flatMap(function ($row) {
-                $items = [];
-
-                if ((int) $row->quantity > 0) {
-                    $items[] = [
-                        'type' => 'in',
-                        'quantity' => (int) $row->quantity,
-                        'reference' => $row->reference_number ?? 'N/A',
-                        'created_at' => $row->created_at,
-                    ];
-                }
-
-                if ((int) $row->sold > 0) {
-                    $items[] = [
-                        'type' => 'out',
-                        'quantity' => (int) $row->sold,
-                        'reference' => 'Sale',
-                        'created_at' => $row->created_at,
-                    ];
-                }
-
-                return $items;
+            ->map(function ($row) {
+                return [
+                    'type' => ((float) $row->quantity_base) >= 0 ? 'in' : 'out',
+                    'quantity' => (float) abs((float) $row->quantity_base),
+                    'reference' => $row->movement_type ?? 'N/A',
+                    'created_at' => $row->created_at,
+                ];
             })
             ->values();
 
@@ -277,13 +260,11 @@ class StockManagementController extends Controller
 
     private function baseStockQuery(int $branchId)
     {
-        // Aggregate stock_ins for the given branch; one row per product with any movement
-        $stockAgg = DB::table('stock_ins')
+        $stockAgg = DB::table('branch_stocks')
             ->where('branch_id', $branchId)
             ->groupBy('product_id')
-            ->selectRaw('product_id, COALESCE(SUM(quantity - sold), 0) as current_stock, MAX(created_at) as last_stock_update, AVG(NULLIF(price, 0)) as unit_price');
+            ->selectRaw('product_id, COALESCE(SUM(quantity_base), 0) as current_stock, MAX(updated_at) as last_stock_update, 0 as unit_price');
 
-        // Only include products that have stock_ins rows for this branch (even if current_stock is zero)
         return DB::table('products')
             ->joinSub($stockAgg, 'stock', function ($join) {
                 $join->on('products.id', '=', 'stock.product_id');

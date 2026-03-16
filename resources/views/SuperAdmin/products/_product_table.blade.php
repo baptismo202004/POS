@@ -39,8 +39,27 @@
         </td>
         <td>
             @if($product->unitTypes->isNotEmpty())
+                @php
+                    $baseUnit = $product->unitTypes->firstWhere('pivot.is_base', true);
+                    $baseName = $baseUnit ? $baseUnit->name : null;
+                    $unitTypeCount = $product->unitTypes->count();
+                @endphp
+
                 @foreach($product->unitTypes as $unitType)
-                    <span class="badge-unit me-1">{{ $unitType->name }}</span>
+                    @php
+                        $isBase = isset($unitType->pivot) && !empty($unitType->pivot->is_base);
+                        $factor = isset($unitType->pivot) && isset($unitType->pivot->conversion_factor) ? (float) $unitType->pivot->conversion_factor : 1.0;
+                        $factorText = rtrim(rtrim(number_format($factor, 6, '.', ''), '0'), '.');
+                    @endphp
+
+                    <div class="mb-1">
+                        <span class="badge-unit">{{ $unitType->name }}{{ ($isBase && $unitTypeCount > 1) ? ' (base)' : '' }}</span>
+                        @if(!$isBase && $baseName)
+                            <div class="text-muted" style="font-size: 0.75rem; line-height: 1.2; margin-top: 2px;">
+                                1 {{ $unitType->name }} = {{ $factorText }} {{ $baseName }}
+                            </div>
+                        @endif
+                    </div>
                 @endforeach
             @else
                 <span style="color: #95a5a6;">N/A</span>

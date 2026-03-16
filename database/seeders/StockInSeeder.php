@@ -147,7 +147,6 @@ class StockInSeeder extends Seeder
                     'purchase_id' => $purchase->id,
                     'unit_type_id' => $unitTypeId,
                     'quantity' => $qty,
-                    'initial_quantity' => $qty,
                     'price' => $unitCost,
                     'sold' => random_int(0, $qty * 0.3), // Some items already sold
                 ]);
@@ -167,7 +166,6 @@ class StockInSeeder extends Seeder
                 'purchase_id' => null,
                 'unit_type_id' => $unitTypeId,
                 'quantity' => random_int(1, 20),
-                'initial_quantity' => random_int(1, 20),
                 'price' => random_int(80, 500) / 1.0,
                 'sold' => random_int(0, 5),
             ]);
@@ -182,7 +180,6 @@ class StockInSeeder extends Seeder
                 'purchase_id' => null,
                 'unit_type_id' => $unitTypeId,
                 'quantity' => random_int(10, 100),
-                'initial_quantity' => random_int(10, 100),
                 'price' => random_int(100, 1000) / 1.0,
                 'sold' => random_int(0, 50),
             ]);

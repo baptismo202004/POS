@@ -13,13 +13,27 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
+
             $table->string('full_name');
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
-            $table->string('address')->nullable();
-            $table->timestamps();
-        });
 
+            $table->decimal('max_credit_limit', 12, 2)->default(0);
+            $table->index('max_credit_limit');
+
+            $table->enum('status', ['active', 'blocked'])->default('active');
+
+            $table->unsignedBigInteger('created_by')->nullable();
+
+            $table->string('address')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('created_by')
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null');
+        });
     }
 
     /**

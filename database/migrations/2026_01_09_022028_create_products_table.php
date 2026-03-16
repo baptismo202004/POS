@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
+
             $table->string('product_name');
             $table->string('barcode')->unique();
 
-          $table->foreignId('brand_id')->nullable()->constrained('brands')->nullOnDelete();
-          $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
-          $table->foreignId('product_type_id')->nullable()->constrained('product_types')->nullOnDelete();
-          $table->foreignId('unit_type_id')->nullable()->constrained('unit_types')->nullOnDelete();
+            $table->foreignId('brand_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('product_type_id')->nullable()->constrained('product_types')->nullOnDelete();
 
             $table->string('model_number')->nullable();
             $table->string('image')->nullable();
@@ -30,9 +30,17 @@ return new class extends Migration
             $table->integer('warranty_coverage_months')->nullable();
 
             $table->string('voltage_specs')->nullable();
+
             $table->enum('status', ['active','inactive'])->default('active');
 
+            $table->integer('low_stock_threshold')->default(10);
+
+            $table->integer('min_stock_level')->default(5);
+            $table->integer('max_stock_level')->default(100);
+
             $table->timestamps();
+
+            $table->index(['min_stock_level','max_stock_level']);
         });
 
     }

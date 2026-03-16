@@ -185,7 +185,6 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Reset form
             document.getElementById('stockInQuantity').value = '';
-            document.getElementById('stockInPrice').value = '';
             document.getElementById('stockInNotes').value = '';
         });
     }
@@ -1140,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         
-        fetch(`/inventory/${productId}/adjust`, {
+        fetch(`/superadmin/inventory/${productId}/adjust`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1172,11 +1171,10 @@ document.addEventListener('DOMContentLoaded', function () {
     window.saveStockIn = function() {
         const productId = document.getElementById('stockInProductId').value;
         const quantity = document.getElementById('stockInQuantity').value;
-        const price = document.getElementById('stockInPrice').value;
         const branchId = document.getElementById('stockInBranch').value;
         const notes = document.getElementById('stockInNotes').value;
         
-        if (!quantity || !price || !branchId) {
+        if (!quantity || !branchId) {
             Swal.fire('Error', 'Please fill in all required fields', 'error');
             return;
         }
@@ -1191,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         
-        fetch(`/inventory/${productId}/stock-in`, {
+        fetch(`/superadmin/inventory/${productId}/stock-in`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1199,7 +1197,6 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             body: JSON.stringify({
                 quantity: quantity,
-                price: price,
                 branch_id: branchId,
                 notes: notes
             })

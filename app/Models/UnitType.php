@@ -13,7 +13,9 @@ class UnitType extends Model
 
     public function products()
     {
-        return $this->hasMany(Product::class);
+        return $this->belongsToMany(Product::class, 'product_unit_type')
+            ->withPivot(['conversion_factor', 'is_base'])
+            ->withTimestamps();
     }
 
     // Provide `->name` to match views that expect a `name` attribute

@@ -17,7 +17,7 @@ class SupplierController extends Controller
 
         public function index()
     {
-        $suppliers = \App\Models\Supplier::orderBy('supplier_name', 'asc')->paginate(10);
+        $suppliers = \App\Models\Supplier::orderBy('supplier_name', 'asc')->paginate(100);
         return view('SuperAdmin.suppliers.index', compact('suppliers'));
     }
 

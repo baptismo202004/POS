@@ -302,10 +302,6 @@
                         <input type="number" class="form-control" id="stockInQuantity" name="quantity" min="1" required>
                     </div>
                     <div class="mb-3">
-                        <label for="stockInPrice" class="form-label">Unit Price</label>
-                        <input type="number" class="form-control" id="stockInPrice" name="price" min="0" step="0.01" required>
-                    </div>
-                    <div class="mb-3">
                         <label for="stockInBranch" class="form-label">Branch</label>
                         <select class="form-select" id="stockInBranch" name="branch_id" required>
                             @foreach($branches as $branch)

@@ -13,10 +13,31 @@ return new class extends Migration
     {
         Schema::create('stock_outs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
-            $table->foreignId('sale_id')->nullable()->constrained('sales')->nullOnDelete();
+
+            $table->foreignId('stock_in_id')
+                ->nullable()
+                ->constrained('stock_ins')
+                ->cascadeOnDelete();
+
+            $table->foreignId('product_id')
+                ->constrained('products')
+                ->cascadeOnDelete();
+
+            $table->foreignId('branch_id')
+                ->nullable()
+                ->constrained('branches')
+                ->cascadeOnDelete();
+
+            $table->foreignId('sale_id')
+                ->nullable()
+                ->constrained('sales')
+                ->nullOnDelete();
+
             $table->integer('quantity');
+
             $table->timestamps();
+
+            $table->index(['stock_in_id', 'product_id']);
         });
     }
 

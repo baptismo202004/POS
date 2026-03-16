@@ -13,11 +13,35 @@ return new class extends Migration
     {
         Schema::create('stock_ins', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->foreignId('branch_id')->constrained()->onDelete('cascade');
+
+            $table->foreignId('product_id')
+                ->constrained()
+                ->onDelete('cascade');
+
+            $table->foreignId('branch_id')
+                ->constrained()
+                ->onDelete('cascade');
+
+            // From migration 3
+            $table->foreignId('unit_type_id')
+                ->nullable()
+                ->constrained();
+
+            // From migration 2
+            $table->foreignId('purchase_id')
+                ->nullable()
+                ->constrained()
+                ->onDelete('set null');
+
             $table->integer('quantity');
-            $table->decimal('price', 8, 2);
-            $table->integer('sold')->default(0);
+
+            // From migration 4 (price nullable)
+            $table->decimal('price', 8, 2)
+                ->nullable();
+
+            $table->integer('sold')
+                ->default(0);
+
             $table->timestamps();
         });
     }

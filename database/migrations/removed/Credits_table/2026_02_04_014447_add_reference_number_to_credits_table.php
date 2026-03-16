@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -18,7 +19,7 @@ return new class extends Migration
         });
         
         // Generate reference numbers for existing records after column is added
-        \DB::statement('UPDATE credits SET reference_number = CONCAT("CR-", YEAR(created_at), "-", LPAD(id, 4, "0")) WHERE reference_number IS NULL');
+        DB::statement('UPDATE credits SET reference_number = CONCAT("CR-", YEAR(created_at), "-", LPAD(id, 4, "0")) WHERE reference_number IS NULL');
         
         // Make the column not nullable after filling existing records
         Schema::table('credits', function (Blueprint $table) {

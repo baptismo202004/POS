@@ -23,7 +23,7 @@ class PurchaseController extends Controller
     {
         $purchases = Purchase::with(['items.product'])
             ->latest('purchase_date')
-            ->paginate(15);
+            ->paginate(100);
 
         return view('SuperAdmin.purchases.index', compact('purchases'));
     }

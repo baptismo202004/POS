@@ -17,7 +17,11 @@ return new class extends Migration
             $table->foreignId('sale_id')->constrained('sales')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('products');
 
-            $table->integer('quantity');
+            $table->foreignId('unit_type_id')
+                ->constrained('unit_types')
+                ->restrictOnDelete();
+
+            $table->decimal('quantity', 18, 6);
             $table->decimal('unit_price', 12, 2);
             $table->decimal('subtotal', 12, 2);
 

@@ -19,6 +19,139 @@ use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    private function normalizeUnitName(?string $name): string
+    {
+        $name = (string) $name;
+        $name = trim(mb_strtolower($name));
+        $name = preg_replace('/\s+/', ' ', $name);
+        return $name;
+    }
+
+    private function unitScalar(string $unitName): ?array
+    {
+        $n = $this->normalizeUnitName($unitName);
+
+        $count = [
+            'pc' => 1.0,
+            'pcs' => 1.0,
+            'piece' => 1.0,
+            'pieces' => 1.0,
+            'can' => 1.0,
+            'cans' => 1.0,
+            'dozen' => 12.0,
+        ];
+
+        if (array_key_exists($n, $count)) {
+            return ['count', (float) $count[$n]];
+        }
+
+        $mass = [
+            'mg' => 0.001,
+            'milligram' => 0.001,
+            'milligrams' => 0.001,
+            'g' => 1.0,
+            'gram' => 1.0,
+            'grams' => 1.0,
+            'kg' => 1000.0,
+            'kilogram' => 1000.0,
+            'kilograms' => 1000.0,
+        ];
+
+        if (array_key_exists($n, $mass)) {
+            return ['mass', (float) $mass[$n]];
+        }
+
+        $volume = [
+            'ml' => 1.0,
+            'milliliter' => 1.0,
+            'milliliters' => 1.0,
+            'l' => 1000.0,
+            'liter' => 1000.0,
+            'liters' => 1000.0,
+            'kl' => 1000000.0,
+            'kiloliter' => 1000000.0,
+            'kiloliters' => 1000000.0,
+        ];
+
+        if (array_key_exists($n, $volume)) {
+            return ['volume', (float) $volume[$n]];
+        }
+
+        return null;
+    }
+
+    private function computeConversionFactor(?string $unitName, ?string $baseUnitName): ?float
+    {
+        if (!$unitName || !$baseUnitName) {
+            return null;
+        }
+
+        $u = $this->unitScalar($unitName);
+        $b = $this->unitScalar($baseUnitName);
+
+        if (!$u || !$b) {
+            return null;
+        }
+
+        if ($u[0] !== $b[0]) {
+            return null;
+        }
+
+        $baseScalar = (float) $b[1];
+        $unitScalar = (float) $u[1];
+
+        if ($baseScalar <= 0 || $unitScalar <= 0) {
+            return null;
+        }
+
+        // conversion_factor means: how many of this unit equals 1 base unit
+        // Example: base=Kilogram(1000), unit=Gram(1) => 1000/1 = 1000 grams per 1 kilogram
+        return round($baseScalar / $unitScalar, 6);
+    }
+
+    private function buildUnitTypeSyncData(Request $request, array $unitTypeIds): array
+    {
+        $unitTypeIds = array_values(array_unique(array_map('intval', $unitTypeIds)));
+        if (count($unitTypeIds) === 0) {
+            return [];
+        }
+
+        $baseUnitTypeId = (int) ($request->input('base_unit_type_id') ?? 0);
+        if ($baseUnitTypeId <= 0 || !in_array($baseUnitTypeId, $unitTypeIds, true)) {
+            $baseUnitTypeId = (int) $unitTypeIds[0];
+        }
+
+        $units = UnitType::whereIn('id', $unitTypeIds)->get()->keyBy('id');
+        $baseUnitName = optional($units->get($baseUnitTypeId))->unit_name;
+
+        $syncData = [];
+        foreach ($unitTypeIds as $unitTypeId) {
+            $unit = $units->get($unitTypeId);
+            $unitName = $unit?->unit_name;
+
+            $isBase = ((int) $unitTypeId === (int) $baseUnitTypeId);
+            $requestedFactor = $request->input('conversion_factor.' . $unitTypeId);
+
+            if ($isBase) {
+                $factor = 1.0;
+            } else {
+                $factor = is_numeric($requestedFactor) ? (float) $requestedFactor : null;
+                if (is_null($factor)) {
+                    $factor = $this->computeConversionFactor($unitName, $baseUnitName);
+                }
+                if (is_null($factor) || $factor <= 0) {
+                    $factor = 1.0;
+                }
+            }
+
+            $syncData[$unitTypeId] = [
+                'conversion_factor' => $factor,
+                'is_base' => $isBase,
+            ];
+        }
+
+        return $syncData;
+    }
     
     public function index(Request $request)
     {
@@ -29,7 +162,6 @@ class ProductController extends Controller
         if (!in_array($sortBy, ['id', 'product_name', 'status'])) {
             $sortBy = 'id';
         }
-
         $productsQuery = Product::with(['brand', 'category', 'productType', 'unitTypes']);
 
         if ($search) {
@@ -45,7 +177,7 @@ class ProductController extends Controller
             });
         }
 
-        $products = $productsQuery->orderBy($sortBy, $sortDirection)->paginate(15);
+        $products = $productsQuery->orderBy($sortBy, $sortDirection)->paginate(100);
 
         if ($request->ajax()) {
             return view('SuperAdmin.products._product_table', compact('products'))->render();
@@ -91,6 +223,9 @@ class ProductController extends Controller
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
+            'base_unit_type_id' => 'nullable|integer|exists:unit_types,id',
+            'conversion_factor' => 'nullable|array',
+            'conversion_factor.*' => 'nullable|numeric|gt:0',
         ];
 
         // Only add branch validation for non-electronic products
@@ -155,7 +290,7 @@ class ProductController extends Controller
                     }
 
                     $product = Product::create($productData);
-                    $product->unitTypes()->sync($validated['unit_type_ids']);
+                    $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
 
                 } else {
                     // For non-electronic products, store in products table and sync branches
@@ -197,7 +332,7 @@ class ProductController extends Controller
                     Log::info('Creating product with data', ['validated' => $validated]);
                     $product = Product::create($validated);
                     Log::info('Product created successfully', ['product_id' => $product->id]);
-                    $product->unitTypes()->sync($validated['unit_type_ids']);
+                    $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
                     Log::info('Unit types synced');
                     
                     // Sync branches for non-electronic products
@@ -273,6 +408,9 @@ class ProductController extends Controller
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
+            'base_unit_type_id' => 'nullable|integer|exists:unit_types,id',
+            'conversion_factor' => 'nullable|array',
+            'conversion_factor.*' => 'nullable|numeric|gt:0',
         ]);
 
         if ($validator->fails()) {
@@ -301,7 +439,7 @@ class ProductController extends Controller
                 }
 
                 $product->update($validated);
-                $product->unitTypes()->sync($validated['unit_type_ids']);
+                $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
                 
                 // Sync branches for non-electronic products
                 if ($product->product_type_id === 'non-electronic' && isset($validated['branch_ids'])) {
@@ -314,6 +452,142 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function storeUnitConversion(Request $request, Product $product)
+    {
+        $validator = Validator::make($request->all(), [
+            'unit_type_id' => 'required|integer|exists:unit_types,id',
+            'reference_unit_type_id' => 'required|integer|exists:unit_types,id',
+            'conversion_factor' => 'required|numeric|gt:0',
+            'is_base' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', 'Validation failed.');
+        }
+
+        $data = $validator->validated();
+
+        $product->loadMissing('unitTypes');
+
+        $referenceUnitTypeId = (int) $data['reference_unit_type_id'];
+        $allowedReferenceIds = $product->unitTypes->pluck('id')->map(fn ($v) => (int) $v)->all();
+        if (!in_array($referenceUnitTypeId, $allowedReferenceIds, true)) {
+            return redirect()->back()->with('error', 'Invalid reference unit selected.');
+        }
+
+        DB::transaction(function () use ($product, $data, $referenceUnitTypeId) {
+            $unitTypeId = (int) $data['unit_type_id'];
+            $isBase = !empty($data['is_base']);
+
+            $inputFactor = (float) $data['conversion_factor'];
+            $referenceFactor = (float) (DB::table('product_unit_type')
+                ->where('product_id', $product->id)
+                ->where('unit_type_id', $referenceUnitTypeId)
+                ->value('conversion_factor') ?? 0);
+
+            if ($referenceFactor <= 0) {
+                $referenceFactor = 1.0;
+            }
+
+            $computedFactor = round($referenceFactor * $inputFactor, 6);
+
+            if ($isBase) {
+                // If this unit already exists, use its current factor as the divisor to
+                // convert all other factors to be relative to this new base.
+                $existingFactor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', $product->id)
+                    ->where('unit_type_id', $unitTypeId)
+                    ->value('conversion_factor') ?? 0);
+
+                $divisor = $existingFactor > 0 ? $existingFactor : $computedFactor;
+
+                if ($divisor > 0) {
+                    DB::table('product_unit_type')
+                        ->where('product_id', $product->id)
+                        ->update([
+                            'conversion_factor' => DB::raw('conversion_factor / ' . $divisor),
+                        ]);
+                }
+
+                DB::table('product_unit_type')
+                    ->where('product_id', $product->id)
+                    ->update(['is_base' => 0]);
+            }
+
+            $product->unitTypes()->syncWithoutDetaching([
+                $unitTypeId => [
+                    'conversion_factor' => $isBase ? 1.0 : $computedFactor,
+                    'is_base' => $isBase,
+                ],
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Unit conversion saved.');
+    }
+
+    public function updateUnitConversion(Request $request, Product $product, UnitType $unitType)
+    {
+        $validator = Validator::make($request->all(), [
+            'conversion_factor' => 'required|numeric|gt:0',
+            'is_base' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', 'Validation failed.');
+        }
+
+        $data = $validator->validated();
+
+        DB::transaction(function () use ($product, $unitType, $data) {
+            $isBase = !empty($data['is_base']);
+
+            if ($isBase) {
+                $divisor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', $product->id)
+                    ->where('unit_type_id', $unitType->id)
+                    ->value('conversion_factor') ?? 0);
+
+                if ($divisor > 0) {
+                    DB::table('product_unit_type')
+                        ->where('product_id', $product->id)
+                        ->update([
+                            'conversion_factor' => DB::raw('conversion_factor / ' . $divisor),
+                        ]);
+                }
+
+                DB::table('product_unit_type')
+                    ->where('product_id', $product->id)
+                    ->update(['is_base' => 0]);
+            }
+
+            DB::table('product_unit_type')
+                ->where('product_id', $product->id)
+                ->where('unit_type_id', $unitType->id)
+                ->update([
+                    'conversion_factor' => $isBase ? 1.0 : (float) $data['conversion_factor'],
+                    'is_base' => $isBase,
+                    'updated_at' => now(),
+                ]);
+        });
+
+        return redirect()->back()->with('success', 'Unit conversion updated.');
+    }
+
+    public function destroyUnitConversion(Product $product, UnitType $unitType)
+    {
+        $row = DB::table('product_unit_type')
+            ->where('product_id', $product->id)
+            ->where('unit_type_id', $unitType->id)
+            ->first();
+
+        if ($row && !empty($row->is_base)) {
+            return redirect()->back()->with('error', 'You cannot delete the base unit. Set another base unit first.');
+        }
+
+        $product->unitTypes()->detach($unitType->id);
+        return redirect()->back()->with('success', 'Unit conversion deleted.');
     }
 
     public function updateImage(Request $request, Product $product)

@@ -14,15 +14,32 @@ return new class extends Migration
         Schema::create('purchases', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('supplier_id')->nullable();
+            $table->foreignId('branch_id')
+                ->nullable()
+                ->constrained('branches')
+                ->nullOnDelete();
+
+            $table->foreignId('supplier_id')
+                ->nullable()
+                ->constrained('suppliers')
+                ->nullOnDelete();
+
+            $table->foreignId('cashier_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
             $table->string('reference_number')->nullable();
+
             $table->decimal('total_cost', 12, 2);
-            $table->string('payment_status')->default('pending');
+
+            $table->string('payment_status')
+                ->default('pending');
+
             $table->date('purchase_date');
 
             $table->timestamps();
         });
-
     }
 
     /**

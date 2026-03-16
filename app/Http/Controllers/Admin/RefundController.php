@@ -153,30 +153,21 @@ class RefundController extends Controller
                 if ($product) {
                     \Log::info('Updating inventory for product: '.$product->id);
 
-                    // Try to find and update StockIn record (primary method)
-                    $stockIn = \App\Models\StockIn::where('product_id', $product->id)
-                        ->where('branch_id', auth()->user()->branch_id ?? 1)
-                        ->first();
+                    $branchId = (int) (auth()->user()->branch_id ?? 1);
+                    $service = app(\App\Services\InventoryService::class);
 
-                    if ($stockIn) {
-                        // Reduce sold count (add back to inventory)
-                        $newSold = max(0, $stockIn->sold - $request->quantity_refunded);
-                        $stockIn->sold = $newSold;
-                        $stockIn->save();
-                        \Log::info('Updated StockIn sold count: '.$stockIn->sold.' (reduced by '.$request->quantity_refunded.')');
-                    } else {
-                        \Log::warning('No StockIn record found for product: '.$product->id.', creating new record');
+                    $saleItem = \App\Models\SaleItem::query()
+                        ->where('sale_id', (int) $request->sale_id)
+                        ->where('product_id', (int) $request->product_id)
+                        ->first(['unit_type_id']);
 
-                        // Create new StockIn record if none exists
-                        \App\Models\StockIn::create([
-                            'product_id' => $product->id,
-                            'branch_id' => auth()->user()->branch_id ?? 1,
-                            'quantity' => $request->quantity_refunded,
-                            'sold' => 0,
-                            'price' => $request->refund_amount / $request->quantity_refunded,
-                        ]);
-                        \Log::info('Created new StockIn record for refunded items');
+                    $unitTypeId = (int) ($saleItem?->unit_type_id ?? 0);
+                    if ($unitTypeId <= 0) {
+                        throw new \RuntimeException('Cannot restore inventory: sale item unit not found.');
                     }
+
+                    $baseQty = $service->convertToBaseQuantity((int) $product->id, $unitTypeId, (float) $request->quantity_refunded);
+                    $service->increaseStock($branchId, (int) $product->id, $baseQty, 'adjustment', 'refunds', (int) $request->sale_id, now());
 
                     // Try to update StockOut record (secondary method)
                     $stockOut = StockOut::where('sale_id', $request->sale_id)

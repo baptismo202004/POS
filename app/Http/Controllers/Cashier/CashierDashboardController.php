@@ -15,11 +15,10 @@ use App\Models\ProductType;
 use App\Models\Refund;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\StockIn;
-use App\Models\StockOut;
 use App\Models\Supplier;
 use App\Models\UnitType;
 use App\Models\CreditPayment;
+use App\Services\InventoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,7 +33,7 @@ class CashierDashboardController extends Controller
     /**
      * Display the cashier dashboard.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $branchId = $user->branch_id;
@@ -97,10 +96,6 @@ class CashierDashboardController extends Controller
         $topProducts = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
-            ->join('stock_ins', function ($join) use ($branchId) {
-                $join->on('sale_items.product_id', '=', 'stock_ins.product_id')
-                    ->where('stock_ins.branch_id', $branchId);
-            })
             ->where('sales.branch_id', $branchId)
             ->whereDate('sales.created_at', $today)
             ->selectRaw('products.product_name, SUM(sale_items.quantity) as total_sold, SUM(sale_items.quantity * sale_items.unit_price) as revenue')
@@ -216,24 +211,33 @@ class CashierDashboardController extends Controller
         }
 
         try {
-            // Use Eloquent Product model to get low stock items for this branch
-            $products = Product::where('branch_id', $branchId)
-                ->whereHas('stockIns', function ($query) use ($branchId) {
-                    $query->where('branch_id', $branchId);
-                })
+            $products = Product::query()
                 ->whereNotNull('low_stock_threshold')
                 ->where('low_stock_threshold', '>', 0)
-                ->get();
+                ->whereExists(function ($exists) use ($branchId) {
+                    $exists->select(DB::raw(1))
+                        ->from('branch_stocks')
+                        ->whereColumn('branch_stocks.product_id', 'products.id')
+                        ->where('branch_stocks.branch_id', (int) $branchId);
+                })
+                ->get(['id', 'product_name', 'low_stock_threshold']);
+
+            $inventory = app(InventoryService::class);
 
             // Map to structure expected by dashboard JS: product_name, branch_name, current_stock, unit_name
-            $lowStockItems = $products->map(function ($product) use ($branchId) {
+            $lowStockItems = $products->map(function ($product) use ($branchId, $inventory) {
+                $current = (float) $inventory->availableStockBase((int) $product->id, (int) $branchId);
+                if ($current > (float) ($product->low_stock_threshold ?? 0)) {
+                    return null;
+                }
+
                 return [
                     'product_name' => $product->product_name,
-                    'branch_name' => $product->branch->branch_name ?? 'Branch',
-                    'current_stock' => $product->getStockAtBranch($branchId),
+                    'branch_name' => (string) (DB::table('branches')->where('id', (int) $branchId)->value('branch_name') ?? 'Branch'),
+                    'current_stock' => $current,
                     'unit_name' => 'unit',
                 ];
-            })->values();
+            })->filter()->values();
 
             return response()->json([
                 'success' => true,
@@ -339,6 +343,8 @@ class CashierDashboardController extends Controller
             DB::transaction(function () use ($sale, $user, $validated) {
                 $saleItems = $sale->saleItems()->with('product')->get();
 
+                $service = app(\App\Services\InventoryService::class);
+
                 $quantity = $validated['quantity'] ?? null;
 
                 // If a specific quantity is provided and there is exactly one item in the sale,
@@ -354,7 +360,7 @@ class CashierDashboardController extends Controller
                     $unitPrice = $item->quantity > 0 ? ($item->subtotal / $item->quantity) : 0;
                     $refundAmount = $unitPrice * $qtyToRefund;
 
-                    Refund::create([
+                    $refund = Refund::create([
                         'sale_id' => $sale->id,
                         'sale_item_id' => $item->id,
                         'product_id' => $item->product_id,
@@ -366,32 +372,13 @@ class CashierDashboardController extends Controller
                         'notes' => null,
                     ]);
 
-                    $product = Product::find($item->product_id);
-                    if ($product) {
-                        $stockIn = StockIn::where('product_id', $product->id)
-                            ->where('branch_id', $sale->branch_id)
-                            ->first();
-
-                        if ($stockIn) {
-                            $newSold = max(0, $stockIn->sold - $qtyToRefund);
-                            $stockIn->sold = $newSold;
-                            $stockIn->save();
-                        }
-
-                        $stockOut = StockOut::where('sale_id', $sale->id)
-                            ->where('product_id', $product->id)
-                            ->first();
-
-                        if ($stockOut) {
-                            $newQuantity = max(0, $stockOut->quantity - $qtyToRefund);
-                            if ($newQuantity <= 0) {
-                                $stockOut->delete();
-                            } else {
-                                $stockOut->quantity = $newQuantity;
-                                $stockOut->save();
-                            }
-                        }
+                    $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                    if ($unitTypeId <= 0) {
+                        throw new \RuntimeException('Cannot restore inventory: sale item unit not found.');
                     }
+
+                    $baseQty = $service->convertToBaseQuantity((int) $item->product_id, $unitTypeId, (float) $qtyToRefund);
+                    $service->increaseStock((int) $sale->branch_id, (int) $item->product_id, (float) $baseQty, 'adjustment', 'refunds', (int) $refund->id, now());
 
                     // Reduce sale total by the refunded amount; leave status column unchanged
                     $sale->total_amount = max(0, $sale->total_amount - $refundAmount);
@@ -399,7 +386,7 @@ class CashierDashboardController extends Controller
                 } else {
                     // Fallback: full-sale refund (existing behavior)
                     foreach ($saleItems as $item) {
-                        Refund::create([
+                        $refund = Refund::create([
                             'sale_id' => $sale->id,
                             'sale_item_id' => $item->id,
                             'product_id' => $item->product_id,
@@ -411,40 +398,13 @@ class CashierDashboardController extends Controller
                             'notes' => null,
                         ]);
 
-                        $product = Product::find($item->product_id);
-                        if ($product) {
-                            $stockIn = StockIn::where('product_id', $product->id)
-                                ->where('branch_id', $sale->branch_id)
-                                ->first();
-
-                            if ($stockIn) {
-                                $newSold = max(0, $stockIn->sold - $item->quantity);
-                                $stockIn->sold = $newSold;
-                                $stockIn->save();
-                            } else {
-                                StockIn::create([
-                                    'product_id' => $product->id,
-                                    'branch_id' => $sale->branch_id,
-                                    'quantity' => $item->quantity,
-                                    'sold' => 0,
-                                    'price' => $item->unit_price,
-                                ]);
-                            }
-
-                            $stockOut = StockOut::where('sale_id', $sale->id)
-                                ->where('product_id', $product->id)
-                                ->first();
-
-                            if ($stockOut) {
-                                $newQuantity = max(0, $stockOut->quantity - $item->quantity);
-                                if ($newQuantity <= 0) {
-                                    $stockOut->delete();
-                                } else {
-                                    $stockOut->quantity = $newQuantity;
-                                    $stockOut->save();
-                                }
-                            }
+                        $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                        if ($unitTypeId <= 0) {
+                            throw new \RuntimeException('Cannot restore inventory: sale item unit not found.');
                         }
+
+                        $baseQty = $service->convertToBaseQuantity((int) $item->product_id, $unitTypeId, (float) $item->quantity);
+                        $service->increaseStock((int) $sale->branch_id, (int) $item->product_id, (float) $baseQty, 'adjustment', 'refunds', (int) $refund->id, now());
                     }
 
                     // Full refund: set total to zero; leave status column unchanged
@@ -546,8 +506,11 @@ class CashierDashboardController extends Controller
         }
 
         // Apply branch filtering
-        $query->whereHas('stockIns', function ($query) use ($branchId) {
-            $query->where('branch_id', $branchId);
+        $query->whereExists(function ($exists) use ($branchId) {
+            $exists->select(DB::raw(1))
+                ->from('branch_stocks')
+                ->whereColumn('branch_stocks.product_id', 'products.id')
+                ->where('branch_stocks.branch_id', (int) $branchId);
         });
 
         // Apply sorting
@@ -1167,8 +1130,11 @@ class CashierDashboardController extends Controller
         }
 
         // Apply branch filtering
-        $query->whereHas('stockIns', function ($q) use ($branchId) {
-            $q->where('branch_id', $branchId);
+        $query->whereExists(function ($exists) use ($branchId) {
+            $exists->select(DB::raw(1))
+                ->from('branch_stocks')
+                ->whereColumn('branch_stocks.product_id', 'products.id')
+                ->where('branch_stocks.branch_id', (int) $branchId);
         });
 
         $products = $query->limit(10)->get(['id', 'product_name', 'barcode', 'selling_price']);
@@ -1197,27 +1163,19 @@ class CashierDashboardController extends Controller
             $query->where('product_name', 'like', '%'.$search.'%');
         }
 
-        // Apply branch filtering
-        $query->whereHas('stockIns', function ($q) use ($branchId) {
-            $q->where('branch_id', $branchId);
+        $query->whereExists(function ($exists) use ($branchId) {
+            $exists->select(DB::raw(1))
+                ->from('branch_stocks')
+                ->whereColumn('branch_stocks.product_id', 'products.id')
+                ->where('branch_stocks.branch_id', (int) $branchId);
         });
 
         // Get stock data for each product
+        $inventory = app(InventoryService::class);
         $products = $query->with(['brand', 'category'])
             ->get()
-            ->map(function ($product) use ($branchId) {
-                $totalStock = DB::table('stock_ins')
-                    ->where('product_id', $product->id)
-                    ->where('branch_id', $branchId)
-                    ->sum('quantity');
-
-                $totalSold = DB::table('sale_items')
-                    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                    ->where('sale_items.product_id', $product->id)
-                    ->where('sales.branch_id', $branchId)
-                    ->sum('quantity');
-
-                $currentStock = $totalStock - $totalSold;
+            ->map(function ($product) use ($branchId, $inventory) {
+                $currentStock = (float) $inventory->availableStockBase((int) $product->id, (int) $branchId);
 
                 return (object) [
                     'id' => $product->id,
@@ -1225,9 +1183,9 @@ class CashierDashboardController extends Controller
                     'brand' => $product->brand->brand_name ?? 'N/A',
                     'category' => $product->category->category_name ?? 'N/A',
                     'current_stock' => $currentStock,
-                    'total_sold' => $totalSold,
+                    'total_sold' => 0,
                     'selling_price' => $product->selling_price,
-                    'total_revenue' => $totalSold * $product->selling_price,
+                    'total_revenue' => 0,
                 ];
             });
 
@@ -1247,11 +1205,20 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $stockIns = StockIn::with(['product', 'purchase'])
-            ->where('stock_ins.branch_id', $branchId)
-            ->join('products', 'stock_ins.product_id', '=', 'products.id')
+        $stockIns = DB::table('stock_movements')
+            ->join('products', 'stock_movements.product_id', '=', 'products.id')
+            ->leftJoin('purchases', function ($join) {
+                $join->on('stock_movements.source_id', '=', 'purchases.id')
+                    ->where('stock_movements.source_type', '=', 'purchases');
+            })
+            ->where('stock_movements.branch_id', (int) $branchId)
+            ->where('stock_movements.movement_type', 'purchase')
             ->orderBy('products.product_name', 'asc')
-            ->select('stock_ins.*')
+            ->select([
+                'stock_movements.*',
+                'products.product_name as product_name',
+                'purchases.reference_number as purchase_reference_number',
+            ])
             ->paginate(20);
 
         return view('cashier.stockin.index', compact('stockIns'));
@@ -1350,10 +1317,22 @@ class CashierDashboardController extends Controller
             foreach ($requestedByProduct as $pid => $requestedQty) {
                 $pi = $purchaseItems->firstWhere('product_id', $pid);
                 $purchasedQty = $pi ? (float) ($pi->quantity ?? 0) : 0;
-                $alreadyStocked = \App\Models\StockIn::where('purchase_id', $purchaseId)
-                    ->where('product_id', $pid)
-                    ->sum('quantity');
-                $remaining = $purchasedQty - (float) $alreadyStocked;
+
+                $alreadyStockedBase = (float) DB::table('stock_movements')
+                    ->where('source_type', 'purchases')
+                    ->where('source_id', (int) $purchaseId)
+                    ->where('product_id', (int) $pid)
+                    ->where('movement_type', 'purchase')
+                    ->sum('quantity_base');
+
+                $purchaseFactor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $pid)
+                    ->where('unit_type_id', (int) ($pi?->unit_type_id ?? 0))
+                    ->value('conversion_factor') ?? 1);
+                $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
+
+                $purchasedBase = (float) $purchasedQty * $purchaseFactor;
+                $remaining = (float) $purchasedBase - (float) $alreadyStockedBase;
                 if ($remaining < 0) {
                     $remaining = 0;
                 }
@@ -1366,60 +1345,34 @@ class CashierDashboardController extends Controller
                 }
             }
 
-            $stockIns = [];
-            foreach ($items as $item) {
-                $unitQuantities = $item['unit_quantities'] ?? [];
+            $inventory = app(InventoryService::class);
+            DB::transaction(function () use ($items, $purchaseId, $inventory) {
+                foreach ($items as $item) {
+                    $unitQuantities = $item['unit_quantities'] ?? [];
 
-                // Legacy cashier UI: create one stock_in row.
-                if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
-                    $qtyBase = (float) ($item['quantity'] ?? 0);
-                    $stockIn = \App\Models\StockIn::create([
-                        'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'purchase_id' => $purchaseId,
-                        'unit_type_id' => $item['unit_type_id'],
-                        'quantity' => $qtyBase,
-                        'initial_quantity' => $qtyBase,
-                        'price' => $item['new_price'],
-                        'user_id' => Auth::id()
-                    ]);
+                    if (is_array($unitQuantities) && count($unitQuantities) > 0) {
+                        foreach ($unitQuantities as $unitTypeId => $enteredQty) {
+                            $enteredQty = (float) $enteredQty;
+                            $unitTypeId = (int) $unitTypeId;
+                            if ($enteredQty <= 0) {
+                                continue;
+                            }
 
-                    $stockIns[] = $stockIn->id;
-                    continue;
+                            $qtyBase = $inventory->convertToBaseQuantity((int) $item['product_id'], (int) $unitTypeId, (float) $enteredQty);
+                            $inventory->increaseStock((int) $item['branch_id'], (int) $item['product_id'], (float) $qtyBase, 'purchase', 'purchases', (int) $purchaseId, now());
+                        }
+
+                        continue;
+                    }
+
+                    $qtyBase = $inventory->convertToBaseQuantity((int) $item['product_id'], (int) $item['unit_type_id'], (float) ($item['quantity'] ?? 0));
+                    $inventory->increaseStock((int) $item['branch_id'], (int) $item['product_id'], (float) $qtyBase, 'purchase', 'purchases', (int) $purchaseId, now());
                 }
-
-                // Per-unit quantities: create one stock_in row per unit type with qty > 0
-                foreach ($unitQuantities as $unitTypeId => $enteredQty) {
-                    $enteredQty = (float) $enteredQty;
-                    $unitTypeId = (int) $unitTypeId;
-                    if ($enteredQty <= 0) continue;
-
-                    $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
-                        ->where('product_id', (int) $item['product_id'])
-                        ->where('unit_type_id', $unitTypeId)
-                        ->value('conversion_factor') ?? 1);
-                    if ($factor <= 0) $factor = 1;
-
-                    $qtyBase = $enteredQty * $factor;
-                    $stockIn = \App\Models\StockIn::create([
-                        'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'purchase_id' => $purchaseId,
-                        'unit_type_id' => $unitTypeId,
-                        'quantity' => $qtyBase,
-                        'initial_quantity' => $qtyBase,
-                        'price' => $item['new_price'],
-                        'user_id' => Auth::id()
-                    ]);
-
-                    $stockIns[] = $stockIn->id;
-                }
-            }
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => count($stockIns) . ' items added successfully',
-                'stock_in_ids' => $stockIns
+                'message' => count($items) . ' items added successfully'
             ]);
 
         } catch (\Exception $e) {
@@ -1451,11 +1404,21 @@ class CashierDashboardController extends Controller
 
             $items = $purchaseItems->map(function ($item) {
                 // Calculate how many units have already been stocked in for this purchase + product
-                $alreadyStocked = \App\Models\StockIn::where('purchase_id', $item->purchase_id)
-                    ->where('product_id', $item->product_id)
-                    ->sum('quantity');
+                $alreadyStockedBase = (float) DB::table('stock_movements')
+                    ->where('source_type', 'purchases')
+                    ->where('source_id', (int) $item->purchase_id)
+                    ->where('product_id', (int) $item->product_id)
+                    ->where('movement_type', 'purchase')
+                    ->sum('quantity_base');
 
-                $remainingQuantity = ($item->quantity ?? 0) - ($alreadyStocked ?? 0);
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $item->product_id)
+                    ->where('unit_type_id', (int) ($item->unit_type_id ?? 0))
+                    ->value('conversion_factor') ?? 1);
+                $factor = $factor > 0 ? $factor : 1;
+
+                $purchasedBase = (float) ($item->quantity ?? 0) * $factor;
+                $remainingQuantity = (float) $purchasedBase - (float) $alreadyStockedBase;
 
                 // Skip items that are already fully stocked in
                 if ($remainingQuantity <= 0) {
@@ -1555,7 +1518,7 @@ class CashierDashboardController extends Controller
             }
 
             // Debug: Log incoming request data
-            \Log::info('Cashier refund request data: '.json_encode($request->all()));
+            Log::info('Cashier refund request data: '.json_encode($request->all()));
 
             $validator = Validator::make($request->all(), [
                 'sale_id' => 'required|exists:sales,id',
@@ -1568,7 +1531,7 @@ class CashierDashboardController extends Controller
             ]);
 
             if ($validator->fails()) {
-                \Log::error('Cashier refund validation failed: '.json_encode($validator->errors()->toArray()));
+                Log::error('Cashier refund validation failed: '.json_encode($validator->errors()->toArray()));
                 if ($request->expectsJson()) {
                     return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
                 }
@@ -1586,30 +1549,30 @@ class CashierDashboardController extends Controller
                 return back()->with('error', 'Sale not found or not authorized for this branch.');
             }
 
-            \Log::info('Validation passed, starting transaction');
+            Log::info('Validation passed, starting transaction');
 
             DB::transaction(function () use ($request) {
-                \Log::info('Finding sale item: '.$request->sale_item_id);
+                Log::info('Finding sale item: '.$request->sale_item_id);
                 $saleItem = \App\Models\SaleItem::find($request->sale_item_id);
 
                 if (! $saleItem) {
-                    \Log::error('Sale item not found: '.$request->sale_item_id);
+                    Log::error('Sale item not found: '.$request->sale_item_id);
                     throw new \Exception('Sale item not found');
                 }
 
-                \Log::info('Sale item found, checking existing refunds');
+                Log::info('Sale item found, checking existing refunds');
                 // Validate that refund quantity doesn't exceed sold quantity
                 $totalRefunded = Refund::where('sale_item_id', $request->sale_item_id)
                     ->where('status', 'approved')
                     ->sum('quantity_refunded');
 
-                \Log::info('Total refunded: '.$totalRefunded.', requested: '.$request->quantity_refunded.', sold: '.$saleItem->quantity);
+                Log::info('Total refunded: '.$totalRefunded.', requested: '.$request->quantity_refunded.', sold: '.$saleItem->quantity);
 
                 if ($totalRefunded + $request->quantity_refunded > $saleItem->quantity) {
                     throw new \Exception('Cannot refund more items than were sold');
                 }
 
-                \Log::info('Creating refund record');
+                Log::info('Creating refund record');
                 // Create refund record
                 $refund = Refund::create([
                     'sale_id' => $request->sale_id,
@@ -1623,7 +1586,7 @@ class CashierDashboardController extends Controller
                     'notes' => $request->notes,
                 ]);
 
-                \Log::info('Refund created with ID: '.$refund->id);
+                Log::info('Refund created with ID: '.$refund->id);
 
                 // Update sale total amount by deducting refund amount
                 $sale = \App\Models\Sale::find($request->sale_id);
@@ -1640,67 +1603,37 @@ class CashierDashboardController extends Controller
                     $sale->status = 'refunded';
                     $sale->save();
 
-                    \Log::info('Sale total updated: '.$currentTotal.' -> '.$sale->total_amount.' (Refund: '.$request->refund_amount.')');
+                    Log::info('Sale total updated: '.$currentTotal.' -> '.$sale->total_amount.' (Refund: '.$request->refund_amount.')');
                 }
 
                 // Update inventory - add back refunded items
                 $product = Product::find($request->product_id);
                 if ($product) {
-                    \Log::info('Updating inventory for product: '.$product->id);
+                    Log::info('Updating inventory for product: '.$product->id);
 
-                    // Try to find and update StockIn record (primary method)
-                    $stockIn = StockIn::where('product_id', $product->id)
-                        ->where('branch_id', auth()->user()->branch_id)
-                        ->first();
+                    $branchId = (int) (auth()->user()->branch_id ?? 1);
+                    $service = app(\App\Services\InventoryService::class);
 
-                    if ($stockIn) {
-                        // Reduce sold count (add back to inventory)
-                        $newSold = max(0, $stockIn->sold - $request->quantity_refunded);
-                        $stockIn->sold = $newSold;
-                        $stockIn->save();
-                        \Log::info('Updated StockIn sold count: '.$stockIn->sold.' (reduced by '.$request->quantity_refunded.')');
-                    } else {
-                        \Log::warning('No StockIn record found for product: '.$product->id.', creating new record');
+                    $saleItem = \App\Models\SaleItem::query()
+                        ->where('sale_id', (int) $request->sale_id)
+                        ->where('product_id', (int) $request->product_id)
+                        ->first(['unit_type_id']);
 
-                        // Create new StockIn record if none exists
-                        StockIn::create([
-                            'product_id' => $product->id,
-                            'branch_id' => auth()->user()->branch_id,
-                            'quantity' => $request->quantity_refunded,
-                            'sold' => 0,
-                            'price' => $request->refund_amount / $request->quantity_refunded,
-                        ]);
-                        \Log::info('Created new StockIn record for refunded items');
+                    $unitTypeId = (int) ($saleItem?->unit_type_id ?? 0);
+                    if ($unitTypeId <= 0) {
+                        throw new \RuntimeException('Cannot restore inventory: sale item unit not found.');
                     }
 
-                    // Try to update StockOut record (secondary method)
-                    $stockOut = \App\Models\StockOut::where('sale_id', $request->sale_id)
-                        ->where('product_id', $request->product_id)
-                        ->first();
-
-                    if ($stockOut) {
-                        \Log::info('Found stock out record, updating quantity');
-                        $newQuantity = max(0, $stockOut->quantity - $request->quantity_refunded);
-
-                        if ($newQuantity <= 0) {
-                            $stockOut->delete();
-                            \Log::info('StockOut record deleted (fully refunded)');
-                        } else {
-                            $stockOut->quantity = $newQuantity;
-                            $stockOut->save();
-                            \Log::info('StockOut quantity updated to: '.$stockOut->quantity);
-                        }
-                    } else {
-                        \Log::info('No StockOut record found - this is normal for some sales');
-                    }
+                    $baseQty = $service->convertToBaseQuantity((int) $product->id, $unitTypeId, (float) $request->quantity_refunded);
+                    $service->increaseStock($branchId, (int) $product->id, $baseQty, 'adjustment', 'refunds', (int) $request->sale_id, now());
                 } else {
-                    \Log::warning('Product not found: '.$request->product_id);
+                    Log::warning('Product not found: '.$request->product_id);
                 }
 
-                \Log::info('Cashier refund transaction completed successfully');
+                Log::info('Cashier refund transaction completed successfully');
             });
 
-            \Log::info('Returning success response');
+            Log::info('Returning success response');
             if ($request->expectsJson()) {
                 return response()->json(['success' => true, 'message' => 'Refund processed successfully']);
             }
@@ -1710,8 +1643,8 @@ class CashierDashboardController extends Controller
                 ->with('success', 'Refund processed successfully.');
 
         } catch (\Exception $e) {
-            \Log::error('Cashier refund processing error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
-            \Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('Cashier refund processing error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
+            Log::error('Stack trace: '.$e->getTraceAsString());
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Error processing refund: '.$e->getMessage()], 500);
             }
@@ -2300,54 +2233,40 @@ class CashierDashboardController extends Controller
 
         if ($mode === 'list' && empty($keyword)) {
             // Return all products for MCS branch
-            $products = Product::whereHas('stockIns', function ($query) use ($mcsBranchId) {
-                $query->where('branch_id', $mcsBranchId);
-            })
-                ->with([
-                    'unitTypes',
-                    'stockIns' => function ($query) use ($mcsBranchId) {
-                        $query->where('branch_id', $mcsBranchId);
-                    },
-                ])
-                ->get()
-                ->map(function ($product) use ($mcsBranchId) {
-                    $stockIns = $product->stockIns->where('branch_id', $mcsBranchId);
+            $inventory = app(InventoryService::class);
+            $products = Product::query()
+                ->whereExists(function ($exists) use ($mcsBranchId) {
+                    $exists->select(DB::raw(1))
+                        ->from('branch_stocks')
+                        ->whereColumn('branch_stocks.product_id', 'products.id')
+                        ->where('branch_stocks.branch_id', (int) $mcsBranchId)
+                        ->where('branch_stocks.quantity_base', '>', 0);
+                })
+                ->with(['unitTypes'])
+                ->get(['id', 'product_name', 'barcode', 'model_number', 'price'])
+                ->map(function ($product) use ($mcsBranchId, $inventory) {
+                    $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $mcsBranchId);
 
-                    $totalStock = (int) $stockIns->sum(function ($s) {
-                        $qty = (float) ($s->quantity ?? 0);
-                        $sold = (float) ($s->sold ?? 0);
-                        return max(0, $qty - $sold);
-                    });
+                    $unitRows = DB::table('product_unit_type')
+                        ->join('unit_types', 'unit_types.id', '=', 'product_unit_type.unit_type_id')
+                        ->where('product_unit_type.product_id', (int) $product->id)
+                        ->select('unit_types.id as unit_type_id', 'unit_types.unit_name', 'product_unit_type.conversion_factor', 'product_unit_type.is_base')
+                        ->orderByDesc('product_unit_type.is_base')
+                        ->get();
 
-                    $stockUnits = $stockIns
-                        ->groupBy('unit_type_id')
-                        ->map(function ($rows, $unitTypeId) use ($product) {
-                            $unitType = $product->unitTypes->firstWhere('id', (int) $unitTypeId);
-                            $latestPrice = 0;
-                            foreach ($rows as $r) {
-                                if (!is_null($r->price) && (float) $r->price > 0) {
-                                    $latestPrice = (float) $r->price;
-                                }
-                            }
+                    $stockUnits = $unitRows->map(function ($row) use ($totalStock) {
+                        $factor = (float) ($row->conversion_factor ?? 1);
+                        $factor = $factor > 0 ? $factor : 1;
 
-                            $stock = (int) $rows->sum(function ($s) {
-                                $qty = (float) ($s->quantity ?? 0);
-                                $sold = (float) ($s->sold ?? 0);
-                                return max(0, $qty - $sold);
-                            });
+                        return [
+                            'unit_type_id' => (int) $row->unit_type_id,
+                            'unit_name' => $row->unit_name,
+                            'stock' => (float) $totalStock / $factor,
+                            'price' => 0.0,
+                        ];
+                    })->values()->toArray();
 
-                            return [
-                                'unit_type_id' => (int) $unitTypeId,
-                                'unit_name' => $unitType ? $unitType->unit_name : null,
-                                'stock' => $stock,
-                                'price' => $latestPrice,
-                            ];
-                        })
-                        ->values()
-                        ->toArray();
-
-                    $defaultUnit = !empty($stockUnits) ? $stockUnits[0] : null;
-                    $defaultPrice = $defaultUnit ? (float) ($defaultUnit['price'] ?? 0) : 0;
+                    $defaultPrice = (float) ($product->price ?? 0);
 
                     $branches = [
                         [
@@ -2379,55 +2298,48 @@ class CashierDashboardController extends Controller
                 ->orWhere('product_name', 'like', '%'.$keyword.'%')
                 ->orWhere('model_number', 'like', '%'.$keyword.'%');
         })
-            ->whereHas('stockIns', function ($query) use ($mcsBranchId) {
-                $query->where('branch_id', $mcsBranchId);
+            ->whereExists(function ($exists) use ($mcsBranchId) {
+                $exists->select(DB::raw(1))
+                    ->from('branch_stocks')
+                    ->whereColumn('branch_stocks.product_id', 'products.id')
+                    ->where('branch_stocks.branch_id', (int) $mcsBranchId)
+                    ->where('branch_stocks.quantity_base', '>', 0);
             })
-            ->with(['unitTypes', 'stockIns' => function ($query) use ($mcsBranchId) {
-                $query->where('branch_id', $mcsBranchId);
-            }])
+            ->with(['unitTypes'])
             ->get();
 
         if ($products->isEmpty()) {
-            return response()->json(['error' => 'Product not found']);
+            return response()->json([
+                'success' => false,
+                'message' => 'No products found.'
+            ]);
         }
 
         $product = $products->first();
-        $stockIns = $product->stockIns->where('branch_id', $mcsBranchId);
-        $totalStock = (int) $stockIns->sum(function ($s) {
-            $qty = (float) ($s->quantity ?? 0);
-            $sold = (float) ($s->sold ?? 0);
-            return max(0, $qty - $sold);
-        });
+        
+        $inventory = app(InventoryService::class);
+        $totalStock = $inventory->availableStockBase((int) $product->id, (int) $mcsBranchId);
 
-        $stockUnits = $stockIns
-            ->groupBy('unit_type_id')
-            ->map(function ($rows, $unitTypeId) use ($product) {
-                $unitType = $product->unitTypes->firstWhere('id', (int) $unitTypeId);
-                $latestPrice = 0;
-                foreach ($rows as $r) {
-                    if (!is_null($r->price) && (float) $r->price > 0) {
-                        $latestPrice = (float) $r->price;
-                    }
-                }
+        $unitRows = DB::table('product_unit_type')
+            ->join('unit_types', 'unit_types.id', '=', 'product_unit_type.unit_type_id')
+            ->where('product_unit_type.product_id', (int) $product->id)
+            ->select('unit_types.id as unit_type_id', 'unit_types.unit_name', 'product_unit_type.conversion_factor', 'product_unit_type.is_base')
+            ->orderByDesc('product_unit_type.is_base')
+            ->get();
 
-                $stock = (int) $rows->sum(function ($s) {
-                    $qty = (float) ($s->quantity ?? 0);
-                    $sold = (float) ($s->sold ?? 0);
-                    return max(0, $qty - $sold);
-                });
+        $stockUnits = $unitRows->map(function ($row) use ($totalStock) {
+            $factor = (float) ($row->conversion_factor ?? 1);
+            $factor = $factor > 0 ? $factor : 1;
 
-                return [
-                    'unit_type_id' => (int) $unitTypeId,
-                    'unit_name' => $unitType ? $unitType->unit_name : null,
-                    'stock' => $stock,
-                    'price' => $latestPrice,
-                ];
-            })
-            ->values()
-            ->toArray();
+            return [
+                'unit_type_id' => (int) $row->unit_type_id,
+                'unit_name' => $row->unit_name,
+                'stock' => (float) $totalStock / $factor,
+                'price' => 0.0,
+            ];
+        })->values()->toArray();
 
-        $defaultUnit = !empty($stockUnits) ? $stockUnits[0] : null;
-        $price = $defaultUnit ? (float) ($defaultUnit['price'] ?? 0) : 0;
+        $price = (float) ($product->price ?? 0);
 
         $branches = [
             [
@@ -2464,6 +2376,8 @@ class CashierDashboardController extends Controller
 
         try {
             DB::beginTransaction();
+
+            $inventory = app(InventoryService::class);
 
             $total = $request->input('total');
             $paymentMethod = $request->input('payment_method');
@@ -2508,42 +2422,17 @@ class CashierDashboardController extends Controller
                     return response()->json(['success' => false, 'message' => 'Unit type is required for each item.'], 422);
                 }
 
-                // Deduct stock by unit type (FIFO), using sold tracking
-                $stockRecords = StockIn::where('product_id', $productId)
-                    ->where('branch_id', $mcsBranchId)
-                    ->where('unit_type_id', $unitTypeId)
-                    ->where('quantity', '>', DB::raw('sold'))
-                    ->orderBy('id', 'asc')
-                    ->get();
-
-                $remainingQuantity = $quantity;
-                foreach ($stockRecords as $stock) {
-                    if ($remainingQuantity <= 0) break;
-
-                    $availableStock = (float) $stock->quantity - (float) $stock->sold;
-                    $toDeduct = min($remainingQuantity, $availableStock);
-
-                    $stock->sold = (float) $stock->sold + $toDeduct;
-                    $stock->save();
-
-                    $remainingQuantity -= $toDeduct;
-
-                    StockOut::create([
-                        'stock_in_id' => $stock->id,
-                        'product_id' => $productId,
-                        'sale_id' => $sale->id,
-                        'quantity' => $toDeduct,
-                        'branch_id' => $mcsBranchId,
-                    ]);
-                }
-
-                if ($remainingQuantity > 0) {
+                $baseQty = $inventory->convertToBaseQuantity((int) $productId, (int) $unitTypeId, (float) $quantity);
+                $availableBase = $inventory->availableStockBase((int) $productId, (int) $mcsBranchId);
+                if ($availableBase < $baseQty) {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
                         'message' => 'Insufficient stock for selected unit type.',
                     ], 422);
                 }
+
+                $inventory->decreaseStock((int) $mcsBranchId, (int) $productId, (float) $baseQty, 'sale', 'sales', (int) $sale->id, now());
 
                 $subtotal = $quantity * $price;
                 $saleItemPayload = [
@@ -2600,7 +2489,7 @@ class CashierDashboardController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Cashier POS store error: '.$e->getMessage());
+            Log::error('Cashier POS store error: '.$e->getMessage());
 
             return response()->json(['success' => false, 'message' => 'Error processing sale: '.$e->getMessage()]);
         }

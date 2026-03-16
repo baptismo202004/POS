@@ -33,7 +33,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-base">
+                    <div class="table-base" style="max-height: calc(100vh - 280px); overflow: auto;">
                         <table class="table" id="suppliersTable">
                             <thead>
                                 <tr>
@@ -88,8 +88,7 @@
                                 @endforelse
                             </tbody>
                         </table>
-                        
-                        <!-- Pagination -->
+
                         @if($suppliers->hasPages())
                             <div class="d-flex justify-content-between align-items-center mt-3">
                                 <div class="text-muted">
@@ -184,7 +183,7 @@ window.openSupplierModal = function() {
     console.log('Current form action before setting:', form.action);
     
     // Set the form action
-    const actionUrl = '{{ route("superadmin.suppliers.store") }}';
+    const actionUrl = '/superadmin/suppliers';
     form.action = actionUrl;
     console.log('Form action set to:', form.action);
     

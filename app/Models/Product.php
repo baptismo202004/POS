@@ -22,7 +22,6 @@ class Product extends Model
         'warranty_coverage_months',
         'voltage_specs',
         'status',
-        'branch_id',
         'supplier_id',
         'min_stock_level',
         'low_stock_threshold',
@@ -53,17 +52,14 @@ class Product extends Model
 
     public function unitTypes()
     {
-        return $this->belongsToMany(UnitType::class, 'product_unit_type');
+        return $this->belongsToMany(UnitType::class, 'product_unit_type')
+            ->withPivot(['conversion_factor', 'is_base'])
+            ->withTimestamps();
     }
 
     public function branches()
     {
         return $this->belongsToMany(Branch::class, 'product_branch');
-    }
-
-    public function branch()
-    {
-        return $this->belongsTo(Branch::class);
     }
 
     public function supplier()
@@ -76,11 +72,6 @@ class Product extends Model
         return $this->hasMany(ProductSerial::class);
     }
 
-    public function stockIns()
-    {
-        return $this->hasMany(StockIn::class);
-    }
-
     public function stockOuts()
     {
         return $this->hasMany(StockOut::class);
@@ -91,12 +82,14 @@ class Product extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function branchStocks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BranchStock::class);
+    }
+
     public function getCurrentStockAttribute()
     {
-        $stockIn = $this->stockIns()->sum('quantity');
-        $sold = $this->stockIns()->sum('sold');
-
-        return $stockIn - $sold;
+        return $this->branchStocks()->sum('quantity_base');
     }
 
     public function getCurrentBranchIdAttribute()
@@ -117,9 +110,6 @@ class Product extends Model
 
     public function getStockAtBranch($branchId)
     {
-        $stockIn = $this->stockIns()->where('branch_id', $branchId)->sum('quantity');
-        $sold = $this->stockIns()->where('branch_id', $branchId)->sum('sold');
-
-        return $stockIn - $sold;
+        return (float) ($this->branchStocks()->where('branch_id', $branchId)->value('quantity_base') ?? 0);
     }
 }

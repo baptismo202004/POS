@@ -22,35 +22,27 @@
                                     <tr>
                                         <th><a href="{{ route('superadmin.stockin.index', ['sort' => 'product', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
                                         <th>Branch</th>
-                                        <th>Quantity</th>
-                                        <th>Price</th>
-                                        <th>Sold</th>
+                                        <th>Type</th>
+                                        <th>Quantity (Base)</th>
+                                        <th>Source</th>
+                                        <th>Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($stockIns as $stock)
                                         <tr>
                                             <td>
-                                                @if($stock->product)
-                                                    <a href="{{ route('superadmin.products.show', $stock->product->id) }}">{{ $stock->product->product_name }}</a>
-                                                @else
-                                                    <span class="text-muted">Product not found</span>
-                                                @endif
+                                                <a href="{{ route('superadmin.products.show', $stock->product_id) }}">{{ $stock->product_name ?? 'N/A' }}</a>
                                             </td>
-                                            <td>
-                                                @if($stock->branch)
-                                                    {{ $stock->branch->branch_name }}
-                                                @else
-                                                    <span class="text-muted">Branch not found</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $stock->quantity }}</td>
-                                            <td>{{ $stock->price }}</td>
-                                            <td>{{ $stock->sold }}</td>
+                                            <td>{{ $stock->branch_name ?? 'N/A' }}</td>
+                                            <td>{{ $stock->movement_type ?? 'N/A' }}</td>
+                                            <td>{{ $stock->quantity_base ?? 0 }}</td>
+                                            <td>{{ ($stock->source_type ?? 'N/A') }}{{ !empty($stock->source_id) ? (' #'.$stock->source_id) : '' }}</td>
+                                            <td>{{ !empty($stock->created_at) ? \Carbon\Carbon::parse($stock->created_at)->format('M d, Y h:i A') : 'N/A' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center">No stock records found.</td>
+                                            <td colspan="6" class="text-center">No stock records found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

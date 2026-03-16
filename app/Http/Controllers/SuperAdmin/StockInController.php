@@ -4,7 +4,6 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\StockIn;
 use App\Models\Product;
 use App\Models\Branch;
 use App\Models\Purchase;
@@ -16,22 +15,28 @@ class StockInController extends Controller
     public function index(Request $request)
     {
         try {
-            // Get stock ins with relationships
-            $query = StockIn::with(['product', 'branch', 'purchase']);
+            $query = DB::table('stock_movements')
+                ->join('products', 'stock_movements.product_id', '=', 'products.id')
+                ->join('branches', 'stock_movements.branch_id', '=', 'branches.id')
+                ->whereIn('stock_movements.movement_type', ['purchase', 'adjustment', 'transfer'])
+                ->select([
+                    'stock_movements.*',
+                    'products.product_name',
+                    'branches.branch_name',
+                ]);
             
             // Apply sorting if requested
             if ($request->has('sort')) {
                 $direction = $request->get('direction', 'asc');
                 switch ($request->get('sort')) {
                     case 'product':
-                        $query->join('products', 'stock_ins.product_id', '=', 'products.id')
-                              ->orderBy('products.product_name', $direction);
+                        $query->orderBy('products.product_name', $direction);
                         break;
                     default:
-                        $query->orderBy('created_at', 'desc');
+                        $query->orderBy('stock_movements.created_at', 'desc');
                 }
             } else {
-                $query->orderBy('created_at', 'desc');
+                $query->orderBy('stock_movements.created_at', 'desc');
             }
             
             $stockIns = $query->paginate(15);
@@ -69,7 +74,7 @@ class StockInController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.unit_type_id' => 'nullable|exists:unit_types,id',
             'items.*.quantity' => 'nullable|integer|min:0',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price' => 'nullable|numeric|min:0',
         ]);
 
         $purchase = Purchase::with('items.product')->findOrFail($validated['purchase_id']);
@@ -85,11 +90,22 @@ class StockInController extends Controller
                 return back()->withInput()->with('error', 'Invalid product found in the stock-in request.');
             }
 
-            $totalStockedIn = StockIn::where('purchase_id', $validated['purchase_id'])
-                                     ->where('product_id', $productId)
-                                     ->sum('quantity');
+            $alreadyStockedBase = (float) DB::table('stock_movements')
+                ->where('source_type', 'purchases')
+                ->where('source_id', $validated['purchase_id'])
+                ->where('product_id', $productId)
+                ->where('movement_type', 'purchase')
+                ->sum('quantity_base');
 
-            $availableQuantity = $purchaseItem->quantity - $totalStockedIn;
+            $purchaseUnitTypeId = (int) ($purchaseItem->unit_type_id ?? 0);
+            $purchaseFactor = (float) (DB::table('product_unit_type')
+                ->where('product_id', $productId)
+                ->where('unit_type_id', $purchaseUnitTypeId)
+                ->value('conversion_factor') ?? 1);
+            $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
+            $purchasedBase = (float) $purchaseItem->quantity * $purchaseFactor;
+
+            $availableBase = $purchasedBase - $alreadyStockedBase;
 
             $currentStockInQuantity = 0;
             foreach ($items as $item) {
@@ -107,12 +123,12 @@ class StockInController extends Controller
                         ->value('conversion_factor') ?? 1);
                 }
 
-                $currentStockInQuantity += (int) round($qty * $factor);
+                $currentStockInQuantity += (float) ($qty * $factor);
             }
 
-            if ($currentStockInQuantity > $availableQuantity) {
+            if ($currentStockInQuantity > $availableBase) {
                 $productName = $purchaseItem->product->product_name;
-                $errorMessages[] = "Cannot stock in {$currentStockInQuantity} for {$productName}. Only {$availableQuantity} remaining.";
+                $errorMessages[] = "Cannot stock in {$currentStockInQuantity} base units for {$productName}. Only {$availableBase} remaining.";
                 continue;
             }
 
@@ -130,16 +146,33 @@ class StockInController extends Controller
                         ->value('conversion_factor') ?? 1);
                 }
 
-                $baseQty = (int) round(((int) $item['quantity']) * $factor);
+                $baseQty = (float) (((int) $item['quantity']) * $factor);
 
-                StockIn::create([
-                    'product_id' => $item['product_id'],
-                    'branch_id' => $validated['branch_id'],
-                    'purchase_id' => $validated['purchase_id'],
-                    'unit_type_id' => $unitTypeId,
-                    'quantity' => $baseQty,
-                    'price' => $item['price'],
-                ]);
+                DB::transaction(function () use ($validated, $item, $baseQty) {
+                    DB::table('branch_stocks')->updateOrInsert(
+                        ['product_id' => (int) $item['product_id'], 'branch_id' => (int) $validated['branch_id']],
+                        ['quantity_base' => 0, 'created_at' => now(), 'updated_at' => now()]
+                    );
+
+                    DB::table('branch_stocks')
+                        ->where('product_id', (int) $item['product_id'])
+                        ->where('branch_id', (int) $validated['branch_id'])
+                        ->update([
+                            'quantity_base' => DB::raw('quantity_base + ' . (float) $baseQty),
+                            'updated_at' => now(),
+                        ]);
+
+                    DB::table('stock_movements')->insert([
+                        'product_id' => (int) $item['product_id'],
+                        'branch_id' => (int) $validated['branch_id'],
+                        'source_type' => 'purchases',
+                        'source_id' => (int) $validated['purchase_id'],
+                        'movement_type' => 'purchase',
+                        'quantity_base' => (float) $baseQty,
+                        'created_at' => now(),
+                    ]);
+                });
+
                 $stockInCount++;
             }
         }

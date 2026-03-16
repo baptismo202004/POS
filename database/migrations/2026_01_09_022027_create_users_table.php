@@ -15,8 +15,11 @@ return new class extends Migration {
             $table->string('password');
 
             $table->string('profile_picture')->nullable();
+            $table->json('dashboard_layout')->nullable();
             $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
-
+            $table->timestamp('last_login_at')->nullable();
+            
+            $table->rememberToken();
             $table->foreignId('user_type_id')
                   ->constrained('user_types')
                   ->cascadeOnUpdate()

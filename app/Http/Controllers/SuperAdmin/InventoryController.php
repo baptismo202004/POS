@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ class InventoryController extends Controller
             $sortBy = 'product_name';
         }
 
-        $productsQuery = Product::with(['brand', 'category', 'stockIns', 'saleItems']);
+        $productsQuery = Product::with(['brand', 'category', 'saleItems', 'branchStocks']);
 
         if ($search) {
             $productsQuery->where('product_name', 'like', "%{$search}%")
@@ -45,21 +46,22 @@ class InventoryController extends Controller
             }
         }
 
-        $products = $productsQuery->get()->sortBy([
-            [$sortBy, $sortDirection],
-        ]);
+        $products = $productsQuery->get();
 
-        // Apply out-of-stock filter if needed
         if ($filter === 'out-of-stock') {
             $products = $products->filter(function ($product) {
                 return $product->current_stock <= 15;
             });
         }
 
+        $products = $products->sortBy([
+            [$sortBy, $sortDirection],
+        ]);
+
         $products = new \Illuminate\Pagination\LengthAwarePaginator(
-            $products->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 15),
+            $products->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 100),
             $products->count(),
-            15,
+            100,
             \Illuminate\Pagination\Paginator::resolveCurrentPage(),
             ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
         );
@@ -86,12 +88,18 @@ class InventoryController extends Controller
             'branch_id' => 'required|exists:branches,id',
         ]);
 
-        $product->stockIns()->create([
-            'quantity' => $request->quantity,
-            'initial_quantity' => $request->quantity, // Save original quantity
-            'branch_id' => $request->branch_id,
-            'reason' => 'Stock In',
-        ]);
+        $service = app(InventoryService::class);
+        $baseUnitTypeId = (int) (DB::table('product_unit_type')
+            ->where('product_id', $product->id)
+            ->where('is_base', true)
+            ->value('unit_type_id'));
+
+        if (!$baseUnitTypeId) {
+            return back()->with('error', 'No base unit configured for this product.');
+        }
+
+        $baseQty = $service->convertToBaseQuantity($product->id, $baseUnitTypeId, (float) $request->quantity);
+        $service->increaseStock((int) $request->branch_id, (int) $product->id, $baseQty, 'adjustment', 'manual_stock_in', null, now());
 
         return back()->with('success', 'Stock added successfully.');
     }
@@ -104,9 +112,10 @@ class InventoryController extends Controller
         }
 
         $request->validate([
-            'new_stock' => 'required|integer|min:0',
+            'new_stock' => 'required|numeric|min:0',
             'reason' => 'required|string|max:255',
             'adjustment_type' => 'required|in:set,add,subtract',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         try {
@@ -114,8 +123,10 @@ class InventoryController extends Controller
             $reason = $request->input('reason');
             $adjustmentType = $request->input('adjustment_type');
 
-            // Get current stock
-            $currentStock = $product->current_stock;
+            $branchId = (int) ($request->input('branch_id') ?? 1);
+
+            $service = app(InventoryService::class);
+            $currentStock = $service->availableStockBase((int) $product->id, $branchId);
 
             // Validate adjustment
             if ($adjustmentType === 'subtract' && $newStock > $currentStock) {
@@ -125,26 +136,29 @@ class InventoryController extends Controller
                 ], 400);
             }
 
-            // Create stock adjustment record
-            $product->stockIns()->create([
-                'quantity' => $newStock,
-                'sold' => 0,
-                'price' => DB::table('stock_ins')->where('product_id', $product->id)->where('price', '>', 0)->avg('price') ?? 0,
-                'reason' => $reason,
-                'notes' => "Manual adjustment: {$adjustmentType} (was {$currentStock})",
-                'branch_id' => 1, // Default branch or get from product
-            ]);
+            $delta = 0;
+            if ($adjustmentType === 'set') {
+                $delta = (float) $newStock - (float) $currentStock;
+            } elseif ($adjustmentType === 'add') {
+                $delta = (float) $newStock;
+            } elseif ($adjustmentType === 'subtract') {
+                $delta = -((float) $newStock);
+            }
 
-            // Update out-of-stock count
+            if ($delta > 0) {
+                $service->increaseStock($branchId, (int) $product->id, $delta, 'adjustment', 'manual_adjustment', null, now());
+            } elseif ($delta < 0) {
+                $service->decreaseStock($branchId, (int) $product->id, abs($delta), 'adjustment', 'manual_adjustment', null, now());
+            }
+
             $outOfStockCount = DB::table('products')
-                ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
-                ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
+                ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
                 ->select(
                     'products.id',
-                    DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                    DB::raw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) as current_stock')
                 )
                 ->groupBy('products.id')
-                ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+                ->havingRaw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) <= 15')
                 ->count();
 
             return response()->json([
@@ -168,13 +182,13 @@ class InventoryController extends Controller
     {
         try {
             // Get stock information for this product across all branches
-            $stockData = DB::table('stock_ins')
-                ->join('branches', 'stock_ins.branch_id', '=', 'branches.id')
-                ->where('stock_ins.product_id', $productId)
+            $stockData = DB::table('branch_stocks')
+                ->join('branches', 'branch_stocks.branch_id', '=', 'branches.id')
+                ->where('branch_stocks.product_id', $productId)
                 ->select(
                     'branches.id as branch_id',
                     'branches.branch_name',
-                    DB::raw('SUM(stock_ins.quantity - stock_ins.sold) as current_stock')
+                    DB::raw('SUM(branch_stocks.quantity_base) as current_stock')
                 )
                 ->groupBy('branches.id', 'branches.branch_name')
                 ->get();
@@ -199,26 +213,33 @@ class InventoryController extends Controller
 
             // Format the response
             $purchaseData = $purchases->map(function ($purchase) use ($productId) {
-                $purchasedQty = (int) $purchase->items
+                $purchaseItem = $purchase->items->firstWhere('product_id', (int) $productId);
+                $purchasedQty = (float) ($purchaseItem?->quantity ?? 0);
+
+                $unitTypeId = (int) ($purchaseItem?->unit_type_id ?? 0);
+                $factor = (float) (DB::table('product_unit_type')
                     ->where('product_id', (int) $productId)
-                    ->sum('quantity');
+                    ->where('unit_type_id', $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                $factor = $factor > 0 ? $factor : 1;
+                $purchasedBase = (float) $purchasedQty * $factor;
 
-                $stockRows = \App\Models\StockIn::where('purchase_id', $purchase->id)
+                $stockedBase = (float) DB::table('stock_movements')
+                    ->where('source_type', 'purchases')
+                    ->where('source_id', (int) $purchase->id)
                     ->where('product_id', (int) $productId)
-                    ->get(['initial_quantity', 'sold']);
+                    ->where('movement_type', 'purchase')
+                    ->sum('quantity_base');
 
-                $stockedQty = (int) $stockRows->sum('initial_quantity');
-                $soldQty = (int) $stockRows->sum('sold');
-
-                $remainingToStock = max(0, $purchasedQty - $stockedQty);
-                $availableQty = max(0, $stockedQty - $soldQty);
+                $remainingToStock = max(0, $purchasedBase - $stockedBase);
+                $availableQty = $stockedBase;
 
                 return [
                     'id' => $purchase->id,
                     'purchase_date' => $purchase->purchase_date,
                     'purchased_qty' => $purchasedQty,
-                    'stocked_qty' => $stockedQty,
-                    'sold_qty' => $soldQty,
+                    'stocked_qty' => $stockedBase,
+                    'sold_qty' => 0,
                     'remaining_to_stock' => $remainingToStock,
                     'available_qty' => $availableQty,
                 ];
@@ -290,8 +311,8 @@ class InventoryController extends Controller
         $purchaseId = (int) $request->input('purchase_id');
         $quantity = (int) $request->input('purchase_quantity');
 
-        // Resolve target branch from request or product
-        $branchId = (int) $request->input('branch_id', $product->branch_id ?? 1);
+        // Resolve target branch from request
+        $branchId = (int) $request->input('branch_id', 1);
 
         // Branch must exist and be active
         $branch = Branch::find($branchId);
@@ -330,49 +351,50 @@ class InventoryController extends Controller
             ], 400);
         }
 
-        $alreadyStocked = \App\Models\StockIn::where('purchase_id', $purchaseId)
+        $alreadyStockedBase = (float) DB::table('stock_movements')
+            ->where('source_type', 'purchases')
+            ->where('source_id', $purchaseId)
             ->where('product_id', $product->id)
-            ->sum('initial_quantity');
+            ->where('movement_type', 'purchase')
+            ->sum('quantity_base');
 
-        $soldFromPurchase = \App\Models\StockIn::where('purchase_id', $purchaseId)
+        $purchaseItem = \App\Models\PurchaseItem::where('purchase_id', $purchaseId)
             ->where('product_id', $product->id)
-            ->sum('sold');
+            ->first(['quantity', 'unit_type_id']);
 
-        $remaining = (int) $purchasedQty - (int) $alreadyStocked;
+        $factor = (float) (DB::table('product_unit_type')
+            ->where('product_id', $product->id)
+            ->where('unit_type_id', (int) ($purchaseItem?->unit_type_id ?? 0))
+            ->value('conversion_factor') ?? 1);
+        $factor = $factor > 0 ? $factor : 1;
+        $purchasedBase = (float) ($purchaseItem?->quantity ?? 0) * $factor;
 
-        if ($quantity <= 0 || $quantity > $remaining) {
+        $remaining = (float) $purchasedBase - $alreadyStockedBase;
+
+        if ($quantity <= 0 || (float) $quantity > (float) $remaining) {
             return response()->json([
                 'success' => false,
                 'message' => "Cannot stock more than remaining purchasable quantity. Remaining: {$remaining} units from Purchase #{$purchaseId}",
             ], 400);
         }
 
-        // Perform stock-in inside a DB transaction for safety
-        DB::transaction(function () use ($product, $branchId, $quantity, $purchaseId) {
-            $product->stockIns()->create([
-                'quantity' => $quantity,
-                'initial_quantity' => $quantity, // Save original quantity
-                'sold' => 0,
-                'branch_id' => $branchId,
-                'price' => 0,
-                'purchase_id' => $purchaseId,
-            ]);
-        });
+        $service = app(InventoryService::class);
+        $baseQty = (float) $quantity * $factor;
+        $service->increaseStock($branchId, (int) $product->id, $baseQty, 'purchase', 'purchases', $purchaseId, now());
 
         // Update out-of-stock count (for dashboard/sidebar widgets)
         $outOfStockCount = DB::table('products')
-            ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
-            ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
-            ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
+            ->leftJoin('branches', 'branch_stocks.branch_id', '=', 'branches.id')
             ->select(
                 'products.id',
                 'products.product_name',
                 'branches.id as branch_id',
                 'branches.branch_name',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                DB::raw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) as current_stock')
             )
             ->groupBy('products.id', 'products.product_name', 'branches.id', 'branches.branch_name')
-            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+            ->havingRaw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) <= 15')
             ->count();
 
         return response()->json([
@@ -380,9 +402,9 @@ class InventoryController extends Controller
             'message' => "Stock adjusted successfully. Added {$quantity} units from purchase #{$purchaseId}. Remaining to stock: {$remaining} units.",
             'outOfStockCount' => $outOfStockCount,
             'purchased_qty' => (int) $purchasedQty,
-            'stocked_qty' => (int) $alreadyStocked + (int) $quantity,
-            'sold_qty' => (int) $soldFromPurchase,
-            'available_qty' => max(0, ($alreadyStocked + $quantity) - $soldFromPurchase),
+            'stocked_qty' => (float) $alreadyStockedBase + (float) $baseQty,
+            'sold_qty' => 0,
+            'available_qty' => max(0, ((float) $alreadyStockedBase + (float) $baseQty)),
         ]);
     }
 
@@ -430,10 +452,8 @@ class InventoryController extends Controller
             ], 400);
         }
 
-        // Validate transfer amount strictly per source branch using (quantity - sold)
-        $availableInSource = \App\Models\StockIn::where('product_id', $product->id)
-            ->where('branch_id', $fromBranchId)
-            ->sum(DB::raw('quantity - sold'));
+        $service = app(InventoryService::class);
+        $availableInSource = $service->availableStockBase((int) $product->id, $fromBranchId);
 
         if ($quantity <= 0 || $quantity > $availableInSource) {
             return response()->json([
@@ -442,53 +462,24 @@ class InventoryController extends Controller
             ], 400);
         }
 
-        // Perform transfer inside a DB transaction for safety
-        DB::transaction(function () use ($product, $fromBranchId, $toBranchId, $quantity) {
-            // Find stock_in record from source branch
-            $sourceStock = $product->stockIns()
-                ->where('branch_id', $fromBranchId)
-                ->whereColumn('quantity', '>', 'sold') // Has available stock
-                ->lockForUpdate()
-                ->first();
-
-            if (! $sourceStock) {
-                throw new \RuntimeException('Source branch has insufficient stock for transfer.');
-            }
-
-            $availableStock = $sourceStock->quantity - $sourceStock->sold;
-            $transferAmount = min($quantity, $availableStock);
-
-            if ($transferAmount <= 0) {
-                throw new \RuntimeException('No transferable stock available in source branch.');
-            }
-
-            // Update source branch (reduce stock)
-            $sourceStock->increment('sold', $transferAmount);
-
-            // Create new stock_in record for destination branch
-            $product->stockIns()->create([
-                'quantity' => $transferAmount,
-                'initial_quantity' => $transferAmount, // Save original quantity
-                'sold' => 0,
-                'branch_id' => $toBranchId,
-                'price' => 0,
-            ]);
+        DB::transaction(function () use ($service, $product, $fromBranchId, $toBranchId, $quantity) {
+            $service->decreaseStock($fromBranchId, (int) $product->id, (float) $quantity, 'transfer', 'transfer', null, now());
+            $service->increaseStock($toBranchId, (int) $product->id, (float) $quantity, 'transfer', 'transfer', null, now());
         });
 
         // Update out-of-stock count
         $outOfStockCount = DB::table('products')
-            ->leftJoin('stock_ins', 'products.id', '=', 'stock_ins.product_id')
-            ->leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
-            ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
+            ->leftJoin('branches', 'branch_stocks.branch_id', '=', 'branches.id')
             ->select(
                 'products.id',
                 'products.product_name',
                 'branches.id as branch_id',
                 'branches.branch_name',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                DB::raw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) as current_stock')
             )
             ->groupBy('products.id', 'products.product_name', 'branches.id', 'branches.branch_name')
-            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+            ->havingRaw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) <= 15')
             ->count();
 
         return response()->json([
@@ -512,14 +503,14 @@ class InventoryController extends Controller
 
         // Build base query with stock calculations
         $productsQuery = DB::table('products')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('products.id', '=', 'stock_ins.product_id');
+            ->leftJoin('branch_stocks', function ($join) {
+                $join->on('products.id', '=', 'branch_stocks.product_id');
             })
             ->leftJoin('sale_items', function ($join) {
                 $join->on('products.id', '=', 'sale_items.product_id');
             })
             ->leftJoin('branches', function ($join) {
-                $join->on('stock_ins.branch_id', '=', 'branches.id');
+                $join->on('branch_stocks.branch_id', '=', 'branches.id');
             })
             ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
@@ -530,7 +521,7 @@ class InventoryController extends Controller
                 'categories.category_name',
                 'branches.id as branch_id',
                 'branches.branch_name',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock'),
+                DB::raw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) as current_stock'),
                 DB::raw('COALESCE(SUM(sale_items.quantity), 0) as total_sold'),
                 DB::raw('COALESCE(SUM(sale_items.subtotal), 0) as total_revenue')
             )
@@ -545,17 +536,17 @@ class InventoryController extends Controller
 
         // Apply branch filter
         if ($branchId) {
-            $productsQuery->where('stock_ins.branch_id', $branchId);
+            $productsQuery->where('branch_stocks.branch_id', $branchId);
         }
 
         // Filter for out-of-stock items (≤ 15 units)
-        $productsQuery->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15');
+        $productsQuery->havingRaw('(COALESCE(SUM(branch_stocks.quantity_base), 0)) <= 15');
 
         // Apply sorting
         if ($sortBy === 'product_name') {
             $productsQuery->orderBy('products.product_name', $sortDirection);
         } elseif ($sortBy === 'current_stock') {
-            $productsQuery->orderByRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0))', $sortDirection);
+            $productsQuery->orderByRaw('(COALESCE(SUM(branch_stocks.quantity_base), 0))', $sortDirection);
         } elseif ($sortBy === 'total_sold') {
             $productsQuery->orderBy('total_sold', $sortDirection);
         } elseif ($sortBy === 'total_revenue') {
@@ -604,17 +595,9 @@ class InventoryController extends Controller
             $sortBy = 'product_name';
         }
 
-        // Build base query with stock calculations
         $productsQuery = DB::table('products')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('products.id', '=', 'stock_ins.product_id');
-            })
-            ->leftJoin('sale_items', function ($join) {
-                $join->on('products.id', '=', 'sale_items.product_id');
-            })
-            ->leftJoin('branches', function ($join) {
-                $join->on('stock_ins.branch_id', '=', 'branches.id');
-            })
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
+            ->leftJoin('branches', 'branch_stocks.branch_id', '=', 'branches.id')
             ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->select(
@@ -624,9 +607,17 @@ class InventoryController extends Controller
                 'categories.category_name',
                 'branches.id as branch_id',
                 'branches.branch_name',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock'),
-                DB::raw('MAX(stock_ins.created_at) as last_stock_update'),
-                DB::raw('(SELECT AVG(price) FROM stock_ins WHERE product_id = products.id AND price > 0 LIMIT 1) as unit_price')
+                DB::raw('COALESCE(SUM(branch_stocks.quantity_base), 0) as current_stock'),
+                DB::raw('MAX(branch_stocks.updated_at) as last_stock_update'),
+                DB::raw('COALESCE((
+                    SELECT pi.unit_cost
+                    FROM purchase_items pi
+                    JOIN purchases p ON p.id = pi.purchase_id
+                    WHERE pi.product_id = products.id
+                      AND p.branch_id = branches.id
+                    ORDER BY p.created_at DESC, pi.id DESC
+                    LIMIT 1
+                ), 0) as unit_price')
             )
             ->groupBy('products.id', 'products.product_name', 'brands.brand_name', 'categories.category_name', 'branches.id', 'branches.branch_name');
 
@@ -639,16 +630,24 @@ class InventoryController extends Controller
 
         // Apply branch filter
         if ($branchId) {
-            $productsQuery->where('stock_ins.branch_id', $branchId);
+            $productsQuery->where('branch_stocks.branch_id', (int) $branchId);
         }
 
         // Apply sorting
         if ($sortBy === 'product_name') {
             $productsQuery->orderBy('products.product_name', $sortDirection);
         } elseif ($sortBy === 'current_stock') {
-            $productsQuery->orderByRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0))', $sortDirection);
+            $productsQuery->orderByRaw('COALESCE(SUM(branch_stocks.quantity_base), 0)', $sortDirection);
         } elseif ($sortBy === 'unit_price') {
-            $productsQuery->orderByRaw('(SELECT AVG(price) FROM stock_ins WHERE product_id = products.id AND price > 0 LIMIT 1)', $sortDirection);
+            $productsQuery->orderByRaw('COALESCE((
+                SELECT pi.unit_cost
+                FROM purchase_items pi
+                JOIN purchases p ON p.id = pi.purchase_id
+                WHERE pi.product_id = products.id
+                  AND p.branch_id = branches.id
+                ORDER BY p.created_at DESC, pi.id DESC
+                LIMIT 1
+            ), 0)', $sortDirection);
         } elseif ($sortBy === 'last_updated') {
             $productsQuery->orderBy('last_stock_update', $sortDirection);
         } else {
@@ -659,33 +658,23 @@ class InventoryController extends Controller
 
         // Calculate stock counts
         $lowStockCount = DB::table('products')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('products.id', '=', 'stock_ins.product_id');
-            })
-            ->leftJoin('sale_items', function ($join) {
-                $join->on('products.id', '=', 'sale_items.product_id');
-            })
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
             ->select(
                 'products.id',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                DB::raw('COALESCE(SUM(branch_stocks.quantity_base), 0) as current_stock')
             )
             ->groupBy('products.id')
-            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) > 0 AND (COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15')
+            ->havingRaw('COALESCE(SUM(branch_stocks.quantity_base), 0) > 0 AND COALESCE(SUM(branch_stocks.quantity_base), 0) <= 15')
             ->count();
 
         $outOfStockCount = DB::table('products')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('products.id', '=', 'stock_ins.product_id');
-            })
-            ->leftJoin('sale_items', function ($join) {
-                $join->on('products.id', '=', 'sale_items.product_id');
-            })
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
             ->select(
                 'products.id',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                DB::raw('COALESCE(SUM(branch_stocks.quantity_base), 0) as current_stock')
             )
             ->groupBy('products.id')
-            ->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 0')
+            ->havingRaw('COALESCE(SUM(branch_stocks.quantity_base), 0) <= 0')
             ->count();
 
         return view('SuperAdmin.inventory.stock-management', [
@@ -704,30 +693,38 @@ class InventoryController extends Controller
         try {
             $productId = (int) $productId;
 
-            // 1) Stock-ins across all branches (manual + from purchase)
-            $stockIns = DB::table('stock_ins')
-                ->leftJoin('purchases', 'stock_ins.purchase_id', '=', 'purchases.id')
-                ->leftJoin('branches', 'stock_ins.branch_id', '=', 'branches.id')
-                ->where('stock_ins.product_id', $productId)
+            $movements = DB::table('stock_movements')
+                ->leftJoin('branches', 'stock_movements.branch_id', '=', 'branches.id')
+                ->where('stock_movements.product_id', $productId)
                 ->select([
-                    'stock_ins.quantity',
-                    'stock_ins.price',
-                    'stock_ins.created_at',
+                    'stock_movements.movement_type',
+                    'stock_movements.quantity_base',
+                    'stock_movements.source_type',
+                    'stock_movements.source_id',
+                    'stock_movements.created_at',
                     'branches.branch_name',
-                    'purchases.id as purchase_id',
                 ])
-                ->orderByDesc('stock_ins.created_at')
+                ->orderByDesc('stock_movements.created_at')
                 ->limit(200)
                 ->get()
                 ->map(function ($row) {
-                    $reason = $row->purchase_id
-                        ? 'Stock in from Purchase #'.$row->purchase_id
-                        : 'Manual Stock In';
+                    $type = in_array($row->movement_type, ['sale', 'transfer_out']) ? 'out' : 'in';
+
+                    $reason = $row->movement_type;
+                    if ($row->source_type === 'purchases' && $row->source_id) {
+                        $reason = 'Stock in from Purchase #'.$row->source_id;
+                    } elseif ($row->movement_type === 'adjustment') {
+                        $reason = 'Manual Adjustment';
+                    } elseif ($row->movement_type === 'transfer_in' || $row->movement_type === 'transfer_out') {
+                        $reason = 'Transfer';
+                    } elseif ($row->movement_type === 'sale') {
+                        $reason = 'Sale';
+                    }
 
                     return [
-                        'type' => 'in',
-                        'quantity' => (int) $row->quantity,
-                        'price' => $row->price,
+                        'type' => $type,
+                        'quantity' => (float) $row->quantity_base,
+                        'price' => null,
                         'branch_name' => $row->branch_name ?? 'N/A',
                         'reason' => $reason,
                         'notes' => null,
@@ -794,7 +791,7 @@ class InventoryController extends Controller
                 });
 
             // Merge all movement types and sort by created_at DESC, then take latest 200
-            $history = $stockIns
+            $history = $movements
                 ->merge($sales)
                 ->merge($transfers)
                 ->sortByDesc('created_at')
@@ -823,17 +820,17 @@ class InventoryController extends Controller
             $value = $request->value;
             $reason = $request->reason;
 
-            // Get all products with their current stock
+            $branchId = 1;
+            $service = app(InventoryService::class);
+
             $products = DB::table('products')
-                ->leftJoin('stock_ins', function ($join) {
-                    $join->on('products.id', '=', 'stock_ins.product_id');
-                })
-                ->leftJoin('sale_items', function ($join) {
-                    $join->on('products.id', '=', 'sale_items.product_id');
+                ->leftJoin('branch_stocks', function ($join) use ($branchId) {
+                    $join->on('products.id', '=', 'branch_stocks.product_id')
+                        ->where('branch_stocks.branch_id', '=', (int) $branchId);
                 })
                 ->select(
                     'products.id',
-                    DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock')
+                    DB::raw('COALESCE(SUM(branch_stocks.quantity_base), 0) as current_stock')
                 )
                 ->groupBy('products.id')
                 ->get();
@@ -854,17 +851,12 @@ class InventoryController extends Controller
 
                 // Only update if there's a change
                 if ($newStock !== $currentStock) {
-                    // Create stock adjustment record
-                    DB::table('stock_ins')->insert([
-                        'product_id' => $product->id,
-                        'quantity' => $newStock,
-                        'sold' => 0,
-                        'price' => 0,
-                        'reason' => $reason,
-                        'notes' => "Bulk adjustment: {$adjustmentType} {$value} (was {$currentStock})",
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                    $delta = (float) $newStock - (float) $currentStock;
+                    if ($delta > 0) {
+                        $service->increaseStock($branchId, (int) $product->id, $delta, 'adjustment', 'bulk_adjustment', $reason, now());
+                    } elseif ($delta < 0) {
+                        $service->decreaseStock($branchId, (int) $product->id, abs($delta), 'adjustment', 'bulk_adjustment', $reason, now());
+                    }
 
                     $updatedCount++;
                 }
@@ -898,17 +890,9 @@ class InventoryController extends Controller
             $sortBy = 'product_name';
         }
 
-        // Build base query with stock calculations
         $productsQuery = DB::table('products')
-            ->leftJoin('stock_ins', function ($join) {
-                $join->on('products.id', '=', 'stock_ins.product_id');
-            })
-            ->leftJoin('sale_items', function ($join) {
-                $join->on('products.id', '=', 'sale_items.product_id');
-            })
-            ->leftJoin('branches', function ($join) {
-                $join->on('stock_ins.branch_id', '=', 'branches.id');
-            })
+            ->leftJoin('branch_stocks', 'products.id', '=', 'branch_stocks.product_id')
+            ->leftJoin('branches', 'branch_stocks.branch_id', '=', 'branches.id')
             ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->select(
@@ -918,9 +902,21 @@ class InventoryController extends Controller
                 'categories.category_name',
                 'branches.id as branch_id',
                 'branches.branch_name',
-                DB::raw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) as current_stock'),
-                DB::raw('COALESCE(SUM(sale_items.quantity), 0) as total_sold'),
-                DB::raw('COALESCE(SUM(sale_items.subtotal), 0) as total_revenue')
+                DB::raw('COALESCE(SUM(branch_stocks.quantity_base), 0) as current_stock'),
+                DB::raw('COALESCE((
+                    SELECT SUM(si.quantity)
+                    FROM sale_items si
+                    JOIN sales s ON s.id = si.sale_id
+                    WHERE si.product_id = products.id
+                      AND s.branch_id = branches.id
+                ), 0) as total_sold'),
+                DB::raw('COALESCE((
+                    SELECT SUM(si.subtotal)
+                    FROM sale_items si
+                    JOIN sales s ON s.id = si.sale_id
+                    WHERE si.product_id = products.id
+                      AND s.branch_id = branches.id
+                ), 0) as total_revenue')
             )
             ->groupBy('products.id', 'products.product_name', 'brands.brand_name', 'categories.category_name', 'branches.id', 'branches.branch_name');
 
@@ -933,17 +929,17 @@ class InventoryController extends Controller
 
         // Apply branch filter
         if ($branchId) {
-            $productsQuery->where('stock_ins.branch_id', $branchId);
+            $productsQuery->where('branch_stocks.branch_id', (int) $branchId);
         }
 
         // Filter for out-of-stock items (≤ 15 units)
-        $productsQuery->havingRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0)) <= 15');
+        $productsQuery->havingRaw('COALESCE(SUM(branch_stocks.quantity_base), 0) <= 15');
 
         // Apply sorting
         if ($sortBy === 'product_name') {
             $productsQuery->orderBy('products.product_name', $sortDirection);
         } elseif ($sortBy === 'current_stock') {
-            $productsQuery->orderByRaw('(COALESCE(SUM(stock_ins.quantity), 0) - COALESCE(SUM(stock_ins.sold), 0))', $sortDirection);
+            $productsQuery->orderByRaw('COALESCE(SUM(branch_stocks.quantity_base), 0)', $sortDirection);
         } elseif ($sortBy === 'total_sold') {
             $productsQuery->orderBy('total_sold', $sortDirection);
         } elseif ($sortBy === 'total_revenue') {

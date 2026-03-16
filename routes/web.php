@@ -1039,6 +1039,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/{product}', [SuperAdminProductController::class, 'show'])->middleware('ability:products,view')->name('products.show');
         Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->middleware('ability:products,edit')->name('products.edit');
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('products.update');
+        Route::post('/products/{product}/unit-conversions', [SuperAdminProductController::class, 'storeUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.store');
+        Route::put('/products/{product}/unit-conversions/{unitType}', [SuperAdminProductController::class, 'updateUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.update');
+        Route::delete('/products/{product}/unit-conversions/{unitType}', [SuperAdminProductController::class, 'destroyUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.destroy');
         Route::post('/products/{product}/update-image', [SuperAdminProductController::class, 'updateImage'])->middleware('ability:products,edit')->name('products.updateImage');
         Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('products.destroy');
 

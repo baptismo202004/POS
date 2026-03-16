@@ -36,7 +36,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
@@ -92,7 +92,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         @if($customers->hasPages())
                             <div class="d-flex justify-content-center mt-3">
                                 {{ $customers->links() }}

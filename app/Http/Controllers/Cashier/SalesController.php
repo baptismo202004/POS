@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Credit;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\StockIn;
 use App\Services\CustomerService;
+use App\Services\InventoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +111,7 @@ class SalesController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $branchId, $user) {
+                $inventory = app(InventoryService::class);
                 $subtotal = 0;
                 $saleItems = [];
                 $customerId = null;
@@ -140,16 +141,11 @@ class SalesController extends Controller
                     $itemSubtotal = $item['quantity'] * $item['unit_price'];
                     $subtotal += $itemSubtotal;
 
-                    $factor = (float) (DB::table('product_unit_type')
-                        ->where('product_id', $item['product_id'])
-                        ->where('unit_type_id', $item['unit_type_id'])
-                        ->value('conversion_factor') ?? 1);
-                    $baseQty = (int) round(((int) $item['quantity']) * $factor);
+                    $baseQty = $inventory->convertToBaseQuantity((int) $item['product_id'], (int) $item['unit_type_id'], (float) $item['quantity']);
 
-                    // Check stock availability at the specified branch
-                    $currentStock = $this->getCurrentStock($item['product_id'], $itemBranchId);
-                    if ($currentStock < $baseQty) {
-                        throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentStock}, Required: {$baseQty}");
+                    $currentBase = $inventory->availableStockBase((int) $item['product_id'], (int) $itemBranchId);
+                    if ($currentBase < $baseQty) {
+                        throw new \Exception("Insufficient stock for {$product->product_name} at Branch {$itemBranchId}. Available: {$currentBase}, Required: {$baseQty}");
                     }
 
                     if (! isset($itemsByBranch[$itemBranchId])) {
@@ -161,7 +157,7 @@ class SalesController extends Controller
 
                     $itemsByBranch[$itemBranchId]['items'][] = [
                         'product_id' => $item['product_id'],
-                        'quantity' => $baseQty,
+                        'quantity' => (float) $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'subtotal' => $itemSubtotal,
                         'unit_type_id' => $item['unit_type_id'],
@@ -237,7 +233,10 @@ class SalesController extends Controller
                     $sales[] = $sale;
 
                     // Update stock for this branch
-                    $this->updateStock($branchData['items'], $branchId);
+                    foreach ($branchData['items'] as $item) {
+                        $baseQty = $inventory->convertToBaseQuantity((int) $item['product_id'], (int) $item['unit_type_id'], (float) $item['quantity']);
+                        $inventory->decreaseStock((int) $branchId, (int) $item['product_id'], (float) $baseQty, 'sale', 'sales', (int) $sale->id, now());
+                    }
                 }
 
                 // Create credit if payment method is credit (only once for the entire receipt)
@@ -398,17 +397,16 @@ class SalesController extends Controller
             }
         }
 
-        // Fallback to stock-based pricing
-        $stockIn = StockIn::where('product_id', $productId)
-            ->where('branch_id', $branchId)
-            ->where('quantity', '>', 0)
-            ->orderBy('created_at', 'desc')
-            ->first();
+        // Fallback: latest purchase unit cost for this product (not branch-specific)
+        $latestCost = (float) (DB::table('purchase_items')
+            ->where('product_id', (int) $productId)
+            ->orderByDesc('id')
+            ->value('unit_cost') ?? 0);
 
-        if ($stockIn) {
+        if ($latestCost > 0) {
             return response()->json([
                 'success' => true,
-                'price' => $stockIn->price,
+                'price' => $latestCost,
             ]);
         }
 
@@ -423,75 +421,21 @@ class SalesController extends Controller
 
     public function checkStock($productId, $branchId)
     {
-        $currentStock = $this->getCurrentStock($productId, $branchId);
+        $inventory = app(InventoryService::class);
+        $currentStock = $inventory->availableStockBase((int) $productId, (int) $branchId);
 
         return response()->json([
             'success' => true,
-            'stock' => $currentStock,
+            'current_stock_base' => (float) $currentStock,
         ]);
-    }
-
-    private function getCurrentStock($productId, $branchId)
-    {
-        $stockIn = DB::table('stock_ins')
-            ->where('product_id', $productId)
-            ->where('branch_id', $branchId)
-            ->sum('quantity');
-
-        $stockOut = DB::table('stock_outs')
-            ->where('product_id', $productId)
-            ->where('branch_id', $branchId)
-            ->sum('quantity');
-
-        return $stockIn - $stockOut;
-    }
-
-    private function updateStock($items, $branchId)
-    {
-        foreach ($items as $item) {
-            // Record stock out
-            DB::table('stock_outs')->insert([
-                'product_id' => $item['product_id'],
-                'branch_id' => $branchId,
-                'quantity' => $item['quantity'],
-                'unit_type_id' => $item['unit_type_id'],
-                'reason' => 'sale',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function addStock($items, $branchId)
-    {
-        foreach ($items as $item) {
-            $factor = 1;
-            if (!empty($item['unit_type_id'])) {
-                $factor = (float) (DB::table('product_unit_type')
-                    ->where('product_id', $item['product_id'])
-                    ->where('unit_type_id', $item['unit_type_id'])
-                    ->value('conversion_factor') ?? 1);
-            }
-            $baseQty = (int) round(((int) $item['quantity']) * $factor);
-
-            // Record stock in for voided sales
-            DB::table('stock_ins')->insert([
-                'product_id' => $item['product_id'],
-                'branch_id' => $branchId,
-                'quantity' => $baseQty,
-                'unit_type_id' => $item['unit_type_id'],
-                'price' => 0, // No cost for voided sales
-                'reason' => 'sale_voided',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
     }
 
     public function searchProducts(Request $request)
     {
         $search = $request->query('q');
         $branchId = Auth::user()->branch_id;
+
+        $inventory = app(InventoryService::class);
 
         $products = Product::with(['unitTypes'])
             ->where('status', 'active')
@@ -502,8 +446,8 @@ class SalesController extends Controller
             ->limit(10)
             ->get();
 
-        $productsWithStock = $products->map(function ($product) use ($branchId) {
-            $product->current_stock = $this->getCurrentStock($product->id, $branchId);
+        $productsWithStock = $products->map(function ($product) use ($branchId, $inventory) {
+            $product->current_stock = $inventory->availableStockBase((int) $product->id, (int) $branchId);
 
             $unitRows = DB::table('product_unit_type')
                 ->join('unit_types', 'unit_types.id', '=', 'product_unit_type.unit_type_id')
@@ -519,8 +463,8 @@ class SalesController extends Controller
 
             if ($baseUnit && $packUnit && (float) $packUnit->conversion_factor > 0) {
                 $packFactor = (float) $packUnit->conversion_factor;
-                $packs = (int) floor($product->current_stock / $packFactor);
-                $remainder = (int) ($product->current_stock - ($packs * $packFactor));
+                $packs = (int) floor((float) $product->current_stock / $packFactor);
+                $remainder = (float) ((float) $product->current_stock - ($packs * $packFactor));
                 $product->stock_breakdown = [
                     'unit' => $packUnit->unit_name,
                     'packs' => $packs,
