@@ -232,8 +232,14 @@
             font-family:'Nunito',sans-serif;
         }
 
-        .categories-page .table-responsive { overflow-x: auto; }
-        .categories-page table.table { width: 100%; border-collapse: collapse; margin: 0; }
+        .categories-page .table-responsive {
+            overflow-x: hidden;
+            max-width: 100%;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .categories-page .table-responsive::-webkit-scrollbar { display: none; }
+        .categories-page table.table { width: 100%; border-collapse: collapse; margin: 0; table-layout: fixed; }
         .categories-page table.table thead th {
             padding: 12px 18px;
             font-size: 10px;
@@ -263,6 +269,8 @@
             font-size: 13.5px;
             vertical-align: middle;
             color: var(--text);
+            white-space: normal;
+            word-break: break-word;
         }
 
         .categories-page .row-checkbox {
@@ -272,19 +280,81 @@
             cursor:pointer;
         }
 
+        /* ═══════════════════════════════════════════════════════
+           ANIMATED STATUS BADGES
+        ═══════════════════════════════════════════════════════ */
         .categories-page .badge.bg-success,
         .categories-page .badge.bg-secondary {
-            display:inline-flex;
-            align-items:center;
-            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px 4px 8px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
-            font-family:'Nunito',sans-serif;
+            font-family: 'Nunito', sans-serif;
             border: 1px solid transparent;
         }
-        .categories-page .badge.bg-success { background:rgba(16,185,129,0.11) !important; color:#047857 !important; border-color:rgba(16,185,129,0.22) !important; }
-        .categories-page .badge.bg-secondary { background:rgba(239,68,68,0.10) !important; color:#b91c1c !important; border-color:rgba(239,68,68,0.18) !important; }
+
+        /* ── Active badge ── */
+        .categories-page .badge.bg-success {
+            background: rgba(16,185,129,0.11) !important;
+            color: #047857 !important;
+            border-color: rgba(16,185,129,0.22) !important;
+        }
+
+        /* ── Inactive badge ── */
+        .categories-page .badge.bg-secondary {
+            background: rgba(239,68,68,0.10) !important;
+            color: #b91c1c !important;
+            border-color: rgba(239,68,68,0.18) !important;
+        }
+
+        /* ── Dot base ── */
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: inline-block;
+            position: relative;
+        }
+
+        /* ── Active dot: floating + ripple pulse ── */
+        .status-dot.active-dot {
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16,185,129,0.6);
+            animation: dot-float 2.4s ease-in-out infinite, dot-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes dot-float {
+            0%,  100% { transform: translateY(0px);   }
+            25%        { transform: translateY(-2.5px); }
+            50%        { transform: translateY(0px);   }
+            75%        { transform: translateY(2px);   }
+        }
+
+        @keyframes dot-pulse {
+            0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.65); }
+            50%  { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0   rgba(16,185,129,0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .categories-page .status-dot.active-dot {
+                animation-duration: 2.4s, 2s !important;
+                animation-iteration-count: infinite, infinite !important;
+            }
+        }
+
+        /* ── Inactive dot: static red, no animation ── */
+        .status-dot.inactive-dot {
+            background: #ef4444;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           END ANIMATED STATUS BADGES
+        ═══════════════════════════════════════════════════════ */
 
         .categories-page .empty-row {
             padding: 52px 24px;
@@ -459,9 +529,17 @@
                                 <td>{{ $category->id }}</td>
                                 <td>{{ $category->category_name }}</td>
                                 <td>
-                                    <span class="badge {{ $category->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
-                                        {{ ucfirst($category->status) }}
-                                    </span>
+                                    @if($category->status === 'active')
+                                        <span class="badge bg-success">
+                                            <span class="status-dot active-dot"></span>
+                                            Active
+                                        </span>
+                                    @else
+                                        <span class="badge bg-secondary">
+                                            <span class="status-dot inactive-dot"></span>
+                                            {{ ucfirst($category->status) }}
+                                        </span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

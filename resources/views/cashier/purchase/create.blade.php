@@ -354,7 +354,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Supplier</label>
-                            <select name="supplier_id" class="form-select supplier-select">
+                            <select name="supplier_id" class="form-select supplier-select" required>
                                 <option value="">-- Select Supplier --</option>
                                 @foreach($suppliers as $supplier)
                                     <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
@@ -501,6 +501,36 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    @if ($errors->any())
+        Swal.fire({
+            icon: 'error',
+            title: 'Please check your input',
+            html: `{!! implode('<br>', $errors->all()) !!}`,
+            confirmButtonText: 'Okay',
+            confirmButtonColor: 'var(--theme-color)'
+        });
+    @endif
+
+    @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: '{{ session('success') }}',
+            confirmButtonText: 'Okay',
+            confirmButtonColor: 'var(--theme-color)'
+        });
+    @endif
+
+    @if (session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            html: '{!! session('error') !!}',
+            confirmButtonText: 'Okay',
+            confirmButtonColor: 'var(--theme-color)'
+        });
+    @endif
+
     const sidebarHTML = sessionStorage.getItem('cashierSidebarHTML') || localStorage.getItem('cashierSidebarHTML');
     if (sidebarHTML) {
         const wrapper = document.createElement('div');

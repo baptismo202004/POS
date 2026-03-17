@@ -82,6 +82,61 @@
     .sp-filter-btn:hover { background:rgba(13,71,161,0.06); border-color:var(--blue-lt); }
     .sp-filter-btn .badge { border-radius:999px; font-weight:800; }
 
+    /* Filter dropdown panel */
+    .sp-filter-menu{
+        padding:14px 14px;
+        border-radius:16px;
+        border:1.5px solid var(--border);
+        background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,252,255,0.98));
+        box-shadow:0 18px 48px rgba(13,71,161,0.18);
+        backdrop-filter: blur(10px);
+    }
+    .sp-filter-menu .dropdown-header{
+        padding:0;
+        color:var(--navy);
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        font-family:'Nunito',sans-serif;
+        opacity:.9;
+    }
+    .sp-filter-menu .form-label{
+        font-size:11px;
+        font-weight:800;
+        color:var(--navy);
+        letter-spacing:.06em;
+        text-transform:uppercase;
+        margin-bottom:6px;
+        font-family:'Nunito',sans-serif;
+    }
+    .sp-filter-menu .form-select{
+        border-radius:11px;
+        border:1.5px solid var(--border);
+        padding:9px 12px;
+        font-size:13px;
+        background:#ffffff;
+        color:var(--text);
+        font-family:'Plus Jakarta Sans',sans-serif;
+        box-shadow:none;
+    }
+    .sp-filter-menu .form-select:focus{
+        border-color:var(--blue-lt);
+        box-shadow:0 0 0 3px rgba(66,165,245,0.12);
+    }
+    .sp-filter-menu .form-check-input{
+        border-color:rgba(13,71,161,0.25);
+    }
+    .sp-filter-menu .form-check-input:checked{
+        background-color:var(--navy);
+        border-color:var(--navy);
+    }
+    .sp-filter-menu .form-check-label{
+        font-size:13px;
+        color:var(--text);
+        font-family:'Plus Jakarta Sans',sans-serif;
+    }
+
     /* Buttons (for modals/actions) */
     .sp-btn {
         display:inline-flex;align-items:center;gap:7px;
@@ -123,6 +178,7 @@
     .sp-table-wrap { overflow-x:auto; }
     .sp-table-wrap::-webkit-scrollbar{height:5px;width:5px;}
     .sp-table-wrap::-webkit-scrollbar-thumb{background:rgba(13,71,161,0.15);border-radius:4px;}
+    .sp-table-scroll{max-height:560px;overflow-y:auto;}
 
     .sp-table { width:100%;border-collapse:separate;border-spacing:0;font-family:'Plus Jakarta Sans',sans-serif; }
     .sp-table thead th {
@@ -272,7 +328,7 @@
                 </div>
 
                 <div class="sp-card-body">
-                    <div class="sp-table-wrap">
+                    <div class="sp-table-wrap sp-table-scroll">
                         <table class="sp-table table table-striped table-hover">
                             <thead>
                                 <tr>

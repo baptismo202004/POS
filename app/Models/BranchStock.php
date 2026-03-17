@@ -16,7 +16,7 @@ class BranchStock extends Model
     ];
 
     protected $casts = [
-        'quantity_base' => 'decimal:6',
+        'quantity_base' => 'decimal:2',
     ];
 
     public function branch()

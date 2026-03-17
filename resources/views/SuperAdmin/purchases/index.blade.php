@@ -185,53 +185,6 @@
         <div class="sp-blob sp-blob-2"></div>
     </div>
 
-<<<<<<< HEAD
-                            <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Reference Number</th>
-                                            <th>Purchase Date</th>
-                                            <th>Payment Status</th>
-                                            <th>Items</th>
-                                            <th>Total Cost</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($purchases as $purchase)
-                                            <tr>
-                                                <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
-                                                <td>
-                                                    <a href="{{ route('superadmin.purchases.show', $purchase) }}">
-                                                        {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                    <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">
-                                                        {{ ucfirst($purchase->payment_status) }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ $purchase->items->count() }} item(s)</td>
-                                                <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
-                                                <td>
-                                                    <a href="{{ route('superadmin.purchases.show', $purchase) }}" class="btn btn-sm btn-outline-primary">View Items</a>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="text-center">No purchases found.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="d-flex justify-content-center mt-4">
-                                {{ $purchases->links() }}
-                            </div>
-                        </div>
-=======
     <main class="flex-fill p-4" style="position:relative;z-index:1;">
         <div class="sp-wrap">
 
@@ -243,7 +196,6 @@
                         <div class="sp-ph-crumb">Operations</div>
                         <div class="sp-ph-title">Purchases</div>
                         <div class="sp-ph-sub">Track and manage all purchase orders</div>
->>>>>>> d12ed99b6778897b2d042ab290fe50adab0eb432
                     </div>
                 </div>
                 <a href="{{ route('superadmin.purchases.create') }}" class="sp-btn-primary">

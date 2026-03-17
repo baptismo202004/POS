@@ -282,11 +282,32 @@
                     <tbody>
                         @forelse($stockIns as $stock)
                             <tr>
-                                <td>{{ $stock->product->product_name ?? 'N/A' }}</td>
-                                <td>{{ $stock->purchase->reference_number ?? 'N/A' }}</td>
-                                <td>{{ $stock->quantity }}</td>
+                                <td>{{ $stock->product_name ?? 'N/A' }}</td>
+                                <td>{{ $stock->purchase_reference_number ?? 'N/A' }}</td>
+                                <td>
+                                    @php
+                                        $qtyRaw = $stock->display_quantity ?? ($stock->quantity_base ?? $stock->quantity ?? 0);
+                                        $qty = is_numeric($qtyRaw) ? (float) $qtyRaw : 0;
+                                        $qtyDisplay = (floor($qty) == $qty)
+                                            ? (string) (int) $qty
+                                            : rtrim(rtrim(number_format($qty, 5, '.', ''), '0'), '.');
+                                    @endphp
+                                    {{ $qtyDisplay }}
+                                </td>
                                 <td>{{ number_format($stock->price, 2) }}</td>
-                                <td>{{ optional($stock->created_at)->format('M d, Y h:i A') }}</td>
+                                <td>
+                                    @php
+                                        $dateDisplay = 'N/A';
+                                        if (!empty($stock->created_at)) {
+                                            try {
+                                                $dateDisplay = \Carbon\Carbon::parse($stock->created_at)->format('M d, Y h:i A');
+                                            } catch (\Throwable $e) {
+                                                $dateDisplay = 'N/A';
+                                            }
+                                        }
+                                    @endphp
+                                    {{ $dateDisplay }}
+                                </td>
                             </tr>
                         @empty
                             <tr>

@@ -1,5 +1,20 @@
 // Stock Management JavaScript
 document.addEventListener('DOMContentLoaded', function () {
+    function formatQty(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+            return String(value ?? '0');
+        }
+
+        if (Number.isInteger(num)) {
+            return String(num);
+        }
+
+        // Keep up to 6 decimals (matches DB scale historically), but remove trailing zeros.
+        const fixed = num.toFixed(6);
+        return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+    }
+
     // Function to update dashboard alerts
     function updateDashboardAlerts(outOfStockCount) {
         try {
@@ -83,7 +98,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const button = event.relatedTarget;
             const productId = button.getAttribute('data-product-id');
             const productName = button.getAttribute('data-product-name');
-            const currentStock = button.getAttribute('data-current-stock');
+            const currentStockRaw = button.getAttribute('data-current-stock');
+            const currentStock = Number(currentStockRaw);
             const branchId = button.getAttribute('data-branch-id');
             const branchName = button.getAttribute('data-branch-name') || 'Main Branch';
 
@@ -100,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('adjustProductName').textContent = productName;
             document.getElementById('adjustBranchName').textContent = branchName;
             document.getElementById('adjustBranchName2').textContent = branchName;
-            document.getElementById('adjustCurrentStock').textContent = currentStock;
+            document.getElementById('adjustCurrentStock').textContent = formatQty(Number.isFinite(currentStock) ? currentStock : 0);
             document.getElementById('adjustProductId').value = productId;
 
             // Reset form
@@ -309,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <div class="card border-light">
                                             <div class="card-body">
                                                 <h6 class="text-dark">${branchName}</h6>
-                                                <h4 class="text-dark">${totalUnits}</h4>
+                                                <h4 class="text-dark">${formatQty(totalUnits)}</h4>
                                                 <small class="text-muted">Total Units</small>
                                             </div>
                                         </div>
@@ -344,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                             <div class="card border-light">
                                                 <div class="card-body">
                                                     <h6 class="text-dark">${branchName}</h6>
-                                                    <h4 class="text-dark">${totalUnits}</h4>
+                                                    <h4 class="text-dark">${formatQty(totalUnits)}</h4>
                                                     <small class="text-muted">Total Units</small>
                                                 </div>
                                             </div>

@@ -3,6 +3,7 @@
 
 @php
     $isCashierContext = request()->is('cashier/*');
+    $returnTo = request('return_to') ?: route('cashier.credit.index');
 @endphp
 
 @push('stylesDashboard')
@@ -192,7 +193,7 @@
                 <p class="text-muted mb-0">Create a new credit for this branch</p>
             </div>
             <div>
-                <a href="{{ route('cashier.credit.index') }}" class="btn btn-outline-secondary">
+                <a href="{{ $returnTo }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Credits
                 </a>
             </div>
@@ -247,6 +248,23 @@
                                 </div>
                             </div>
 
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-3">
+                                    <label for="credit_type" class="form-label">Credit Type</label>
+                                    <select id="credit_type" name="credit_type" class="form-select" required>
+                                        <option value="">Select Credit Type</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="grocery">Grocery (Requires Sale ID)</option>
+                                        <option value="electronics">Electronics (Requires Sale ID)</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3" id="sale_id_field" style="display: none;">
+                                    <label for="sale_id" class="form-label">Sale ID</label>
+                                    <input type="number" id="sale_id" name="sale_id" class="form-control" placeholder="Enter Sale ID">
+                                </div>
+                            </div>
+
                             <div class="mb-3">
                                 <label for="description" class="form-label">Notes (Optional)</label>
                                 <textarea id="description" name="description" class="form-control" rows="3" 
@@ -254,7 +272,7 @@
                             </div>
 
                             <div class="d-flex justify-content-end gap-2">
-                                <a href="{{ route('cashier.credit.index') }}" class="btn btn-outline-secondary">
+                                <a href="{{ $returnTo }}" class="btn btn-outline-secondary">
                                     Cancel
                                 </a>
                                 <button type="submit" class="btn btn-primary">
@@ -278,6 +296,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('credit-create-form');
+    const successReturnTo = @json(request('return_to') ?: route('cashier.customers.index'));
+    window.__creditReturnTo = successReturnTo;
+
+    const creditTypeEl = document.getElementById('credit_type');
+    const saleIdField = document.getElementById('sale_id_field');
+    const saleIdInput = document.getElementById('sale_id');
+
+    function toggleSaleIdField() {
+        const t = creditTypeEl ? String(creditTypeEl.value || '') : '';
+        const requiresSale = t === 'grocery' || t === 'electronics';
+
+        if (saleIdField) {
+            saleIdField.style.display = requiresSale ? '' : 'none';
+        }
+        if (saleIdInput) {
+            if (requiresSale) {
+                saleIdInput.setAttribute('required', 'required');
+            } else {
+                saleIdInput.removeAttribute('required');
+                saleIdInput.value = '';
+            }
+        }
+    }
+
+    if (creditTypeEl) {
+        creditTypeEl.addEventListener('change', toggleSaleIdField);
+        toggleSaleIdField();
+    }
 
     // Initialize Select2 on customer dropdown for search + type new
     const $customerSelect = $('#customer_id');
@@ -363,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <button class="btn btn-success btn-lg me-2" onclick="window.location.href='/cashier/credit'">
                                         <i class="fas fa-list me-2"></i>View Credits
                                     </button>
-                                    <button class="btn btn-outline-secondary btn-lg" onclick="window.location.href='/cashier/credit'">
+                                    <button class="btn btn-outline-secondary btn-lg" onclick="window.location.href=window.__creditReturnTo">
                                         <i class="fas fa-check me-2"></i>Okay
                                     </button>
                                 </div>
@@ -381,14 +427,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }).then((result) => {
                         if (result.isDismissed || result.dismiss === Swal.DismissReason.close) {
-                            window.location.href = '/cashier/credit';
+                            window.location.href = window.__creditReturnTo;
                         }
                     });
                 } else {
+                    const limitMsg = (data && data.errors && data.errors.credit_amount && data.errors.credit_amount.length)
+                        ? data.errors.credit_amount[0]
+                        : null;
+
                     Swal.fire({
                         icon: 'error',
                         title: 'Creation Failed',
-                        text: data.message || 'Failed to create credit. Please try again.',
+                        text: limitMsg || data.message || "You can't add more credit because the customer has exceeded the credit limit.",
                         confirmButtonColor: '#ef4444',
                         confirmButtonText: 'OK'
                     });

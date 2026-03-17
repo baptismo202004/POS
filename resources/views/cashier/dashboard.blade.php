@@ -19,7 +19,71 @@
             margin-left: 0 !important;
         }
 
-        /* Animations (KPI + Nav) */
+        /* ══════════════════════════════════════════
+           BACKGROUND REDESIGN — BGH Blue Mesh
+           Everything below this block is unchanged
+        ══════════════════════════════════════════ */
+        .cashier-dashboard-page {
+            font-family: 'Geist', 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.02em;
+            color: #0C0F1A;
+            min-height: calc(100vh - 1px);
+            position: relative;
+            overflow-x: hidden;
+
+            /* BGH blue gradient mesh background */
+            background:
+                radial-gradient(ellipse 70% 55% at 0% 0%,    rgba(13,71,161,0.13) 0%, transparent 55%),
+                radial-gradient(ellipse 55% 45% at 100% 100%, rgba(0,176,255,0.10) 0%, transparent 52%),
+                radial-gradient(ellipse 40% 35% at 60% 15%,  rgba(66,165,245,0.07) 0%, transparent 50%),
+                #EBF3FB;
+        }
+
+        /* Animated floating blobs — replaces old grid dots */
+        .cashier-dashboard-page::before {
+            content: '';
+            position: fixed;
+            width: 520px;
+            height: 520px;
+            border-radius: 50%;
+            background: rgba(25,118,210,0.09);
+            filter: blur(80px);
+            top: -160px;
+            left: -160px;
+            pointer-events: none;
+            z-index: 0;
+            animation: cd-blob-a 11s ease-in-out infinite;
+        }
+
+        .cashier-dashboard-page::after {
+            content: '';
+            position: fixed;
+            width: 380px;
+            height: 380px;
+            border-radius: 50%;
+            background: rgba(0,176,255,0.08);
+            filter: blur(70px);
+            bottom: -100px;
+            right: -100px;
+            pointer-events: none;
+            z-index: 0;
+            animation: cd-blob-b 13s ease-in-out infinite;
+        }
+
+        @keyframes cd-blob-a {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50%       { transform: translate(30px, 22px) scale(1.06); }
+        }
+        @keyframes cd-blob-b {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50%       { transform: translate(-22px, -18px) scale(1.05); }
+        }
+        /* ══════════════════════════════════════════
+           END BACKGROUND REDESIGN
+        ══════════════════════════════════════════ */
+
+        /* Animations (KPI + Nav) — UNCHANGED */
         .cd-kpi-card, .cd-nav-card {
             will-change: transform, box-shadow;
         }
@@ -202,29 +266,6 @@
         @keyframes dot-bounce {
             from { transform: translateY(0); opacity: .4; }
             to   { transform: translateY(-5px); opacity: 1; }
-        }
-
-        .cashier-dashboard-page {
-            font-family: 'Geist', 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            letter-spacing: -0.02em;
-            background: #F2F4F9;
-            color: #0C0F1A;
-            min-height: calc(100vh - 1px);
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        .cashier-dashboard-page::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image:
-              linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
         }
 
         .cashier-dashboard-wrap {
@@ -1264,7 +1305,6 @@ function viewProductDetails(productName, branchName) {
         confirmButtonColor: '#2196F3'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Navigate to inventory management (you can update this route)
             window.location.href = '{{ route('cashier.inventory.index') }}';
         }
     });
@@ -1272,7 +1312,6 @@ function viewProductDetails(productName, branchName) {
 }
 
 function showLowStockModal() {
-    // Get low stock items via AJAX
     fetch('/cashier/dashboard/low-stock')
         .then(response => response.json())
         .then(data => {
@@ -1293,12 +1332,10 @@ function showLowStockModal() {
                                         <div class="col-md-6">
                                             <div class="list-group">`;
                 
-                // Split items into two columns
                 const halfLength = Math.ceil(data.lowStockItems.length / 2);
                 const firstColumn = data.lowStockItems.slice(0, halfLength);
                 const secondColumn = data.lowStockItems.slice(halfLength);
                 
-                // First column
                 firstColumn.forEach(item => {
                     modalHtml += `
                                                 <div class="list-group-item low-stock-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="viewProductDetails('${item.product_name}', '${item.branch_name}')">
@@ -1323,7 +1360,6 @@ function showLowStockModal() {
                                         <div class="col-md-6">
                                             <div class="list-group">`;
                 
-                // Second column
                 secondColumn.forEach(item => {
                     modalHtml += `
                                                 <div class="list-group-item low-stock-item d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="viewProductDetails('${item.product_name}', '${item.branch_name}')">
@@ -1351,16 +1387,13 @@ function showLowStockModal() {
                         </div>
                     </div>`;
                 
-                // Remove existing modal if any
                 const existingModal = document.getElementById('lowStockModal');
                 if (existingModal) {
                     existingModal.remove();
                 }
                 
-                // Add modal to page
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
                 
-                // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('lowStockModal'));
                 modal.show();
             } else {
@@ -1391,14 +1424,12 @@ function animateAndNavigate(event, module) {
     const allCards = document.querySelectorAll('.nav-card');
     const targetUrl = clickedCard.href;
 
-    // Check if clicking on products or product_category
     const isProductsClick = module === 'products';
     const isCategoryClick = module === 'product_category';
     const isPurchasesClick = module === 'purchases';
     const isInventoryClick = module === 'inventory';
     const isStockInClick = module === 'stock_in';
 
-    // Create a sidebar container
     const sidebar = document.createElement('div');
     sidebar.style.cssText = `
         position: fixed;
@@ -1417,10 +1448,8 @@ function animateAndNavigate(event, module) {
     `;
     document.body.appendChild(sidebar);
 
-    // Make sidebar resizable
     makeSidebarResizable(sidebar);
 
-    // Add sidebar header with logo
     const sidebarHeader = document.createElement('div');
     sidebarHeader.style.cssText = `
         display: flex;
@@ -1431,7 +1460,6 @@ function animateAndNavigate(event, module) {
         border-bottom: 1px solid rgba(255,255,255,0.2);
     `;
     
-    // Create logo container
     const logoContainer = document.createElement('div');
     logoContainer.style.cssText = `
         display: flex;
@@ -1439,7 +1467,6 @@ function animateAndNavigate(event, module) {
         gap: 10px;
     `;
     
-    // Create logo image
     const logoImg = document.createElement('img');
     logoImg.src = '/images/BGH LOGO.png';
     logoImg.style.cssText = `
@@ -1450,9 +1477,7 @@ function animateAndNavigate(event, module) {
         transition: transform 0.3s ease;
     `;
     
-    // Add click event to logo
     logoImg.addEventListener('click', () => {
-        // Close sidebar only if we're on the dashboard page
         if (window.location.pathname === '/cashier/dashboard') {
             const sidebar = document.querySelector('[style*="position: fixed"][style*="left: 0"]');
             if (sidebar) {
@@ -1468,13 +1493,10 @@ function animateAndNavigate(event, module) {
     sidebarHeader.appendChild(logoContainer);
     sidebar.appendChild(sidebarHeader);
 
-    // Animate cards into sidebar
     allCards.forEach((card, index) => {
         if (card !== clickedCard) {
-            // Clone the card content
             const cardContent = card.cloneNode(true);
-            // Inherit original classes but override for sidebar context
-            cardContent.className = 'nav-card'; // Keep the original class
+            cardContent.className = 'nav-card';
             cardContent.style.cssText = `
                 display: flex;
                 align-items: center;
@@ -1510,42 +1532,25 @@ function animateAndNavigate(event, module) {
 
             const contentEl = cardContent.querySelector('.nav-content');
             if (contentEl) {
-                contentEl.style.cssText = `
-                    display: block;
-                    color: white;
-                `;
+                contentEl.style.cssText = `display: block; color: white;`;
             }
 
             const titleEl = cardContent.querySelector('.nav-content h5');
             if (titleEl) {
-                titleEl.style.cssText = `
-                    margin: 0 0 4px 0;
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: white;
-                    text-decoration: none;
-                `;
+                titleEl.style.cssText = `margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: white; text-decoration: none;`;
             }
 
             const descEl = cardContent.querySelector('.nav-content p');
             if (descEl) {
-                descEl.style.cssText = `
-                    margin: 0;
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.85);
-                    text-decoration: none;
-                `;
+                descEl.style.cssText = `margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.85); text-decoration: none;`;
             }
 
-            // Remove link underlines even if browser default styles apply
             cardContent.querySelectorAll('a, h5, p, span').forEach(el => {
                 el.style.textDecoration = 'none';
             });
             
-            // Remove onclick from cloned cards
             cardContent.removeAttribute('onclick');
             
-            // Add hover effect
             cardContent.addEventListener('mouseenter', () => {
                 cardContent.style.background = 'rgba(255,255,255,0.2)';
                 cardContent.style.transform = 'translateX(5px)';
@@ -1557,25 +1562,21 @@ function animateAndNavigate(event, module) {
             
             sidebar.appendChild(cardContent);
             
-            // Hide the original card immediately
             card.style.transition = 'all 0.3s ease';
             card.style.opacity = '0';
             card.style.transform = 'scale(0.8)';
             
-            // Animate in the cloned card
             setTimeout(() => {
                 cardContent.style.transform = 'translateX(0)';
                 cardContent.style.opacity = '1';
             }, 100 + (index * 100));
             
-            // Completely hide original card after animation
             setTimeout(() => {
                 card.style.display = 'none';
             }, 500 + (index * 100));
         }
     });
 
-    // Arrange submenu items in the generated sidebar
     const sidebarNavItems = Array.from(sidebar.querySelectorAll('.nav-card'));
 
     const invItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Inventory');
@@ -1594,24 +1595,19 @@ function animateAndNavigate(event, module) {
         productsItem.insertAdjacentElement('afterend', categoryItem);
     }
 
-    // Slide in sidebar and save to session storage if navigating
     if (isProductsClick || isCategoryClick || isPurchasesClick || isInventoryClick || isStockInClick) {
         sidebar.style.transform = 'translateX(0)';
-        // Store the sidebar HTML in session storage so it can be recreated on the next page
         sessionStorage.setItem('cashierSidebarHTML', sidebar.outerHTML);
         localStorage.setItem('cashierSidebarHTML', sidebar.outerHTML);
     }
 
-    // Fade out and scale the clicked card
     clickedCard.style.transition = 'all 0.5s ease-in-out';
     clickedCard.style.transform = 'scale(0.95)';
     clickedCard.style.opacity = '0.3';
 
-    // Navigate after animation
     setTimeout(() => {
         window.location.href = targetUrl;
     }, 1500);
 }
-
 </script>
 @endpush
