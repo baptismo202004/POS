@@ -477,9 +477,7 @@
                 return;
             }
 
-            var branchOptions = @json($branches ? $branches->map(function($branch) {
-                return ['id' => $branch->id, 'name' => $branch->branch_name];
-            }) : []);
+            var cashierBranchName = @json($cashierBranchName ?? '');
 
             latestPurchaseItems
                 .filter(function(item) { return selected.indexOf(String(item.product_id)) !== -1; })
@@ -496,14 +494,6 @@
                         unitTypeOptions = item.unit_types.map(function(ut) {
                             return '<option value="' + ut.id + '">' + ut.unit_name + '</option>';
                         }).join('');
-                    }
-
-                    var branchSelectOptions = '';
-                    if (branchOptions && branchOptions.length > 0) {
-                        branchOptions.forEach(function(branch) {
-                            var selectedAttr = (cashierBranchId && String(branch.id) === String(cashierBranchId)) ? ' selected' : '';
-                            branchSelectOptions += '<option value="' + branch.id + '"' + selectedAttr + '>' + branch.name + '</option>';
-                        });
                     }
 
                     var idx = stockInRowIndex++;
@@ -523,10 +513,8 @@
                                 '</select>' +
                             '</td>' +
                             '<td>' +
-                                '<select class="form-select" name="items[' + idx + '][branch_id]" required>' +
-                                    '<option value="">-- Select Branch --</option>' +
-                                    branchSelectOptions +
-                                '</select>' +
+                                '<span class="form-control" style="background: rgba(240,246,255,0.55);">' + escapeHtml(cashierBranchName || 'Branch') + '</span>' +
+                                '<input type="hidden" name="items[' + idx + '][branch_id]" value="' + (cashierBranchId ? String(cashierBranchId) : '') + '">' +
                             '</td>' +
                             '<td>' +
                                 '<input type="number" class="form-control js-stockin-qty" data-product-id="' + item.product_id + '" data-original-remaining="' + purchasedQty + '" name="items[' + idx + '][quantity]" min="0" value="0">' +

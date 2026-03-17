@@ -31,9 +31,17 @@
             @endif
         </td>
         <td>
-            <span class="{{ $product->status === 'active' ? 'badge-status-active' : 'badge-status-inactive' }}">
-                {{ ucfirst($product->status) }}
-            </span>
+            @if($product->status === 'active')
+                <span class="badge-status-active">
+                    <span class="status-dot active-dot"></span>
+                    Active
+                </span>
+            @else
+                <span class="badge-status-inactive">
+                    <span class="status-dot inactive-dot"></span>
+                    {{ ucfirst($product->status) }}
+                </span>
+            @endif
         </td>
     </tr>
 @empty

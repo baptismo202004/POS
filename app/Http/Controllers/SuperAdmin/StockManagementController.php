@@ -460,7 +460,23 @@ class StockManagementController extends Controller
                 branch_id,
                 COALESCE(SUM(quantity_base), 0) as current_stock,
                 MAX(updated_at) as last_stock_update,
-                0 as unit_price
+                COALESCE((
+                    SELECT pi.unit_cost
+                    FROM purchase_items pi
+                    JOIN purchases p ON p.id = pi.purchase_id
+                    WHERE pi.product_id = branch_stocks.product_id
+                      AND p.branch_id = branch_stocks.branch_id
+                    ORDER BY p.created_at DESC, pi.id DESC
+                    LIMIT 1
+                ), (
+                    SELECT si.price
+                    FROM stock_ins si
+                    WHERE si.product_id = branch_stocks.product_id
+                      AND si.branch_id = branch_stocks.branch_id
+                      AND si.price > 0
+                    ORDER BY si.id DESC
+                    LIMIT 1
+                ), 0) as unit_price
             ');
 
         return DB::table('products')

@@ -218,7 +218,16 @@
                                     @forelse($purchase->items as $item)
                                         <tr>
                                             <td style="font-weight:600;">{{ $item->product->product_name ?? 'N/A' }}</td>
-                                            <td>{{ $item->quantity }}</td>
+                                            <td>
+                                                @php
+                                                    $qtyRaw = $item->quantity ?? 0;
+                                                    $qty = is_numeric($qtyRaw) ? (float) $qtyRaw : 0;
+                                                    $qtyDisplay = (floor($qty) == $qty)
+                                                        ? (string) (int) $qty
+                                                        : rtrim(rtrim(number_format($qty, 6, '.', ''), '0'), '.');
+                                                @endphp
+                                                {{ $qtyDisplay }}
+                                            </td>
                                             <td>{{ $item->unitType->unit_name ?? 'N/A' }}</td>
                                             <td>₱{{ number_format($item->unit_cost, 2) }}</td>
                                             <td style="font-weight:700;color:var(--navy);">₱{{ number_format($item->subtotal, 2) }}</td>

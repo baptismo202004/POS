@@ -1,7 +1,7 @@
 <!-- Minimal Stock Management Filters -->
 <div class="card mb-3 border-0 shadow-sm">
     <!-- Filter content only (no dropdown wrapper) -->
-    <ul class="dropdown-menu dropdown-menu-end show" style="min-width: 320px; position: absolute; right: 0; top: 100%; display: none; background-color: #f8f9fa; border: 1px solid #dee2e6; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); padding: 10px;" id="filterDropdownContent">
+    <ul class="dropdown-menu dropdown-menu-end show sp-filter-menu" style="min-width: 320px; position: absolute; right: 0; top: 100%; display: none;" id="filterDropdownContent">
                 <!-- Two Column Layout -->
                 <div class="row g-2">
                     <!-- Left Column -->
@@ -110,8 +110,8 @@
                 <!-- Action Buttons (Full Width) -->
                 <li class="list-unstyled mt-3">
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="applyFiltersBtn">Apply</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="clearFiltersBtn">Clear</button>
+                        <button type="button" class="sp-btn sp-btn-primary flex-fill" id="applyFiltersBtn">Apply</button>
+                        <button type="button" class="sp-btn sp-btn-outline flex-fill" id="clearFiltersBtn">Clear</button>
                     </div>
                 </li>
             </ul>

@@ -1141,7 +1141,7 @@ function displayProducts(productsList) {
         const units = branch && Array.isArray(branch.stock_units) ? branch.stock_units : [];
         const defaultUnit = units.length > 0 ? units[0] : null;
         const defaultUnitId = defaultUnit ? parseInt(defaultUnit.unit_type_id || '0', 10) : 0;
-        const defaultStock = defaultUnit ? parseFloat(defaultUnit.stock || 0) : (product.total_stock ?? 0);
+        const defaultStock = defaultUnit ? parseFloat(defaultUnit.stock || 0) : parseFloat(product.total_stock ?? 0);
         const defaultPrice = defaultUnit ? parseFloat(defaultUnit.price || 0) : parseFloat(product.selling_price || 0);
 
         const unitOptions = units.map(u => {
@@ -1169,7 +1169,7 @@ function displayProducts(productsList) {
             <td>${product.barcode || 'N/A'}</td>
             <td class="text-end">
                 <span id="stock-${product.id}" class="badge ${(defaultStock > 10) ? 'bg-success' : 'bg-warning'}">
-                    ${defaultStock ?? 0}
+                    ${Number.isFinite(defaultStock) ? defaultStock.toFixed(2) : '0.00'}
                 </span>
             </td>
             <td class="text-end">
@@ -1199,7 +1199,7 @@ function onUnitTypeChange(productId) {
     const price = parseFloat(unit.price || 0);
 
     if (stockEl) {
-        stockEl.textContent = `${stock}`;
+        stockEl.textContent = Number.isFinite(stock) ? stock.toFixed(2) : '0.00';
         stockEl.classList.remove('bg-success', 'bg-warning');
         stockEl.classList.add(stock > 10 ? 'bg-success' : 'bg-warning');
     }

@@ -71,6 +71,7 @@ class PosAdminController extends Controller
 
         // List mode for typeahead/multi results
         if ($mode === 'list') {
+<<<<<<< HEAD
             $branchNames = Branch::pluck('branch_name', 'id');
 
             $inStockProductIds = StockIn::query()
@@ -83,6 +84,13 @@ class PosAdminController extends Controller
             if (empty($keyword)) {
                 // Get only products that are currently in stock (across any branch)
                 $matches = Product::whereIn('id', $inStockProductIds)->get();
+=======
+            // If keyword is empty, get all products from stock_ins table
+            if (empty($keyword)) {
+                // Get all products that have stock records
+                $productIds = StockIn::distinct('product_id')->pluck('product_id');
+                $matches = Product::whereIn('id', $productIds)->get();
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                 Log::info("[POS_ADMIN_LOOKUP] Getting all products from stock_ins: " . count($matches) . " products found");
             } else {
                 $matches = Product::query()
@@ -97,11 +105,18 @@ class PosAdminController extends Controller
                 Log::info("[POS_ADMIN_LOOKUP] Found " . count($matches) . " products matching keyword: '{$keyword}'");
             }
 
+<<<<<<< HEAD
             $items = $matches->map(function ($p) use ($branchNames) {
                 // Calculate available stock and branch-specific latest prices from stock_ins
                 $stockRecords = StockIn::with('unitType')
                     ->where('product_id', $p->id)
                     ->whereColumn('quantity', '>', 'sold')
+=======
+            $items = $matches->map(function ($p) {
+                // Calculate available stock and branch-specific latest prices from stock_ins
+                $stockRecords = StockIn::with('unitType')
+                    ->where('product_id', $p->id)
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                     ->orderBy('id', 'asc') // ensure later records override earlier ones
                     ->get();
                 $totalStock = 0;
@@ -113,9 +128,16 @@ class PosAdminController extends Controller
 
                     if ($availableStock > 0) {
                         if (!isset($branchStocks[$stock->branch_id])) {
+<<<<<<< HEAD
                             $branchStocks[$stock->branch_id] = [
                                 'branch_id' => $stock->branch_id,
                                 'branch_name' => $branchNames[$stock->branch_id] ?? null,
+=======
+                            $branch = Branch::find($stock->branch_id);
+                            $branchStocks[$stock->branch_id] = [
+                                'branch_id' => $stock->branch_id,
+                                'branch_name' => optional($branch)->branch_name,
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                                 'stock' => 0,
                                 'stock_units' => [],
                                 'latest_price' => 0.00,
@@ -541,6 +563,7 @@ class PosAdminController extends Controller
             ])->get();
 
             $items = $purchaseItems->map(function ($item) {
+<<<<<<< HEAD
                 $purchaseUnitTypeId = (int) ($item->unit_type_id ?? 0);
                 $purchaseUnitName = $item->unitType?->unit_name;
 
@@ -559,6 +582,24 @@ class PosAdminController extends Controller
                 $purchasedBase = $purchasedQty * $purchaseFactor;
                 $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
                 if ($remainingBase < 0) $remainingBase = 0;
+=======
+                // Calculate how many units have already been stocked in for this purchase + product
+                $alreadyStocked = StockIn::where('purchase_id', $item->purchase_id)
+                    ->where('product_id', $item->product_id)
+                    ->sum('quantity');
+
+                $remainingBase = (float) ($item->quantity ?? 0) - (float) ($alreadyStocked ?? 0);
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
+
+                $primaryPurchased = (float) ($item->primary_quantity ?? 0);
+                $primaryRemaining = $primaryPurchased;
+                if ($primaryPurchased > 0 && (float) ($item->quantity ?? 0) > 0) {
+                    $ratio = $remainingBase / (float) ($item->quantity ?? 0);
+                    $primaryRemaining = $primaryPurchased * $ratio;
+                }
 
                 // Debug: Log the unit types data
                 Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
@@ -597,6 +638,7 @@ class PosAdminController extends Controller
                     'product' => $item->product,
                     // Remaining quantity (base units) - authoritative for validation
                     'quantity' => $remainingBase,
+<<<<<<< HEAD
                     'purchased_quantity' => $purchasedQty,
                     'remaining_quantity' => $remainingBase,
 
@@ -611,13 +653,26 @@ class PosAdminController extends Controller
                     'conversion_summary' => $conversionSummary,
 
                     'base_purchased_quantity' => $purchasedBase,
+=======
+                    'purchased_quantity' => (float) ($item->quantity ?? 0),
+                    'remaining_quantity' => $remainingBase,
+                    // Entered unit quantity (for toggle display)
+                    'primary_purchased_quantity' => (float) ($item->primary_quantity ?? 0),
+                    'primary_remaining_quantity' => round($primaryRemaining, 4),
+                    'base_purchased_quantity' => (float) ($item->base_quantity ?? $item->quantity ?? 0),
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                     'base_remaining_quantity' => $remainingBase,
                     'unit_price' => $item->unit_cost, // use unit_cost from purchase item
                     'unit_types' => $unitTypesPayload,
                     'unit_type' => $item->unitType,
                     'primary_unit_name' => $item->unitType ? $item->unitType->unit_name : null,
+<<<<<<< HEAD
                     'base_unit_type' => $baseUnit,
                     'base_unit_type_id' => $baseUnit?->id,
+=======
+                    'base_unit_type' => $item->base_unit_type_id ? \App\Models\UnitType::find($item->base_unit_type_id) : null,
+                    'base_unit_type_id' => $item->base_unit_type_id,
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                 ];
 
                 Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
@@ -813,8 +868,15 @@ class PosAdminController extends Controller
                     'branch_id' => $item['branch_id'],
                     'purchase_id' => $purchaseId,
                     'unit_type_id' => $baseUnitTypeId ?: $item['unit_type_id'],
+<<<<<<< HEAD
                     'quantity' => (int) round($qtyBase),
                     'price' => $baseReferencePrice,
+=======
+                    'quantity' => $qtyBase,
+                    'initial_quantity' => $qtyBase,
+                    'price' => $baseReferencePrice,
+                    'user_id' => Auth::id()
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                 ]);
 
                 foreach ($unitPrices as $unitTypeId => $unitPrice) {
@@ -860,8 +922,15 @@ class PosAdminController extends Controller
                         'branch_id' => $item['branch_id'],
                         'purchase_id' => $purchaseId,
                         'unit_type_id' => $unitTypeId,
+<<<<<<< HEAD
                         'quantity' => (int) round($qtyBase),
                         'price' => $priceForUnit,
+=======
+                        'quantity' => $qtyBase,
+                        'initial_quantity' => $qtyBase,
+                        'price' => $priceForUnit,
+                        'user_id' => Auth::id()
+>>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                     ]);
 
                     // Keep recording all unit prices for this stock_in id (as your current design does)

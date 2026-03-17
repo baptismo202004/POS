@@ -115,13 +115,8 @@
                             <div class="sp-ph-sub">Manage customers and account status</div>
                         </div>
                     </div>
-<<<<<<< HEAD
-                    <div class="card-body">
-                        <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
-                            <table class="table table-bordered">
-=======
                     <div class="sp-actions">
-                        <button class="sp-btn sp-btn-good" onclick="addNewCustomer()"><i class="fas fa-plus"></i> Add Customer</button>
+                            <button class="sp-btn sp-btn-good" onclick="addNewCustomer()"><i class="fas fa-plus"></i> Add Customer</button>
                     </div>
                 </div>
 
@@ -132,8 +127,7 @@
                     <div class="sp-card-body">
                         <div class="sp-table-wrap">
                             <div class="sp-table-scroll">
-                                <table class="sp-table">
->>>>>>> d12ed99b6778897b2d042ab290fe50adab0eb432
+                                <table class="sp-table">   
                                 <thead>
                                     <tr>
                                         <th>Customer ID</th>

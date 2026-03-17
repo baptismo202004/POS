@@ -194,7 +194,16 @@
                     <tr>
                         <td>{{ $index + 1 }}</td>
                         <td>{{ \Illuminate\Support\Str::limit($item->product->product_name, 20) }}</td>
-                        <td>{{ $item->quantity }}</td>
+                        <td>
+                            @php
+                                $qtyRaw = $item->quantity ?? 0;
+                                $qty = is_numeric($qtyRaw) ? (float) $qtyRaw : 0;
+                                $qtyDisplay = (floor($qty) == $qty)
+                                    ? (string) (int) $qty
+                                    : rtrim(rtrim(number_format($qty, 6, '.', ''), '0'), '.');
+                            @endphp
+                            {{ $qtyDisplay }}
+                        </td>
                         <td class="amount">P{{ number_format($item->unit_price, 2) }}</td>
                         <td class="amount">P{{ number_format($item->subtotal, 2) }}</td>
                     </tr>

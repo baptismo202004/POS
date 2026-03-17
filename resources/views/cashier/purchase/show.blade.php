@@ -119,6 +119,13 @@
         }
         .purchase-details-page .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(13,71,161,0.34); }
 
+        .purchase-details-page .btn-success {
+            background: linear-gradient(135deg, var(--green), #34d399);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.26);
+        }
+        .purchase-details-page .btn-success:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(16,185,129,0.34); }
+
         .purchase-details-page .main-card {
             background: var(--card);
             border-radius: 20px;
@@ -239,7 +246,7 @@
         }
         .purchase-details-page .table-title i { color: rgba(25,118,210,0.9); }
 
-        .purchase-details-page .table-responsive { overflow-x: auto; }
+        .purchase-details-page .table-responsive { overflow-x: visible; }
         .purchase-details-page table.table { width: 100%; border-collapse: collapse; margin: 0; }
         .purchase-details-page table.table thead th {
             padding: 12px 18px;
@@ -250,8 +257,9 @@
             color: rgba(255,255,255,0.92);
             background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
             border-bottom: 1px solid rgba(255,255,255,0.12);
-            white-space: nowrap;
+            white-space: normal;
         }
+        .purchase-details-page table.table tbody td { white-space: normal; word-break: break-word; }
         .purchase-details-page table.table tbody tr {
             border-bottom: 1px solid rgba(13,71,161,0.05);
             transition: background .15s, transform .15s;
@@ -296,6 +304,16 @@
                     <i class="fas fa-arrow-left"></i>
                     Back to Purchases
                 </a>
+
+                @if(($purchase->payment_status ?? '') === 'pending')
+                    <form method="POST" action="{{ route('cashier.purchases.mark-paid', ['purchase' => $purchase->id]) }}" class="d-inline" data-confirm-mark-paid>
+                        @csrf
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i>
+                            Mark as Paid
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
 
@@ -346,7 +364,16 @@
                         @forelse($purchase->items as $item)
                             <tr>
                                 <td>{{ $item->product->product_name ?? 'N/A' }}</td>
-                                <td>{{ $item->quantity }}</td>
+                                <td>
+                                    @php
+                                        $qtyRaw = $item->quantity ?? 0;
+                                        $qty = is_numeric($qtyRaw) ? (float) $qtyRaw : 0;
+                                        $qtyDisplay = (floor($qty) == $qty)
+                                            ? (string) (int) $qty
+                                            : rtrim(rtrim(number_format($qty, 6, '.', ''), '0'), '.');
+                                    @endphp
+                                    {{ $qtyDisplay }}
+                                </td>
                                 <td>{{ $item->unitType->unit_name ?? 'N/A' }}</td>
                                 <td>₱{{ number_format($item->unit_cost, 2) }}</td>
                                 <td><strong>₱{{ number_format($item->subtotal, 2) }}</strong></td>
@@ -363,5 +390,38 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form[data-confirm-mark-paid]');
+        if (!form || typeof Swal === 'undefined') return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            Swal.fire({
+                title: 'Mark as Paid?'
+                , text: 'This will set the payment status to Paid.'
+                , icon: 'question'
+                , showCancelButton: true
+                , confirmButtonText: 'Yes, mark as paid'
+                , cancelButtonText: 'Cancel'
+                , confirmButtonColor: '#198754'
+                , cancelButtonColor: '#6c757d'
+                , reverseButtons: true
+                , background: '#ffffff'
+                , customClass: {
+                    popup: 'shadow-lg rounded-4'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush
 
 

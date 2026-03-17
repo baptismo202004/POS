@@ -160,16 +160,11 @@
                         <div class="sp-ph-title">Inventory</div>
                         <div class="sp-ph-sub">Monitor stock, sales, and revenue</div>
                     </div>
-                    <div class="card-body">
-                        @if(request('filter') == 'out-of-stock')
-                            <div class="alert alert-info" role="alert">
-                                <strong>Filter Applied:</strong> Showing only out of stock items (≤ 15 units)
-                            </div>
-                        @endif
-
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $products->links() }}
-                        </div>
+                </div>
+                <div class="sp-ph-actions">
+                    <div class="sp-search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="sp-search-input" placeholder="Search products..." value="{{ request('search') }}">
                     </div>
                 </div>
             </div>
@@ -205,7 +200,7 @@
                                     <td style="font-weight:600;"><a href="{{ route('superadmin.products.show', $product->id) }}" style="color:inherit;text-decoration:none;">{{ $product->product_name }}</a></td>
                                     <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                    <td class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'text-danger font-weight-bold' : '' }}">{{ $product->current_stock }}</td>
+                                    <td class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'text-danger font-weight-bold' : '' }}">{{ number_format($product->current_stock, 0) }}</td>
                                     <td>{{ $product->total_sold }}</td>
                                     <td>{{ number_format($product->total_revenue, 2) }}</td>
                                     <td>

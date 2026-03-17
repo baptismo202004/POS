@@ -141,6 +141,7 @@ Route::get('/cashier/purchases', [CashierDashboardController::class, 'purchasesI
 Route::get('/cashier/purchases/create', [CashierDashboardController::class, 'purchasesCreate'])->middleware('auth')->name('cashier.purchases.create');
 Route::post('/cashier/purchases', [CashierDashboardController::class, 'purchasesStore'])->middleware('auth')->name('cashier.purchases.store');
 Route::get('/cashier/purchases/{purchase}', [CashierDashboardController::class, 'purchasesShow'])->middleware('auth')->name('cashier.purchases.show');
+Route::post('/cashier/purchases/{purchase}/mark-paid', [CashierDashboardController::class, 'purchasesMarkPaid'])->middleware('auth')->name('cashier.purchases.mark-paid');
 Route::post('/cashier/purchases/ocr-product-match', [CashierDashboardController::class, 'purchasesOcrProductMatch'])->middleware('auth')->name('cashier.purchases.ocr-product-match');
 Route::post('/cashier/test-ocr', [CashierDashboardController::class, 'testOcr'])->middleware('auth')->name('cashier.test.ocr');
 Route::get('/cashier/products/{product}/unit-types', [CashierDashboardController::class, 'getProductUnitTypes'])->middleware('auth')->name('cashier.products.unit-types');
@@ -171,6 +172,7 @@ Route::get('/cashier/credit', [CashierDashboardController::class, 'creditIndex']
 Route::get('/cashier/credit/create', [CashierDashboardController::class, 'creditCreate'])->middleware('auth')->name('cashier.credit.create');
 Route::post('/cashier/credit', [CashierDashboardController::class, 'creditStore'])->middleware('auth')->name('cashier.credit.store');
 Route::post('/cashier/credit/{credit}/payments', [CashierDashboardController::class, 'creditRecordPayment'])->middleware('auth')->name('cashier.credit.record-payment');
+Route::get('/cashier/credit/customer/{customer}/full-history', [CashierDashboardController::class, 'creditFullHistory'])->middleware('auth')->name('cashier.credit.full-history');
 Route::get('/cashier/credit/{credit}/edit', [CashierDashboardController::class, 'creditEdit'])->middleware('auth')->name('cashier.credit.edit');
 Route::put('/cashier/credit/{credit}', [CashierDashboardController::class, 'creditUpdate'])->middleware('auth')->name('cashier.credit.update');
 Route::delete('/cashier/credit/{credit}', [CashierDashboardController::class, 'creditDestroy'])->middleware('auth')->name('cashier.credit.destroy');
