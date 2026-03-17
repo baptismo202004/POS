@@ -245,7 +245,6 @@
                                                 <tr>
                                                     <th>Product</th>
                                                     <th>Purchased Qty</th>
-                                                    <th>Remaining to Stock</th>
                                                     <th>Stock Price and Quantity</th>
                                                     <th>Branch</th>
                                                     <th>Original Price</th>
@@ -320,22 +319,42 @@
                     inp.setCustomValidity('');
                 });
 
+                // Determine the purchase unit conversion factor for this product row.
+                // `original` is the purchase unit cost (purchase_items.unit_cost) in Admin stock-in payload.
+                // Convert it to base-unit cost by dividing by the purchase factor.
+                var remainingMeta = row.querySelector('.js-remaining-display');
+                var purchaseFactor = remainingMeta ? (parseFloat(remainingMeta.dataset.purchaseFactor || '1') || 1) : 1;
+                if (!isFinite(purchaseFactor) || purchaseFactor <= 0) purchaseFactor = 1;
+
+                var basePurchaseCost = original / purchaseFactor;
+                if (!isFinite(basePurchaseCost) || basePurchaseCost < 0) basePurchaseCost = 0;
+
+                // Validate every unit price input (pc, box, etc.) against purchase baseline.
+                unitPriceInputs.forEach(function(inp) {
+                    var uId = String(inp.dataset.unitId || '');
+                    var factorEl = uId ? row.querySelector('.js-unit-factor[data-unit-id="' + uId + '"]') : null;
+                    var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+                    if (!isFinite(factor) || factor <= 0) factor = 1;
+
+                    var minAllowed = basePurchaseCost * factor;
+                    if (!isFinite(minAllowed) || minAllowed < 0) minAllowed = 0;
+
+                    var entered = parseFloat(inp.value || '0') || 0;
+                    if (entered < minAllowed) {
+                        var msg = 'New price must be at least ' + minAllowed.toFixed(2) + '.';
+                        inp.setCustomValidity(msg);
+                    }
+                });
+
+                // Apply the same validation to the currently selected unit price (hidden field used by backend).
                 var unitIdInput = row.querySelector('input.js-unit-type-id');
                 var unitId = unitIdInput ? String(unitIdInput.value || '') : '';
-                var factorEl = unitId ? row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]') : null;
-                var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
-
-                // Purchase price is stored as base unit cost (per base unit).
-                // When selling/stocking by a larger unit (kg/box/case/etc.), the minimum allowed is base_price * factor.
-                var minAllowed = original * factor;
-
-                if (val < minAllowed) {
-                    var msg = 'New price must be at least ' + minAllowed.toFixed(2) + '.';
-                    hidden.setCustomValidity(msg);
-                    var priceInput = unitId ? row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]') : null;
-                    if (priceInput) {
-                        priceInput.setCustomValidity(msg);
-                    }
+                var selectedPriceInput = unitId ? row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]') : null;
+                if (selectedPriceInput) {
+                    var selectedErr = selectedPriceInput.validationMessage;
+                    hidden.setCustomValidity(selectedErr || '');
+                } else {
+                    hidden.setCustomValidity('');
                 }
             });
         }
@@ -423,6 +442,13 @@
             tableBody.innerHTML = '';
             stockInRowIndex = 0;
 
+            function fmtNumber(n) {
+                var num = Number(n);
+                if (!isFinite(num)) return '0';
+                var fixed = num.toFixed(6);
+                return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+            }
+
             var selected = getSelectedProductIds();
             if (!selected || selected.length === 0) {
                 container.style.display = 'none';
@@ -438,13 +464,30 @@
                 .forEach(function(item) {
                     var idx = stockInRowIndex++;
                     var productName = item.product ? item.product.product_name : 'N/A';
-                    var remainingBaseQty = parseFloat(item.base_remaining_quantity != null ? item.base_remaining_quantity : (item.quantity || 0)) || 0;
-                    var purchasedQty = parseFloat(item.primary_remaining_quantity != null ? item.primary_remaining_quantity : 0) || 0;
-                    var purchasedQtyDisplay = String(purchasedQty);
-                    var purchasedUnitLabel = (item.unit_type && item.unit_type.unit_name) ? item.unit_type.unit_name : '';
-                    if (purchasedUnitLabel) {
-                        purchasedQtyDisplay += ' ' + purchasedUnitLabel;
+                    var purchaseUnitName = item.purchase_unit_name || ((item.unit_type && item.unit_type.unit_name) ? item.unit_type.unit_name : '');
+                    var baseUnitName = item.base_unit_name || '';
+                    var purchaseFactor = parseFloat(item.purchase_factor || 1) || 1;
+
+                    var purchasedQty = parseFloat(item.purchased_qty != null ? item.purchased_qty : 0) || 0;
+                    var purchasedBase = parseFloat(item.purchased_base != null ? item.purchased_base : 0) || 0;
+                    var remainingBaseQty = parseFloat(item.remaining_base != null ? item.remaining_base : (item.quantity || 0)) || 0;
+
+                    var purchasedQtyDisplay = fmtNumber(purchasedQty) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                    if (baseUnitName) {
+                        purchasedQtyDisplay = fmtNumber(purchasedQty) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(purchasedBase) + ' ' + baseUnitName;
                     }
+
+                    var remainingPurchaseUnits = Math.floor(remainingBaseQty / (purchaseFactor || 1));
+                    if (!isFinite(remainingPurchaseUnits) || remainingPurchaseUnits < 0) remainingPurchaseUnits = 0;
+                    var remainingRemainderBase = remainingBaseQty - (remainingPurchaseUnits * (purchaseFactor || 1));
+                    if (!isFinite(remainingRemainderBase) || remainingRemainderBase < 0) remainingRemainderBase = 0;
+
+                    var remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                    if (baseUnitName) {
+                        remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(remainingBaseQty) + ' ' + baseUnitName;
+                    }
+
+                    var conversionSummary = item.conversion_summary || '';
 
                     var baseUnit = null;
                     var unitTypes = Array.isArray(item.unit_types) ? item.unit_types : [];
@@ -499,13 +542,22 @@
                     var rowHtml =
                         '<tr>' +
                             '<td>' +
-                                escapeHtml(productName) +
+                                '<div>' + escapeHtml(productName) + '</div>' +
+                                (conversionSummary ? ('<div class="text-muted" style="font-size: 12px;">' + escapeHtml(conversionSummary) + '</div>') : '') +
                                 '<input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '">' +
                             '</td>' +
-                            '<td>' + escapeHtml(purchasedQtyDisplay) + '</td>' +
                             '<td>' +
-                                '<span class="fw-semibold js-remaining-to-stock" data-product-id="' + item.product_id + '" data-original-remaining="' + remainingBaseQty + '">' + escapeHtml(String(remainingBaseQty)) + '</span>' +
-                                '<span class="text-muted"> </span>' +
+                                '<div>' + escapeHtml(purchasedQtyDisplay) + '</div>' +
+                                '<div class="text-muted" style="font-size: 12px;">' +
+                                    '<span class="js-remaining-display"'
+                                        + ' data-product-id="' + item.product_id + '"'
+                                        + ' data-original-remaining="' + remainingBaseQty + '"'
+                                        + ' data-purchase-factor="' + purchaseFactor + '"'
+                                        + ' data-purchase-unit-name="' + escapeHtml(purchaseUnitName) + '"'
+                                        + ' data-base-unit-name="' + escapeHtml(baseUnitName) + '"'
+                                    + '>Remaining: ' + escapeHtml(remainingDisplay) + '</span>' +
+                                '</div>' +
+                                '<span class="fw-semibold js-remaining-to-stock d-none" data-product-id="' + item.product_id + '" data-original-remaining="' + remainingBaseQty + '">' + escapeHtml(String(remainingBaseQty)) + '</span>' +
                             '</td>' +
                             '<td>' +
                                 '<input type="hidden" class="js-stockin-qty-base" data-product-id="' + item.product_id + '" name="items[' + idx + '][quantity]" value="0">' +
@@ -531,9 +583,9 @@
 
                     var insertedRow = tableBody.querySelector('tr:last-child');
                     if (insertedRow) {
-                        insertedRow.dataset.primaryRemaining = String(parseFloat(item.primary_remaining_quantity || 0) || 0);
-                        insertedRow.dataset.unitUnitName = item.unit_type && item.unit_type.unit_name ? item.unit_type.unit_name : '';
-                        insertedRow.dataset.baseUnitName = item.base_unit_type && item.base_unit_type.unit_name ? item.base_unit_type.unit_name : (purchasedUnitLabel || '');
+                        insertedRow.dataset.primaryRemaining = String(parseFloat(item.purchased_qty || 0) || 0);
+                        insertedRow.dataset.unitUnitName = purchaseUnitName;
+                        insertedRow.dataset.baseUnitName = baseUnitName;
                         var remainingEl = insertedRow.querySelector('.js-remaining-to-stock');
                         if (remainingEl) {
                             remainingEl.dataset.originalRemaining = String(remainingBaseQty);
@@ -579,6 +631,41 @@
                 var remainingBase = original - used;
                 if (remainingBase < 0) remainingBase = 0;
                 el.dataset.remainingBase = String(remainingBase);
+            });
+
+            function fmtNumber(n) {
+                var num = Number(n);
+                if (!isFinite(num)) return '0';
+                var fixed = num.toFixed(6);
+                return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+            }
+
+            var remainingDisplays = tableBody.querySelectorAll('.js-remaining-display');
+            remainingDisplays.forEach(function(el) {
+                var pid = String(el.dataset.productId || '');
+                if (!pid) return;
+
+                var original = parseFloat(el.dataset.originalRemaining || '0') || 0;
+                var used = totals[pid] || 0;
+                var remainingBase = original - used;
+                if (remainingBase < 0) remainingBase = 0;
+
+                var purchaseFactor = parseFloat(el.dataset.purchaseFactor || '1') || 1;
+                if (purchaseFactor <= 0) purchaseFactor = 1;
+                var purchaseUnitName = el.dataset.purchaseUnitName || '';
+                var baseUnitName = el.dataset.baseUnitName || '';
+
+                var remainingPurchaseUnits = Math.floor(remainingBase / purchaseFactor);
+                if (!isFinite(remainingPurchaseUnits) || remainingPurchaseUnits < 0) remainingPurchaseUnits = 0;
+                var remainingRemainderBase = remainingBase - (remainingPurchaseUnits * purchaseFactor);
+                if (!isFinite(remainingRemainderBase) || remainingRemainderBase < 0) remainingRemainderBase = 0;
+
+                var remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                if (baseUnitName) {
+                    remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(remainingBase) + ' ' + baseUnitName;
+                }
+
+                el.textContent = 'Remaining: ' + remainingDisplay;
             });
 
             baseInputs.forEach(function(input) {

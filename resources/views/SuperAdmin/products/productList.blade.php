@@ -292,18 +292,6 @@
                                         <input type="text" name="voltage_specs" class="form-control" value="{{ $isEdit ? $product->voltage_specs : '' }}" placeholder="e.g. 110-220V">
                                     </div>
 
-                                    <div class="col-md-3 non-electronic-field">
-                                        <label class="form-label">Branches</label>
-                                        <select name="branch_ids[]" id="branchSelect" class="form-control" style="width:100%" multiple>
-                                            @php
-                                                $selectedBranches = old('branch_ids', $isEdit ? $product->branches->pluck('id')->all() : []);
-                                            @endphp
-                                            @foreach($branches ?? [] as $branch)
-                                                <option value="{{ $branch->id }}" {{ in_array($branch->id, $selectedBranches) ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
                                     <div class="col-md-3">
                                         <label class="form-label">Status</label>
                                         <select name="status" class="form-control">
@@ -352,7 +340,7 @@
                 minimumResultsForSearch: Infinity
             });
 
-            $('#unitTypeSelect, #branchSelect').select2({
+            $('#unitTypeSelect').select2({
                 placeholder: '-- Select items --',
                 allowClear: true,
                 width: 'resolve'

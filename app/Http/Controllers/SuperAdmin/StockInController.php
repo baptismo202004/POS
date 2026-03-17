@@ -59,10 +59,92 @@ class StockInController extends Controller
 
     public function getProductsByPurchase(Purchase $purchase)
     {
-        // Load items with product and its unitTypes
-        $items = $purchase->items()->with('product.unitTypes')->get();
-        
-        return response()->json($items);
+        $items = $purchase->items()
+            ->with([
+                'product.unitTypes' => function ($q) {
+                    $q->withPivot('conversion_factor', 'is_base');
+                },
+                'unitType',
+            ])
+            ->get();
+
+        $payload = $items->map(function ($item) use ($purchase) {
+            $product = $item->product;
+            $unitTypes = $product ? $product->unitTypes : collect();
+
+            $units = $unitTypes->map(function ($ut) {
+                return [
+                    'id' => $ut->id,
+                    'unit_name' => $ut->unit_name,
+                    'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
+                    'is_base' => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
+                ];
+            })->values();
+
+            $baseUnit = $unitTypes->firstWhere('pivot.is_base', true);
+            $baseUnitName = $baseUnit?->unit_name;
+
+            $purchaseUnitTypeId = (int) ($item->unit_type_id ?? 0);
+            $purchaseUnitName = $item->unitType?->unit_name;
+
+            $purchaseFactor = (float) (DB::table('product_unit_type')
+                ->where('product_id', (int) $item->product_id)
+                ->where('unit_type_id', $purchaseUnitTypeId)
+                ->value('conversion_factor') ?? 1);
+            $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
+
+            $purchasedQty = (float) $item->quantity;
+            $purchasedBase = $purchasedQty * $purchaseFactor;
+
+            $alreadyStockedBase = (float) DB::table('stock_movements')
+                ->where('source_type', 'purchases')
+                ->where('source_id', (int) $purchase->id)
+                ->where('product_id', (int) $item->product_id)
+                ->where('movement_type', 'purchase')
+                ->sum('quantity_base');
+
+            $remainingBase = max(0.0, $purchasedBase - $alreadyStockedBase);
+
+            $remainingPurchaseUnits = (int) floor($remainingBase / $purchaseFactor);
+            $remainingPurchaseUnits = max(0, $remainingPurchaseUnits);
+
+            $conversionParts = [];
+            if ($baseUnitName) {
+                foreach ($units as $u) {
+                    if (!empty($u['is_base'])) {
+                        continue;
+                    }
+                    $f = (float) ($u['conversion_factor'] ?? 0);
+                    if ($f > 0) {
+                        $fText = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
+                        $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
+                    }
+                }
+            }
+            $conversionSummary = implode(', ', $conversionParts);
+
+            return [
+                'id' => $item->id,
+                'product_id' => (int) $item->product_id,
+                'quantity' => $purchasedQty,
+                'unit_cost' => (float) $item->unit_cost,
+                'purchase_unit_type_id' => $purchaseUnitTypeId,
+                'purchase_unit_name' => $purchaseUnitName,
+                'purchase_factor' => $purchaseFactor,
+                'base_unit_name' => $baseUnitName,
+                'purchased_base' => $purchasedBase,
+                'remaining_base' => $remainingBase,
+                'remaining_purchase_units' => $remainingPurchaseUnits,
+                'conversion_summary' => $conversionSummary,
+                'product' => $product ? [
+                    'id' => (int) $product->id,
+                    'product_name' => (string) $product->product_name,
+                    'unit_types' => $units,
+                ] : null,
+            ];
+        })->values();
+
+        return response()->json($payload);
     }
 
     public function store(Request $request)

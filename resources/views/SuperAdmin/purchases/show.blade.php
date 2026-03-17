@@ -250,6 +250,15 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            @if(session('success'))
+                Swal.fire({
+                    title: 'Success!',
+                    text: '{{ session('success') }}',
+                    icon: 'success',
+                    confirmButtonColor: '#1976D2',
+                });
+            @endif
+
             const form = document.querySelector('form[data-confirm-mark-paid]');
             if (!form || typeof Swal === 'undefined') return;
 

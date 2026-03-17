@@ -255,17 +255,6 @@
                     </div>
                 </div>
 
-                <div class="col-md-3">
-                    <label class="form-label">× Base</label>
-                    <div class="input-group">
-                        <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
-                        <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
-                            <option value="">Base</option>
-                        </select>
-                    </div>
-                </div>
-
-                <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
 
                 <div class="col-md-2">
                     <label class="form-label">Cost</label>
@@ -316,17 +305,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">× Base</label>
-                    <div class="input-group">
-                        <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
-                        <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
-                            <option value="">Base</option>
-                        </select>
-                    </div>
-                </div>
 
-                <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
 
                 <div class="col-md-2">
                     <label class="form-label">Cost</label>
@@ -607,16 +586,6 @@
             const newRow = container.querySelector('.item-row:last-child');
             initProductSelect(newRow);
 
-            const primaryInput = newRow.querySelector('.primary-qty-input');
-            const multiplierInput = newRow.querySelector('.multiplier-input');
-            const baseInput = newRow.querySelector('.base-qty-input');
-
-            if (primaryInput && multiplierInput && baseInput) {
-                const primaryVal = parseFloat(primaryInput.value) || 0;
-                const multVal = parseFloat(multiplierInput.value) || 1;
-                baseInput.value = primaryVal * multVal;
-            }
-
             if (productData) {
                 $(newRow).find('.product-select').val(productData.id).trigger('change');
                 $(newRow).find('input[name$="[primary_quantity]"]').val(productData.quantity);
@@ -641,16 +610,6 @@
             container.appendChild(node);
             const newRow = container.querySelector('.item-row:last-child');
 
-            const primaryInput = newRow.querySelector('.primary-qty-input');
-            const multiplierInput = newRow.querySelector('.multiplier-input');
-            const baseInput = newRow.querySelector('.base-qty-input');
-
-            if (primaryInput && multiplierInput && baseInput) {
-                const primaryVal = parseFloat(primaryInput.value) || 0;
-                const multVal = parseFloat(multiplierInput.value) || 1;
-                baseInput.value = primaryVal * multVal;
-            }
-
             if (productData) {
                 $(newRow).find('input[name$="[product_name]"]').val(productData.name);
                 $(newRow).find('input[name$="[primary_quantity]"]').val(productData.quantity);
@@ -661,31 +620,15 @@
             updateTotals();
         }
 
-        function recalcBaseQuantity(row) {
-            if (!row) return;
-            const primaryInput = row.querySelector('.primary-qty-input');
-            const multiplierInput = row.querySelector('.multiplier-input');
-            const baseInput = row.querySelector('.base-qty-input');
-            if (!primaryInput || !multiplierInput || !baseInput) return;
-            const primaryVal = parseFloat(primaryInput.value) || 0;
-            const multVal = parseFloat(multiplierInput.value) || 1;
-            baseInput.value = primaryVal * multVal;
-        }
-
         function loadProductUnits(row, productId) {
             const unitSelect = row.querySelector('.unit-type-select');
-            const baseUnitSelect = row.querySelector('.base-unit-select');
-            const multiplierInput = row.querySelector('.multiplier-input');
 
-            if (!unitSelect || !baseUnitSelect || !multiplierInput) {
-                console.warn('Missing unit/base/multiplier controls for row, cannot load units');
+            if (!unitSelect) {
+                console.warn('Missing unit controls for row, cannot load units');
                 return;
             }
 
             unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
-            baseUnitSelect.innerHTML = '<option value="">Base</option>';
-            multiplierInput.value = 1;
-            recalcBaseQuantity(row);
 
             if (!productId) {
                 console.warn('No productId passed to loadProductUnits');
@@ -702,27 +645,12 @@
                     const option = document.createElement('option');
                     option.value = unit.id;
                     option.textContent = unit.name;
-                    option.dataset.conversionFactor = unit.conversion_factor || 1;
                     unitSelect.appendChild(option);
-
-                    const baseOpt = document.createElement('option');
-                    baseOpt.value = unit.id;
-                    baseOpt.textContent = unit.name;
-                    baseUnitSelect.appendChild(baseOpt);
                 });
-
-                // Auto-select base unit in the base-unit-select dropdown if defined
-                const baseUnit = units.find(u => u.is_base);
-                if (baseUnit) {
-                    baseUnitSelect.value = String(baseUnit.id);
-                }
 
                 // If only one unit, auto-select it as the primary unit and set multiplier
                 if (units.length === 1) {
                     unitSelect.value = units[0].id;
-                    const conv = units[0].conversion_factor || 1;
-                    multiplierInput.value = conv;
-                    recalcBaseQuantity(row);
                 }
             }).fail(function () {
                 // On failure, keep the select empty but leave the controls usable
@@ -752,14 +680,6 @@
             }
 
             if (e.target.classList.contains('unit-type-select')) {
-                const row = e.target.closest('.item-row');
-                const selectedOption = e.target.options[e.target.selectedIndex];
-                const conv = selectedOption ? parseFloat(selectedOption.dataset.conversionFactor || '1') : 1;
-                const multiplierInput = row.querySelector('.multiplier-input');
-                if (multiplierInput) {
-                    multiplierInput.value = conv;
-                }
-                recalcBaseQuantity(row);
                 updateTotals();
             }
         });
@@ -777,10 +697,6 @@
 
         container.addEventListener('input', function(e) {
             if (e.target.matches('input[name^="items["]') || e.target.matches('.item-cost')) {
-                if (e.target.classList.contains('primary-qty-input') || e.target.classList.contains('multiplier-input')) {
-                    const row = e.target.closest('.item-row');
-                    recalcBaseQuantity(row);
-                }
                 updateTotals();
             }
         });

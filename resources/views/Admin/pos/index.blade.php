@@ -515,7 +515,7 @@
                     },
                     body: form
                 });
-                const data = await res.json();
+            	    	const data = await res.json();
 
                 console.log('API Response:', data); // Debugging
 
@@ -869,7 +869,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Order Completed!',
-                            text: `Order has been processed successfully. Opening receipt...`,
+                            text: 'Order has been processed successfully. Opening receipt...',
                             confirmButtonColor: '#10b981',
                             timer: 2000,
                             timerProgressBar: true
@@ -882,7 +882,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Order Completed!',
-                            text: `Order has been processed successfully.`,
+                            text: 'Order has been processed successfully.',
                             confirmButtonColor: '#10b981',
                             timer: 3000,
                             timerProgressBar: true

@@ -507,25 +507,11 @@ class CashierDashboardController extends Controller
         }
 
         // Apply branch filtering
-<<<<<<< HEAD
         $query->whereExists(function ($exists) use ($branchId) {
             $exists->select(DB::raw(1))
                 ->from('branch_stocks')
                 ->whereColumn('branch_stocks.product_id', 'products.id')
                 ->where('branch_stocks.branch_id', (int) $branchId);
-=======
-        // Support multiple branch-scoping strategies:
-        // - product_branch pivot (branches relationship)
-        // - legacy products.branch_id column
-        // - stock_ins records
-        $query->where(function ($q) use ($branchId) {
-            $q->whereHas('branches', function ($qb) use ($branchId) {
-                $qb->where('branches.id', $branchId);
-            })->orWhere('branch_id', $branchId)
-              ->orWhereHas('stockIns', function ($qs) use ($branchId) {
-                  $qs->where('branch_id', $branchId);
-              });
->>>>>>> d12ed99b6778897b2d042ab290fe50adab0eb432
         });
 
         // Apply sorting

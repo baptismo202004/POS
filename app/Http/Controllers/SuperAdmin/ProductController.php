@@ -13,7 +13,6 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\ProductType;
 use App\Models\UnitType;
-use App\Models\Branch;
 use App\Models\ProductSerial;
 use Illuminate\Support\Facades\Log;
 
@@ -197,7 +196,6 @@ class ProductController extends Controller
             'categories'   => Category::where('status', 'active')->get(),
             'productTypes' => ProductType::all(),
             'unitTypes'    => UnitType::all(),
-            'branches'     => Branch::all(),
         ]);
     }
 
@@ -227,14 +225,6 @@ class ProductController extends Controller
             'conversion_factor' => 'nullable|array',
             'conversion_factor.*' => 'nullable|numeric|gt:0',
         ];
-
-        // Only add branch validation for non-electronic products
-        if ($request->input('product_type_id') === 'non-electronic') {
-            $rules['branch_ids'] = 'required|array|min:1';
-            $rules['branch_ids.*'] = 'exists:branches,id';
-        } else {
-            $rules['branch_ids'] = 'nullable|array';
-        }
 
         $validator = Validator::make($request->all(), $rules);
 
@@ -293,11 +283,10 @@ class ProductController extends Controller
                     $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
 
                 } else {
-                    // For non-electronic products, store in products table and sync branches
+                    // For non-electronic products, store in products table
                     Log::info('Processing non-electronic product', [
                         'brand_id' => $validated['brand_id'] ?? 'null',
                         'category_id' => $validated['category_id'] ?? 'null',
-                        'branch_ids' => $validated['branch_ids'] ?? 'null'
                     ]);
                     
                     // Handle brand_id - check if it's numeric or text
@@ -334,12 +323,6 @@ class ProductController extends Controller
                     Log::info('Product created successfully', ['product_id' => $product->id]);
                     $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
                     Log::info('Unit types synced');
-                    
-                    // Sync branches for non-electronic products
-                    if (isset($validated['branch_ids'])) {
-                        $product->branches()->sync($validated['branch_ids']);
-                        Log::info('Branches synced', ['branch_ids' => $validated['branch_ids']]);
-                    }
                 }
             });
 
@@ -374,7 +357,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load(['unitTypes', 'branches']);
+        $product->load(['unitTypes']);
 
         return view('SuperAdmin.products.productList', [
             'product'      => $product,
@@ -382,7 +365,6 @@ class ProductController extends Controller
             'categories'   => Category::where('status', 'active')->get(),
             'productTypes' => ProductType::all(),
             'unitTypes'    => UnitType::all(),
-            'branches'     => Branch::all(),
         ]);
     }
 
@@ -400,8 +382,6 @@ class ProductController extends Controller
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
             'product_type_id' => 'nullable',
-            'branch_ids' => 'nullable|array',
-            'branch_ids.*' => 'exists:branches,id',
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
             'warranty_type' => 'required|in:none,shop,manufacturer',
@@ -440,11 +420,6 @@ class ProductController extends Controller
 
                 $product->update($validated);
                 $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
-                
-                // Sync branches for non-electronic products
-                if ($product->product_type_id === 'non-electronic' && isset($validated['branch_ids'])) {
-                    $product->branches()->sync($validated['branch_ids']);
-                }
             });
 
             return response()->json(['success' => true]);

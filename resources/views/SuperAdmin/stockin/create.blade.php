@@ -116,6 +116,13 @@
                             console.log('AJAX success. Data received:', data);
                             tableBody.empty();
 
+                            function fmtNumber(n) {
+                                const num = Number(n);
+                                if (!isFinite(num)) return '0';
+                                const fixed = num.toFixed(6);
+                                return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+                            }
+
                             if(data.length > 0) {
                                 var itemIndex = 0;
                                 $.each(data, function(index, item) {
@@ -124,19 +131,54 @@
                                     var unitTypes = product && product.unit_types ? product.unit_types : [];
                                     var rowspan = unitTypes.length > 0 ? `rowspan="${unitTypes.length}"` : '';
 
+                                    var purchaseUnitName = item.purchase_unit_name || '';
+                                    var baseUnitName = item.base_unit_name || '';
+                                    var purchasedQty = parseFloat(item.quantity || 0);
+                                    var purchasedBase = parseFloat(item.purchased_base || 0);
+                                    var purchaseFactor = parseFloat(item.purchase_factor || 1);
+                                    var remainingBase = parseFloat(item.remaining_base || 0);
+
+                                    var remainingPurchaseUnits = Math.floor(remainingBase / (purchaseFactor || 1));
+                                    if (!isFinite(remainingPurchaseUnits) || remainingPurchaseUnits < 0) remainingPurchaseUnits = 0;
+                                    var remainingRemainderBase = remainingBase - (remainingPurchaseUnits * (purchaseFactor || 1));
+                                    if (!isFinite(remainingRemainderBase) || remainingRemainderBase < 0) remainingRemainderBase = 0;
+
+                                    var purchasedQtyDisplay = `${fmtNumber(purchasedQty)} ${purchaseUnitName}`;
+                                    if (baseUnitName) {
+                                        purchasedQtyDisplay = `${fmtNumber(purchasedQty)} ${purchaseUnitName} / ${fmtNumber(purchasedBase)} ${baseUnitName}`;
+                                    }
+
+                                    var remainingDisplay = `${fmtNumber(remainingPurchaseUnits)} ${purchaseUnitName}`;
+                                    if (baseUnitName) {
+                                        remainingDisplay = `${fmtNumber(remainingPurchaseUnits)} ${purchaseUnitName} / ${fmtNumber(remainingBase)} ${baseUnitName}`;
+                                    }
+
+                                    var remainderHint = '';
+                                    if (baseUnitName && remainingRemainderBase > 0) {
+                                        remainderHint = ` (+ ${fmtNumber(remainingRemainderBase)} ${baseUnitName})`;
+                                    }
+
+                                    var conversionSummary = item.conversion_summary || '';
+
                                     if (unitTypes.length > 0) {
                                         $.each(unitTypes, function(utIndex, unitType) {
                                             var row;
                                             var priceInput = `<input type="number" name="items[${itemIndex}][price]" class="form-control" step="0.01" value="${item.unit_cost}">`;
                                             if (utIndex === 0) {
                                                 row = `<tr>
-                                                    <td ${rowspan}>${product.product_name}</td>
+                                                    <td ${rowspan}>
+                                                        <div>${product.product_name}</div>
+                                                        ${conversionSummary ? `<div class="text-muted" style="font-size: 12px;">${conversionSummary}</div>` : ''}
+                                                    </td>
                                                     <td>
                                                         <input type="hidden" name="items[${itemIndex}][product_id]" value="${product.id}">
                                                         <input type="hidden" name="items[${itemIndex}][unit_type_id]" value="${unitType.id}">
                                                         ${unitType.unit_name}
                                                     </td>
-                                                    <td ${rowspan}>${item.quantity}</td>
+                                                    <td ${rowspan}>
+                                                        <div>${purchasedQtyDisplay}</div>
+                                                        <div class="text-muted" style="font-size: 12px;">Remaining: ${remainingDisplay}${remainderHint}</div>
+                                                    </td>
                                                     <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control" min="0"></td>
                                                     <td>${priceInput}</td>
                                                 </tr>`;
@@ -156,9 +198,15 @@
                                         });
                                     } else {
                                         var row = `<tr>
-                                            <td>${product ? product.product_name : 'Product not found'}</td>
+                                            <td>
+                                                <div>${product ? product.product_name : 'Product not found'}</div>
+                                                ${conversionSummary ? `<div class="text-muted" style="font-size: 12px;">${conversionSummary}</div>` : ''}
+                                            </td>
                                             <td>No unit type defined</td>
-                                            <td>${item.quantity}</td>
+                                            <td>
+                                                <div>${purchasedQtyDisplay}</div>
+                                                <div class="text-muted" style="font-size: 12px;">Remaining: ${remainingDisplay}${remainderHint}</div>
+                                            </td>
                                             <td>
                                                 <input type="hidden" name="items[${itemIndex}][product_id]" value="${product.id}">
                                                 <input type="hidden" name="items[${itemIndex}][unit_type_id]" value="">

@@ -166,40 +166,7 @@
                                 <strong>Filter Applied:</strong> Showing only out of stock items (≤ 15 units)
                             </div>
                         @endif
-                        <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow: auto;">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Product</a></th>
-                                        <th>Brand</th>
-                                        <th>Category</th>
-                                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'current_stock', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Current Stock</a></th>
-                                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_sold', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Sold</a></th>
-                                        <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_revenue', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}">Total Revenue</a></th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($products as $product)
-                                        <tr class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'table-danger' : '' }}">
-                                            <td><a href="{{ route('superadmin.products.show', $product->id) }}">{{ $product->product_name }}</a></td>
-                                            <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
-                                            <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                            <td class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'text-danger font-weight-bold' : '' }}">{{ $product->current_stock }}</td>
-                                            <td>{{ $product->total_sold }}</td>
-                                            <td>{{ number_format($product->total_revenue, 2) }}</td>
-                                            <td>
-                                                <a href="{{ route('superadmin.inventory.stock-management') }}" class="btn btn-sm btn-primary">Manage Stock</a>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="7" class="text-center">No products found.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+
                         <div class="d-flex justify-content-center mt-4">
                             {{ $products->links() }}
                         </div>

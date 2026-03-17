@@ -48,25 +48,14 @@ class PurchaseController extends Controller
             ->withPivot('conversion_factor', 'is_base')
             ->get();
 
-        if ($productUnits->isEmpty()) {
-            $units = UnitType::all()->map(function ($unit) {
-                return [
-                    'id' => $unit->id,
-                    'name' => $unit->unit_name,
-                    'conversion_factor' => 1.0,
-                    'is_base' => false,
-                ];
-            });
-        } else {
-            $units = $productUnits->map(function ($unit) {
-                return [
-                    'id' => $unit->id,
-                    'name' => $unit->unit_name,
-                    'conversion_factor' => isset($unit->pivot->conversion_factor) ? (float) $unit->pivot->conversion_factor : 1.0,
-                    'is_base' => isset($unit->pivot->is_base) ? (bool) $unit->pivot->is_base : false,
-                ];
-            });
-        }
+        $units = $productUnits->map(function ($unit) {
+            return [
+                'id' => $unit->id,
+                'name' => $unit->unit_name,
+                'conversion_factor' => isset($unit->pivot->conversion_factor) ? (float) $unit->pivot->conversion_factor : 1.0,
+                'is_base' => isset($unit->pivot->is_base) ? (bool) $unit->pivot->is_base : false,
+            ];
+        });
 
         return response()->json([
             'units' => $units,
@@ -92,14 +81,12 @@ class PurchaseController extends Controller
             'items.*.product_id' => 'required_if:items.*.is_new,null|exists:products,id',
             'items.*.product_name' => 'required_if:items.*.is_new,1|string|max:255|unique:products,product_name',
             'items.*.primary_quantity' => 'required|numeric|min:1',
-            'items.*.multiplier' => 'required|numeric|min:1',
-            'items.*.base_quantity' => 'required|numeric|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
-            'items.*.base_unit_type_id' => 'nullable|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        $purchaseId = null;
+        DB::transaction(function () use ($validated, &$purchaseId) {
             $totalCost = 0;
             $purchaseItemsData = [];
 
@@ -113,30 +100,29 @@ class PurchaseController extends Controller
                         'tracking_type' => 'none',
                         'warranty_type' => 'none',
                     ]);
-                    $newProduct->unitTypes()->sync([$item['unit_type_id']]);
+                    $newProduct->unitTypes()->sync([
+                        $item['unit_type_id'] => [
+                            'conversion_factor' => 1.0,
+                            'is_base' => true,
+                        ],
+                    ]);
                     $productId = $newProduct->id;
                 } else {
                     $productId = $item['product_id'];
                 }
 
                 $primaryQty = (float) $item['primary_quantity'];
-                $multiplier = (float) $item['multiplier'];
-                $baseQty = (float) $item['base_quantity'];
 
-                $computedBase = $primaryQty * $multiplier;
-                $baseQty = $computedBase;
+                // Purchases now store the entered quantity in the selected unit.
+                $qty = $primaryQty;
 
                 $subtotal = $primaryQty * $item['cost'];
                 $totalCost += $subtotal;
 
                 $purchaseItemsData[] = [
                     'product_id' => $productId,
-                    'primary_quantity' => $primaryQty,
-                    'multiplier' => $multiplier,
-                    'base_quantity' => $baseQty,
-                    'quantity' => $baseQty,
+                    'quantity' => $qty,
                     'unit_type_id' => $item['unit_type_id'],
-                    'base_unit_type_id' => $item['base_unit_type_id'] ?? null,
                     'unit_cost' => $item['cost'],
                     'subtotal' => $subtotal,
                 ];
@@ -150,10 +136,13 @@ class PurchaseController extends Controller
                 'reference_number' => !empty($validated['reference_number']) ? $validated['reference_number'] : null,
             ]);
 
+            $purchaseId = $purchase->id;
+
             $purchase->items()->createMany($purchaseItemsData);
         });
 
-        return redirect()->route('superadmin.purchases.index')->with('success', 'Purchase created successfully.');
+        return redirect()->route('superadmin.purchases.show', ['purchase' => $purchaseId])
+            ->with('success', 'Purchase created successfully.');
     }
 
     public function show(Purchase $purchase)

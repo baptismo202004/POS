@@ -212,7 +212,7 @@
                                     }
 
                                     $factorText = rtrim(rtrim(number_format($factor, 6, '.', ''), '0'), '.');
-                                    $conversionSummaryParts[] = '1 ' . $baseUnit->name . ' × ' . $factorText . ' ' . $ut->name;
+                                    $conversionSummaryParts[] = '1 ' . $ut->name . ' × ' . $factorText . ' ' . $baseUnit->name;
                                 }
                             }
                             $conversionSummary = implode(', ', $conversionSummaryParts);
@@ -300,7 +300,7 @@
                                                     @if($isBase || !$baseName)
                                                         {{ $unitType->name }}{{ ($isBase && $unitTypeCount > 1) ? ' (base)' : '' }}
                                                     @else
-                                                        1 {{ $baseName }} × {{ $factorText }} {{ $unitType->name }}
+                                                        1 {{ $unitType->name }} × {{ $factorText }} {{ $baseName }}
                                                     @endif
                                                 </td>
                                                 <td>
