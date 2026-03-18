@@ -142,8 +142,6 @@ Route::get('/cashier/purchases/create', [CashierDashboardController::class, 'pur
 Route::post('/cashier/purchases', [CashierDashboardController::class, 'purchasesStore'])->middleware('auth')->name('cashier.purchases.store');
 Route::get('/cashier/purchases/{purchase}', [CashierDashboardController::class, 'purchasesShow'])->middleware('auth')->name('cashier.purchases.show');
 Route::post('/cashier/purchases/{purchase}/mark-paid', [CashierDashboardController::class, 'purchasesMarkPaid'])->middleware('auth')->name('cashier.purchases.mark-paid');
-Route::post('/cashier/purchases/ocr-product-match', [CashierDashboardController::class, 'purchasesOcrProductMatch'])->middleware('auth')->name('cashier.purchases.ocr-product-match');
-Route::post('/cashier/test-ocr', [CashierDashboardController::class, 'testOcr'])->middleware('auth')->name('cashier.test.ocr');
 Route::get('/cashier/products/{product}/unit-types', [CashierDashboardController::class, 'getProductUnitTypes'])->middleware('auth')->name('cashier.products.unit-types');
 
 // Cashier Suppliers

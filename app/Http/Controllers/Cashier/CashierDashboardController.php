@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
-use App\Models\Brand;
 use App\Models\Branch;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Credit;
+use App\Models\CreditPayment;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
@@ -17,17 +18,16 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\UnitType;
-use App\Models\CreditPayment;
 use App\Services\InventoryService;
+use App\Support\Access;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use App\Support\Access;
 
 class CashierDashboardController extends Controller
 {
@@ -274,15 +274,15 @@ class CashierDashboardController extends Controller
             ->with(['saleItems.product', 'customer']);
 
         // If a date is selected, show only sales from that specific date
-        if (!empty($dateFrom)) {
+        if (! empty($dateFrom)) {
             $query->whereDate('created_at', $dateFrom);
         }
 
         // If a search term is provided, filter by receipt # (id) or customer name
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%");
             });
         }
 
@@ -516,12 +516,12 @@ class CashierDashboardController extends Controller
                     ->whereColumn('product_branch.product_id', 'products.id')
                     ->where('product_branch.branch_id', (int) $branchId);
             })
-            ->orWhereExists(function ($exists) use ($branchId) {
-                $exists->select(DB::raw(1))
-                    ->from('branch_stocks')
-                    ->whereColumn('branch_stocks.product_id', 'products.id')
-                    ->where('branch_stocks.branch_id', (int) $branchId);
-            });
+                ->orWhereExists(function ($exists) use ($branchId) {
+                    $exists->select(DB::raw(1))
+                        ->from('branch_stocks')
+                        ->whereColumn('branch_stocks.product_id', 'products.id')
+                        ->where('branch_stocks.branch_id', (int) $branchId);
+                });
         });
 
         // Apply sorting
@@ -634,14 +634,14 @@ class CashierDashboardController extends Controller
 
         // Persist pivot relations so the product is visible in branch-scoped lists.
         // Branch assignment
-        if (!empty($validated['branch_ids'])) {
+        if (! empty($validated['branch_ids'])) {
             $product->branches()->sync($validated['branch_ids']);
         } else {
             $product->branches()->sync([$branchId]);
         }
 
         // Unit types assignment
-        if (!empty($validated['unit_type_ids'])) {
+        if (! empty($validated['unit_type_ids'])) {
             $product->unitTypes()->sync($validated['unit_type_ids']);
         }
 
@@ -755,13 +755,13 @@ class CashierDashboardController extends Controller
         ]);
 
         // Keep pivot relations in sync
-        if (!empty($validated['branch_ids'])) {
+        if (! empty($validated['branch_ids'])) {
             $product->branches()->sync($validated['branch_ids']);
         } else {
             $product->branches()->sync([$branchId]);
         }
 
-        if (!empty($validated['unit_type_ids'])) {
+        if (! empty($validated['unit_type_ids'])) {
             $product->unitTypes()->sync($validated['unit_type_ids']);
         }
 
@@ -876,7 +876,7 @@ class CashierDashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Category created successfully',
-                'category' => $category
+                'category' => $category,
             ]);
         }
 
@@ -924,7 +924,7 @@ class CashierDashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Category updated successfully',
-                'category' => $category
+                'category' => $category,
             ]);
         }
 
@@ -966,7 +966,7 @@ class CashierDashboardController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Categories deleted successfully'
+                'message' => 'Categories deleted successfully',
             ]);
         }
 
@@ -1038,82 +1038,6 @@ class CashierDashboardController extends Controller
         return view('cashier.purchase.create', compact('suppliers', 'branchId', 'products', 'unit_types'));
     }
 
-    public function purchasesOcrProductMatch(Request $request)
-    {
-        try {
-            Log::info('OCR method called', ['request_data' => $request->all()]);
-            
-            $text = (string) $request->input('text', '');
-            Log::info('OCR: Text received', ['text_length' => strlen($text), 'text_preview' => substr($text, 0, 200)]);
-            
-            if (empty($text)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No text provided'
-                ], 400);
-            }
-            
-            // Simple test - just return success with the text
-            return response()->json([
-                'success' => true,
-                'message' => 'OCR processing complete',
-                'reference_number' => 'TEST-REF',
-                'matched_products' => [
-                    [
-                        'id' => 1,
-                        'product_name' => 'Test Product 1',
-                        'detected_quantity' => 2,
-                        'detected_cost' => 50.00
-                    ],
-                    [
-                        'id' => 2,
-                        'product_name' => 'Test Product 2', 
-                        'detected_quantity' => 1,
-                        'detected_cost' => 25.00
-                    ]
-                ],
-                'unmatched_products' => []
-            ]);
-            
-        } catch (\Throwable $e) {
-            Log::error('OCR method failed completely', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'OCR processing failed: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function testOcr(Request $request)
-    {
-        try {
-            Log::info('Test OCR method called', ['request_data' => $request->all()]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Test OCR working',
-                'data' => $request->all()
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Test OCR failed', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Test failed: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     public function purchasesStore(Request $request)
     {
         $user = Auth::user();
@@ -1174,7 +1098,7 @@ class CashierDashboardController extends Controller
                 ];
             }
 
-            if (!empty($itemsToInsert)) {
+            if (! empty($itemsToInsert)) {
                 DB::table('purchase_items')->insert($itemsToInsert);
             }
 
@@ -1374,7 +1298,7 @@ class CashierDashboardController extends Controller
 
                 if (! empty($filters['created_by'])) {
                     $query->whereHas('cashier', function ($q) use ($filters) {
-                        $q->where('name', 'like', '%' . $filters['created_by'] . '%');
+                        $q->where('name', 'like', '%'.$filters['created_by'].'%');
                     });
                 }
 
@@ -1404,7 +1328,8 @@ class CashierDashboardController extends Controller
                 'returnTo'
             ));
         } catch (\Exception $e) {
-            \Log::error('Error loading cashier full credit history: ' . $e->getMessage());
+            \Log::error('Error loading cashier full credit history: '.$e->getMessage());
+
             return back()->with('error', 'Unable to load credit history');
         }
     }
@@ -1494,12 +1419,12 @@ class CashierDashboardController extends Controller
                         ->whereColumn('product_branch.product_id', 'products.id')
                         ->where('product_branch.branch_id', (int) $branchId);
                 })
-                ->orWhereExists(function ($exists) use ($branchId) {
-                    $exists->select(DB::raw(1))
-                        ->from('branch_stocks')
-                        ->whereColumn('branch_stocks.product_id', 'products.id')
-                        ->where('branch_stocks.branch_id', (int) $branchId);
-                });
+                    ->orWhereExists(function ($exists) use ($branchId) {
+                        $exists->select(DB::raw(1))
+                            ->from('branch_stocks')
+                            ->whereColumn('branch_stocks.product_id', 'products.id')
+                            ->where('branch_stocks.branch_id', (int) $branchId);
+                    });
             })
             ->orderBy('products.product_name', 'asc')
             ->select([
@@ -1568,10 +1493,10 @@ class CashierDashboardController extends Controller
                 ->where('branch_id', $branchId)
                 ->first();
 
-            if (!$purchase) {
+            if (! $purchase) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Purchase not found for this branch'
+                    'message' => 'Purchase not found for this branch',
                 ], 403);
             }
 
@@ -1586,17 +1511,22 @@ class CashierDashboardController extends Controller
                     foreach ($unitQuantities as $unitTypeId => $enteredQty) {
                         $enteredQty = (float) $enteredQty;
                         $unitTypeId = (int) $unitTypeId;
-                        if ($enteredQty <= 0) continue;
+                        if ($enteredQty <= 0) {
+                            continue;
+                        }
 
                         $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
                             ->where('product_id', $pid)
                             ->where('unit_type_id', $unitTypeId)
                             ->value('conversion_factor') ?? 1);
-                        if ($factor <= 0) $factor = 1;
+                        if ($factor <= 0) {
+                            $factor = 1;
+                        }
                         $sumBase += ($enteredQty * $factor);
                     }
 
                     $requestedByProduct[$pid] = ($requestedByProduct[$pid] ?? 0) + $sumBase;
+
                     continue;
                 }
 
@@ -1632,7 +1562,7 @@ class CashierDashboardController extends Controller
                 if ($requestedQty > $remaining) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Stock-in quantity exceeds remaining for one or more products.'
+                        'message' => 'Stock-in quantity exceeds remaining for one or more products.',
                     ], 422);
                 }
             }
@@ -1720,13 +1650,13 @@ class CashierDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($items) . ' items added successfully'
+                'message' => count($items).' items added successfully',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error adding stock: ' . $e->getMessage()
+                'message' => 'Error adding stock: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1786,7 +1716,7 @@ class CashierDashboardController extends Controller
                     'quantity' => $remainingQuantity,
                     'unit_price' => $item->unit_cost,
                     'unit_types' => $unitTypes->values(),
-                    'unit_type' => $item->unitType
+                    'unit_type' => $item->unitType,
                 ];
 
                 return $result;
@@ -2115,7 +2045,7 @@ class CashierDashboardController extends Controller
             $branchId = (int) $userBranchId;
 
             // Generate a unique reference number for this credit
-            $referenceNumber = 'CR-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4));
+            $referenceNumber = 'CR-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4));
 
             // Resolve or create customer
             $rawCustomer = $request->customer_id;
@@ -2229,7 +2159,7 @@ class CashierDashboardController extends Controller
             });
 
             // Update customer phone number if provided
-            if (!empty($request->phone_number)) {
+            if (! empty($request->phone_number)) {
                 $customer->update(['phone' => $request->phone_number]);
             }
 
@@ -2906,12 +2836,12 @@ class CashierDashboardController extends Controller
         if ($products->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'No products found.'
+                'message' => 'No products found.',
             ]);
         }
 
         $product = $products->first();
-        
+
         $inventory = app(InventoryService::class);
         $totalStock = $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 
@@ -3014,7 +2944,7 @@ class CashierDashboardController extends Controller
                 'selling_price' => $price, // Use price from StockIn
                 'total_stock' => $totalStock,
                 'branches' => $branches,
-            ]]
+            ]],
         ]);
     }
 
@@ -3039,7 +2969,7 @@ class CashierDashboardController extends Controller
             $creditNotes = $request->input('credit_notes');
             $items = $request->input('products');
 
-            if (empty($items) || !is_array($items)) {
+            if (empty($items) || ! is_array($items)) {
                 return response()->json(['success' => false, 'message' => 'No items provided for sale']);
             }
 
@@ -3066,11 +2996,13 @@ class CashierDashboardController extends Controller
 
                 if (! $productId || $quantity <= 0) {
                     DB::rollBack();
+
                     return response()->json(['success' => false, 'message' => 'Invalid item payload.']);
                 }
 
                 if (empty($unitTypeId)) {
                     DB::rollBack();
+
                     return response()->json(['success' => false, 'message' => 'Unit type is required for each item.'], 422);
                 }
 
@@ -3078,6 +3010,7 @@ class CashierDashboardController extends Controller
                 $availableBase = $inventory->availableStockBase((int) $productId, (int) $posBranchId);
                 if ($availableBase < $baseQty) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Insufficient stock for selected unit type.',
@@ -3116,7 +3049,7 @@ class CashierDashboardController extends Controller
                     'sale_id' => $sale->id,
                     'status' => 'active',
                     'date' => $creditDueDate ?? now()->addDays(30),
-                    'notes' => $creditNotes ?? 'Credit from POS Sale #' . $sale->id,
+                    'notes' => $creditNotes ?? 'Credit from POS Sale #'.$sale->id,
                     'credit_type' => 'sales',
                 ], $branchId, $user->id);
             }
@@ -3178,10 +3111,11 @@ class CashierDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'creditsByCustomer' => $creditsByCustomer
+                'creditsByCustomer' => $creditsByCustomer,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error loading credit limits data: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Error loading credit limits data']);
         }
     }
@@ -3202,7 +3136,7 @@ class CashierDashboardController extends Controller
             $validated = $request->validate([
                 'customers' => 'required|array',
                 'customers.*.customer_id' => 'required|exists:customers,id',
-                'customers.*.max_credit_limit' => 'required|numeric|min:0'
+                'customers.*.max_credit_limit' => 'required|numeric|min:0',
             ]);
 
             DB::beginTransaction();
@@ -3220,6 +3154,7 @@ class CashierDashboardController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error updating credit limits: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Error updating credit limits']);
         }
     }
@@ -3227,14 +3162,14 @@ class CashierDashboardController extends Controller
     public function receipt($saleId)
     {
         $sale = Sale::with('saleItems.product')->findOrFail($saleId);
-        
+
         // Simple barcode generation using the sale ID
         $barcode = $sale->id;
-        
+
         // For cashier receipts, no group ID (null) and no related sales
         $receiptGroupId = null;
         $relatedSales = collect(); // Empty collection for individual receipts
-        
+
         return view('cashier.sales.receipt', compact('sale', 'barcode', 'receiptGroupId', 'relatedSales'));
     }
 
@@ -3262,12 +3197,13 @@ class CashierDashboardController extends Controller
             return response()->json([
                 'id' => $supplier->id,
                 'supplier_name' => $supplier->supplier_name,
-                'message' => 'Supplier added successfully!'
+                'message' => 'Supplier added successfully!',
             ]);
         } catch (\Exception $e) {
             \Log::error('Error creating supplier: '.$e->getMessage());
+
             return response()->json([
-                'message' => 'Error creating supplier. Please try again.'
+                'message' => 'Error creating supplier. Please try again.',
             ], 500);
         }
     }
@@ -3331,19 +3267,19 @@ class CashierDashboardController extends Controller
                 if ($credit->customer) {
                     $customerData = [];
 
-                    if (!empty($validated['email'])) {
+                    if (! empty($validated['email'])) {
                         $customerData['email'] = $validated['email'];
                     }
 
-                    if (!empty($validated['phone_number'])) {
+                    if (! empty($validated['phone_number'])) {
                         $customerData['phone'] = $validated['phone_number'];
                     }
 
-                    if (!empty($validated['address'])) {
+                    if (! empty($validated['address'])) {
                         $customerData['address'] = $validated['address'];
                     }
 
-                    if (!empty($customerData)) {
+                    if (! empty($customerData)) {
                         $credit->customer->update($customerData);
                     }
                 }
@@ -3351,20 +3287,20 @@ class CashierDashboardController extends Controller
 
             // Check if it's an AJAX request (multiple methods)
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
-            
+
             // Debug logging
             \Log::info('Credit Update Request:', [
                 'ajax' => $request->ajax(),
                 'wantsJson' => $request->wantsJson(),
                 'xRequestedWith' => $request->header('X-Requested-With'),
                 'isAjax' => $isAjax,
-                'headers' => $request->headers->all()
+                'headers' => $request->headers->all(),
             ]);
-            
+
             if ($isAjax) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Credit updated successfully!'
+                    'message' => 'Credit updated successfully!',
                 ]);
             }
 
@@ -3372,17 +3308,17 @@ class CashierDashboardController extends Controller
                 ->with('success', 'Credit updated successfully!');
         } catch (\Exception $e) {
             \Log::error('Error updating credit: '.$e->getMessage());
-            
+
             // Check if it's an AJAX request (multiple methods)
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
-            
+
             if ($isAjax) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error updating credit. Please try again.'
+                    'message' => 'Error updating credit. Please try again.',
                 ], 500);
             }
-            
+
             return redirect()->back()
                 ->with('error', 'Error updating credit. Please try again.');
         }
@@ -3411,6 +3347,7 @@ class CashierDashboardController extends Controller
                 ->with('success', 'Credit deleted successfully!');
         } catch (\Exception $e) {
             \Log::error('Error deleting credit: '.$e->getMessage());
+
             return redirect()->back()
                 ->with('error', 'Error deleting credit. Please try again.');
         }
