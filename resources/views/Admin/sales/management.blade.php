@@ -285,9 +285,9 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-info" onclick="showSaleDetails({{ $sale->id }})" title="View Details">
+                                                <a class="btn btn-sm btn-info" href="{{ route('admin.main.sales.show', $sale) }}" title="View Details">
                                                     <i class="fas fa-eye"></i>
-                                                </button>
+                                                </a>
                                                 <button class="btn btn-sm btn-secondary" onclick="showSaleHistory({{ $sale->id }})" title="View History">
                                                     <i class="fas fa-history"></i>
                                                 </button>
@@ -452,25 +452,46 @@ function showSaleDetails(saleId) {
         .then(data => {
             document.getElementById('detailsLoading').style.display = 'none';
             document.getElementById('detailsContent').style.display = 'block';
+
+            const sale = data.sale || {};
+            const createdAt = sale.created_at ? new Date(sale.created_at) : null;
+            const dateDisplay = createdAt ? createdAt.toLocaleDateString() : '';
+            const status = (sale.status || '').toLowerCase();
+            const statusLabel = status ? (status.charAt(0).toUpperCase() + status.slice(1)) : 'N/A';
+            const statusClass = status === 'pending' ? 'bg-warning' : (status === 'voided' ? 'bg-danger' : 'bg-success');
+            const paymentMethod = sale.payment_method ? (sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1)) : 'N/A';
+            const totalAmount = (data.sale_info && data.sale_info.current_total != null)
+                ? parseFloat(data.sale_info.current_total)
+                : (sale.total_amount != null ? parseFloat(sale.total_amount) : 0);
+            const customer = sale.customer || null;
             
             let content = `
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Sale Information</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>Sale ID:</strong></td><td>#${saleId}</td></tr>
-                            <tr><td><strong>Date:</strong></td><td>${new Date().toLocaleDateString()}</td></tr>
-                            <tr><td><strong>Status:</strong></td><td><span class="badge bg-success">Completed</span></td></tr>
+                            <tr><td><strong>Sale ID:</strong></td><td>#${sale.id || saleId}</td></tr>
+                            <tr><td><strong>Date:</strong></td><td>${dateDisplay}</td></tr>
+                            <tr><td><strong>Status:</strong></td><td><span class="badge ${statusClass}">${statusLabel}</span></td></tr>
                         </table>
                     </div>
                     <div class="col-md-6">
                         <h6>Payment Information</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>Payment Method:</strong></td><td>Cash</td></tr>
-                            <tr><td><strong>Total Amount:</strong></td><td>₱${data.sale_info ? parseFloat(data.sale_info.current_total).toFixed(2) : '0.00'}</td></tr>
+                            <tr><td><strong>Payment Method:</strong></td><td>${paymentMethod}</td></tr>
+                            <tr><td><strong>Total Amount:</strong></td><td>₱${isFinite(totalAmount) ? totalAmount.toFixed(2) : '0.00'}</td></tr>
                         </table>
                     </div>
                 </div>
+                <h6 class="mt-3">Customer Details</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${customer && customer.full_name ? customer.full_name : 'Walk-in'}</td></tr>
+                    <tr><td><strong>Company/School:</strong></td><td>${customer && customer.company_school_name ? customer.company_school_name : '-'}</td></tr>
+                    <tr><td><strong>Phone:</strong></td><td>${customer && customer.phone ? customer.phone : '-'}</td></tr>
+                    <tr><td><strong>Email:</strong></td><td>${customer && customer.email ? customer.email : '-'}</td></tr>
+                    <tr><td><strong>Facebook:</strong></td><td>${customer && customer.facebook ? customer.facebook : '-'}</td></tr>
+                    <tr><td><strong>Address:</strong></td><td>${customer && customer.address ? customer.address : '-'}</td></tr>
+                </table>
                 <h6 class="mt-3">Items Sold</h6>
                 <div class="table-responsive">
                     <table class="table table-sm">
@@ -480,6 +501,10 @@ function showSaleDetails(saleId) {
                                 <th>Quantity</th>
                                 <th>Unit Price</th>
                                 <th>Total</th>
+                                <th>Warranty</th>
+                                <th>Warranty Start</th>
+                                <th>Warranty Expiry</th>
+                                <th>Warranty Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -487,17 +512,41 @@ function showSaleDetails(saleId) {
             
             if (data.items && data.items.length > 0) {
                 data.items.forEach(item => {
+                    const qtyRaw = item.quantity != null ? item.quantity : 0;
+                    const qtyNum = parseFloat(qtyRaw);
+                    const qtyDisplay = Number.isFinite(qtyNum)
+                        ? (Math.floor(qtyNum) === qtyNum ? String(parseInt(qtyNum, 10)) : String(qtyNum))
+                        : String(qtyRaw);
+
+                    const wm = item.warranty_months != null ? parseInt(item.warranty_months, 10) : 0;
+                    const ws = item.warranty_start ? new Date(item.warranty_start) : null;
+                    const we = item.warranty_expiry_date ? new Date(item.warranty_expiry_date) : null;
+                    let warrantyStatus = 'N/A';
+                    if (!wm || wm <= 0) {
+                        warrantyStatus = 'No Warranty';
+                    } else if (!ws) {
+                        warrantyStatus = 'Not Started';
+                    } else if (we && we.getTime() < new Date().setHours(0,0,0,0)) {
+                        warrantyStatus = 'Expired';
+                    } else {
+                        warrantyStatus = 'Active';
+                    }
+
                     content += `
                         <tr>
                             <td>${item.product_name}</td>
-                            <td>${item.quantity}</td>
+                            <td>${qtyDisplay}</td>
                             <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
                             <td>₱${(item.quantity * parseFloat(item.unit_price)).toFixed(2)}</td>
+                            <td>${wm && wm > 0 ? (wm + ' month(s)') : '-'}</td>
+                            <td>${ws ? ws.toLocaleDateString() : '-'}</td>
+                            <td>${we ? we.toLocaleDateString() : '-'}</td>
+                            <td>${warrantyStatus}</td>
                         </tr>
                     `;
                 });
             } else {
-                content += '<tr><td colspan="4" class="text-center">No items found</td></tr>';
+                content += '<tr><td colspan="8" class="text-center">No items found</td></tr>';
             }
             
             content += `
@@ -639,8 +688,8 @@ function confirmDeleteSale() {
 function printSaleReceipt() {
     if (!currentSaleId) return;
     
-    // Open print window (in real app, this would open a printable receipt view)
-    const printWindow = window.open(`/admin/sales/${currentSaleId}/receipt`, '_blank');
+    // Open print window
+    const printWindow = window.open(`/admin/sales/${currentSaleId}/receipt-pdf`, '_blank');
     if (!printWindow) {
         Swal.fire({
             icon: 'error',

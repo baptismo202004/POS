@@ -13,12 +13,14 @@ class SaleItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'warranty_months',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'warranty_months' => 'integer',
     ];
 
     public function sale()

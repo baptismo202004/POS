@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Models\StockIn;
 use Carbon\Carbon;
+use App\Services\CustomerService;
 
 class PosAdminController extends Controller
 {
@@ -195,6 +196,15 @@ class PosAdminController extends Controller
                 }
 
                 // Resolve unit prices per branch from latest saved unit prices
+                $fallbackLatestStockIn = null;
+                if ($electronicsOnly) {
+                    $fallbackLatestStockIn = StockIn::with(['unitPrices.unitType'])
+                        ->where('product_id', (int) $p->id)
+                        ->whereHas('unitPrices')
+                        ->orderByDesc('id')
+                        ->first();
+                }
+
                 foreach ($branchStocks as $bId => $bData) {
                     $latestStockIn = StockIn::with(['unitPrices.unitType'])
                         ->where('product_id', (int) $p->id)
@@ -202,6 +212,10 @@ class PosAdminController extends Controller
                         ->whereHas('unitPrices')
                         ->orderByDesc('id')
                         ->first();
+
+                    if (!$latestStockIn && $fallbackLatestStockIn) {
+                        $latestStockIn = $fallbackLatestStockIn;
+                    }
 
                     $units = [];
                     if ($latestStockIn) {
@@ -342,6 +356,15 @@ class PosAdminController extends Controller
             }
         }
 
+        $fallbackLatestStockIn = null;
+        if ($electronicsOnly) {
+            $fallbackLatestStockIn = StockIn::with(['unitPrices.unitType'])
+                ->where('product_id', (int) $product->id)
+                ->whereHas('unitPrices')
+                ->orderByDesc('id')
+                ->first();
+        }
+
         foreach ($branchStocks as $bId => $bData) {
             $latestStockIn = StockIn::with(['unitPrices.unitType'])
                 ->where('product_id', (int) $product->id)
@@ -349,6 +372,10 @@ class PosAdminController extends Controller
                 ->whereHas('unitPrices')
                 ->orderByDesc('id')
                 ->first();
+
+            if (!$latestStockIn && $fallbackLatestStockIn) {
+                $latestStockIn = $fallbackLatestStockIn;
+            }
 
             $units = [];
             if ($latestStockIn) {
@@ -610,6 +637,8 @@ class PosAdminController extends Controller
                 'order_id' => $sale->id,
             ];
 
+            $response['receipt_pdf_url'] = route('admin.sales.receipt.pdf', $sale);
+
             // If payment method is cash, include receipt URL for automatic display
             if ($paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);
@@ -636,8 +665,15 @@ class PosAdminController extends Controller
             $items = $data['items'] ?? [];
             $total = $data['total'] ?? 0;
             $paymentMethod = $data['payment_method'] ?? 'cash';
+            $requestedOrderStatus = $data['order_status'] ?? 'completed';
+            $notes = isset($data['notes']) ? trim((string) $data['notes']) : null;
             $customerId = !empty($data['customer_id']) ? $data['customer_id'] : null;
             $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
+            $customerCompanySchoolName = !empty($data['customer_company_school_name']) ? trim($data['customer_company_school_name']) : null;
+            $customerPhone = !empty($data['customer_phone']) ? trim($data['customer_phone']) : null;
+            $customerEmail = !empty($data['customer_email']) ? trim($data['customer_email']) : null;
+            $customerFacebook = !empty($data['customer_facebook']) ? trim($data['customer_facebook']) : null;
+            $customerAddress = !empty($data['customer_address']) ? trim($data['customer_address']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
@@ -651,7 +687,7 @@ class PosAdminController extends Controller
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
 
-            $shouldBePending = false;
+            $shouldBePending = ($requestedOrderStatus === 'pending');
             foreach ($items as $item) {
                 $productId = $item['product_id'] ?? null;
                 $itemBranchId = $item['branch_id'] ?? null;
@@ -691,8 +727,34 @@ class PosAdminController extends Controller
                 'payment_method' => $paymentMethod,
             ];
 
-            if ($customerId !== null) {
-                $saleData['customer_id'] = $customerId;
+            if ($notes !== null && $notes !== '' && \Illuminate\Support\Facades\Schema::hasColumn('sales', 'notes')) {
+                $saleData['notes'] = $notes;
+            }
+
+            $resolvedCustomerId = $customerId;
+            if ($resolvedCustomerId === null) {
+                $hasAnyCustomerData = ($customerName !== null && $customerName !== '')
+                    || ($customerPhone !== null && $customerPhone !== '')
+                    || ($customerEmail !== null && $customerEmail !== '')
+                    || ($customerFacebook !== null && $customerFacebook !== '')
+                    || ($customerCompanySchoolName !== null && $customerCompanySchoolName !== '')
+                    || ($customerAddress !== null && $customerAddress !== '');
+
+                if ($hasAnyCustomerData) {
+                    $customer = CustomerService::findOrCreateCustomer([
+                        'full_name' => $customerName ?? '',
+                        'company_school_name' => $customerCompanySchoolName,
+                        'phone' => $customerPhone,
+                        'email' => $customerEmail,
+                        'facebook' => $customerFacebook,
+                        'address' => $customerAddress,
+                    ], $branchId);
+                    $resolvedCustomerId = $customer ? $customer->id : null;
+                }
+            }
+
+            if ($resolvedCustomerId !== null) {
+                $saleData['customer_id'] = $resolvedCustomerId;
             }
 
             $sale = Sale::create($saleData);
@@ -804,6 +866,10 @@ class PosAdminController extends Controller
                     'subtotal' => $price * $quantity,
                 ];
 
+                if (\Illuminate\Support\Facades\Schema::hasColumn('sale_items', 'warranty_months')) {
+                    $saleItemPayload['warranty_months'] = $warrantyMonths;
+                }
+
                 if (\Illuminate\Support\Facades\Schema::hasColumn('sale_items', 'unit_type_id')) {
                     $saleItemPayload['unit_type_id'] = $unitTypeId;
                 }
@@ -903,6 +969,8 @@ class PosAdminController extends Controller
                 'message' => 'Order processed successfully',
                 'order_id' => $sale->id,
             ];
+
+            $response['receipt_pdf_url'] = route('admin.sales.receipt.pdf', $sale);
 
             if (!$shouldBePending && $paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);

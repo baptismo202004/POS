@@ -1126,11 +1126,15 @@ Route::middleware('auth')->group(function () {
         Route::get('stockin/latest-unit-prices', [\App\Http\Controllers\Admin\StockInAdminController::class, 'latestUnitPrices'])->name('stockin.latest-unit-prices');
 
         // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('admin.main.sales.index');
+        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('main.sales.index');
         Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');
         Route::get('sales/graph-data', [\App\Http\Controllers\Admin\SalesController::class, 'getGraphData'])->name('sales.graph-data');
-        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('admin.main.sales.show');
+        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('main.sales.show');
         Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
+        Route::get('sales/{sale}/receipt-pdf', [\App\Http\Controllers\Admin\SaleController::class, 'receiptPdf'])->name('sales.receipt.pdf');
+        Route::post('sales/{sale}/mark-completed', [\App\Http\Controllers\Admin\SaleController::class, 'markCompleted'])->name('sales.mark-completed');
+        Route::post('sales/{sale}/notes', [\App\Http\Controllers\Admin\SaleController::class, 'updateNotes'])->name('sales.update-notes');
+        Route::post('sales/{sale}/items/{saleItem}/serial', [\App\Http\Controllers\Admin\SaleController::class, 'saveSerial'])->name('sales.items.save-serial');
         Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
         Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
         Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
@@ -1267,14 +1271,11 @@ Route::middleware('auth')->group(function () {
         Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
         Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
 
-        // Sales route
-        Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('admin.customers.sales.index');
-        Route::get('sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('admin.customers.sales.show');
-        Route::get('sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('sales.receipt');
-        Route::get('sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('sales.items');
-        Route::get('sales/items-today', [\App\Http\Controllers\Admin\SalesController::class, 'getItemsSoldToday'])->name('sales.items-today');
-        Route::get('sales/todays-revenue', [\App\Http\Controllers\Admin\SalesController::class, 'getTodaysRevenue'])->name('sales.todays-revenue');
-        Route::get('sales/this-month-sales', [\App\Http\Controllers\Admin\SalesController::class, 'getThisMonthSales'])->name('sales.this-month-sales');
+        // Customer Sales route (scoped under customers to avoid conflicting with admin sales routes)
+        Route::get('customers/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('customers.sales.index');
+        Route::get('customers/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('customers.sales.show');
+        Route::get('customers/sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('customers.sales.receipt');
+        Route::get('customers/sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('customers.sales.items');
 
         // Expenses routes
         Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);

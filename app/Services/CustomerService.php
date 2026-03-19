@@ -33,8 +33,10 @@ class CustomerService
         if ($customer) {
             $customer->update([
                 'full_name' => $customerData['full_name'] ?? $customer->full_name,
+                'company_school_name' => $customerData['company_school_name'] ?? $customer->company_school_name,
                 'phone' => $customerData['phone'] ?? $customer->phone,
                 'email' => $customerData['email'] ?? $customer->email,
+                'facebook' => $customerData['facebook'] ?? $customer->facebook,
                 'address' => $customerData['address'] ?? $customer->address,
             ]);
             return $customer;
@@ -43,8 +45,10 @@ class CustomerService
         // Create new customer
         return Customer::create([
             'full_name' => $customerData['full_name'] ?? '',
+            'company_school_name' => $customerData['company_school_name'] ?? null,
             'phone' => $customerData['phone'] ?? null,
             'email' => $customerData['email'] ?? null,
+            'facebook' => $customerData['facebook'] ?? null,
             'address' => $customerData['address'] ?? null,
             'max_credit_limit' => $customerData['max_credit_limit'] ?? 0,
             'status' => 'active',

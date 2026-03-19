@@ -52,17 +52,22 @@
         .search-section {
             background: linear-gradient(135deg, var(--primary-color), #1e40af);
             border-radius: 15px;
-            padding: 30px;
+            padding: 14px;
             color: white;
             box-shadow: var(--card-shadow);
             margin-bottom: 25px;
         }
 
+        .search-section h4 {
+            font-size: 16px;
+            margin-bottom: 10px !important;
+        }
+
         .search-input {
             border: none;
             border-radius: 10px;
-            padding: 15px 20px;
-            font-size: 16px;
+            padding: 10px 14px;
+            font-size: 14px;
             background: rgba(255, 255, 255, 0.9);
             transition: all 0.3s ease;
         }
@@ -77,9 +82,36 @@
             background: var(--success-color);
             border: none;
             border-radius: 10px;
-            padding: 15px 30px;
+            padding: 10px 16px;
             font-weight: 600;
             transition: all 0.3s ease;
+        }
+
+        #results-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        #results-table th:nth-child(1),
+        #results-table td:nth-child(1) {
+            width: 34%;
+            word-break: break-word;
+        }
+
+        #results-table th:nth-child(2),
+        #results-table td:nth-child(2) {
+            width: 36%;
+            word-break: break-word;
+        }
+
+        #results-table th:nth-child(3),
+        #results-table td:nth-child(3) {
+            width: 15%;
+        }
+
+        #results-table th:nth-child(4),
+        #results-table td:nth-child(4) {
+            width: 15%;
         }
 
         .search-btn:hover {
@@ -219,7 +251,7 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-4">
                 <div class="search-section">
                     <h4 class="mb-3">
                         <i class="fas fa-search me-2"></i>Product Search
@@ -247,8 +279,6 @@
                                 <thead>
                                     <tr>
                                         <th>Product</th>
-                                        <th>Barcode</th>
-                                        <th class="text-end">Stock</th>
                                         <th>Branches</th>
                                         <th class="text-end">Price</th>
                                         <th class="text-end">Action</th>
@@ -256,7 +286,7 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td colspan="6" class="empty-state">
+                                        <td colspan="4" class="empty-state">
                                             <i class="fas fa-search"></i>
                                             <p class="mb-0">Start searching to see products...</p>
                                         </td>
@@ -268,7 +298,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-8">
                 <div class="order-summary">
                     <div class="card order-card">
                         <div class="card-body">
@@ -277,6 +307,38 @@
                                     <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Summary</h5>
                                 </div>
                                 <div class="card-body">
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Customer Details</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-2">
+                                                <label class="form-label">Customer Name</label>
+                                                <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Company/School Name (optional)</label>
+                                                <input type="text" class="form-control" id="customer_company_school" placeholder="Enter company/school name">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Phone Number</label>
+                                                <input type="text" class="form-control" id="customer_phone" placeholder="Enter phone number">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Email (optional)</label>
+                                                <input type="email" class="form-control" id="customer_email" placeholder="Enter email">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Facebook (optional)</label>
+                                                <input type="text" class="form-control" id="customer_facebook" placeholder="Enter Facebook name/link">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label">Address</label>
+                                                <input type="text" class="form-control" id="customer_address" placeholder="Enter address">
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div id="order-items" class="mb-3" style="max-height: 400px; overflow-y: auto;">
                                         <div class="text-muted text-center py-3">No items in cart</div>
                                     </div>
@@ -304,10 +366,6 @@
                                                         <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
                                                     </h6>
                                                     <div class="mb-2">
-                                                        <label class="form-label">Customer Name:</label>
-                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
-                                                    </div>
-                                                    <div class="mb-2">
                                                         <label class="form-label">Date:</label>
                                                         <input type="date" class="form-control" id="credit_due_date" value="{{ date('Y-m-d') }}">
                                                     </div>
@@ -319,9 +377,21 @@
                                             </div>
                                         </div>
 
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Notes (optional):</label>
+                                            <textarea class="form-control" id="order_notes" rows="2" placeholder="Add notes..."></textarea>
+                                        </div>
+
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <h5 class="mb-0">Total:</h5>
                                             <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Order Status:</label>
+                                            <select class="form-select" id="order_status">
+                                                <option value="completed" selected>Completed</option>
+                                                <option value="pending">Pending (Quotation)</option>
+                                            </select>
                                         </div>
                                         <div class="d-grid gap-2">
                                             <button class="btn btn-success btn-lg" onclick="checkout()">
@@ -356,7 +426,7 @@
 
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center py-4">
+                    <td colspan="4" class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -398,7 +468,7 @@
                 if(items.length === 0){
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="6" class="empty-state">
+                            <td colspan="4" class="empty-state">
                                 <i class="fas fa-box-open"></i>
                                 <p class="mb-0">No products found${keyword ? ' for "' + keyword + '"' : ''}</p>
                             </td>
@@ -411,43 +481,52 @@
                     const displayBarcode = (it && (it.barcode || it.product_barcode || (it.product && it.product.barcode))) || 'N/A';
                     const displayPrice = (it && (it.price != null ? it.price : it.selling_price)) || 0;
 
-                    const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => {
-                        const units = Array.isArray(b.stock_units) ? b.stock_units : [];
+                    const branchesHtml = (it.branches && it.branches.length > 0)
+                        ? (() => {
+                            const optionsHtml = it.branches.map((b, index) => {
+                                const units = Array.isArray(b.stock_units) ? b.stock_units : [];
+                                const isSingleUnit = units.length === 1;
+                                const singleUnit = isSingleUnit ? units[0] : null;
+                                const optionPrice = isSingleUnit ? (singleUnit?.price || b.price || 0) : (b.price || 0);
+                                const unitTypeId = isSingleUnit ? (singleUnit?.unit_type_id ?? '') : '';
+                                const unitName = isSingleUnit ? (singleUnit?.unit_name ?? '') : '';
+                                const unitStock = isSingleUnit ? (singleUnit?.stock ?? b.stock ?? 0) : (b.stock ?? 0);
 
-                        const unitsSelectHtml = units.length > 0
-                            ? `
-                                <select class="form-select form-select-sm mt-1 js-unit-select" data-product-id="${it.product_id}" data-branch-id="${b.branch_id}">
-                                    ${units.map((u, uidx) => {
-                                        const unitName = (u && u.unit_name) ? u.unit_name : '';
-                                        const unitStock = (u && u.stock != null) ? u.stock : 0;
-                                        const unitPrice = (u && u.price != null) ? u.price : 0;
-                                        const unitTypeId = (u && u.unit_type_id != null) ? u.unit_type_id : '';
-                                        return `<option value="${unitTypeId}" data-stock="${unitStock}" data-price="${Number(unitPrice).toFixed(2)}" data-unit-name="${unitName}" ${uidx === 0 ? 'selected' : ''}>${unitName || 'Unit'} - ₱${Number(unitPrice).toFixed(2)}</option>`;
-                                    }).join('')}
-                                </select>
-                            `
-                            : '';
+                                return `
+                                    <option value="${b.branch_id}"
+                                        data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}"
+                                        data-stock="${Number(unitStock || 0)}"
+                                        data-price="${Number(optionPrice || 0).toFixed(2)}"
+                                        data-unit-type-id="${unitTypeId}"
+                                        data-unit-name="${unitName}"
+                                        data-units='${JSON.stringify(units || [])}'
+                                        ${index === 0 ? 'selected' : ''}>
+                                        ${b.branch_name || ('Branch #' + b.branch_id)} (${Number(b.stock ?? 0)})
+                                    </option>
+                                `;
+                            }).join('');
 
-                        return `
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
-                                <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
-                                    ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
-                                    ${unitsSelectHtml ? `<div class="mt-1">${unitsSelectHtml}</div>` : ''}
-                                </label>
-                            </div>
-                        `;
-                    }).join('') : '<span class="text-muted">No stock</span>';
+                            return `
+                                <div>
+                                    <select class="form-select form-select-sm js-branch-select" data-product-id="${it.product_id}">
+                                        ${optionsHtml}
+                                    </select>
+                                    <div class="mt-1 js-unit-container" data-product-id="${it.product_id}"></div>
+                                </div>
+                            `;
+                        })()
+                        : '<span class="text-muted">No stock</span>';
 
                     const canBeAdded = it.branches && it.branches.length > 0;
 
                     return `
                     <tr>
-                        <td><div class="fw-semibold">${displayName}</div></td>
-                        <td><code>${displayBarcode}</code></td>
-                        <td class="text-end"><span class="badge ${it.total_stock > 10 ? 'bg-success' : 'bg-warning'}">${it.total_stock ?? 0}</span></td>
+                        <td>
+                            <div class="fw-semibold">${displayName}</div>
+                            <div class="text-muted small">${displayBarcode}</div>
+                        </td>
                         <td>${branchesHtml}</td>
-                        <td class="text-end price-display" data-product-id="${it.product_id}">₱${Number(displayPrice || 0).toFixed(2)}</td>
+                        <td class="text-end price-display" data-product-id="${it.product_id}"><span class="text-muted">Select branch</span></td>
                         <td class="text-end">
                             <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
@@ -457,19 +536,21 @@
                 }).join('');
 
                 items.forEach(it => {
-                    const radios = document.querySelectorAll(`input[name="branch_${it.product_id}"]`);
-                    radios.forEach(r => r.addEventListener('change', () => updateProductPriceDisplay(it.product_id)));
+                    const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${it.product_id}"]`);
+                    if (!branchSel) return;
 
-                    const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${it.product_id}"]`);
-                    unitSelects.forEach(sel => sel.addEventListener('change', () => updateProductPriceDisplay(it.product_id)));
+                    branchSel.addEventListener('change', () => {
+                        renderUnitSelectForProduct(it.product_id);
+                        updateProductPriceDisplay(it.product_id);
+                    });
 
-                    updateProductPriceDisplay(it.product_id);
+                    renderUnitSelectForProduct(it.product_id);
                 });
 
             } catch (error) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="empty-state">
+                        <td colspan="4" class="empty-state">
                             <i class="fas fa-exclamation-triangle"></i>
                             <p class="mb-0">Search failed. Please try again.</p>
                         </td>
@@ -479,14 +560,52 @@
 
         let cart = [];
 
+        function renderUnitSelectForProduct(productId) {
+            const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
+            const unitContainer = document.querySelector(`.js-unit-container[data-product-id="${productId}"]`);
+            if (!branchSel || !unitContainer) return;
+
+            const branchOpt = branchSel.options[branchSel.selectedIndex];
+            const unitsRaw = branchOpt ? (branchOpt.dataset.units || '[]') : '[]';
+            let units = [];
+            try {
+                units = JSON.parse(unitsRaw);
+            } catch (e) {
+                units = [];
+            }
+
+            if (!Array.isArray(units) || units.length <= 1) {
+                unitContainer.innerHTML = '';
+                return;
+            }
+
+            unitContainer.innerHTML = `
+                <select class="form-select form-select-sm js-unit-select" data-product-id="${productId}">
+                    ${units.map((u, uidx) => {
+                        const unitName = (u && u.unit_name) ? u.unit_name : '';
+                        const unitStock = (u && u.stock != null) ? u.stock : 0;
+                        const unitPrice = (u && u.price != null) ? u.price : 0;
+                        const unitTypeId = (u && u.unit_type_id != null) ? u.unit_type_id : '';
+                        return `<option value="${unitTypeId}" data-stock="${unitStock}" data-price="${Number(unitPrice).toFixed(2)}" data-unit-name="${unitName}" ${uidx === 0 ? 'selected' : ''}>${unitName || 'Unit'} - ₱${Number(unitPrice).toFixed(2)}</option>`;
+                    }).join('')}
+                </select>
+            `;
+
+            const sel = unitContainer.querySelector('select.js-unit-select');
+            if (sel) {
+                sel.addEventListener('change', () => updateProductPriceDisplay(productId));
+            }
+        }
+
         function updateProductPriceDisplay(productId) {
-            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
+            const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
             const priceCell = document.querySelector(`td.price-display[data-product-id="${productId}"]`);
-            if (!priceCell || !selectedBranchRadio) return;
+            if (!priceCell || !branchSel) return;
 
-            const branchId = selectedBranchRadio.value;
-            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+            const branchOpt = branchSel.options[branchSel.selectedIndex];
+            if (!branchOpt) return;
 
+            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"]`);
             if (unitSelect && unitSelect.value) {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
                 const unitPrice = parseFloat(opt.dataset.price || '0');
@@ -494,25 +613,26 @@
                 return;
             }
 
-            const branchPrice = parseFloat(selectedBranchRadio.dataset.price || '0');
+            const branchPrice = parseFloat(branchOpt.dataset.price || '0');
             priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
         }
 
         window.addToOrder = function(button, productId, name) {
-            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
-            if (!selectedBranchRadio) {
+            const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
+            if (!branchSel || !branchSel.value) {
                 Swal.fire('Error', 'Please select a branch.', 'error');
                 return;
             }
 
-            const branchId = parseInt(selectedBranchRadio.value);
-            const branchName = selectedBranchRadio.dataset.branchName || selectedBranchRadio.labels[0].innerText.trim();
+            const branchId = parseInt(branchSel.value);
+            const branchOpt = branchSel.options[branchSel.selectedIndex];
+            const branchName = (branchOpt && branchOpt.dataset.branchName) ? branchOpt.dataset.branchName : ('Branch #' + branchId);
 
-            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"]`);
             let unitTypeId = null;
             let unitName = null;
-            let stock = parseFloat(selectedBranchRadio.dataset.stock || '0');
-            let price = parseFloat(selectedBranchRadio.dataset.price || '0');
+            let stock = parseFloat((branchOpt && branchOpt.dataset.stock) ? branchOpt.dataset.stock : '0');
+            let price = parseFloat((branchOpt && branchOpt.dataset.price) ? branchOpt.dataset.price : '0');
 
             if (unitSelect && unitSelect.value) {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
@@ -520,6 +640,12 @@
                 unitName = opt.dataset.unitName || opt.textContent;
                 stock = parseFloat(opt.dataset.stock || '0');
                 price = parseFloat(opt.dataset.price || '0');
+            } else {
+                const dsUnitTypeId = parseInt((branchOpt && branchOpt.dataset.unitTypeId) ? branchOpt.dataset.unitTypeId : '0');
+                if (dsUnitTypeId > 0) {
+                    unitTypeId = dsUnitTypeId;
+                    unitName = (branchOpt && branchOpt.dataset.unitName) ? branchOpt.dataset.unitName : null;
+                }
             }
 
             const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
@@ -609,7 +735,14 @@
                     })),
                     total: cart.reduce((sum, item) => sum + (item.price * 1), 0),
                     payment_method: document.querySelector('input[name="payment_method"]:checked').value,
+                    order_status: document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed',
+                    notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
                     customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
+                    customer_company_school_name: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
+                    customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
+                    customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null,
+                    customer_facebook: document.getElementById('customer_facebook') ? document.getElementById('customer_facebook').value : null,
+                    customer_address: document.getElementById('customer_address') ? document.getElementById('customer_address').value : null,
                     credit_due_date: document.getElementById('credit_due_date') ? document.getElementById('credit_due_date').value : null,
                     credit_notes: document.getElementById('credit_notes') ? document.getElementById('credit_notes').value : null,
                 })
@@ -619,11 +752,14 @@
                 if (data.success) {
                     cart = [];
                     updateCartDisplay();
-                    if (data.auto_receipt && data.receipt_url) {
-                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Opening receipt...', timer: 1500, showConfirmButton: false })
+                    if (data.receipt_pdf_url) {
+                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt PDF...', timer: 1500, showConfirmButton: false })
+                            .then(() => window.open(data.receipt_pdf_url, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes'));
+                    } else if (data.auto_receipt && data.receipt_url) {
+                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt...', timer: 1500, showConfirmButton: false })
                             .then(() => window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes'));
                     } else {
-                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Order has been processed successfully.'});
+                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: data.message || 'Order has been processed successfully.'});
                     }
                     search('list');
                 } else {

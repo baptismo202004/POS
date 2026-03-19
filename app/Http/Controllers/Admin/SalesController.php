@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProductSerial;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -14,14 +15,21 @@ class SalesController extends Controller
 {
     public function getSaleItems(Sale $sale)
     {
+        $sale->load(['cashier', 'branch', 'customer']);
         $items = $sale->saleItems()->with(['product', 'refunds'])->get();
+
+        $serialsBySaleItemId = ProductSerial::whereIn('sale_item_id', $items->pluck('id')->filter())
+            ->get()
+            ->keyBy('sale_item_id');
         
         // Calculate total refunds for this sale
         $totalRefunds = $sale->refunds()->where('status', 'approved')->sum('refund_amount');
         
-        $itemsData = $items->map(function ($item) {
+        $itemsData = $items->map(function ($item) use ($serialsBySaleItemId) {
             $refundedQuantity = $item->refunds()->where('status', 'approved')->sum('quantity_refunded');
             
+            $serial = $serialsBySaleItemId[$item->id] ?? null;
+
             return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -29,12 +37,33 @@ class SalesController extends Controller
                 'quantity' => $item->quantity,
                 'refunded' => $refundedQuantity,
                 'unit_price' => $item->unit_price,
-                'available_for_refund' => $item->quantity - $refundedQuantity
+                'available_for_refund' => $item->quantity - $refundedQuantity,
+                'warranty_months' => $item->warranty_months ?? null,
+                'warranty_start' => $serial && $serial->sold_at ? Carbon::parse((string) $serial->sold_at)->toIso8601String() : null,
+                'warranty_expiry_date' => $serial && $serial->warranty_expiry_date ? Carbon::parse((string) $serial->warranty_expiry_date)->toIso8601String() : null,
             ];
         });
         
         return response()->json([
             'items' => $itemsData,
+            'sale' => [
+                'id' => $sale->id,
+                'reference_number' => $sale->reference_number,
+                'created_at' => optional($sale->created_at)->toIso8601String(),
+                'status' => $sale->status,
+                'payment_method' => $sale->payment_method,
+                'total_amount' => $sale->total_amount,
+                'branch_name' => optional($sale->branch)->branch_name,
+                'cashier_name' => optional($sale->cashier)->name,
+                'customer' => $sale->customer ? [
+                    'full_name' => $sale->customer->full_name,
+                    'company_school_name' => $sale->customer->company_school_name,
+                    'phone' => $sale->customer->phone,
+                    'email' => $sale->customer->email,
+                    'facebook' => $sale->customer->facebook,
+                    'address' => $sale->customer->address,
+                ] : null,
+            ],
             'sale_info' => [
                 'original_total' => $sale->total_amount + $totalRefunds, // Original amount before refunds
                 'current_total' => $sale->total_amount, // Current amount after refunds
