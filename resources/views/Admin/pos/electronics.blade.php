@@ -439,7 +439,7 @@
                         `;
                     }).join('') : '<span class="text-muted">No stock</span>';
 
-                    const canBeAdded = it.branches && it.branches.length > 0 && it.total_stock > 0;
+                    const canBeAdded = it.branches && it.branches.length > 0;
 
                     return `
                     <tr>
@@ -522,11 +522,6 @@
                 price = parseFloat(opt.dataset.price || '0');
             }
 
-            if (stock <= 0) {
-                Swal.fire('Out of Stock', `This product is out of stock at ${branchName}.`, 'warning');
-                return;
-            }
-
             const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
 
             cart.push({
@@ -540,6 +535,7 @@
                 price,
                 quantity: 1,
                 stock,
+                in_stock: stock > 0,
                 serial_number: '',
                 warranty_months: 0,
             });
@@ -580,7 +576,7 @@
                 return;
             }
 
-            const missing = cart.find(i => !i.serial_number);
+            const missing = cart.find(i => i.in_stock && !i.serial_number);
             if (missing) {
                 Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
                 return;
@@ -671,7 +667,7 @@
                         <div class="row g-2 mt-2">
                             <div class="col-12">
                                 <label class="form-label mb-1 small">Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" placeholder="Enter serial" value="${item.serial_number || ''}" onchange="setSerial('${item.cartIdentifier}', this.value)">
+                                <input type="text" class="form-control form-control-sm" placeholder="${item.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" value="${item.serial_number || ''}" onchange="setSerial('${item.cartIdentifier}', this.value)" ${item.in_stock ? '' : 'disabled'}>
                             </div>
                             <div class="col-12">
                                 <label class="form-label mb-1 small">Warranty (months)</label>

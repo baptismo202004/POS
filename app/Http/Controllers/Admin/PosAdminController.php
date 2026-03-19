@@ -79,6 +79,7 @@ class PosAdminController extends Controller
         // List mode for typeahead/multi results
         if ($mode === 'list') {
             $branchNames = Branch::pluck('branch_name', 'id');
+            $allBranchIds = Branch::pluck('id')->toArray();
 
             $inStockProductIds = StockIn::query()
                 ->select('product_id')
@@ -88,8 +89,11 @@ class PosAdminController extends Controller
 
             // If keyword is empty, get all products from stock_ins table
             if (empty($keyword)) {
-                // Get only products that are currently in stock (across any branch)
-                $matchesQuery = Product::query()->whereIn('products.id', $inStockProductIds);
+                $matchesQuery = Product::query();
+                if (!$electronicsOnly) {
+                    // Non-electronics POS still lists only products that are currently in stock (across any branch)
+                    $matchesQuery->whereIn('products.id', $inStockProductIds);
+                }
 
                 if ($electronicsOnly) {
                     $matchesQuery
@@ -106,7 +110,10 @@ class PosAdminController extends Controller
                 $matches = $matchesQuery->get();
                 Log::info("[POS_ADMIN_LOOKUP] Getting all products from stock_ins: " . count($matches) . " products found");
             } else {
-                $matchesQuery = Product::query()->whereIn('products.id', $inStockProductIds);
+                $matchesQuery = Product::query();
+                if (!$electronicsOnly) {
+                    $matchesQuery->whereIn('products.id', $inStockProductIds);
+                }
 
                 if ($electronicsOnly) {
                     $matchesQuery
@@ -131,7 +138,7 @@ class PosAdminController extends Controller
                 Log::info('[POS_ADMIN_LOOKUP] Found '.count($matches)." products matching keyword: '{$keyword}'");
             }
 
-            $items = $matches->map(function ($p) use ($branchNames) {
+            $items = $matches->map(function ($p) use ($branchNames, $allBranchIds, $electronicsOnly) {
                 // Calculate available stock and branch-specific latest prices from stock_ins
                 $stockRecords = StockIn::with('unitType')
                     ->where('product_id', $p->id)
@@ -140,6 +147,20 @@ class PosAdminController extends Controller
                     ->get();
                 $totalStock = 0;
                 $branchStocks = [];
+
+                if ($electronicsOnly) {
+                    foreach ($allBranchIds as $bId) {
+                        $branchStocks[$bId] = [
+                            'branch_id' => (int) $bId,
+                            'branch_name' => $branchNames[$bId] ?? null,
+                            // stock is tracked in base units
+                            'stock' => 0,
+                            // prices are resolved later from latest saved unit prices
+                            'stock_units' => [],
+                            'latest_price' => 0.00,
+                        ];
+                    }
+                }
 
                 // Preload product unit conversion factors (unit_type_id => conversion_factor)
                 $unitFactors = DB::table('product_unit_type')
@@ -155,20 +176,20 @@ class PosAdminController extends Controller
                     $availableStock = $stock->quantity - $stock->sold;
                     $totalStock += $availableStock;
 
-                    if ($availableStock > 0) {
-                        if (!isset($branchStocks[$stock->branch_id])) {
-                            $branchStocks[$stock->branch_id] = [
-                                'branch_id' => $stock->branch_id,
-                                'branch_name' => $branchNames[$stock->branch_id] ?? null,
-                                // stock is tracked in base units
-                                'stock' => 0,
-                                // prices are resolved later from latest saved unit prices
-                                'stock_units' => [],
-                                'latest_price' => 0.00,
-                            ];
-                        }
+                    if (!isset($branchStocks[$stock->branch_id])) {
+                        $branchStocks[$stock->branch_id] = [
+                            'branch_id' => $stock->branch_id,
+                            'branch_name' => $branchNames[$stock->branch_id] ?? null,
+                            // stock is tracked in base units
+                            'stock' => 0,
+                            // prices are resolved later from latest saved unit prices
+                            'stock_units' => [],
+                            'latest_price' => 0.00,
+                        ];
+                    }
 
-                        // StockIn.quantity is already stored in base units in this codebase
+                    // StockIn.quantity is already stored in base units in this codebase
+                    if ($availableStock > 0) {
                         $branchStocks[$stock->branch_id]['stock'] += (float) $availableStock;
                     }
                 }
@@ -253,12 +274,6 @@ class PosAdminController extends Controller
                     'total_stock' => (int) $totalStock,
                     'branches' => $branches,
                 ];
-            })->filter(function ($item) {
-                // Only show products with available stock > 0
-                $hasStock = $item['total_stock'] > 0;
-                Log::info("[POS_ADMIN_LOOKUP] Product: {$item['name']} - Stock: {$item['total_stock']}, Has Stock: ".($hasStock ? 'YES' : 'NO'));
-
-                return $hasStock;
             })->values();
 
             Log::info('[POS_ADMIN_LOOKUP] Returning '.count($items)." items for keyword: '{$keyword}'");
@@ -293,22 +308,36 @@ class PosAdminController extends Controller
             })
             ->toArray();
 
+        $allBranchIds = Branch::pluck('id')->toArray();
+        if ($electronicsOnly) {
+            foreach ($allBranchIds as $bId) {
+                $branch = Branch::find($bId);
+                $branchStocks[$bId] = [
+                    'branch_id' => (int) $bId,
+                    'branch_name' => optional($branch)->branch_name,
+                    'stock' => 0,
+                    'stock_units' => [],
+                    'latest_price' => 0.00,
+                ];
+            }
+        }
+
         foreach ($stockRecords as $stock) {
             $availableStock = $stock->quantity - $stock->sold;
             $totalStock += $availableStock;
 
-            if ($availableStock > 0) {
-                if (! isset($branchStocks[$stock->branch_id])) {
-                    $branch = Branch::find($stock->branch_id);
-                    $branchStocks[$stock->branch_id] = [
-                        'branch_id' => $stock->branch_id,
-                        'branch_name' => optional($branch)->branch_name,
-                        'stock' => 0,
-                        'stock_units' => [],
-                        'latest_price' => 0.00,
-                    ];
-                }
+            if (! isset($branchStocks[$stock->branch_id])) {
+                $branch = Branch::find($stock->branch_id);
+                $branchStocks[$stock->branch_id] = [
+                    'branch_id' => $stock->branch_id,
+                    'branch_name' => optional($branch)->branch_name,
+                    'stock' => 0,
+                    'stock_units' => [],
+                    'latest_price' => 0.00,
+                ];
+            }
 
+            if ($availableStock > 0) {
                 $branchStocks[$stock->branch_id]['stock'] += (int) $availableStock;
             }
         }
@@ -371,10 +400,6 @@ class PosAdminController extends Controller
                 'price' => $price,
             ];
         }, $branchStocks));
-
-        if ($totalStock <= 0) {
-            return response()->json(['error' => 'Product is out of stock'], 422);
-        }
 
         return response()->json([
             'product_id' => $product->id,
@@ -626,6 +651,37 @@ class PosAdminController extends Controller
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
 
+            $shouldBePending = false;
+            foreach ($items as $item) {
+                $productId = $item['product_id'] ?? null;
+                $itemBranchId = $item['branch_id'] ?? null;
+                $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
+                $quantity = $item['quantity'] ?? null;
+
+                if (empty($productId) || empty($itemBranchId) || empty($unitTypeId)) {
+                    continue;
+                }
+
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $productId)
+                    ->where('unit_type_id', (int) $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1.0;
+                }
+
+                $requestedBaseQty = (float) $quantity * $factor;
+                $availableBaseQty = (float) (StockIn::where('product_id', (int) $productId)
+                    ->where('branch_id', (int) $itemBranchId)
+                    ->selectRaw('COALESCE(SUM(quantity - sold), 0) AS available')
+                    ->value('available') ?? 0);
+
+                if ($requestedBaseQty > $availableBaseQty) {
+                    $shouldBePending = true;
+                    break;
+                }
+            }
+
             $saleData = [
                 'cashier_id' => Auth::id(),
                 'employee_id' => Auth::id(),
@@ -640,6 +696,11 @@ class PosAdminController extends Controller
             }
 
             $sale = Sale::create($saleData);
+
+            if ($shouldBePending) {
+                $sale->status = 'pending';
+                $sale->save();
+            }
 
             foreach ($items as $item) {
                 $productId = $item['product_id'] ?? null;
@@ -666,11 +727,11 @@ class PosAdminController extends Controller
                     ], 422);
                 }
 
-                if ($serialNumber === '') {
+                if (!$shouldBePending && $serialNumber === '') {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => 'Serial number is required for electronic devices.',
+                        'message' => 'Serial number is required for in-stock electronic devices.',
                     ], 422);
                 }
 
@@ -695,42 +756,44 @@ class PosAdminController extends Controller
                     ], 422);
                 }
 
-                $stockRecords = StockIn::where('product_id', $productId)
-                    ->where('branch_id', $branchId)
-                    ->where('quantity', '>', DB::raw('sold'))
-                    ->orderBy('id', 'asc')
-                    ->get();
+                if (!$shouldBePending) {
+                    $stockRecords = StockIn::where('product_id', $productId)
+                        ->where('branch_id', $branchId)
+                        ->where('quantity', '>', DB::raw('sold'))
+                        ->orderBy('id', 'asc')
+                        ->get();
 
-                $remainingBaseQuantity = $requestedBaseQty;
+                    $remainingBaseQuantity = $requestedBaseQty;
 
-                foreach ($stockRecords as $stock) {
-                    if ($remainingBaseQuantity <= 0) {
-                        break;
+                    foreach ($stockRecords as $stock) {
+                        if ($remainingBaseQuantity <= 0) {
+                            break;
+                        }
+
+                        $availableStock = $stock->quantity - $stock->sold;
+                        $toDeduct = min($remainingBaseQuantity, $availableStock);
+
+                        $stock->sold += $toDeduct;
+                        $stock->save();
+
+                        $remainingBaseQuantity -= $toDeduct;
+
+                        \App\Models\StockOut::create([
+                            'stock_in_id' => $stock->id,
+                            'product_id' => $productId,
+                            'sale_id' => $sale->id,
+                            'quantity' => $toDeduct,
+                            'branch_id' => $branchId,
+                        ]);
                     }
 
-                    $availableStock = $stock->quantity - $stock->sold;
-                    $toDeduct = min($remainingBaseQuantity, $availableStock);
-
-                    $stock->sold += $toDeduct;
-                    $stock->save();
-
-                    $remainingBaseQuantity -= $toDeduct;
-
-                    \App\Models\StockOut::create([
-                        'stock_in_id' => $stock->id,
-                        'product_id' => $productId,
-                        'sale_id' => $sale->id,
-                        'quantity' => $toDeduct,
-                        'branch_id' => $branchId,
-                    ]);
-                }
-
-                if ($remainingBaseQuantity > 0) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Insufficient stock for product: " . ($item['name'] ?? 'Unknown'),
-                    ], 422);
+                    if ($remainingBaseQuantity > 0) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Insufficient stock for product: " . ($item['name'] ?? 'Unknown'),
+                        ], 422);
+                    }
                 }
 
                 $saleItemPayload = [
@@ -752,44 +815,46 @@ class PosAdminController extends Controller
                     $warrantyExpiry = Carbon::now()->addMonths($warrantyMonths)->toDateString();
                 }
 
-                $serial = ProductSerial::where('serial_number', $serialNumber)->first();
-                if (!$serial) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid serial number (not found in inventory).',
-                    ], 422);
-                }
+                if (!$shouldBePending) {
+                    $serial = ProductSerial::where('serial_number', $serialNumber)->first();
+                    if (!$serial) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Invalid serial number (not found in inventory).',
+                        ], 422);
+                    }
 
-                if ((int) $serial->product_id !== (int) $productId) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Serial number does not match the selected product.',
-                    ], 422);
-                }
+                    if ((int) $serial->product_id !== (int) $productId) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Serial number does not match the selected product.',
+                        ], 422);
+                    }
 
-                if ((int) $serial->branch_id !== (int) $branchId) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Serial number does not belong to the selected branch.',
-                    ], 422);
-                }
+                    if ((int) $serial->branch_id !== (int) $branchId) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Serial number does not belong to the selected branch.',
+                        ], 422);
+                    }
 
-                if ($serial->status !== 'in_stock') {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Serial number is not available (already sold/invalid).',
-                    ], 422);
-                }
+                    if ($serial->status !== 'in_stock') {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Serial number is not available (already sold/invalid).',
+                        ], 422);
+                    }
 
-                $serial->status = 'sold';
-                $serial->sold_at = now();
-                $serial->sale_item_id = $saleItem->id;
-                $serial->warranty_expiry_date = $warrantyExpiry;
-                $serial->save();
+                    $serial->status = 'sold';
+                    $serial->sold_at = now();
+                    $serial->sale_item_id = $saleItem->id;
+                    $serial->warranty_expiry_date = $warrantyExpiry;
+                    $serial->save();
+                }
             }
 
             if ($paymentMethod === 'credit' && $creditDueDate) {
@@ -839,9 +904,13 @@ class PosAdminController extends Controller
                 'order_id' => $sale->id,
             ];
 
-            if ($paymentMethod === 'cash') {
+            if (!$shouldBePending && $paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);
                 $response['auto_receipt'] = true;
+            }
+
+            if ($shouldBePending) {
+                $response['message'] = 'Order saved as pending (quotation).';
             }
 
             return response()->json($response);
