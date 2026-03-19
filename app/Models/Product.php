@@ -57,6 +57,11 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'product_branch')->withTimestamps();
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);

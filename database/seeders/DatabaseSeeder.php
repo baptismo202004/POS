@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Database\Seeders\Pos\SalesSeeder;
 use Database\Seeders\Pos\CreditSeeder;
+use Database\Seeders\ProductSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -37,6 +38,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             ProductTypeSeeder::class,
             UnitTypeSeeder::class,
+            ProductSeeder::class,
             AdminFullAccessSeeder::class,
             ExpenseCategorySeeder::class,
             SalesSeeder::class,

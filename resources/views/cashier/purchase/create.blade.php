@@ -138,6 +138,12 @@
             box-shadow: 0 4px 14px rgba(239,68,68,0.20);
         }
         .purchases-create-page .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(239,68,68,0.30); }
+        .purchases-create-page .btn-amber {
+            background: linear-gradient(135deg, #f59e0b, #fb923c);
+            color: #fff !important;
+            box-shadow: 0 4px 14px rgba(245,158,11,0.24);
+        }
+        .purchases-create-page .btn-amber:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(245,158,11,0.30); }
 
         .purchases-create-page .main-card {
             background: var(--card);
@@ -583,23 +589,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     content.style.pointerEvents = 'auto';
                 }
             });
-
-            const itemsArr = Array.from(navItems);
-            const invItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Inventory');
-            const stockInItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Stock In');
-            if (invItem && stockInItem) {
-                stockInItem.style.marginLeft = '18px';
-                stockInItem.style.paddingLeft = '20px';
-                invItem.insertAdjacentElement('afterend', stockInItem);
-            }
-
-            const productsItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
-            const categoryItem = itemsArr.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
-            if (productsItem && categoryItem) {
-                categoryItem.style.marginLeft = '18px';
-                categoryItem.style.paddingLeft = '20px';
-                productsItem.insertAdjacentElement('afterend', categoryItem);
-            }
         }
     } else {
         console.warn('Cashier sidebar not found in sessionStorage/localStorage (cashierSidebarHTML).');
@@ -701,6 +690,7 @@ document.addEventListener('DOMContentLoaded', function () {
         recalcBaseQuantity(row);
         itemIndex++;
         updateTotals();
+        return row;
     }
 
     if (addBtn) {

@@ -1579,14 +1579,6 @@ function animateAndNavigate(event, module) {
 
     const sidebarNavItems = Array.from(sidebar.querySelectorAll('.nav-card'));
 
-    const invItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Inventory');
-    const stockInItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Stock In');
-    if (invItem && stockInItem) {
-        stockInItem.style.marginLeft = '18px';
-        stockInItem.style.paddingLeft = '20px';
-        invItem.insertAdjacentElement('afterend', stockInItem);
-    }
-
     const productsItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Products');
     const categoryItem = sidebarNavItems.find(i => (i.querySelector('.nav-content h5')?.textContent || '').trim() === 'Product Category');
     if (productsItem && categoryItem) {

@@ -3,19 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\StockIn;
 use App\Models\Branch;
+use App\Models\Credit;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\ProductSerial;
 use App\Models\Credit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class PosAdminController extends Controller
 {
@@ -39,7 +38,7 @@ class PosAdminController extends Controller
         Log::info("[POS_ADMIN_LOOKUP] keyword='{$keyword}', mode='{$mode}', electronics_only=" . ($electronicsOnly ? '1' : '0'));
 
         // Validate only if barcode is provided
-        if (!empty($keyword)) {
+        if (! empty($keyword)) {
             $request->validate(['barcode' => 'required|string']);
         }
 
@@ -59,8 +58,8 @@ class PosAdminController extends Controller
                         'price' => 100.00,
                         'total_stock' => 5,
                         'branches' => [
-                            ['branch_id' => 1, 'branch_name' => 'Main Branch', 'stock' => 5]
-                        ]
+                            ['branch_id' => 1, 'branch_name' => 'Main Branch', 'stock' => 5],
+                        ],
                     ],
                     [
                         'product_id' => 2,
@@ -69,10 +68,10 @@ class PosAdminController extends Controller
                         'price' => 200.00,
                         'total_stock' => 3,
                         'branches' => [
-                            ['branch_id' => 1, 'branch_name' => 'Main Branch', 'stock' => 3]
-                        ]
-                    ]
-                ]
+                            ['branch_id' => 1, 'branch_name' => 'Main Branch', 'stock' => 3],
+                        ],
+                    ],
+                ],
             ]);
         }
 
@@ -123,12 +122,12 @@ class PosAdminController extends Controller
                 $matches = $matchesQuery
                     ->where(function ($q) use ($keyword) {
                         $q->where('product_name', 'LIKE', "%{$keyword}%")
-                          ->orWhere('barcode', 'LIKE', "%{$keyword}%")
-                          ->orWhere('model_number', 'LIKE', "%{$keyword}%");
+                            ->orWhere('barcode', 'LIKE', "%{$keyword}%")
+                            ->orWhere('model_number', 'LIKE', "%{$keyword}%");
                     })
                     ->limit(20)
                     ->get();
-                Log::info("[POS_ADMIN_LOOKUP] Found " . count($matches) . " products matching keyword: '{$keyword}'");
+                Log::info('[POS_ADMIN_LOOKUP] Found '.count($matches)." products matching keyword: '{$keyword}'");
             }
 
             $items = $matches->map(function ($p) use ($branchNames) {
@@ -244,7 +243,7 @@ class PosAdminController extends Controller
                 $defaultPrice = isset($branches[0]) ? (float) ($branches[0]['price'] ?? 0) : 0.00;
 
                 Log::info("[POS_ADMIN_LOOKUP] Product: {$p->product_name} (ID: {$p->id}) - Available Stock: {$totalStock}");
-                
+
                 return [
                     'product_id' => $p->id,
                     'name' => $p->product_name,
@@ -256,11 +255,13 @@ class PosAdminController extends Controller
             })->filter(function ($item) {
                 // Only show products with available stock > 0
                 $hasStock = $item['total_stock'] > 0;
-                Log::info("[POS_ADMIN_LOOKUP] Product: {$item['name']} - Stock: {$item['total_stock']}, Has Stock: " . ($hasStock ? 'YES' : 'NO'));
+                Log::info("[POS_ADMIN_LOOKUP] Product: {$item['name']} - Stock: {$item['total_stock']}, Has Stock: ".($hasStock ? 'YES' : 'NO'));
+
                 return $hasStock;
             })->values();
 
-            Log::info("[POS_ADMIN_LOOKUP] Returning " . count($items) . " items for keyword: '{$keyword}'");
+            Log::info('[POS_ADMIN_LOOKUP] Returning '.count($items)." items for keyword: '{$keyword}'");
+
             return response()->json(['items' => $items]);
         }
 
@@ -270,7 +271,7 @@ class PosAdminController extends Controller
             ?: Product::where('product_name', $keyword)->first()
             ?: Product::where('product_name', 'LIKE', "%{$keyword}%")->first();
 
-        if (!$product) {
+        if (! $product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
 
@@ -296,7 +297,7 @@ class PosAdminController extends Controller
             $totalStock += $availableStock;
 
             if ($availableStock > 0) {
-                if (!isset($branchStocks[$stock->branch_id])) {
+                if (! isset($branchStocks[$stock->branch_id])) {
                     $branch = Branch::find($stock->branch_id);
                     $branchStocks[$stock->branch_id] = [
                         'branch_id' => $stock->branch_id,
@@ -392,12 +393,12 @@ class PosAdminController extends Controller
             $items = $data['items'] ?? [];
             $total = $data['total'] ?? 0;
             $paymentMethod = $data['payment_method'] ?? 'cash';
-            $customerId = !empty($data['customer_id']) ? $data['customer_id'] : null;
-            $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
+            $customerId = ! empty($data['customer_id']) ? $data['customer_id'] : null;
+            $customerName = ! empty($data['customer_name']) ? trim($data['customer_name']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
-            Log::info("[POS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
+            Log::info('[POS_STORE] Processing order with '.count($items)." items, total: ₱{$total}");
             Log::info("[POS_STORE] Customer ID: '{$customerId}'");
             Log::info("[POS_STORE] Customer name: '{$customerName}'");
 
@@ -405,7 +406,7 @@ class PosAdminController extends Controller
 
             // Determine the branch from the first item, assuming all items are from the same branch for a single transaction
             $branchId = Auth::user()->branch_id; // Default to cashier's branch
-            if (!empty($items)) {
+            if (! empty($items)) {
                 $firstItem = reset($items);
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
@@ -417,14 +418,14 @@ class PosAdminController extends Controller
                 'branch_id' => $branchId,
                 'total_amount' => $total,
                 'tax' => 0, // No tax for now
-                'payment_method' => $paymentMethod // Use payment method from request
+                'payment_method' => $paymentMethod, // Use payment method from request
             ];
-            
+
             // Only include customer_id if it's not null
             if ($customerId !== null) {
                 $saleData['customer_id'] = $customerId;
             }
-            
+
             $sale = Sale::create($saleData);
 
             Log::info("[POS_STORE] Created sale record: {$sale->id}");
@@ -439,6 +440,7 @@ class PosAdminController extends Controller
 
                 if (empty($unitTypeId)) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Unit type is required for each item.',
@@ -500,12 +502,13 @@ class PosAdminController extends Controller
                 if ($remainingBaseQuantity > 0) {
                     DB::rollBack();
                     Log::error("[POS_STORE] Insufficient stock for product {$productId}");
+
                     return response()->json([
                         'success' => false,
-                        'message' => "Insufficient stock for product: {$item['name']}"
+                        'message' => "Insufficient stock for product: {$item['name']}",
                     ], 422);
                 }
-                
+
                 // Create sale item record
                 $saleItemPayload = [
                     'sale_id' => $sale->id,
@@ -521,20 +524,20 @@ class PosAdminController extends Controller
                 }
 
                 $saleItem = SaleItem::create($saleItemPayload);
-                
+
                 Log::info("[POS_STORE] Created sale item and stock out for product {$productId}");
             }
-            
+
             // Create credit record if payment method is credit
             if ($paymentMethod === 'credit' && $creditDueDate) {
                 // Generate unique reference number
                 $lastCredit = Credit::orderBy('id', 'desc')->first();
                 $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
-                $referenceNumber = 'CR-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-                
+                $referenceNumber = 'CR-'.date('Y').'-'.str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
                 // Determine customer_id for credit
                 $creditCustomerId = $customerId;
-                if (!$creditCustomerId && $customerName) {
+                if (! $creditCustomerId && $customerName) {
                     // Try to find existing customer by name
                     $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
                     if ($existingCustomer) {
@@ -549,11 +552,11 @@ class PosAdminController extends Controller
                             'max_credit_limit' => 0,
                             'status' => 'active',
                             'created_at' => now(),
-                            'updated_at' => now()
+                            'updated_at' => now(),
                         ]);
                     }
                 }
-                
+
                 Credit::create([
                     'reference_number' => $referenceNumber,
                     'customer_id' => $creditCustomerId,
@@ -565,37 +568,37 @@ class PosAdminController extends Controller
                     'remaining_balance' => $total,
                     'status' => 'active',
                     'date' => $creditDueDate,
-                    'notes' => $creditNotes
+                    'notes' => $creditNotes,
                 ]);
-                
+
                 Log::info("[POS_STORE] Created credit record for sale #{$sale->id}");
             }
-            
+
             DB::commit();
-            
+
             Log::info("[POS_STORE] Order processed successfully: Sale #{$sale->id}");
-            
+
             $response = [
                 'success' => true,
                 'message' => 'Order processed successfully',
-                'order_id' => $sale->id
+                'order_id' => $sale->id,
             ];
-            
+
             // If payment method is cash, include receipt URL for automatic display
             if ($paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);
                 $response['auto_receipt'] = true;
             }
-            
+
             return response()->json($response);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("[POS_STORE] Order processing failed: " . $e->getMessage());
-            
+            Log::error('[POS_STORE] Order processing failed: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Order processing failed: ' . $e->getMessage()
+                'message' => 'Order processing failed: '.$e->getMessage(),
             ], 500);
         }
     }

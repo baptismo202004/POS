@@ -277,6 +277,29 @@
             margin: 0 !important;
             padding: 0 !important;
         }
+
+        .sidebar nav .submenu {
+            display: none;
+            padding-left: 34px !important;
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+        }
+
+        .sidebar nav .submenu a {
+            min-height: 40px;
+            padding: 8px 12px !important;
+            border-radius: 12px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.68);
+        }
+
+        .sidebar nav .submenu a:hover {
+            transform: translateX(2px);
+        }
+
+        .sidebar nav a.is-open .submenu-indicator {
+            transform: rotate(180deg);
+        }
         
         /* Override any potential Bootstrap spacing classes */
         .sidebar nav [class*="gap-"] {
@@ -651,21 +674,26 @@
                 </span>
                 <span>Purchase</span>
             </a>
-            
-            <a href="{{ route('cashier.stockin.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
-                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
-                    <i class="fas fa-sign-in-alt sidebar-icon"></i>
-                </span>
-                <span>Stock In</span>
-            </a>
             @endcanAccess
-            
-            <a href="{{ route('cashier.inventory.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+
+            <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none inventory-toggle" data-submenu="inventory-submenu" aria-expanded="false">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-box sidebar-icon"></i>
                 </span>
                 <span>Inventory</span>
+                <svg class="submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
+            <div class="submenu" id="inventory-submenu">
+                <a href="{{ route('cashier.inventory.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                    <span>Inventory List</span>
+                </a>
+
+                @canAccess('inventory','edit')
+                <a href="{{ route('cashier.stockin.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+                    <span>Stock In</span>
+                </a>
+                @endcanAccess
+            </div>
 
             @canAccess('stock_management','view')
             <a href="{{ route('cashier.stock-management.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
@@ -847,6 +875,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
+            if (this.classList.contains('inventory-toggle')) {
+                e.preventDefault();
+
+                const submenuId = this.getAttribute('data-submenu');
+                const submenu = submenuId ? document.getElementById(submenuId) : null;
+                if (!submenu) return;
+
+                const isOpen = submenu.style.display === 'block';
+                submenu.style.display = isOpen ? 'none' : 'block';
+                this.classList.toggle('is-open', !isOpen);
+                this.setAttribute('aria-expanded', String(!isOpen));
+                return;
+            }
+
             // Don't animate if it's already active or has no href
             if (this.classList.contains('active') || !this.getAttribute('href') || this.getAttribute('href') === '#') {
                 return;
