@@ -1018,6 +1018,7 @@ Route::post('/pos/electronics', [PosAdminController::class, 'electronicsStore'])
 Route::post('/admin/pos/checkout', [\App\Http\Controllers\Admin\PosController::class, 'checkout'])->name('admin.pos.checkout')->middleware('auth');
 
 // Cashier POS Routes
+Route::get('/cashier/pos/electronics', [CashierDashboardController::class, 'posElectronics'])->name('cashier.pos.electronics')->middleware('auth');
 Route::post('/cashier/pos/lookup', [CashierDashboardController::class, 'posLookup'])->name('cashier.pos.lookup')->middleware('auth');
 Route::post('/cashier/pos/store', [CashierDashboardController::class, 'posStore'])->name('cashier.pos.store')->middleware('auth');
 Route::get('/cashier/pos/receipt/{sale}', [CashierDashboardController::class, 'receipt'])->name('cashier.pos.receipt')->middleware('auth');

@@ -110,6 +110,22 @@ class PurchaseController extends Controller
                 ->get()
                 ->keyBy('id');
 
+            // Preload conversion factors for product/unit combos so we can validate serial counts properly
+            $unitTypeIds = collect($validated['items'])
+                ->pluck('unit_type_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            $conversionMap = DB::table('product_unit_type')
+                ->whereIn('product_id', $productIds)
+                ->whereIn('unit_type_id', $unitTypeIds)
+                ->get()
+                ->reduce(function ($carry, $row) {
+                    $carry["{$row->product_id}_{$row->unit_type_id}"] = (float) $row->conversion_factor;
+                    return $carry;
+                }, []);
+
             foreach ($validated['items'] as $item) {
                 $productId = null;
                 if (!empty($item['is_new'])) {
@@ -138,21 +154,31 @@ class PurchaseController extends Controller
 
                 $primaryQty = (float) $item['primary_quantity'];
 
+                $conversionFactor = 1.0;
+                if (!empty($item['unit_type_id']) && !empty($productId)) {
+                    $key = "{$productId}_{$item['unit_type_id']}";
+                    $conversionFactor = $conversionMap[$key] ?? 1.0;
+                }
+
+                $requiredSerialCount = (int) round($primaryQty * $conversionFactor);
+
                 $requiresSerials = $categoryType === 'electronic_with_serial';
-                if ($requiresSerials) {
-                    $serials = $item['serials'] ?? [];
+                $serials = $item['serials'] ?? [];
 
-                    if (!is_array($serials) || count($serials) === 0) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ['Serials are required for Electronic (with serial) products.'],
-                        ]);
-                    }
+                if (!is_array($serials)) {
+                    $serials = [];
+                }
 
-                    if ((int) round($primaryQty) !== count($serials)) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ['Serial count must match quantity for Electronic (with serial) products.'],
-                        ]);
-                    }
+                if ($requiresSerials && count($serials) === 0) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => ['Serials are required for Electronic (with serial) products.'],
+                    ]);
+                }
+
+                if (count($serials) > 0 && ($requiredSerialCount <= 0 || count($serials) !== $requiredSerialCount)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => ["Serial count must match quantity × unit conversion ({$requiredSerialCount})."],
+                    ]);
                 }
 
                 $serialsByIndex[] = $item['serials'] ?? [];

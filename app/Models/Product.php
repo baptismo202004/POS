@@ -50,6 +50,64 @@ class Product extends Model
         return $this->belongsTo(ProductType::class);
     }
 
+    /**
+     * Get the display label for the product type.
+     *
+     * This prefers the category's `category_type` (from the categories table) when available,
+     * and falls back to legacy `product_type_id` / related product type records.
+     */
+    public function getDisplayProductTypeAttribute(): string
+    {
+        $type = null;
+
+        if (!empty($this->category?->category_type)) {
+            $type = $this->category->category_type;
+        } elseif (!empty($this->product_type_id)) {
+            $type = $this->product_type_id;
+        } elseif (!empty($this->productType?->type_name)) {
+            $type = $this->productType->type_name;
+        }
+
+        $type = strtolower(trim((string) $type));
+
+        if (in_array($type, ['non_electronic', 'non-electronic', 'nonelectronic'], true)) {
+            return 'Non-Electronic';
+        }
+
+        if ($type === 'electronic_with_serial') {
+            return 'Electronic (with serial)';
+        }
+
+        if ($type === 'electronic_without_serial') {
+            return 'Electronic (without serial)';
+        }
+
+        if ($type === 'electronic') {
+            return 'Electronic';
+        }
+
+        if ($type === '') {
+            return 'N/A';
+        }
+
+        return ucwords(str_replace(['_', '-'], ' ', $type));
+    }
+
+    public function getDisplayProductTypeBadgeClassAttribute(): string
+    {
+        $type = strtolower(trim((string) ($this->category?->category_type ?? $this->product_type_id ?? '')));
+
+        if (in_array($type, ['non_electronic', 'non-electronic', 'nonelectronic'], true)) {
+            return 'amber';
+        }
+
+        if (strpos($type, 'electronic') === 0) {
+            return 'blue';
+        }
+
+        return 'blue';
+    }
+
     public function unitTypes()
     {
         return $this->belongsToMany(UnitType::class, 'product_unit_type')

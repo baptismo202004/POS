@@ -608,6 +608,19 @@
                     host.dataset.loaded = '0';
                 }
             }
+
+            // Keep the conversion factor in sync for validation
+            updateRowConversionFactor(row);
+        }
+
+        function updateRowConversionFactor(row) {
+            if (!row) return;
+            const select = row.querySelector('.unit-type-select');
+            if (!select) return;
+
+            const option = select.selectedOptions?.[0];
+            const factor = option?.dataset?.conversionFactor;
+            row.dataset.conversionFactor = (typeof factor !== 'undefined' && factor !== null) ? factor : '1';
         }
 
         async function ensureElectronicsPanelLoaded(row) {
@@ -721,6 +734,11 @@
 
         const purchaseDateInput = document.querySelector('input[name="purchase_date"]');
         if (purchaseDateInput) {
+            const today = new Date().toISOString().slice(0, 10);
+            if (!purchaseDateInput.value || purchaseDateInput.value !== today) {
+                purchaseDateInput.value = today;
+            }
+
             purchaseDateInput.addEventListener('input', function() {
                 document.querySelectorAll('.item-row').forEach(function(row) {
                     updateSerialWarrantyDefaultsForRow(row);
@@ -775,6 +793,9 @@
                     const option = document.createElement('option');
                     option.value = unit.id;
                     option.textContent = unit.name;
+                    option.dataset.conversionFactor = (typeof unit.conversion_factor !== 'undefined' && unit.conversion_factor !== null)
+                        ? unit.conversion_factor
+                        : 1;
                     unitSelect.appendChild(option);
                 });
 
@@ -782,6 +803,8 @@
                 if (units.length === 1) {
                     unitSelect.value = units[0].id;
                 }
+
+                updateRowConversionFactor(row);
             }).fail(function () {
                 // On failure, keep the select empty but leave the controls usable
             });
@@ -798,6 +821,8 @@
             }
 
             if (e.target.classList.contains('unit-type-select')) {
+                const row = e.target.closest('.item-row');
+                updateRowConversionFactor(row);
                 updateTotals();
             }
         });
@@ -868,24 +893,46 @@
 
             document.querySelectorAll('.item-row').forEach(row => {
                 const categoryType = row.dataset.categoryType || 'non_electronic';
-                if (!requiresSerials(categoryType)) return;
+                const requiresSerial = requiresSerials(categoryType);
 
                 const qtyInput = row.querySelector('input[name$="[primary_quantity]"]');
-                const qty = qtyInput ? parseInt(qtyInput.value || '0', 10) : 0;
+                const qty = qtyInput ? parseFloat(qtyInput.value || '0') : 0;
+
+                const conversionFactor = parseFloat(row.dataset.conversionFactor || '1') || 1;
+                const requiredSerialCount = Math.round(qty * conversionFactor);
 
                 const serialEntriesContainer = row.querySelector('.serial-entries-container');
                 const serialCount = serialEntriesContainer ? serialEntriesContainer.querySelectorAll('.serial-entry-row').length : 0;
 
-                if (qty > 0 && serialCount !== qty) {
+                // If the product requires serials, enforce that there is at least one.
+                if (requiresSerial && serialCount === 0) {
                     if (!firstError) {
-                        firstError = 'For Electronic (with serial) products, serial entries must match the quantity.';
+                        firstError = 'This product requires serial numbers; please add them before saving.';
+                    }
+                    return;
+                }
+
+                // If serials were provided, they must match the expected quantity (adjusted by unit conversion).
+                if (serialCount > 0 && serialCount !== requiredSerialCount) {
+                    if (!firstError) {
+                        firstError = 'Serial number should matched to the quantity.';
                     }
                 }
             });
 
             if (firstError) {
                 e.preventDefault();
-                alert(firstError);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    html: `<div style="text-align:left;">${firstError}</div>`,
+                    confirmButtonText: 'Got it',
+                    backdrop: true,
+                    showClass: {
+                        popup: 'swal2-show swal2-animate-success',
+                        backdrop: 'swal2-backdrop-show'
+                    },
+                });
             }
         });
 

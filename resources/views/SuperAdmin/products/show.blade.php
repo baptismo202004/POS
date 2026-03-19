@@ -229,7 +229,7 @@
                             </tr>
                             <tr>
                                 <th>Product Type</th>
-                                <td>{{ $product->productType->type_name ?? 'N/A' }}</td>
+                                <td>{{ $product->display_product_type }}</td>
                             </tr>
                             <tr>
                                 <th>Unit Types</th>
@@ -254,6 +254,23 @@
                                         <span class="sp-badge sp-badge-red">Inactive</span>
                                     @endif
                                 </td>
+                            </tr>
+
+                            @php
+                                $warrantyLabel = 'None';
+
+                                if (!empty($product->warranty_type) && $product->warranty_type !== 'none') {
+                                    $warrantyLabel = ucfirst(str_replace('_', ' ', $product->warranty_type));
+
+                                    if (!is_null($product->warranty_coverage_months)) {
+                                        $warrantyLabel .= ' • ' . (int) $product->warranty_coverage_months . ' month' . ((int) $product->warranty_coverage_months !== 1 ? 's' : '');
+                                    }
+                                }
+                            @endphp
+
+                            <tr>
+                                <th>Warranty</th>
+                                <td>{{ $warrantyLabel }}</td>
                             </tr>
                         </table>
                     </div>

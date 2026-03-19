@@ -33,16 +33,9 @@
             {{ $product->category->name ?? 'N/A' }}
         </td>
         <td>
-            @php
-                $ptype = strtolower((string) ($product->product_type_id ?? ''));
-            @endphp
-            @if($ptype === 'electronic')
-                <span class="sp-badge sp-badge-blue">Electronic</span>
-            @elseif($ptype === 'non-electronic' || $ptype === 'nonelectronic' || $ptype === 'non_electronic')
-                <span class="sp-badge sp-badge-amber">Non-Electronic</span>
-            @else
-                <span class="sp-badge sp-badge-blue">{{ $product->product_type_id ?? 'N/A' }}</span>
-            @endif
+            <span class="sp-badge sp-badge-{{ $product->display_product_type_badge_class }}">
+                {{ $product->display_product_type }}
+            </span>
         </td>
         <td>
             @if($product->unitTypes->isNotEmpty())

@@ -134,7 +134,7 @@ class ElectronicPosController extends Controller
                         $units[] = [
                             'unit_type_id' => $unitTypeId,
                             'unit_name' => optional($up->unitType)->unit_name,
-                            'stock' => (float) $unitAvailable,
+                            'stock' => (int) round($unitAvailable),
                             'price' => (float) $price,
                         ];
                     }

@@ -18,6 +18,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\UnitType;
+use App\Models\ProductSerial;
 use App\Services\InventoryService;
 use App\Support\Access;
 use Carbon\Carbon;
@@ -508,7 +509,10 @@ class CashierDashboardController extends Controller
             });
         }
 
-        // Apply branch filtering
+        // Apply branch filtering - show products that are:
+        // 1. Associated with the branch in product_branch, OR
+        // 2. Have stock in the branch, OR  
+        // 3. Have been purchased (exist in purchase_items)
         $query->where(function ($q) use ($branchId) {
             $q->whereExists(function ($exists) use ($branchId) {
                 $exists->select(DB::raw(1))
@@ -521,6 +525,11 @@ class CashierDashboardController extends Controller
                         ->from('branch_stocks')
                         ->whereColumn('branch_stocks.product_id', 'products.id')
                         ->where('branch_stocks.branch_id', (int) $branchId);
+                })
+                ->orWhereExists(function ($exists) {
+                    $exists->select(DB::raw(1))
+                        ->from('purchase_items')
+                        ->whereColumn('purchase_items.product_id', 'products.id');
                 });
         });
 
@@ -2683,6 +2692,11 @@ class CashierDashboardController extends Controller
     }
 
     // POS Methods for Cashier
+    public function posElectronics()
+    {
+        return view('cashier.pos.electronics');
+    }
+
     public function posLookup(Request $request)
     {
         $user = Auth::user();
@@ -2696,11 +2710,25 @@ class CashierDashboardController extends Controller
 
         $keyword = $request->input('keyword', $request->input('barcode'));
         $mode = $request->input('mode', 'list');
+        $electronicsOnly = (bool) $request->boolean('electronics_only');
 
         if ($mode === 'list' && empty($keyword)) {
             // Return all products for cashier's branch
             $inventory = app(InventoryService::class);
-            $products = Product::query()
+
+            $productsQuery = Product::query();
+            if ($electronicsOnly) {
+                $productsQuery = $productsQuery
+                    ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                    ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                    ->where(function ($q) {
+                        $q->whereRaw("LOWER(TRIM(categories.category_type)) LIKE 'electronic%'")
+                            ->orWhere('product_types.is_electronic', true)
+                            ->orWhere('product_types.type_name', 'LIKE', '%elect%');
+                    });
+            }
+
+            $products = $productsQuery
                 ->whereExists(function ($exists) use ($posBranchId) {
                     $exists->select(DB::raw(1))
                         ->from('branch_stocks')
@@ -2709,7 +2737,7 @@ class CashierDashboardController extends Controller
                         ->where('branch_stocks.quantity_base', '>', 0);
                 })
                 ->with(['unitTypes'])
-                ->get(['id', 'product_name', 'barcode', 'model_number'])
+                ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number'])
                 ->map(function ($product) use ($posBranchId, $inventory) {
                     $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 
@@ -2818,7 +2846,19 @@ class CashierDashboardController extends Controller
         }
 
         // Search by barcode or name in cashier's branch
-        $products = Product::where(function ($query) use ($keyword) {
+        $productsQuery = Product::query();
+        if ($electronicsOnly) {
+            $productsQuery = $productsQuery
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                ->where(function ($q) {
+                    $q->whereRaw("LOWER(TRIM(categories.category_type)) LIKE 'electronic%'")
+                        ->orWhere('product_types.is_electronic', true)
+                        ->orWhere('product_types.type_name', 'LIKE', '%elect%');
+                });
+        }
+
+        $products = $productsQuery->where(function ($query) use ($keyword) {
             $query->where('barcode', $keyword)
                 ->orWhere('product_name', 'like', '%'.$keyword.'%')
                 ->orWhere('model_number', 'like', '%'.$keyword.'%');
@@ -3020,6 +3060,9 @@ class CashierDashboardController extends Controller
                 $inventory->decreaseStock((int) $posBranchId, (int) $productId, (float) $baseQty, 'sale', 'sales', (int) $sale->id, now());
 
                 $subtotal = $quantity * $price;
+                $serialNumber = isset($item['serial_number']) ? trim((string) $item['serial_number']) : null;
+                $warrantyMonths = isset($item['warranty_months']) ? (int) $item['warranty_months'] : 0;
+
                 $saleItemPayload = [
                     'sale_id' => $sale->id,
                     'product_id' => $productId,
@@ -3032,7 +3075,39 @@ class CashierDashboardController extends Controller
                     $saleItemPayload['unit_type_id'] = $unitTypeId;
                 }
 
-                SaleItem::create($saleItemPayload);
+                $saleItem = SaleItem::create($saleItemPayload);
+
+                // If serial number is provided, mark it sold and attach to the sale item.
+                if (! empty($serialNumber)) {
+                    $serial = ProductSerial::where('serial_number', $serialNumber)->first();
+                    if (! $serial) {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => 'Invalid serial number (not found in inventory).'], 422);
+                    }
+
+                    if ((int) $serial->product_id !== $productId) {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => 'Serial number does not match the selected product.'], 422);
+                    }
+
+                    if ((int) $serial->branch_id !== (int) $branchId) {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => 'Serial number does not belong to the selected branch.'], 422);
+                    }
+
+                    if ($serial->status !== 'in_stock') {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => 'Serial number is not available (already sold/invalid).'], 422);
+                    }
+
+                    $serial->status = 'sold';
+                    $serial->sold_at = now();
+                    $serial->sale_item_id = $saleItem->id;
+                    if ($warrantyMonths > 0) {
+                        $serial->warranty_expiry_date = Carbon::now()->addMonths($warrantyMonths)->toDateString();
+                    }
+                    $serial->save();
+                }
             }
 
             // Create credit record if needed

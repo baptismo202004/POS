@@ -317,8 +317,6 @@
                                                     <div class="fw-semibold" id="purchase-ref-label">-</div>
                                                 </div>
                                                 <div>
-                                                    <div class="small text-muted">Available to Stock In</div>
-                                                    <div class="fw-semibold" id="purchase-remaining-label">-</div>
                                                 </div>
                                                 <div class="ms-auto">
                                                     <div class="position-relative">
@@ -423,18 +421,21 @@
         }
 
         function setPurchaseLabelsFromOption(opt) {
-            if (!supplierLabel || !dateLabel || !refLabel || !remainingLabel) return;
+            // Update labels only if their elements exist (remaining may be removed).
             if (!opt) {
-                supplierLabel.textContent = '-';
-                dateLabel.textContent = '-';
-                refLabel.textContent = '-';
-                remainingLabel.textContent = '-';
+                if (supplierLabel) supplierLabel.textContent = '-';
+                if (dateLabel) dateLabel.textContent = '-';
+                if (refLabel) refLabel.textContent = '-';
+                if (remainingLabel) remainingLabel.textContent = '-';
                 return;
             }
-            supplierLabel.textContent = opt.dataset.supplierName || '-';
-            dateLabel.textContent = opt.dataset.purchaseDate || '-';
-            refLabel.textContent = opt.dataset.referenceNumber || '-';
-            remainingLabel.textContent = (opt.dataset.remainingQuantity ? (opt.dataset.remainingQuantity + ' remaining') : '-');
+
+            if (supplierLabel) supplierLabel.textContent = opt.dataset.supplierName || '-';
+            if (dateLabel) dateLabel.textContent = opt.dataset.purchaseDate || '-';
+            if (refLabel) refLabel.textContent = opt.dataset.referenceNumber || '-';
+            if (remainingLabel) {
+                remainingLabel.textContent = (opt.dataset.remainingQuantity ? (opt.dataset.remainingQuantity + ' remaining') : '-');
+            }
         }
 
         function renderProductCheckboxes(items) {
