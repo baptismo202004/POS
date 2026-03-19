@@ -9,12 +9,13 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\ProductSerial;
-use App\Models\Credit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use App\Models\StockIn;
+use Carbon\Carbon;
 
 class PosAdminController extends Controller
 {
