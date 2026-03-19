@@ -8,6 +8,7 @@ use App\Models\StockIn;
 use App\Models\Branch;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\ProductSerial;
 use App\Models\Credit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,13 +24,19 @@ class PosAdminController extends Controller
         return view('Admin.pos.index');
     }
 
+    public function electronicsIndex()
+    {
+        return view('Admin.pos.electronics');
+    }
+
     public function lookup(Request $request)
     {
         // For POST requests, get data from form data
         $keyword = trim((string) $request->input('barcode', ''));
         $mode = $request->input('mode', 'list');
+        $electronicsOnly = (bool) $request->boolean('electronics_only');
         
-        Log::info("[POS_ADMIN_LOOKUP] keyword='{$keyword}', mode='{$mode}'");
+        Log::info("[POS_ADMIN_LOOKUP] keyword='{$keyword}', mode='{$mode}', electronics_only=" . ($electronicsOnly ? '1' : '0'));
 
         // Validate only if barcode is provided
         if (!empty($keyword)) {
@@ -71,7 +78,6 @@ class PosAdminController extends Controller
 
         // List mode for typeahead/multi results
         if ($mode === 'list') {
-<<<<<<< HEAD
             $branchNames = Branch::pluck('branch_name', 'id');
 
             $inStockProductIds = StockIn::query()
@@ -83,18 +89,38 @@ class PosAdminController extends Controller
             // If keyword is empty, get all products from stock_ins table
             if (empty($keyword)) {
                 // Get only products that are currently in stock (across any branch)
-                $matches = Product::whereIn('id', $inStockProductIds)->get();
-=======
-            // If keyword is empty, get all products from stock_ins table
-            if (empty($keyword)) {
-                // Get all products that have stock records
-                $productIds = StockIn::distinct('product_id')->pluck('product_id');
-                $matches = Product::whereIn('id', $productIds)->get();
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
+                $matchesQuery = Product::query()->whereIn('products.id', $inStockProductIds);
+
+                if ($electronicsOnly) {
+                    $matchesQuery
+                        ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                        ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                        ->where(function ($q) {
+                            $q->whereRaw("LOWER(TRIM(categories.category_type)) LIKE 'electronic%'")
+                                ->orWhere('product_types.is_electronic', true)
+                                ->orWhere('product_types.type_name', 'LIKE', '%elect%');
+                        })
+                        ->select('products.*');
+                }
+
+                $matches = $matchesQuery->get();
                 Log::info("[POS_ADMIN_LOOKUP] Getting all products from stock_ins: " . count($matches) . " products found");
             } else {
-                $matches = Product::query()
-                    ->whereIn('id', $inStockProductIds)
+                $matchesQuery = Product::query()->whereIn('products.id', $inStockProductIds);
+
+                if ($electronicsOnly) {
+                    $matchesQuery
+                        ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                        ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                        ->where(function ($q) {
+                            $q->whereRaw("LOWER(TRIM(categories.category_type)) LIKE 'electronic%'")
+                                ->orWhere('product_types.is_electronic', true)
+                                ->orWhere('product_types.type_name', 'LIKE', '%elect%');
+                        })
+                        ->select('products.*');
+                }
+
+                $matches = $matchesQuery
                     ->where(function ($q) use ($keyword) {
                         $q->where('product_name', 'LIKE', "%{$keyword}%")
                           ->orWhere('barcode', 'LIKE', "%{$keyword}%")
@@ -105,22 +131,25 @@ class PosAdminController extends Controller
                 Log::info("[POS_ADMIN_LOOKUP] Found " . count($matches) . " products matching keyword: '{$keyword}'");
             }
 
-<<<<<<< HEAD
             $items = $matches->map(function ($p) use ($branchNames) {
                 // Calculate available stock and branch-specific latest prices from stock_ins
                 $stockRecords = StockIn::with('unitType')
                     ->where('product_id', $p->id)
                     ->whereColumn('quantity', '>', 'sold')
-=======
-            $items = $matches->map(function ($p) {
-                // Calculate available stock and branch-specific latest prices from stock_ins
-                $stockRecords = StockIn::with('unitType')
-                    ->where('product_id', $p->id)
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
                     ->orderBy('id', 'asc') // ensure later records override earlier ones
                     ->get();
                 $totalStock = 0;
                 $branchStocks = [];
+
+                // Preload product unit conversion factors (unit_type_id => conversion_factor)
+                $unitFactors = DB::table('product_unit_type')
+                    ->where('product_id', (int) $p->id)
+                    ->pluck('conversion_factor', 'unit_type_id')
+                    ->map(function ($v) {
+                        $f = (float) $v;
+                        return $f > 0 ? $f : 1.0;
+                    })
+                    ->toArray();
 
                 foreach ($stockRecords as $stock) {
                     $availableStock = $stock->quantity - $stock->sold;
@@ -128,47 +157,59 @@ class PosAdminController extends Controller
 
                     if ($availableStock > 0) {
                         if (!isset($branchStocks[$stock->branch_id])) {
-<<<<<<< HEAD
                             $branchStocks[$stock->branch_id] = [
                                 'branch_id' => $stock->branch_id,
                                 'branch_name' => $branchNames[$stock->branch_id] ?? null,
-=======
-                            $branch = Branch::find($stock->branch_id);
-                            $branchStocks[$stock->branch_id] = [
-                                'branch_id' => $stock->branch_id,
-                                'branch_name' => optional($branch)->branch_name,
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
+                                // stock is tracked in base units
                                 'stock' => 0,
+                                // prices are resolved later from latest saved unit prices
                                 'stock_units' => [],
                                 'latest_price' => 0.00,
                             ];
                         }
 
-                        $branchStocks[$stock->branch_id]['stock'] += (int) $availableStock;
+                        // StockIn.quantity is already stored in base units in this codebase
+                        $branchStocks[$stock->branch_id]['stock'] += (float) $availableStock;
+                    }
+                }
 
-                        $unitTypeId = (int) ($stock->unit_type_id ?? 0);
-                        if ($unitTypeId > 0) {
-                            if (!isset($branchStocks[$stock->branch_id]['stock_units'][$unitTypeId])) {
-                                $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId] = [
-                                    'unit_type_id' => $unitTypeId,
-                                    'unit_name' => optional($stock->unitType)->unit_name,
-                                    'stock' => 0,
-                                    'latest_price' => 0.00,
-                                ];
+                // Resolve unit prices per branch from latest saved unit prices
+                foreach ($branchStocks as $bId => $bData) {
+                    $latestStockIn = StockIn::with(['unitPrices.unitType'])
+                        ->where('product_id', (int) $p->id)
+                        ->where('branch_id', (int) $bId)
+                        ->whereHas('unitPrices')
+                        ->orderByDesc('id')
+                        ->first();
+
+                    $units = [];
+                    if ($latestStockIn) {
+                        foreach ($latestStockIn->unitPrices as $up) {
+                            $unitTypeId = (int) ($up->unit_type_id ?? 0);
+                            $price = (float) ($up->price ?? 0);
+                            if ($unitTypeId <= 0 || $price <= 0) {
+                                continue;
                             }
-                            $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId]['stock'] += (float) $availableStock;
 
-                            // Track latest price per unit type too
-                            if (!is_null($stock->price) && $stock->price > 0) {
-                                $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId]['latest_price'] = (float) $stock->price;
+                            $factor = isset($unitFactors[$unitTypeId]) ? (float) $unitFactors[$unitTypeId] : 1.0;
+                            if (!is_finite($factor) || $factor <= 0) {
+                                $factor = 1.0;
                             }
-                        }
 
-                        // For price, always take the latest non-zero price per branch (records are ordered by id)
-                        if (!is_null($stock->price) && $stock->price > 0) {
-                            $branchStocks[$stock->branch_id]['latest_price'] = (float) $stock->price;
+                            $baseAvailable = (float) ($bData['stock'] ?? 0);
+                            $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
+
+                            $units[] = [
+                                'unit_type_id' => $unitTypeId,
+                                'unit_name' => optional($up->unitType)->unit_name,
+                                'stock' => (float) $unitAvailable,
+                                'price' => (float) $price,
+                            ];
                         }
                     }
+
+                    $branchStocks[$bId]['stock_units'] = $units;
+                    $branchStocks[$bId]['latest_price'] = isset($units[0]) ? (float) ($units[0]['price'] ?? 0) : 0.00;
                 }
 
                 // Finalize branch list with latest price per branch
@@ -183,7 +224,7 @@ class PosAdminController extends Controller
                                 'unit_type_id' => (int) ($u['unit_type_id'] ?? 0),
                                 'unit_name' => $u['unit_name'] ?? null,
                                 'stock' => (float) ($u['stock'] ?? 0),
-                                'price' => (float) ($u['latest_price'] ?? 0.00),
+                                'price' => (float) ($u['price'] ?? 0.00),
                             ];
                         }, $units));
                     } else {
@@ -241,6 +282,15 @@ class PosAdminController extends Controller
         $totalStock = 0;
         $branchStocks = [];
 
+        $unitFactors = DB::table('product_unit_type')
+            ->where('product_id', (int) $product->id)
+            ->pluck('conversion_factor', 'unit_type_id')
+            ->map(function ($v) {
+                $f = (float) $v;
+                return $f > 0 ? $f : 1.0;
+            })
+            ->toArray();
+
         foreach ($stockRecords as $stock) {
             $availableStock = $stock->quantity - $stock->sold;
             $totalStock += $availableStock;
@@ -258,29 +308,41 @@ class PosAdminController extends Controller
                 }
 
                 $branchStocks[$stock->branch_id]['stock'] += (int) $availableStock;
+            }
+        }
 
-                $unitTypeId = (int) ($stock->unit_type_id ?? 0);
-                if ($unitTypeId > 0) {
-                    if (!isset($branchStocks[$stock->branch_id]['stock_units'][$unitTypeId])) {
-                        $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId] = [
-                            'unit_type_id' => $unitTypeId,
-                            'unit_name' => optional($stock->unitType)->unit_name,
-                            'stock' => 0,
-                            'latest_price' => 0.00,
-                        ];
-                    }
-                    $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId]['stock'] += (float) $availableStock;
+        foreach ($branchStocks as $bId => $bData) {
+            $latestStockIn = StockIn::with(['unitPrices.unitType'])
+                ->where('product_id', (int) $product->id)
+                ->where('branch_id', (int) $bId)
+                ->whereHas('unitPrices')
+                ->orderByDesc('id')
+                ->first();
 
-                    if (!is_null($stock->price) && $stock->price > 0) {
-                        $branchStocks[$stock->branch_id]['stock_units'][$unitTypeId]['latest_price'] = (float) $stock->price;
-                    }
-                }
+            $units = [];
+            if ($latestStockIn) {
+                foreach ($latestStockIn->unitPrices as $up) {
+                    $unitTypeId = (int) ($up->unit_type_id ?? 0);
+                    $price = (float) ($up->price ?? 0);
+                    if ($unitTypeId <= 0 || $price <= 0) continue;
 
-                // For price, always take the latest non-zero price per branch (records are ordered by id)
-                if (!is_null($stock->price) && $stock->price > 0) {
-                    $branchStocks[$stock->branch_id]['latest_price'] = (float) $stock->price;
+                    $factor = isset($unitFactors[$unitTypeId]) ? (float) $unitFactors[$unitTypeId] : 1.0;
+                    if (!is_finite($factor) || $factor <= 0) $factor = 1.0;
+
+                    $baseAvailable = (float) ($bData['stock'] ?? 0);
+                    $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
+
+                    $units[] = [
+                        'unit_type_id' => $unitTypeId,
+                        'unit_name' => optional($up->unitType)->unit_name,
+                        'stock' => (float) $unitAvailable,
+                        'price' => (float) $price,
+                    ];
                 }
             }
+
+            $branchStocks[$bId]['stock_units'] = $units;
+            $branchStocks[$bId]['latest_price'] = isset($units[0]) ? (float) ($units[0]['price'] ?? 0) : 0.00;
         }
 
         $byBranch = array_values(array_map(function ($branchData) {
@@ -292,7 +354,7 @@ class PosAdminController extends Controller
                         'unit_type_id' => (int) ($u['unit_type_id'] ?? 0),
                         'unit_name' => $u['unit_name'] ?? null,
                         'stock' => (float) ($u['stock'] ?? 0),
-                        'price' => (float) ($u['latest_price'] ?? 0.00),
+                        'price' => (float) ($u['price'] ?? 0.00),
                     ];
                 }, $units));
             } else {
@@ -385,26 +447,43 @@ class PosAdminController extends Controller
 
                 Log::info("[POS_STORE] Processing item: Product {$productId} from Branch {$branchId}, Quantity: {$quantity}");
 
-                // Find stock records for the specific branch + unit type and update sold quantities
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $productId)
+                    ->where('unit_type_id', (int) $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1.0;
+                }
+
+                $requestedBaseQty = (float) $quantity * $factor;
+                if (!is_finite($requestedBaseQty) || $requestedBaseQty <= 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid quantity for the selected unit type.',
+                    ], 422);
+                }
+
+                // Find stock records for the specific branch and deduct in base units.
+                // This allows selling in other unit types (e.g., grams) as long as conversion exists.
                 $stockRecords = StockIn::where('product_id', $productId)
                     ->where('branch_id', $branchId)
-                    ->where('unit_type_id', $unitTypeId)
                     ->where('quantity', '>', DB::raw('sold'))
                     ->orderBy('id', 'asc')
                     ->get();
 
-                $remainingQuantity = $quantity;
+                $remainingBaseQuantity = $requestedBaseQty;
 
                 foreach ($stockRecords as $stock) {
-                    if ($remainingQuantity <= 0) break;
+                    if ($remainingBaseQuantity <= 0) break;
 
                     $availableStock = $stock->quantity - $stock->sold;
-                    $toDeduct = min($remainingQuantity, $availableStock);
+                    $toDeduct = min($remainingBaseQuantity, $availableStock);
 
                     $stock->sold += $toDeduct;
                     $stock->save();
 
-                    $remainingQuantity -= $toDeduct;
+                    $remainingBaseQuantity -= $toDeduct;
 
                     // Create corresponding StockOut record per stock_in batch deducted
                     \App\Models\StockOut::create([
@@ -415,10 +494,10 @@ class PosAdminController extends Controller
                         'branch_id' => $branchId,
                     ]);
 
-                    Log::info("[POS_STORE] Updated stock record {$stock->id}: +{$toDeduct} sold, remaining for this batch: {$remainingQuantity}");
+                    Log::info("[POS_STORE] Updated stock record {$stock->id}: +{$toDeduct} sold (base units), remaining base qty to deduct: {$remainingBaseQuantity}");
                 }
                 
-                if ($remainingQuantity > 0) {
+                if ($remainingBaseQuantity > 0) {
                     DB::rollBack();
                     Log::error("[POS_STORE] Insufficient stock for product {$productId}");
                     return response()->json([
@@ -521,446 +600,261 @@ class PosAdminController extends Controller
         }
     }
 
+    public function electronicsStore(Request $request)
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            $items = $data['items'] ?? [];
+            $total = $data['total'] ?? 0;
+            $paymentMethod = $data['payment_method'] ?? 'cash';
+            $customerId = !empty($data['customer_id']) ? $data['customer_id'] : null;
+            $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
+            $creditDueDate = $data['credit_due_date'] ?? null;
+            $creditNotes = $data['credit_notes'] ?? null;
+
+            Log::info("[POS_ELECTRONICS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
+
+            DB::beginTransaction();
+
+            $branchId = Auth::user()->branch_id;
+            if (!empty($items)) {
+                $firstItem = reset($items);
+                $branchId = $firstItem['branch_id'] ?? $branchId;
+            }
+
+            $saleData = [
+                'cashier_id' => Auth::id(),
+                'employee_id' => Auth::id(),
+                'branch_id' => $branchId,
+                'total_amount' => $total,
+                'tax' => 0,
+                'payment_method' => $paymentMethod,
+            ];
+
+            if ($customerId !== null) {
+                $saleData['customer_id'] = $customerId;
+            }
+
+            $sale = Sale::create($saleData);
+
+            foreach ($items as $item) {
+                $productId = $item['product_id'] ?? null;
+                $branchId = $item['branch_id'] ?? null;
+                $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
+                $quantity = $item['quantity'] ?? null;
+                $price = $item['price'] ?? null;
+                $serialNumber = isset($item['serial_number']) ? trim((string) $item['serial_number']) : '';
+                $warrantyMonths = isset($item['warranty_months']) ? (int) $item['warranty_months'] : 0;
+
+                if (empty($productId) || empty($branchId) || empty($unitTypeId)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Product, branch, and unit type are required for each item.',
+                    ], 422);
+                }
+
+                if ((float) $quantity !== 1.0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Electronic devices require quantity of 1 per item (per serial).',
+                    ], 422);
+                }
+
+                if ($serialNumber === '') {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Serial number is required for electronic devices.',
+                    ], 422);
+                }
+
+                if ($warrantyMonths < 0) {
+                    $warrantyMonths = 0;
+                }
+
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $productId)
+                    ->where('unit_type_id', (int) $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1.0;
+                }
+
+                $requestedBaseQty = (float) $quantity * $factor;
+                if (!is_finite($requestedBaseQty) || $requestedBaseQty <= 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid quantity for the selected unit type.',
+                    ], 422);
+                }
+
+                $stockRecords = StockIn::where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->where('quantity', '>', DB::raw('sold'))
+                    ->orderBy('id', 'asc')
+                    ->get();
+
+                $remainingBaseQuantity = $requestedBaseQty;
+
+                foreach ($stockRecords as $stock) {
+                    if ($remainingBaseQuantity <= 0) {
+                        break;
+                    }
+
+                    $availableStock = $stock->quantity - $stock->sold;
+                    $toDeduct = min($remainingBaseQuantity, $availableStock);
+
+                    $stock->sold += $toDeduct;
+                    $stock->save();
+
+                    $remainingBaseQuantity -= $toDeduct;
+
+                    \App\Models\StockOut::create([
+                        'stock_in_id' => $stock->id,
+                        'product_id' => $productId,
+                        'sale_id' => $sale->id,
+                        'quantity' => $toDeduct,
+                        'branch_id' => $branchId,
+                    ]);
+                }
+
+                if ($remainingBaseQuantity > 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for product: " . ($item['name'] ?? 'Unknown'),
+                    ], 422);
+                }
+
+                $saleItemPayload = [
+                    'sale_id' => $sale->id,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                    'unit_price' => $price,
+                    'subtotal' => $price * $quantity,
+                ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('sale_items', 'unit_type_id')) {
+                    $saleItemPayload['unit_type_id'] = $unitTypeId;
+                }
+
+                $saleItem = SaleItem::create($saleItemPayload);
+
+                $warrantyExpiry = null;
+                if ($warrantyMonths > 0) {
+                    $warrantyExpiry = Carbon::now()->addMonths($warrantyMonths)->toDateString();
+                }
+
+                $serial = ProductSerial::where('serial_number', $serialNumber)->first();
+                if (!$serial) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid serial number (not found in inventory).',
+                    ], 422);
+                }
+
+                if ((int) $serial->product_id !== (int) $productId) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Serial number does not match the selected product.',
+                    ], 422);
+                }
+
+                if ((int) $serial->branch_id !== (int) $branchId) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Serial number does not belong to the selected branch.',
+                    ], 422);
+                }
+
+                if ($serial->status !== 'in_stock') {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Serial number is not available (already sold/invalid).',
+                    ], 422);
+                }
+
+                $serial->status = 'sold';
+                $serial->sold_at = now();
+                $serial->sale_item_id = $saleItem->id;
+                $serial->warranty_expiry_date = $warrantyExpiry;
+                $serial->save();
+            }
+
+            if ($paymentMethod === 'credit' && $creditDueDate) {
+                $lastCredit = Credit::orderBy('id', 'desc')->first();
+                $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
+                $referenceNumber = 'CR-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+                $creditCustomerId = $customerId;
+                if (!$creditCustomerId && $customerName) {
+                    $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
+                    if ($existingCustomer) {
+                        $creditCustomerId = $existingCustomer->id;
+                    } else {
+                        $creditCustomerId = DB::table('customers')->insertGetId([
+                            'full_name' => $customerName,
+                            'email' => null,
+                            'phone' => null,
+                            'address' => null,
+                            'max_credit_limit' => 0,
+                            'status' => 'active',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                Credit::create([
+                    'reference_number' => $referenceNumber,
+                    'customer_id' => $creditCustomerId,
+                    'sale_id' => $sale->id,
+                    'cashier_id' => Auth::id(),
+                    'branch_id' => $branchId,
+                    'credit_amount' => $total,
+                    'paid_amount' => 0,
+                    'remaining_balance' => $total,
+                    'status' => 'active',
+                    'date' => $creditDueDate,
+                    'notes' => $creditNotes,
+                ]);
+            }
+
+            DB::commit();
+
+            $response = [
+                'success' => true,
+                'message' => 'Order processed successfully',
+                'order_id' => $sale->id,
+            ];
+
+            if ($paymentMethod === 'cash') {
+                $response['receipt_url'] = route('admin.sales.receipt', $sale);
+                $response['auto_receipt'] = true;
+            }
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("[POS_ELECTRONICS_STORE] Order processing failed: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Order processing failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function validateCashier(Request $request)
     {
         // Placeholder for validateCashier method
         return response()->json(['message' => 'Cashier validation not implemented yet']);
-    }
-
-    // Stock In methods for Admin
-    public function stockInCreate()
-    {
-        // Only show purchases that still have remaining quantity to be stocked in
-        $purchases = DB::table('purchases')
-            ->join('purchase_items', 'purchase_items.purchase_id', '=', 'purchases.id')
-            ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
-            ->leftJoin('stock_ins', 'stock_ins.purchase_id', '=', 'purchases.id')
-            ->select(
-                'purchases.id',
-                'purchases.reference_number',
-                'purchases.purchase_date',
-                'suppliers.supplier_name as supplier_name',
-                DB::raw('SUM(purchase_items.quantity) - COALESCE(SUM(stock_ins.quantity), 0) as remaining_quantity')
-            )
-            ->groupBy('purchases.id', 'purchases.reference_number', 'purchases.purchase_date', 'suppliers.supplier_name')
-            ->havingRaw('SUM(purchase_items.quantity) > COALESCE(SUM(stock_ins.quantity), 0)')
-            ->orderBy('purchases.purchase_date', 'desc')
-            ->get();
-            
-        $branches = \App\Models\Branch::orderBy('branch_name')->get();
-            
-        return view('Admin.stockin.create', compact('purchases', 'branches'));
-    }
-
-    public function stockInProductsByPurchase(\App\Models\Purchase $purchase)
-    {
-        try {
-            $purchaseItems = $purchase->items()->with([
-                'product.unitTypes' => function ($q) {
-                    $q->withPivot('conversion_factor', 'is_base');
-                },
-                'unitType',
-            ])->get();
-
-            $items = $purchaseItems->map(function ($item) {
-<<<<<<< HEAD
-                $purchaseUnitTypeId = (int) ($item->unit_type_id ?? 0);
-                $purchaseUnitName = $item->unitType?->unit_name;
-
-                $purchaseFactor = (float) (DB::table('product_unit_type')
-                    ->where('product_id', (int) $item->product_id)
-                    ->where('unit_type_id', $purchaseUnitTypeId)
-                    ->value('conversion_factor') ?? 1);
-                $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
-
-                // StockIn.quantity is treated as BASE units in this Admin flow.
-                $alreadyStockedBase = (float) StockIn::where('purchase_id', (int) $item->purchase_id)
-                    ->where('product_id', (int) $item->product_id)
-                    ->sum('quantity');
-
-                $purchasedQty = (float) ($item->quantity ?? 0);
-                $purchasedBase = $purchasedQty * $purchaseFactor;
-                $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
-=======
-                // Calculate how many units have already been stocked in for this purchase + product
-                $alreadyStocked = StockIn::where('purchase_id', $item->purchase_id)
-                    ->where('product_id', $item->product_id)
-                    ->sum('quantity');
-
-                $remainingBase = (float) ($item->quantity ?? 0) - (float) ($alreadyStocked ?? 0);
-                if ($remainingBase < 0) {
-                    $remainingBase = 0;
-                }
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
-
-                $primaryPurchased = (float) ($item->primary_quantity ?? 0);
-                $primaryRemaining = $primaryPurchased;
-                if ($primaryPurchased > 0 && (float) ($item->quantity ?? 0) > 0) {
-                    $ratio = $remainingBase / (float) ($item->quantity ?? 0);
-                    $primaryRemaining = $primaryPurchased * $ratio;
-                }
-
-                // Debug: Log the unit types data
-                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
-
-                $unitTypes = $item->product->unitTypes ?? collect();
-
-                $unitTypesPayload = collect($unitTypes)->map(function ($ut) {
-                    return [
-                        'id' => $ut->id,
-                        'unit_name' => $ut->unit_name,
-                        'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
-                        'is_base' => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
-                    ];
-                })->values();
-
-                $baseUnit = collect($unitTypes)->firstWhere('pivot.is_base', true);
-                $baseUnitName = $baseUnit?->unit_name;
-
-                $conversionParts = [];
-                if ($baseUnitName) {
-                    foreach ($unitTypesPayload as $u) {
-                        if (!empty($u['is_base'])) {
-                            continue;
-                        }
-                        $f = (float) ($u['conversion_factor'] ?? 0);
-                        if ($f > 0) {
-                            $fText = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
-                            $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
-                        }
-                    }
-                }
-                $conversionSummary = implode(', ', $conversionParts);
-
-                $result = [
-                    'product_id' => $item->product_id,
-                    'product' => $item->product,
-                    // Remaining quantity (base units) - authoritative for validation
-                    'quantity' => $remainingBase,
-<<<<<<< HEAD
-                    'purchased_quantity' => $purchasedQty,
-                    'remaining_quantity' => $remainingBase,
-
-                    'purchase_unit_type_id' => $purchaseUnitTypeId,
-                    'purchase_unit_name' => $purchaseUnitName,
-                    'purchase_factor' => $purchaseFactor,
-                    'base_unit_name' => $baseUnitName,
-
-                    'purchased_qty' => $purchasedQty,
-                    'purchased_base' => $purchasedBase,
-                    'remaining_base' => $remainingBase,
-                    'conversion_summary' => $conversionSummary,
-
-                    'base_purchased_quantity' => $purchasedBase,
-=======
-                    'purchased_quantity' => (float) ($item->quantity ?? 0),
-                    'remaining_quantity' => $remainingBase,
-                    // Entered unit quantity (for toggle display)
-                    'primary_purchased_quantity' => (float) ($item->primary_quantity ?? 0),
-                    'primary_remaining_quantity' => round($primaryRemaining, 4),
-                    'base_purchased_quantity' => (float) ($item->base_quantity ?? $item->quantity ?? 0),
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
-                    'base_remaining_quantity' => $remainingBase,
-                    'unit_price' => $item->unit_cost, // use unit_cost from purchase item
-                    'unit_types' => $unitTypesPayload,
-                    'unit_type' => $item->unitType,
-                    'primary_unit_name' => $item->unitType ? $item->unitType->unit_name : null,
-<<<<<<< HEAD
-                    'base_unit_type' => $baseUnit,
-                    'base_unit_type_id' => $baseUnit?->id,
-=======
-                    'base_unit_type' => $item->base_unit_type_id ? \App\Models\UnitType::find($item->base_unit_type_id) : null,
-                    'base_unit_type_id' => $item->base_unit_type_id,
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
-                ];
-
-                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
-                return $result;
-            })->values();
-
-            Log::info("[STOCK_IN_PRODUCTS] Final items data: " . json_encode($items->toArray()));
-            
-            return response()->json([
-                'items' => $items,
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error("[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: " . $e->getMessage());
-            return response()->json(['items' => [], 'error' => $e->getMessage()]);
-        }
-    }
-
-    public function stockInStore(Request $request)
-    {
-        try {
-            $data = $request->validate([
-                'purchase_id' => 'required|exists:purchases,id',
-                'items' => 'required|array|min:1',
-                'items.*.product_id' => 'required|exists:products,id',
-                'items.*.unit_type_id' => 'required|exists:unit_types,id',
-                'items.*.base_unit_type_id' => 'nullable|exists:unit_types,id',
-                'items.*.quantity' => 'required|numeric|min:0.0001',
-                'items.*.new_price' => 'required|numeric|min:0',
-                'items.*.unit_prices' => 'required|array|min:1',
-                'items.*.unit_prices.*' => 'required|numeric|min:0',
-                'items.*.unit_quantities' => 'nullable|array',
-                'items.*.unit_quantities.*' => 'nullable|numeric|min:0',
-                'items.*.original_price' => 'required|numeric|min:0',
-                'items.*.branch_id' => 'required|exists:branches,id',
-            ]);
-
-            foreach ($data['items'] as $item) {
-                $originalPrice = (float) ($item['original_price'] ?? 0);
-
-                // Prefer using existing stock_in.price (base unit price) as the authoritative base price reference
-                // when stocking in the same product for the same purchase+branch (ensures consistency across entries).
-                $existingBasePrice = (float) (StockIn::where('purchase_id', (int) $data['purchase_id'])
-                    ->where('product_id', (int) $item['product_id'])
-                    ->where('branch_id', (int) $item['branch_id'])
-                    ->orderByDesc('id')
-                    ->value('price') ?? 0);
-
-                $baseReferencePrice = $existingBasePrice > 0 ? $existingBasePrice : $originalPrice;
-
-                // If frontend provided base unit type, prefer using it for stock_ins.unit_type_id (backward compatibility)
-                $baseUnitTypeId = isset($item['base_unit_type_id']) ? (int) $item['base_unit_type_id'] : (int) ($item['unit_type_id'] ?? 0);
-
-                $unitPrices = $item['unit_prices'] ?? [];
-
-                // Arbitrage prevention across unit types (flexible retail pricing)
-                // Allow smaller units to be more expensive per base unit, but never cheaper.
-                // Compute base-equivalent: base_equiv = unit_price / factor
-                // Enforce: for smaller factor (smaller unit), base_equiv must be >= larger-unit base_equiv.
-                $pricePoints = [];
-
-                // If there is no existing stock_in base price, derive a base reference price from submitted unit prices
-                // by taking the cheapest per-base-unit price (bulk). This supports flexible pricing where smaller
-                // units can be more expensive, but not cheaper than bulk.
-                if ($existingBasePrice <= 0 && count($unitPrices) > 0) {
-                    $derived = [];
-                    foreach ($unitPrices as $uId => $uPrice) {
-                        $uPrice = (float) $uPrice;
-                        $uId = (int) $uId;
-                        if ($uPrice <= 0) continue;
-                        $f = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
-                            ->where('product_id', (int) $item['product_id'])
-                            ->where('unit_type_id', $uId)
-                            ->value('conversion_factor') ?? 1);
-                        $f = $f > 0 ? $f : 1;
-                        $derived[] = $uPrice / $f;
-                    }
-                    if (count($derived) > 0) {
-                        $baseReferencePrice = min($derived);
-                    }
-                }
-
-                foreach ($unitPrices as $unitTypeId => $unitPrice) {
-                    $unitPrice = (float) $unitPrice;
-                    $unitTypeId = (int) $unitTypeId;
-
-                    if ($unitPrice <= 0) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'All unit prices must be greater than zero.',
-                        ], 422);
-                    }
-
-                    // Enforce the requested rule: unit price must not be smaller than purchased price converted to that unit.
-                    $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
-                        ->where('product_id', (int) $item['product_id'])
-                        ->where('unit_type_id', $unitTypeId)
-                        ->value('conversion_factor') ?? 1);
-
-                    $factor = $factor > 0 ? $factor : 1;
-                    $baseEquiv = $unitPrice / $factor;
-                    $pricePoints[] = ['factor' => $factor, 'base_equiv' => $baseEquiv];
-
-                    $minAllowed = $baseReferencePrice * $factor;
-                    if ($unitPrice < $minAllowed) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'New Price must not be smaller than the base price reference for the selected unit type.',
-                        ], 422);
-                    }
-                }
-            }
-
-            $items = $data['items'];
-            $purchaseId = $data['purchase_id'];
-            $stockIns = [];
-
-            $purchase = \App\Models\Purchase::with('items')->findOrFail($purchaseId);
-
-            $itemsByProduct = collect($items)->groupBy('product_id');
-            foreach ($itemsByProduct as $productId => $rows) {
-                $purchaseItem = $purchase->items->firstWhere('product_id', (int) $productId);
-                if (! $purchaseItem) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid product found in the stock-in request.',
-                    ], 422);
-                }
-
-                // Convert purchased quantity to BASE units before subtracting already-stocked BASE units.
-                $purchaseFactor = (float) (DB::table('product_unit_type')
-                    ->where('product_id', (int) $productId)
-                    ->where('unit_type_id', (int) ($purchaseItem?->unit_type_id ?? 0))
-                    ->value('conversion_factor') ?? 1);
-                $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
-
-                $purchasedBase = (float) ($purchaseItem->quantity ?? 0) * $purchaseFactor;
-
-                // StockIn.quantity is stored/treated as BASE units.
-                $alreadyStockedBase = (float) StockIn::where('purchase_id', (int) $purchaseId)
-                    ->where('product_id', (int) $productId)
-                    ->sum('quantity');
-
-                $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
-
-                $requestedBase = 0.0;
-                foreach ($rows as $row) {
-                    $unitQuantities = $row['unit_quantities'] ?? [];
-                    if (is_array($unitQuantities) && count($unitQuantities) > 0) {
-                        foreach ($unitQuantities as $unitTypeId => $enteredQty) {
-                            $enteredQty = (float) $enteredQty;
-                            $unitTypeId = (int) $unitTypeId;
-                            if ($enteredQty <= 0) continue;
-
-                            $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
-                                ->where('product_id', (int) $productId)
-                                ->where('unit_type_id', $unitTypeId)
-                                ->value('conversion_factor') ?? 1);
-                            if ($factor <= 0) $factor = 1;
-
-                            $requestedBase += ($enteredQty * $factor);
-                        }
-                        continue;
-                    }
-
-                    $requestedBase += (float) ($row['quantity'] ?? 0);
-                }
-                if ($requestedBase > $remainingBase) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Total Stock-In Qty for this product exceeds remaining to stock.',
-                    ], 422);
-                }
-            }
-
-            foreach ($items as $item) {
-                $unitQuantities = $item['unit_quantities'] ?? [];
-                $unitPrices = $item['unit_prices'] ?? [];
-
-                // If per-unit quantities are not provided (older UI), fallback to single stock_in row.
-                if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
-                    Log::info("[STOCK_IN] Processing item (legacy)", [
-                    'product_id' => $item['product_id'],
-                    'branch_id' => $item['branch_id'],
-                    'quantity' => $item['quantity'],
-                    'new_price' => $item['new_price']
-                ]);
-
-                $qtyBase = (float) ($item['quantity'] ?? 0);
-                $stockIn = StockIn::create([
-                    'product_id' => $item['product_id'],
-                    'branch_id' => $item['branch_id'],
-                    'purchase_id' => $purchaseId,
-                    'unit_type_id' => $baseUnitTypeId ?: $item['unit_type_id'],
-<<<<<<< HEAD
-                    'quantity' => (int) round($qtyBase),
-                    'price' => $baseReferencePrice,
-=======
-                    'quantity' => $qtyBase,
-                    'initial_quantity' => $qtyBase,
-                    'price' => $baseReferencePrice,
-                    'user_id' => Auth::id()
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
-                ]);
-
-                foreach ($unitPrices as $unitTypeId => $unitPrice) {
-                    $stockIn->unitPrices()->updateOrCreate(
-                        ['unit_type_id' => (int) $unitTypeId],
-                        ['price' => (float) $unitPrice]
-                    );
-                }
-
-                $stockIns[] = $stockIn->id;
-                    continue;
-                }
-
-                // Create one stock_in row per unit type that has qty > 0
-                foreach ($unitQuantities as $unitTypeId => $enteredQty) {
-                    $enteredQty = (float) $enteredQty;
-                    $unitTypeId = (int) $unitTypeId;
-
-                    if ($enteredQty <= 0) {
-                        continue;
-                    }
-
-                    $factor = (float) (\Illuminate\Support\Facades\DB::table('product_unit_type')
-                        ->where('product_id', (int) $item['product_id'])
-                        ->where('unit_type_id', $unitTypeId)
-                        ->value('conversion_factor') ?? 1);
-                    if ($factor <= 0) $factor = 1;
-
-                    $qtyBase = $enteredQty * $factor;
-                    $priceForUnit = array_key_exists($unitTypeId, $unitPrices) ? (float) $unitPrices[$unitTypeId] : (float) ($item['new_price'] ?? 0);
-
-                    Log::info("[STOCK_IN] Processing unit", [
-                        'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'unit_type_id' => $unitTypeId,
-                        'entered_qty' => $enteredQty,
-                        'qty_base' => $qtyBase,
-                        'price' => $priceForUnit
-                    ]);
-
-                    $stockIn = StockIn::create([
-                    'product_id' => $item['product_id'],
-                        'branch_id' => $item['branch_id'],
-                        'purchase_id' => $purchaseId,
-                        'unit_type_id' => $unitTypeId,
-<<<<<<< HEAD
-                        'quantity' => (int) round($qtyBase),
-                        'price' => $priceForUnit,
-=======
-                        'quantity' => $qtyBase,
-                        'initial_quantity' => $qtyBase,
-                        'price' => $priceForUnit,
-                        'user_id' => Auth::id()
->>>>>>> e36897daf2fa51d2b7d274add0854b820227b059
-                    ]);
-
-                    // Keep recording all unit prices for this stock_in id (as your current design does)
-                    foreach ($unitPrices as $upUnitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $upUnitTypeId],
-                            ['price' => (float) $unitPrice]
-                        );
-                    }
-
-                    $stockIns[] = $stockIn->id;
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => count($stockIns) . ' items added successfully',
-                'stock_in_ids' => $stockIns
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error("[STOCK_IN] Error adding stock", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error adding stock: ' . $e->getMessage()
-            ], 500);
-        }
     }
 }

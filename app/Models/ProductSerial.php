@@ -13,6 +13,7 @@ class ProductSerial extends Model
 
     protected $fillable = [
         'product_id',
+        'purchase_id',
         'branch_id',
         'serial_number',
         'status',

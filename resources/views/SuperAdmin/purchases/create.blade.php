@@ -237,14 +237,6 @@
                     </select>
                 </div>
 
-                <div class="col-md-2">
-                    <label class="form-label">Product Type</label>
-                    <select name="items[][product_type]" class="form-select product-type-select" required>
-                        <option value="non-electronic" selected>Non-Electronic</option>
-                        <option value="electronic">Electronic</option>
-                    </select>
-                </div>
-
                 <div class="col-md-3">
                     <label class="form-label">Qty - Unit</label>
                     <div class="input-group">
@@ -268,13 +260,7 @@
             </div>
             <div class="row g-3 mt-2">
                 <div class="col-md-12 serials-container d-none">
-                    <div class="border rounded p-3">
-                        <h6>Electronic product details & serials</h6>
-                        <p class="text-muted small">Add product serials / IMEIs. You can add multiple entries.</p>
-                        <div class="serial-entries-container"></div>
-                        <button type="button" class="btn btn-primary btn-sm add-serial-btn mt-2">Add serial</button>
-                        <span class="text-muted small ms-2">Each serial links to a branch and may have a warranty expiry date.</span>
-                    </div>
+                    <div class="electronics-panel-host" data-loaded="0"></div>
                 </div>
             </div>
         </div>
@@ -289,13 +275,6 @@
                     <label class="form-label">New Product Name</label>
                     <input type="text" name="items[][product_name]" class="form-control" required>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Product Type</label>
-                    <select name="items[][product_type]" class="form-select product-type-select" required>
-                        <option value="non-electronic" selected>Non-Electronic</option>
-                        <option value="electronic">Electronic</option>
-                    </select>
-                </div>
                 <div class="col-md-3">
                     <label class="form-label">Qty - Unit</label>
                     <div class="input-group">
@@ -318,13 +297,7 @@
             </div>
             <div class="row g-3 mt-2">
                 <div class="col-md-12 serials-container d-none">
-                    <div class="border rounded p-3">
-                        <h6>Electronic product details & serials</h6>
-                        <p class="text-muted small">Add product serials / IMEIs. You can add multiple entries.</p>
-                        <div class="serial-entries-container"></div>
-                        <button type="button" class="btn btn-primary btn-sm add-serial-btn mt-2">Add serial</button>
-                        <span class="text-muted small ms-2">Each serial links to a branch and may have a warranty expiry date.</span>
-                    </div>
+                    <div class="electronics-panel-host" data-loaded="0"></div>
                 </div>
             </div>
         </div>
@@ -336,12 +309,6 @@
             <div class="col-md-4">
                 <label class="form-label">Serial Number / IMEI</label>
                 <input type="text" name="serial_number" class="form-control" placeholder="Enter serial number" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Branch</label>
-                <select name="branch_id" class="form-select branch-select" required>
-                    <option value="">-- Select Branch --</option>
-                </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Warranty Expiry</label>
@@ -515,8 +482,161 @@
     document.addEventListener('DOMContentLoaded', function () {
         console.log('DOM loaded, initializing purchases...');
 
-        const branches = @json($branches);
-        console.log('Branches data loaded:', branches);
+        const productsMeta = {};
+        @foreach($products as $p)
+            productsMeta["{{ $p->id }}"] = {
+                category_type: "{{ $p->category?->category_type ?? 'non_electronic' }}",
+                warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }}
+            };
+        @endforeach
+
+        function ymd(d) {
+            return d.toISOString().slice(0, 10);
+        }
+
+        function parseYmd(value) {
+            if (!value) return null;
+            const parts = String(value).split('-');
+            if (parts.length !== 3) return null;
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const dt = new Date(y, m, day);
+            if (Number.isNaN(dt.getTime())) return null;
+            return dt;
+        }
+
+        function addMonthsSafe(dateObj, months) {
+            const d = new Date(dateObj.getTime());
+            const day = d.getDate();
+            d.setMonth(d.getMonth() + months);
+
+            // Handle month overflow (e.g. Jan 31 + 1 month)
+            if (d.getDate() < day) {
+                d.setDate(0);
+            }
+            return d;
+        }
+
+        function computeWarrantyExpiry(purchaseDateStr, warrantyMonths) {
+            const purchaseDate = parseYmd(purchaseDateStr);
+            if (!purchaseDate) return '';
+            const m = parseInt(String(warrantyMonths || '0'), 10);
+            if (!m || m <= 0) return '';
+            return ymd(addMonthsSafe(purchaseDate, m));
+        }
+
+        function getPurchaseDateValue() {
+            const inp = document.querySelector('input[name="purchase_date"]');
+            return inp ? inp.value : '';
+        }
+
+        function updateSerialWarrantyDefaultsForRow(row) {
+            if (!row) return;
+            const productId = row.querySelector('.product-select')?.value;
+            const meta = productsMeta[String(productId)] || { warranty_coverage_months: 0 };
+            const purchaseDateStr = getPurchaseDateValue();
+            const computed = computeWarrantyExpiry(purchaseDateStr, meta.warranty_coverage_months);
+
+            const host = row.querySelector('.electronics-panel-host');
+            if (!host || host.dataset.loaded !== '1') return;
+
+            const sameToggle = host.querySelector('.js-same-expiry-toggle');
+            const sharedWrap = host.querySelector('.js-shared-expiry-wrap');
+            const sharedInput = host.querySelector('.js-shared-expiry-input');
+            const serialInputs = host.querySelectorAll('input[type="date"][name$="[warranty_expiry]"]');
+
+            if (sharedInput && !sharedInput.value && computed) {
+                sharedInput.value = computed;
+            }
+
+            if (sameToggle && sameToggle.checked) {
+                if (sharedWrap) sharedWrap.classList.remove('d-none');
+                const val = (sharedInput && sharedInput.value) ? sharedInput.value : computed;
+                serialInputs.forEach(function(inp) {
+                    inp.value = val || '';
+                });
+            } else {
+                if (sharedWrap) sharedWrap.classList.add('d-none');
+                serialInputs.forEach(function(inp) {
+                    if (!inp.value && computed) {
+                        inp.value = computed;
+                    }
+                });
+            }
+        }
+
+        function normalizeCategoryType(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function isElectronicCategoryType(categoryType) {
+            const ct = normalizeCategoryType(categoryType);
+            return ct === 'electronic_without_serial' || ct === 'electronic_with_serial';
+        }
+
+        function requiresSerials(categoryType) {
+            return normalizeCategoryType(categoryType) === 'electronic_with_serial';
+        }
+
+        function applyCategoryTypeUI(row, productId) {
+            if (!row) return;
+
+            const meta = productsMeta[String(productId)] || { category_type: 'non_electronic' };
+            row.dataset.categoryType = normalizeCategoryType(meta.category_type || 'non_electronic');
+
+            const serialsContainer = row.querySelector('.serials-container');
+            if (!serialsContainer) return;
+
+            if (isElectronicCategoryType(row.dataset.categoryType)) {
+                serialsContainer.classList.remove('d-none');
+                ensureElectronicsPanelLoaded(row);
+
+                // Only show serial entry UI if category requires serials
+                const host = serialsContainer.querySelector('.electronics-panel-host');
+                if (host) {
+                    const body = host.querySelector('.electronics-panel-body');
+                    if (body) {
+                        body.classList.toggle('d-none', !requiresSerials(row.dataset.categoryType));
+                    }
+                }
+            } else {
+                serialsContainer.classList.add('d-none');
+                const host = serialsContainer.querySelector('.electronics-panel-host');
+                if (host) {
+                    host.innerHTML = '';
+                    host.dataset.loaded = '0';
+                }
+            }
+        }
+
+        async function ensureElectronicsPanelLoaded(row) {
+            const host = row.querySelector('.electronics-panel-host');
+            if (!host) return;
+            if (host.dataset.loaded === '1') return;
+
+            const url = '{{ route('superadmin.purchases.electronics.panel') }}';
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await res.text();
+            host.innerHTML = html;
+            host.dataset.loaded = '1';
+
+            // Wire events inside loaded panel
+            const sameToggle = host.querySelector('.js-same-expiry-toggle');
+            const sharedInput = host.querySelector('.js-shared-expiry-input');
+            if (sameToggle) {
+                sameToggle.addEventListener('change', function() {
+                    updateSerialWarrantyDefaultsForRow(row);
+                });
+            }
+            if (sharedInput) {
+                sharedInput.addEventListener('input', function() {
+                    updateSerialWarrantyDefaultsForRow(row);
+                });
+            }
+
+            updateSerialWarrantyDefaultsForRow(row);
+        }
 
         const container = document.getElementById('items-container');
         const template = document.getElementById('item-template');
@@ -542,6 +662,7 @@
                 const productId = this.value;
                 console.log('Product changed, loading units for product ID:', productId);
                 if (row && productId) {
+                    applyCategoryTypeUI(row, productId);
                     loadProductUnits(row, productId);
                 }
             });
@@ -597,6 +718,15 @@
         }
 
         addItemBtn.addEventListener('click', () => addItem());
+
+        const purchaseDateInput = document.querySelector('input[name="purchase_date"]');
+        if (purchaseDateInput) {
+            purchaseDateInput.addEventListener('input', function() {
+                document.querySelectorAll('.item-row').forEach(function(row) {
+                    updateSerialWarrantyDefaultsForRow(row);
+                });
+            });
+        }
 
         function addUnmatchedItem(productData = null) {
             const unmatchedTemplate = document.getElementById('unmatched-item-template');
@@ -659,23 +789,11 @@
 
         // --- SERIALS VISIBILITY ---
         container.addEventListener('change', function(e) {
-            if (e.target.classList.contains('product-type-select')) {
-                const row = e.target.closest('.item-row');
-                const serialsContainer = row.querySelector('.serials-container');
-                if (e.target.value === 'electronic') {
-                    serialsContainer.classList.remove('d-none');
-                } else {
-                    serialsContainer.classList.add('d-none');
-                    const serialEntriesContainer = serialsContainer.querySelector('.serial-entries-container');
-                    if (serialEntriesContainer) {
-                        serialEntriesContainer.innerHTML = '';
-                    }
-                }
-            }
-
             if (e.target.classList.contains('product-select')) {
                 const row = e.target.closest('.item-row');
                 const productId = e.target.value;
+
+                applyCategoryTypeUI(row, productId);
                 loadProductUnits(row, productId);
             }
 
@@ -722,89 +840,52 @@
                 const node = serialTemplate.content.cloneNode(true);
 
                 node.querySelector('[name="serial_number"]').name = `items[${itemIndex}][serials][${serialIndex}][serial_number]`;
-                node.querySelector('[name="branch_id"]').name = `items[${itemIndex}][serials][${serialIndex}][branch_id]`;
                 const warrantyInput = node.querySelector('[name="warranty_expiry"]');
                 warrantyInput.name = `items[${itemIndex}][serials][${serialIndex}][warranty_expiry]`;
-                warrantyInput.value = new Date().toISOString().slice(0, 10);
+                warrantyInput.value = '';
 
                 serialsContainer.appendChild(node);
 
-                const branchSelect = serialsContainer.querySelector('.serial-entry-row:last-child .branch-select');
-                
-                console.log('Adding branch dropdown:', branchSelect);
-                console.log('Available branches:', branches);
-                
-                if (branchSelect && branches) {
-                    console.log('Branches data type:', typeof branches);
-                    console.log('Branches data:', branches);
-                    
-                    // Clear and add branch options
-                    branchSelect.innerHTML = '<option value="">-- Select Branch --</option>';
-                    
-                    // Check if branches is an array of objects or a string
-                    if (Array.isArray(branches)) {
-                        branches.forEach(branch => {
-                            console.log('Processing branch:', branch);
-                            const branchName = branch.name || branch.branch_name || 'Unknown Branch';
-                            const branchId = branch.id || branch.branch_id || '';
-                            const option = new Option(branchName, branchId);
-                            branchSelect.add(option);
-                        });
-                    } else {
-                        console.log('Branches is not an array, trying to parse...');
-                        // If it's a string or object, try to extract branch info
-                        try {
-                            if (typeof branches === 'object') {
-                                Object.keys(branches).forEach(key => {
-                                    const branch = branches[key];
-                                    const branchName = branch.name || branch.branch_name || `Branch ${key}`;
-                                    const branchId = branch.id || branch.branch_id || key;
-                                    const option = new Option(branchName, branchId);
-                                    branchSelect.add(option);
-                                });
-                            }
-                        } catch (e) {
-                            console.error('Error parsing branches:', e);
-                        }
-                    }
-                    
-                    console.log('Branch options added:', branches.length, 'branches');
-                    
-                    // Try to initialize Select2, but fallback to normal select if it fails
-                    try {
-                        $(branchSelect).select2({
-                            theme: 'bootstrap-5',
-                            placeholder: '-- Select Branch --',
-                            width: '100%',
-                            dropdownParent: $(branchSelect).parent()
-                        });
-                        console.log('Select2 initialized successfully');
-                        
-                        // Force show the Select2 container
-                        setTimeout(() => {
-                            const select2Container = $(branchSelect).next('.select2-container');
-                            if (select2Container.length > 0) {
-                                select2Container.show();
-                                console.log('Select2 container forced to show');
-                            }
-                        }, 50);
-                        
-                    } catch (error) {
-                        console.log('Select2 failed, using normal select:', error);
-                        // Make the normal select visible
-                        branchSelect.style.display = 'block';
-                        branchSelect.style.width = '100%';
-                        branchSelect.classList.remove('select2-hidden-accessible');
-                    }
-                } else {
-                    console.error('Branch select or branches data missing');
-                    console.log('Branch select:', branchSelect);
-                    console.log('Branches:', branches);
-                }
+                updateSerialWarrantyDefaultsForRow(itemRow);
             }
 
             if (e.target.classList.contains('remove-serial-btn')) {
                 e.target.closest('.serial-entry-row').remove();
+            }
+
+            if (e.target.classList.contains('toggle-electronics-panel-btn')) {
+                const row = e.target.closest('.item-row');
+                const body = row.querySelector('.electronics-panel-body');
+                if (body) {
+                    body.classList.toggle('d-none');
+                    e.target.textContent = body.classList.contains('d-none') ? 'Show' : 'Hide';
+                }
+            }
+        });
+
+        document.querySelector('form[action="{{ route('superadmin.purchases.store') }}"]').addEventListener('submit', function (e) {
+            let firstError = null;
+
+            document.querySelectorAll('.item-row').forEach(row => {
+                const categoryType = row.dataset.categoryType || 'non_electronic';
+                if (!requiresSerials(categoryType)) return;
+
+                const qtyInput = row.querySelector('input[name$="[primary_quantity]"]');
+                const qty = qtyInput ? parseInt(qtyInput.value || '0', 10) : 0;
+
+                const serialEntriesContainer = row.querySelector('.serial-entries-container');
+                const serialCount = serialEntriesContainer ? serialEntriesContainer.querySelectorAll('.serial-entry-row').length : 0;
+
+                if (qty > 0 && serialCount !== qty) {
+                    if (!firstError) {
+                        firstError = 'For Electronic (with serial) products, serial entries must match the quantity.';
+                    }
+                }
+            });
+
+            if (firstError) {
+                e.preventDefault();
+                alert(firstError);
             }
         });
 

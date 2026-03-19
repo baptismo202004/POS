@@ -18,10 +18,15 @@ class CategoryController extends Controller
     {
         $request->validate([
             'category_name' => 'required|unique:categories,category_name',
+            'category_type' => 'nullable|in:non_electronic,electronic_without_serial,electronic_with_serial',
             'status' => 'required|in:active,inactive'
         ]);
 
-        Category::create(['category_name' => $request->category_name, 'status' => $request->status]);
+        Category::create([
+            'category_name' => $request->category_name,
+            'category_type' => $request->input('category_type', 'non_electronic'),
+            'status' => $request->status,
+        ]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Category added successfully']);
@@ -44,10 +49,15 @@ class CategoryController extends Controller
     {
         $request->validate([
             'category_name' => 'required|unique:categories,category_name,' . $category->id,
+            'category_type' => 'nullable|in:non_electronic,electronic_without_serial,electronic_with_serial',
             'status' => 'required|in:active,inactive'
         ]);
 
-        $category->update(['category_name' => $request->category_name, 'status' => $request->status]);
+        $category->update([
+            'category_name' => $request->category_name,
+            'category_type' => $request->input('category_type', 'non_electronic'),
+            'status' => $request->status,
+        ]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Category updated successfully']);

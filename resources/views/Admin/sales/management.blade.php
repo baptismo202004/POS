@@ -194,6 +194,9 @@
                         <a href="{{ route('pos.index') }}" class="sp-btn sp-btn-primary">
                             <i class="fas fa-cash-register"></i> Go to POS
                         </a>
+                        <a href="{{ route('pos.electronics.index') }}" class="sp-btn sp-btn-outline">
+                            <i class="fas fa-plug"></i> Electronic Devices POS
+                        </a>
                     </div>
                 </div>
 

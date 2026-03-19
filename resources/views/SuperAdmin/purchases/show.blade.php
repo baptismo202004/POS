@@ -232,6 +232,42 @@
                                             <td>₱{{ number_format($item->unit_cost, 2) }}</td>
                                             <td style="font-weight:700;color:var(--navy);">₱{{ number_format($item->subtotal, 2) }}</td>
                                         </tr>
+
+                                        @php
+                                            $pid = $item->product_id;
+                                            $serials = $serialsByProductId[$pid] ?? collect();
+                                        @endphp
+                                        @if($serials->isNotEmpty())
+                                            <tr>
+                                                <td colspan="5" style="padding-top:8px;padding-bottom:12px;">
+                                                    <div style="font-family:'Nunito',sans-serif;font-weight:900;color:var(--navy);font-size:12px;margin-bottom:6px;">Serials & Warranty</div>
+                                                    <div class="sp-table-wrap">
+                                                        <table class="sp-table" style="margin:0;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th style="font-size:10px;">Serial Number / IMEI</th>
+                                                                    <th style="font-size:10px;">Warranty Expiry</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach($serials as $s)
+                                                                    <tr>
+                                                                        <td style="font-weight:700;">{{ $s->serial_number }}</td>
+                                                                        <td>
+                                                                            @if(!empty($s->warranty_expiry_date))
+                                                                                {{ \Illuminate\Support\Carbon::parse($s->warranty_expiry_date)->format('M d, Y') }}
+                                                                            @else
+                                                                                <span style="color:var(--muted);">N/A</span>
+                                                                            @endif
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
                                     @empty
                                         <tr>
                                             <td colspan="5" class="text-center py-4" style="color:var(--muted);">No items found for this purchase.</td>

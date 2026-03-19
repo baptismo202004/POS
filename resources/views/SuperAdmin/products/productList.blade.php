@@ -200,15 +200,6 @@
                                     </div>
 
                                     <div class="col-md-3">
-                                        <label class="form-label">Product Type</label>
-                                        <select name="product_type_id" id="productType" class="form-control select2-tags" style="width:100%">
-                                            <option value="">-- Select Type --</option>
-                                            <option value="electronic" data-electronic="1" {{ $isEdit && $product->product_type_id == 'electronic' ? 'selected' : '' }}>Electronic</option>
-                                            <option value="non-electronic" data-electronic="0" {{ ($isEdit && $product->product_type_id == 'non-electronic') || !$isEdit ? 'selected' : '' }}>Non-Electronic</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-3">
                                         <label class="form-label">Unit Types</label>
                                         <select name="unit_type_ids[]" id="unitTypeSelect" class="form-control" style="width:100%" multiple>
                                             @php
@@ -326,18 +317,18 @@
             console.log('jQuery and Select2 loaded successfully');
             
             // Initialize all select2 dropdowns
-            $('#brandSelect, #categorySelect').select2({
+            $('#brandSelect').select2({
                 tags: true,
                 placeholder: '-- Select or create --',
                 allowClear: true,
                 width: 'resolve'
             });
 
-            $('#productType').select2({
-                placeholder: '-- Select --',
+            $('#categorySelect').select2({
+                tags: false,
+                placeholder: '-- Select Category --',
                 allowClear: true,
-                width: 'resolve',
-                minimumResultsForSearch: Infinity
+                width: 'resolve'
             });
 
             $('#unitTypeSelect').select2({
@@ -352,6 +343,13 @@
 
             const pivotMap = @json($pivotMap ?? []);
             const initialBaseUnitTypeId = @json($baseUnitTypeId);
+
+            const categoriesMeta = {};
+            @foreach($categories ?? [] as $c)
+                categoriesMeta["{{ $c->id }}"] = {
+                    category_type: "{{ $c->category_type ?? 'non_electronic' }}"
+                };
+            @endforeach
 
             function normalizeUnitName(name) {
                 return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -496,51 +494,32 @@
 
             renderConversions();
 
-            // --- Conditional Visibility Logic ---
-            const productType = $('#productType');
+            // --- Conditional Visibility Logic (Category Type) ---
+            const categorySelect = $('#categorySelect');
             const electronicFields = $('.electronic-field');
-            const nonElectronicFields = $('.non-electronic-field');
 
-            function toggleElectronicFields() {
-                const selectedOption = productType.find('option:selected');
-                const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === 'electronic';
-                
-                console.log('Product type changed:', {
-                    value: productType.val(),
-                    isElectronic: isElectronic,
-                    selectedOption: selectedOption.text()
-                });
-                
-                // Show electronic fields for electronic products
-                electronicFields.toggleClass('d-none', !isElectronic);
-                
-                // Show non-electronic fields (Branches) for non-electronic products only
-                nonElectronicFields.toggleClass('d-none', isElectronic);
-                
-                // Log field visibility for debugging
-                electronicFields.each(function() {
-                    console.log('Electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-                });
-                nonElectronicFields.each(function() {
-                    console.log('Non-electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-                });
+            function isElectronicCategoryType(categoryType) {
+                return categoryType === 'electronic_with_serial' || categoryType === 'electronic_without_serial';
             }
 
-            // Attach the event listener to select2's change event
-            productType.on('change', function() {
-                console.log('Select2 change event triggered');
-                toggleElectronicFields();
+            function toggleFieldsByCategory() {
+                const raw = categorySelect.val();
+                const meta = categoriesMeta[String(raw)] || { category_type: 'non_electronic' };
+                const isElectronic = isElectronicCategoryType(meta.category_type);
+
+                if (isElectronic) {
+                    electronicFields.removeClass('d-none');
+                } else {
+                    electronicFields.addClass('d-none');
+                }
+            }
+
+            categorySelect.on('change', function () {
+                toggleFieldsByCategory();
             });
 
-            // Also listen for select2:select event
-            productType.on('select2:select', function(e) {
-                console.log('Select2 select event triggered:', e.params.data);
-                toggleElectronicFields();
-            });
-
-            // Initial call to set the correct visibility on page load
             setTimeout(function() {
-                toggleElectronicFields();
+                toggleFieldsByCategory();
             }, 100);
         });
     </script>

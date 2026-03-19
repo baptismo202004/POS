@@ -9,9 +9,11 @@ use App\Models\Product;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\ProductType;
+use App\Models\ProductSerial;
 use App\Models\UnitType;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -30,7 +32,7 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        $products = Product::where('status', 'active')->get();
+        $products = Product::where('status', 'active')->with('category')->get();
         $brands = Brand::where('status', 'active')->get();
         $categories = Category::where('status', 'active')->get();
         $product_types = ProductType::all();
@@ -83,12 +85,30 @@ class PurchaseController extends Controller
             'items.*.primary_quantity' => 'required|numeric|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
+
+            'items.*.serials' => 'nullable|array',
+            'items.*.serials.*.serial_number' => 'required_with:items.*.serials|string|max:255|distinct',
+            'items.*.serials.*.warranty_expiry' => 'nullable|date',
         ]);
 
         $purchaseId = null;
         DB::transaction(function () use ($validated, &$purchaseId) {
             $totalCost = 0;
             $purchaseItemsData = [];
+
+            $serialsByIndex = [];
+
+            // Preload product category types for validation logic
+            $productIds = collect($validated['items'])
+                ->filter(fn($it) => empty($it['is_new']) && !empty($it['product_id']))
+                ->pluck('product_id')
+                ->unique()
+                ->values();
+
+            $products = Product::with('category')
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
 
             foreach ($validated['items'] as $item) {
                 $productId = null;
@@ -111,7 +131,31 @@ class PurchaseController extends Controller
                     $productId = $item['product_id'];
                 }
 
+                $categoryType = null;
+                if (!empty($productId) && isset($products[$productId])) {
+                    $categoryType = $products[$productId]?->category?->category_type;
+                }
+
                 $primaryQty = (float) $item['primary_quantity'];
+
+                $requiresSerials = $categoryType === 'electronic_with_serial';
+                if ($requiresSerials) {
+                    $serials = $item['serials'] ?? [];
+
+                    if (!is_array($serials) || count($serials) === 0) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' => ['Serials are required for Electronic (with serial) products.'],
+                        ]);
+                    }
+
+                    if ((int) round($primaryQty) !== count($serials)) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' => ['Serial count must match quantity for Electronic (with serial) products.'],
+                        ]);
+                    }
+                }
+
+                $serialsByIndex[] = $item['serials'] ?? [];
 
                 // Purchases now store the entered quantity in the selected unit.
                 $qty = $primaryQty;
@@ -138,7 +182,31 @@ class PurchaseController extends Controller
 
             $purchaseId = $purchase->id;
 
-            $purchase->items()->createMany($purchaseItemsData);
+            $createdItems = $purchase->items()->createMany($purchaseItemsData);
+
+            foreach ($createdItems as $index => $purchaseItem) {
+                $serials = $serialsByIndex[$index] ?? [];
+                if (empty($serials)) {
+                    continue;
+                }
+
+                foreach ($serials as $s) {
+                    $serialPayload = [
+                        'product_id' => $purchaseItem->product_id,
+                        'branch_id' => null,
+                        'serial_number' => $s['serial_number'],
+                        'status' => 'purchased',
+                        'warranty_expiry_date' => $s['warranty_expiry'] ?? null,
+                        'sale_item_id' => null,
+                    ];
+
+                    if (Schema::hasColumn('product_serials', 'purchase_id')) {
+                        $serialPayload['purchase_id'] = $purchase->id;
+                    }
+
+                    ProductSerial::create($serialPayload);
+                }
+            }
         });
 
         return redirect()->route('superadmin.purchases.show', ['purchase' => $purchaseId])
@@ -148,7 +216,13 @@ class PurchaseController extends Controller
     public function show(Purchase $purchase)
     {
         $purchase->load('items.product', 'items.unitType');
-        return view('SuperAdmin.purchases.show', compact('purchase'));
+        $serialsByProductId = ProductSerial::query()
+            ->where('purchase_id', $purchase->id)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('product_id');
+
+        return view('SuperAdmin.purchases.show', compact('purchase', 'serialsByProductId'));
     }
 
     public function markPaid(Purchase $purchase)

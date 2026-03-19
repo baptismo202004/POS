@@ -245,9 +245,9 @@
                                                 <tr>
                                                     <th>Product</th>
                                                     <th>Purchased Qty</th>
-                                                    <th>Stock Price and Quantity</th>
-                                                    <th>Branch</th>
                                                     <th>Original Price</th>
+                                                    <th>Branch</th>
+                                                    <th>Stock Price and Quantity</th>
                                                     <th style="width: 80px;">Actions</th>
                                                 </tr>
                                             </thead>
@@ -355,6 +355,27 @@
                     hidden.setCustomValidity(selectedErr || '');
                 } else {
                     hidden.setCustomValidity('');
+                }
+            });
+        }
+
+        if (tableBody) {
+            tableBody.addEventListener('change', async function(e) {
+                if (e.target && e.target.tagName === 'SELECT' && e.target.name && e.target.name.indexOf('[branch_id]') !== -1) {
+                    var row = e.target.closest('tr');
+                    if (!row) return;
+                    var productIdEl = row.querySelector('input[name$="[product_id]"]');
+                    var productId = productIdEl ? productIdEl.value : null;
+                    var branchId = e.target.value;
+                    if (!productId || !branchId) return;
+
+                    // Always reset unit price inputs when switching branches so latest saved prices can apply.
+                    resetUnitPriceInputsForBranchChange(row);
+
+                    var data = await fetchLatestUnitPrices(productId, branchId);
+                    if (data) {
+                        applyLatestPricesToRowAsPlaceholder(row, data);
+                    }
                 }
             });
         }
@@ -489,6 +510,9 @@
 
                     var conversionSummary = item.conversion_summary || '';
 
+                    var categoryType = item.category_type || 'non_electronic';
+                    var showSerialPicker = categoryType === 'electronic_with_serial';
+
                     var baseUnit = null;
                     var unitTypes = Array.isArray(item.unit_types) ? item.unit_types : [];
                     unitTypes.forEach(function(ut) {
@@ -542,7 +566,12 @@
                     var rowHtml =
                         '<tr>' +
                             '<td>' +
-                                '<div>' + escapeHtml(productName) + '</div>' +
+                                '<div class="d-flex align-items-center gap-2">' +
+                                    '<div>' + escapeHtml(productName) + '</div>' +
+                                    '<span class="js-price-alert text-warning" style="display:none;" title="">' +
+                                        '<i class="fas fa-triangle-exclamation"></i>' +
+                                    '</span>' +
+                                '</div>' +
                                 (conversionSummary ? ('<div class="text-muted" style="font-size: 12px;">' + escapeHtml(conversionSummary) + '</div>') : '') +
                                 '<input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '">' +
                             '</td>' +
@@ -560,9 +589,7 @@
                                 '<span class="fw-semibold js-remaining-to-stock d-none" data-product-id="' + item.product_id + '" data-original-remaining="' + remainingBaseQty + '">' + escapeHtml(String(remainingBaseQty)) + '</span>' +
                             '</td>' +
                             '<td>' +
-                                '<input type="hidden" class="js-stockin-qty-base" data-product-id="' + item.product_id + '" name="items[' + idx + '][quantity]" value="0">' +
-                                unitTypesHtml +
-                                '<input type="hidden" class="js-selected-new-price" data-row-idx="' + idx + '" name="items[' + idx + '][new_price]" value="0.00">' +
+                                '<input type="number" class="form-control js-original-price" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
                             '</td>' +
                             '<td>' +
                                 '<select class="form-select" name="items[' + idx + '][branch_id]" required>' +
@@ -571,7 +598,33 @@
                                 '</select>' +
                             '</td>' +
                             '<td>' +
-                                '<input type="number" class="form-control js-original-price" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
+                                '<input type="hidden" class="js-stockin-qty-base" data-product-id="' + item.product_id + '" name="items[' + idx + '][quantity]" value="0">' +
+                                unitTypesHtml +
+
+                                (showSerialPicker
+                                    ? (
+                                        '<div class="mt-2">' +
+                                            '<button type="button" class="btn btn-sm btn-outline-secondary js-open-serials" data-row-idx="' + idx + '" data-product-id="' + item.product_id + '">Search Serials</button>' +
+                                            '<div class="border rounded p-2 mt-2 js-serials-panel" data-loaded="0" data-row-idx="' + idx + '" data-product-id="' + item.product_id + '" style="display:none;">' +
+                                                '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                                                    '<div class="small">Selected <span class="js-serial-selected-count">0</span> / <span class="js-serial-required-count">0</span> required</div>' +
+                                                    '<div class="d-flex gap-2">' +
+                                                        '<button type="button" class="btn btn-sm btn-outline-secondary js-serial-select-all">Select All</button>' +
+                                                        '<button type="button" class="btn btn-sm btn-outline-secondary js-close-serials">Close</button>' +
+                                                    '</div>' +
+                                                '</div>' +
+
+                                                '<div class="d-flex gap-2 align-items-center mb-2">' +
+                                                    '<input type="text" class="form-control form-control-sm js-serial-search" placeholder="Search serial..." style="max-width: 220px;">' +
+                                                '</div>' +
+                                                '<div class="small text-muted js-serials-loading">Loading...</div>' +
+                                                '<div class="js-serials-list" style="max-height: 180px; overflow:auto;"></div>' +
+                                                '<div class="js-serials-hidden-inputs"></div>' +
+                                            '</div>' +
+                                        '</div>'
+                                    )
+                                    : ''
+                                ) +
                             '</td>' +
                             '<td>' +
                                 '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Branch</button>' +
@@ -594,9 +647,372 @@
                     }
                 });
 
-            container.style.display = '';
+            container.style.display = 'block';
 
             updateRemainingToStockAll();
+            syncSelectedUnitPricesToHidden();
+            updateNewPriceValidityAll();
+        }
+
+        async function fetchPurchaseProductSerials(purchaseId, productId) {
+            var url = '{{ url('admin/stockin/purchases') }}/' + purchaseId + '/products/' + productId + '/serials';
+            var res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!res.ok) return null;
+            return await res.json();
+        }
+
+        function renderSerialsIntoPanel(panel, idx, serials) {
+            var list = panel.querySelector('.js-serials-list');
+            var hiddenWrap = panel.querySelector('.js-serials-hidden-inputs');
+            var loading = panel.querySelector('.js-serials-loading');
+            if (!list || !hiddenWrap) return;
+
+            if (loading) loading.style.display = 'none';
+            list.innerHTML = '';
+            hiddenWrap.innerHTML = '';
+
+            if (!serials || serials.length === 0) {
+                list.innerHTML = '<div class="text-muted small">No available serials for this purchase/product.</div>';
+                return;
+            }
+
+            serials.forEach(function(s) {
+                var row = document.createElement('div');
+                row.className = 'form-check';
+                row.innerHTML =
+                    '<input class="form-check-input js-serial-checkbox" type="checkbox" value="' + escapeHtml(s.id) + '" id="serial-' + idx + '-' + escapeHtml(s.id) + '">' +
+                    '<label class="form-check-label" for="serial-' + idx + '-' + escapeHtml(s.id) + '">' + escapeHtml(s.serial_number) + '</label>';
+                list.appendChild(row);
+            });
+        }
+
+        function syncSerialHiddenInputs(panel, idx) {
+            var hiddenWrap = panel.querySelector('.js-serials-hidden-inputs');
+            if (!hiddenWrap) return;
+            hiddenWrap.innerHTML = '';
+
+            var checked = panel.querySelectorAll('.js-serial-checkbox:checked');
+            Array.prototype.slice.call(checked).forEach(function(cb) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'items[' + idx + '][serial_ids][]';
+                inp.value = cb.value;
+                hiddenWrap.appendChild(inp);
+            });
+        }
+
+        function requiredSerialCountForRow(row) {
+            var baseInput = row ? row.querySelector('input.js-stockin-qty-base') : null;
+            var baseQty = baseInput ? (parseFloat(baseInput.value || '0') || 0) : 0;
+            var required = Math.round(baseQty);
+            if (!isFinite(required) || required < 0) required = 0;
+            return required;
+        }
+
+        function updateSerialIndicatorForRow(row) {
+            if (!row) return;
+            var panel = row.querySelector('.js-serials-panel');
+            if (!panel) return;
+
+            var requiredEl = panel.querySelector('.js-serial-required-count');
+            var selectedEl = panel.querySelector('.js-serial-selected-count');
+            if (!requiredEl || !selectedEl) return;
+
+            var required = requiredSerialCountForRow(row);
+            var selected = panel.querySelectorAll('.js-serial-checkbox:checked').length;
+
+            requiredEl.textContent = String(required);
+            selectedEl.textContent = String(selected);
+
+            var baseInput = row.querySelector('input.js-stockin-qty-base');
+            if (baseInput) {
+                baseInput.setCustomValidity('');
+                if (required > 0 && selected !== required) {
+                    baseInput.setCustomValidity('Selected serials must match stock-in quantity.');
+                }
+            }
+        }
+
+        if (tableBody) {
+            tableBody.addEventListener('click', async function(e) {
+                var openBtn = e.target && e.target.closest ? e.target.closest('.js-open-serials') : null;
+                if (openBtn) {
+                    var idx = openBtn.dataset.rowIdx;
+                    var productId = openBtn.dataset.productId;
+                    var purchaseId = purchaseSelect ? purchaseSelect.value : '';
+                    if (!idx || !productId || !purchaseId) return;
+
+                    var row = openBtn.closest('tr');
+                    var panel = tableBody.querySelector('.js-serials-panel[data-row-idx="' + idx + '"][data-product-id="' + productId + '"]');
+                    if (!panel) return;
+
+                    panel.style.display = 'block';
+
+                    if (panel.dataset.loaded !== '1') {
+                        var payload = await fetchPurchaseProductSerials(purchaseId, productId);
+                        var serials = payload && payload.serials ? payload.serials : [];
+                        renderSerialsIntoPanel(panel, idx, serials);
+                        panel.dataset.loaded = '1';
+                    }
+
+                    updateSerialIndicatorForRow(row);
+
+                    return;
+                }
+
+                var selectAllBtn = e.target && e.target.closest ? e.target.closest('.js-serial-select-all') : null;
+                if (selectAllBtn) {
+                    var panel = selectAllBtn.closest('.js-serials-panel');
+                    var row = selectAllBtn.closest('tr');
+                    if (!panel || !row) return;
+
+                    var idx = panel.dataset.rowIdx;
+                    var required = requiredSerialCountForRow(row);
+                    var currently = panel.querySelectorAll('.js-serial-checkbox:checked').length;
+                    var toSelect = required > 0 ? (required - currently) : 0;
+                    if (toSelect <= 0) {
+                        updateSerialIndicatorForRow(row);
+                        return;
+                    }
+
+                    var checkboxes = panel.querySelectorAll('.js-serial-checkbox');
+                    for (var i = 0; i < checkboxes.length && toSelect > 0; i++) {
+                        var cb = checkboxes[i];
+                        if (cb.checked) continue;
+
+                        var wrapper = cb.closest('.form-check');
+                        if (wrapper && wrapper.style && wrapper.style.display === 'none') continue;
+
+                        cb.checked = true;
+                        toSelect--;
+                    }
+
+                    syncSerialHiddenInputs(panel, idx);
+                    updateSerialIndicatorForRow(row);
+                    return;
+                }
+
+                var closeBtn = e.target && e.target.closest ? e.target.closest('.js-close-serials') : null;
+                if (closeBtn) {
+                    var panelToClose = closeBtn.closest('.js-serials-panel');
+                    if (panelToClose) panelToClose.style.display = 'none';
+                    return;
+                }
+            });
+
+            tableBody.addEventListener('input', function(e) {
+                if (!e.target) return;
+                if (e.target.classList && e.target.classList.contains('js-serial-search')) {
+                    var panel = e.target.closest('.js-serials-panel');
+                    if (!panel) return;
+                    var q = (e.target.value || '').toLowerCase();
+                    var rows = panel.querySelectorAll('.form-check');
+                    rows.forEach(function(r) {
+                        var text = (r.textContent || '').toLowerCase();
+                        r.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+                    });
+                }
+            });
+
+            tableBody.addEventListener('change', function(e) {
+                if (!e.target) return;
+                if (e.target.classList && e.target.classList.contains('js-serial-checkbox')) {
+                    var panel = e.target.closest('.js-serials-panel');
+                    if (!panel) return;
+                    var idx = panel.dataset.rowIdx;
+                    syncSerialHiddenInputs(panel, idx);
+
+                    var row = e.target.closest('tr');
+                    updateSerialIndicatorForRow(row);
+                }
+            });
+        }
+
+        var latestUnitPricesCache = {};
+
+        async function fetchLatestUnitPrices(productId, branchId) {
+            var key = String(productId) + ':' + String(branchId);
+            if (latestUnitPricesCache[key]) {
+                return latestUnitPricesCache[key];
+            }
+
+            try {
+                var url = '{{ url('admin/stockin/latest-unit-prices') }}' + '?product_id=' + encodeURIComponent(productId) + '&branch_id=' + encodeURIComponent(branchId);
+                var res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) {
+                    throw new Error('HTTP error! status: ' + res.status);
+                }
+                var data = await res.json();
+                latestUnitPricesCache[key] = data;
+                return data;
+            } catch (e) {
+                console.error('Fetch latest-unit-prices error:', e);
+                return null;
+            }
+        }
+
+        function resetUnitPriceInputsForBranchChange(row) {
+            if (!row) return;
+            var inputs = row.querySelectorAll('input.js-new-price-unit');
+            inputs.forEach(function(inp) {
+                inp.dataset.manual = '';
+                inp.dataset.dbSaved = '';
+                inp.placeholder = '';
+                inp.dataset.autofill = '1';
+                inp.value = '0.00';
+                inp.dataset.autofill = '';
+            });
+
+            syncSelectedUnitPricesToHidden();
+            updateNewPriceValidityAll();
+        }
+
+        function applyLatestPricesToRowAsPlaceholder(row, pricesData) {
+            if (!row || !pricesData || !pricesData.unit_prices) return;
+            var unitPrices = pricesData.unit_prices || {};
+            var inputs = row.querySelectorAll('input.js-new-price-unit');
+            inputs.forEach(function(inp) {
+                var unitId = String(inp.dataset.unitId || '');
+                if (!unitId) return;
+
+                var hasDb = Object.prototype.hasOwnProperty.call(unitPrices, unitId);
+                inp.dataset.dbSaved = hasDb ? '1' : '0';
+
+                if (hasDb) {
+                    var p = unitPrices[unitId];
+                    inp.placeholder = formatPrice(p);
+
+                    // Prefill visible value only if untouched.
+                    var isManual = String(inp.dataset.manual || '') === '1';
+                    var currentVal = String(inp.value || '').trim();
+                    var currentNum = parseFloat(currentVal);
+                    var isDefaultZero = currentVal === '' || !isFinite(currentNum) || currentNum === 0;
+                    if (!isManual && isDefaultZero) {
+                        inp.dataset.autofill = '1';
+                        inp.value = formatPrice(p);
+                        inp.dataset.autofill = '';
+                    }
+                    return;
+                }
+
+                // No saved DB price for this unit type: show 0.00
+                inp.placeholder = '0.00';
+                var isManualMissing = String(inp.dataset.manual || '') === '1';
+                var curValMissing = String(inp.value || '').trim();
+                var curNumMissing = parseFloat(curValMissing);
+                var isDefaultZeroMissing = curValMissing === '' || !isFinite(curNumMissing) || curNumMissing === 0;
+                if (!isManualMissing && isDefaultZeroMissing) {
+                    inp.dataset.autofill = '1';
+                    inp.value = '0.00';
+                    inp.dataset.autofill = '';
+                }
+            });
+
+            updateDbPriceAlert(row, unitPrices);
+            syncSelectedUnitPricesToHidden();
+            updateNewPriceValidityAll();
+        }
+
+        function getUnitFactor(row, unitId) {
+            var factorEl = row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]');
+            var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+            if (!isFinite(factor) || factor <= 0) factor = 1;
+            return factor;
+        }
+
+        function updateDbPriceAlert(row, unitPrices) {
+            if (!row) return;
+            var alertEl = row.querySelector('.js-price-alert');
+            if (!alertEl) return;
+
+            var originalInput = row.querySelector('input.js-original-price');
+            var original = originalInput ? (parseFloat(originalInput.value || '0') || 0) : 0;
+
+            var remainingMeta = row.querySelector('.js-remaining-display');
+            var purchaseFactor = remainingMeta ? (parseFloat(remainingMeta.dataset.purchaseFactor || '1') || 1) : 1;
+            if (!isFinite(purchaseFactor) || purchaseFactor <= 0) purchaseFactor = 1;
+
+            var basePurchaseCost = original / purchaseFactor;
+            if (!isFinite(basePurchaseCost) || basePurchaseCost < 0) basePurchaseCost = 0;
+
+            var messages = [];
+            Object.keys(unitPrices || {}).forEach(function(unitId) {
+                var p = parseFloat(unitPrices[unitId] || '0') || 0;
+                if (!(p > 0)) return;
+                var factor = getUnitFactor(row, unitId);
+                var minAllowed = basePurchaseCost * factor;
+                if (p < minAllowed) {
+                    var unitNameEl = row.querySelector('input.js-new-price-unit[data-unit-id="' + unitId + '"]');
+                    var unitName = unitNameEl ? (unitNameEl.closest('.border') ? unitNameEl.closest('.border').querySelector('.fw-semibold')?.textContent : '') : '';
+                    unitName = unitName ? unitName.trim() : ('Unit ' + unitId);
+                    messages.push(unitName + ' saved price ' + formatPrice(p) + ' is below purchase min ' + formatPrice(minAllowed));
+                }
+            });
+
+            if (messages.length > 0) {
+                alertEl.style.display = '';
+                alertEl.title = messages.join(' | ');
+            } else {
+                alertEl.style.display = 'none';
+                alertEl.title = '';
+            }
+        }
+
+        function deriveBaseFromUnitPrice(row, unitId, unitPrice) {
+            var factorEl = row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]');
+            var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+            if (!isFinite(factor) || factor <= 0) factor = 1;
+            var p = parseFloat(unitPrice || '0') || 0;
+            if (p <= 0) return 0;
+            return p / factor;
+        }
+
+        function formatPrice(n) {
+            var num = parseFloat(n);
+            if (!isFinite(num) || num < 0) num = 0;
+
+            // Keep enough precision for small-unit prices (e.g., grams).
+            var fixed = num.toFixed(6);
+            fixed = fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+            return fixed === '' ? '0' : fixed;
+        }
+
+        function syncOtherUnitPricesFromDriver(row, driverUnitId, driverPrice) {
+            if (!row) return;
+            var base = deriveBaseFromUnitPrice(row, driverUnitId, driverPrice);
+            if (!(base > 0)) return;
+
+            var driverFactor = getUnitFactor(row, driverUnitId);
+
+            var inputs = row.querySelectorAll('input.js-new-price-unit');
+            inputs.forEach(function(inp) {
+                var unitId = String(inp.dataset.unitId || '');
+                if (!unitId || unitId === String(driverUnitId)) return;
+
+                // Do not let smaller unit edits affect larger units.
+                var targetFactor = getUnitFactor(row, unitId);
+                if (driverFactor < targetFactor) return;
+
+                // Auto-calc only for units with no saved DB price.
+                if (String(inp.dataset.dbSaved || '') === '1') return;
+
+                // Never overwrite manually edited target inputs.
+                if (String(inp.dataset.manual || '') === '1') return;
+
+                var computed = base * targetFactor;
+
+                // Put computed result in placeholder, and set value only if the field is still default/0.
+                inp.placeholder = formatPrice(computed);
+                var currentVal = String(inp.value || '').trim();
+                var currentNum = parseFloat(currentVal);
+                var isDefaultZero = currentVal === '' || !isFinite(currentNum) || currentNum === 0;
+                if (isDefaultZero) {
+                    inp.dataset.autofill = '1';
+                    inp.value = formatPrice(computed);
+                    inp.dataset.autofill = '';
+                }
+            });
+
             syncSelectedUnitPricesToHidden();
             updateNewPriceValidityAll();
         }
@@ -882,7 +1298,23 @@
 
         if (tableBody) {
             tableBody.addEventListener('input', function(e) {
+                if (!e.target) return;
                 if (e.target.classList.contains('js-new-price-unit')) {
+                    if (e.target.dataset.autofill === '1') {
+                        return;
+                    }
+
+                    var row = e.target.closest('tr');
+                    if (row) {
+                        var driverUnitId = String(e.target.dataset.unitId || '');
+                        // Last edited unit becomes the driver: clear manual markers on siblings.
+                        row.querySelectorAll('input.js-new-price-unit').forEach(function(inp) {
+                            inp.dataset.manual = '';
+                        });
+                        e.target.dataset.manual = '1';
+                        syncOtherUnitPricesFromDriver(row, driverUnitId, e.target.value);
+                    }
+
                     syncSelectedUnitPricesToHidden();
                     updateNewPriceValidityAll();
                     if (!form.checkValidity()) {
@@ -898,6 +1330,8 @@
                 if (e.target.classList.contains('js-stockin-qty-unit')) {
                     syncStockInQtyToBaseAll();
                     updateRemainingToStockAll();
+                    var row = e.target.closest('tr');
+                    updateSerialIndicatorForRow(row);
                     return;
                 }
             });
@@ -908,8 +1342,19 @@
         if (form) {
             form.addEventListener('submit', async function(e) {
                 syncStockInQtyToBaseAll();
-                updateRemainingToStockAll();
+                if (tableBody) {
+                    tableBody.querySelectorAll('tr').forEach(function(row) {
+                        updateSerialIndicatorForRow(row);
+                    });
+                }
+                syncSelectedUnitPricesToHidden();
                 updateNewPriceValidityAll();
+
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    form.reportValidity();
+                    return;
+                }
 
                 var qtyInputs = form.querySelectorAll('input.js-stockin-qty-base');
                 var totalAll = 0;

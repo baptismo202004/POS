@@ -29,7 +29,7 @@ class SaleController extends Controller
 
     public function receipt(Sale $sale)
     {
-        $sale->load('saleItems.product');
+        $sale->load(['saleItems.product', 'saleItems.unitType', 'cashier']);
         
         // Simple barcode generation using HTML5 canvas or image
         $barcode = $sale->id;

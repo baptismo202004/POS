@@ -1404,7 +1404,7 @@ class CashierDashboardController extends Controller
                 'returnTo'
             ));
         } catch (\Exception $e) {
-            \Log::error('Error loading cashier full credit history: ' . $e->getMessage());
+            Log::error('Error loading cashier full credit history: ' . $e->getMessage());
             return back()->with('error', 'Unable to load credit history');
         }
     }
@@ -1938,7 +1938,7 @@ class CashierDashboardController extends Controller
                     'sale_id' => $request->sale_id,
                     'sale_item_id' => $request->sale_item_id,
                     'product_id' => $request->product_id,
-                    'cashier_id' => auth()->id(),
+                    'cashier_id' => Auth::id(),
                     'quantity_refunded' => $request->quantity_refunded,
                     'refund_amount' => $request->refund_amount,
                     'reason' => $request->reason,
@@ -1949,6 +1949,7 @@ class CashierDashboardController extends Controller
                 Log::info('Refund created with ID: '.$refund->id);
 
                 // Update sale total amount by deducting refund amount
+                /** @var \App\Models\Sale|null $sale */
                 $sale = \App\Models\Sale::find($request->sale_id);
                 if ($sale) {
                     // Do not allow refunds for credit sales (defensive check)
@@ -1971,7 +1972,7 @@ class CashierDashboardController extends Controller
                 if ($product) {
                     Log::info('Updating inventory for product: '.$product->id);
 
-                    $branchId = (int) (auth()->user()->branch_id ?? 1);
+                    $branchId = (int) (Auth::user()?->branch_id ?? 1);
                     $service = app(\App\Services\InventoryService::class);
 
                     $saleItem = \App\Models\SaleItem::query()
@@ -2052,7 +2053,7 @@ class CashierDashboardController extends Controller
                 'monthlyCredits'
             ));
         } catch (\Exception $e) {
-            \Log::error('Error loading cashier credits: '.$e->getMessage());
+            Log::error('Error loading cashier credits: '.$e->getMessage());
 
             return back()->with('error', 'Error loading credits: '.$e->getMessage());
         }
@@ -2241,7 +2242,7 @@ class CashierDashboardController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Cashier credit creation error: '.$e->getMessage());
+            Log::error('Cashier credit creation error: '.$e->getMessage());
 
             return response()->json(['success' => false, 'message' => 'Error creating credit: '.$e->getMessage()], 500);
         }
@@ -2361,7 +2362,7 @@ class CashierDashboardController extends Controller
                 'monthlyExpenses'
             ));
         } catch (\Exception $e) {
-            \Log::error('Error loading cashier expenses: '.$e->getMessage());
+            Log::error('Error loading cashier expenses: '.$e->getMessage());
 
             return back()->with('error', 'Error loading expenses: '.$e->getMessage());
         }
@@ -2457,7 +2458,7 @@ class CashierDashboardController extends Controller
             return redirect()->route('cashier.expenses.index')->with('success', 'Expense created successfully.');
 
         } catch (\Exception $e) {
-            \Log::error('Cashier expense creation error: '.$e->getMessage());
+            Log::error('Cashier expense creation error: '.$e->getMessage());
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Error creating expense: '.$e->getMessage()], 500);
@@ -2550,7 +2551,7 @@ class CashierDashboardController extends Controller
 
             return view('cashier.customers.index', compact('customers', 'branchName'));
         } catch (\Exception $e) {
-            \Log::error('Error loading cashier customers: '.$e->getMessage());
+            Log::error('Error loading cashier customers: '.$e->getMessage());
 
             return back()->with('error', 'Error loading customers: '.$e->getMessage());
         }
@@ -2610,7 +2611,7 @@ class CashierDashboardController extends Controller
             return response()->json(['success' => true, 'message' => 'Customer created successfully', 'customer' => $customer]);
 
         } catch (\Exception $e) {
-            \Log::error('Cashier customer creation error: '.$e->getMessage());
+            Log::error('Cashier customer creation error: '.$e->getMessage());
 
             return response()->json(['success' => false, 'message' => 'Error creating customer: '.$e->getMessage()], 500);
         }
@@ -3181,7 +3182,7 @@ class CashierDashboardController extends Controller
                 'creditsByCustomer' => $creditsByCustomer
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error loading credit limits data: '.$e->getMessage());
+            Log::error('Error loading credit limits data: '.$e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error loading credit limits data']);
         }
     }
@@ -3219,7 +3220,7 @@ class CashierDashboardController extends Controller
             return response()->json(['success' => true, 'message' => 'Credit limits updated successfully']);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating credit limits: '.$e->getMessage());
+            Log::error('Error updating credit limits: '.$e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error updating credit limits']);
         }
     }
@@ -3265,7 +3266,7 @@ class CashierDashboardController extends Controller
                 'message' => 'Supplier added successfully!'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error creating supplier: '.$e->getMessage());
+            Log::error('Error creating supplier: '.$e->getMessage());
             return response()->json([
                 'message' => 'Error creating supplier. Please try again.'
             ], 500);
@@ -3353,7 +3354,7 @@ class CashierDashboardController extends Controller
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
             
             // Debug logging
-            \Log::info('Credit Update Request:', [
+            Log::info('Credit Update Request:', [
                 'ajax' => $request->ajax(),
                 'wantsJson' => $request->wantsJson(),
                 'xRequestedWith' => $request->header('X-Requested-With'),
@@ -3371,7 +3372,7 @@ class CashierDashboardController extends Controller
             return redirect()->route('cashier.credit.index')
                 ->with('success', 'Credit updated successfully!');
         } catch (\Exception $e) {
-            \Log::error('Error updating credit: '.$e->getMessage());
+            Log::error('Error updating credit: '.$e->getMessage());
             
             // Check if it's an AJAX request (multiple methods)
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
@@ -3410,7 +3411,7 @@ class CashierDashboardController extends Controller
             return redirect()->route('cashier.credit.index')
                 ->with('success', 'Credit deleted successfully!');
         } catch (\Exception $e) {
-            \Log::error('Error deleting credit: '.$e->getMessage());
+            Log::error('Error deleting credit: '.$e->getMessage());
             return redirect()->back()
                 ->with('error', 'Error deleting credit. Please try again.');
         }

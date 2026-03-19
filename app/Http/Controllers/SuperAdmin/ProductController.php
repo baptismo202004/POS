@@ -214,10 +214,9 @@ class ProductController extends Controller
             'unit_type_ids.*' => 'exists:unit_types,id',
             'brand_id' => 'nullable',
             'category_id' => 'nullable',
-            'product_type_id' => 'required|in:electronic,non-electronic',
             'model_number' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
-            'warranty_type' => 'required_if:product_type_id,electronic|in:none,shop,manufacturer',
+            'warranty_type' => 'nullable|in:none,shop,manufacturer',
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
@@ -242,12 +241,22 @@ class ProductController extends Controller
         try {
             $debugInfo = [];
             DB::transaction(function () use ($request, $validated, &$debugInfo) {
-                // Check if product type is electronic
-                $isElectronic = $validated['product_type_id'] === 'electronic';
+                $categoryId = $validated['category_id'] ?? null;
+                if (!empty($categoryId) && !is_numeric($categoryId)) {
+                    $c = Category::create(['category_name' => $categoryId, 'status' => 'active']);
+                    $categoryId = $c->id;
+                }
+
+                $categoryType = null;
+                if (!empty($categoryId)) {
+                    $categoryType = Category::where('id', (int) $categoryId)->value('category_type');
+                }
+
+                $isElectronic = in_array($categoryType, ['electronic_with_serial', 'electronic_without_serial'], true);
 
                 $debugInfo = [
-                    'product_type_id' => $validated['product_type_id'],
-                    'is_electronic' => $isElectronic
+                    'category_type' => $categoryType,
+                    'is_electronic' => $isElectronic,
                 ];
 
                 if ($isElectronic) {
@@ -256,10 +265,9 @@ class ProductController extends Controller
                         'product_name' => $validated['product_name'],
                         'barcode' => $validated['barcode'],
                         'brand_id' => $validated['brand_id'] ?? null,
-                        'category_id' => $validated['category_id'] ?? null,
-                        'product_type_id' => $validated['product_type_id'],
+                        'category_id' => $categoryId,
                         'model_number' => $validated['model_number'] ?? null,
-                        'warranty_type' => $validated['warranty_type'],
+                        'warranty_type' => $validated['warranty_type'] ?? 'none',
                         'warranty_coverage_months' => $validated['warranty_coverage_months'] ?? null,
                         'voltage_specs' => $validated['voltage_specs'] ?? null,
                         'status' => $validated['status'],
@@ -270,10 +278,7 @@ class ProductController extends Controller
                         $productData['brand_id'] = $b->id;
                     }
 
-                    if (!empty($validated['category_id']) && !is_numeric($validated['category_id'])) {
-                        $c = Category::create(['category_name' => $validated['category_id'], 'status' => 'active']);
-                        $productData['category_id'] = $c->id;
-                    }
+                    $productData['category_id'] = $categoryId;
 
                     if ($request->hasFile('image')) {
                         $productData['image'] = $request->file('image')->store('products', 'public');
@@ -286,7 +291,7 @@ class ProductController extends Controller
                     // For non-electronic products, store in products table
                     Log::info('Processing non-electronic product', [
                         'brand_id' => $validated['brand_id'] ?? 'null',
-                        'category_id' => $validated['category_id'] ?? 'null',
+                        'category_id' => $categoryId ?? 'null',
                     ]);
                     
                     // Handle brand_id - check if it's numeric or text
@@ -301,17 +306,9 @@ class ProductController extends Controller
                         $validated['brand_id'] = null;
                     }
 
-                    // Handle category_id - check if it's numeric or text
-                    if (!empty($validated['category_id'])) {
-                        if (!is_numeric($validated['category_id'])) {
-                            Log::info('Creating new category', ['category_name' => $validated['category_id']]);
-                            $c = Category::create(['category_name' => $validated['category_id'], 'status' => 'active']);
-                            $validated['category_id'] = $c->id;
-                            Log::info('New category created with ID', ['category_id' => $c->id]);
-                        }
-                    } else {
-                        $validated['category_id'] = null;
-                    }
+                    $validated['category_id'] = $categoryId;
+
+                    unset($validated['product_type_id']);
 
                     if ($request->hasFile('image')) {
                         $validated['image'] = $request->file('image')->store('products', 'public');

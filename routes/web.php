@@ -1012,6 +1012,11 @@ Route::get('/pos', [PosAdminController::class, 'index'])->name('pos.index')->mid
 Route::post('/pos', [PosAdminController::class, 'store'])->name('pos.store')->middleware('auth');
 Route::post('/pos/lookup', [PosAdminController::class, 'lookup'])->name('pos.lookup')->middleware('auth');
 Route::post('/pos/cashier/validate', [PosAdminController::class, 'validateCashier'])->name('pos.cashier.validate')->middleware('auth');
+
+// POS Route - Electronic Devices
+Route::get('/pos/electronics', [PosAdminController::class, 'electronicsIndex'])->name('pos.electronics.index')->middleware('auth');
+Route::post('/pos/electronics', [PosAdminController::class, 'electronicsStore'])->name('pos.electronics.store')->middleware('auth');
+
 Route::post('/admin/pos/checkout', [\App\Http\Controllers\Admin\PosController::class, 'checkout'])->name('admin.pos.checkout')->middleware('auth');
 
 // Cashier POS Routes
@@ -1104,6 +1109,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
         Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->name('purchases.ocr-product-match');
+        Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
@@ -1112,10 +1118,13 @@ Route::middleware('auth')->group(function () {
     // Admin routes
     Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
         // Stock In routes
-        Route::get('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.index');
-        Route::get('stockin/create', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInCreate'])->name('stockin.create');
-        Route::post('stockin', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInStore'])->name('stockin.store');
-        Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\PosAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
+        Route::get('stockin', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInCreate'])->name('stockin.index');
+        Route::get('stockin/create', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInCreate'])->name('stockin.create');
+        Route::get('stockin/purchases/{purchase}/products/{product}/serials', [\App\Http\Controllers\Admin\StockInAdminController::class, 'purchaseProductSerials'])->name('stockin.purchase-product-serials');
+        Route::get('stockin/purchase/{purchase}/products', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products');
+        Route::post('stockin', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInStore'])->name('stockin.store');
+        Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
+        Route::get('stockin/latest-unit-prices', [\App\Http\Controllers\Admin\StockInAdminController::class, 'latestUnitPrices'])->name('stockin.latest-unit-prices');
 
         // Sales route
         Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('admin.main.sales.index');

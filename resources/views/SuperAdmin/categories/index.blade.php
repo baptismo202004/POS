@@ -275,6 +275,7 @@
                             @forelse($categories as $category)
                                 <tr data-id="{{ $category->id }}"
                                     data-name="{{ $category->category_name }}"
+                                    data-category-type="{{ $category->category_type ?? 'non_electronic' }}"
                                     data-status="{{ $category->status }}">
                                     <td><input type="checkbox" class="row-checkbox"></td>
                                     <td style="font-weight:700;color:var(--navy);">{{ $category->id }}</td>
@@ -328,6 +329,14 @@
                         <select class="form-select" id="status" name="status" required>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category_type" class="form-label">Category Type</label>
+                        <select class="form-select" id="category_type" name="category_type" required>
+                            <option value="non_electronic">Non Electronic</option>
+                            <option value="electronic_without_serial">Electronic without serial</option>
+                            <option value="electronic_with_serial">Electronic with serial</option>
                         </select>
                     </div>
                 </div>
@@ -399,8 +408,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedRow = selectedCheckboxes[0].closest('tr');
             const id     = selectedRow.dataset.id;
             const name   = selectedRow.dataset.name;
+            const categoryType = selectedRow.dataset.categoryType;
             const status = selectedRow.dataset.status;
-            editCategory(id, name, status);
+            editCategory(id, name, categoryType, status);
             new bootstrap.Modal(document.getElementById('categoryModal')).show();
         } else if (selectedCheckboxes.length > 1) {
             new bootstrap.Modal(document.getElementById('bulkEditModal')).show();
@@ -578,9 +588,10 @@ function openCategoryModal() {
     document.getElementById('categoryModalLabel').textContent = 'Add Category';
     document.getElementById('category_name').value = '';
     document.getElementById('status').value = 'active';
+    document.getElementById('category_type').value = 'non_electronic';
 }
 
-function editCategory(id, name, status) {
+function editCategory(id, name, categoryType, status) {
     document.getElementById('categoryForm').action = '/superadmin/categories/' + id;
     if (!document.getElementById('categoryForm').querySelector('input[name="_method"]')) {
         const methodInput = document.createElement('input');
@@ -590,6 +601,7 @@ function editCategory(id, name, status) {
     document.getElementById('categoryModalLabel').textContent = 'Edit Category';
     document.getElementById('category_name').value = name;
     document.getElementById('status').value = status;
+    document.getElementById('category_type').value = categoryType || 'non_electronic';
 }
 </script>
 

@@ -3,14 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>POS System - Admin</title>
+    <title>POS System - Electronic Devices</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    
-    <!-- SweetAlert2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <style>
@@ -18,7 +15,8 @@
             --primary-color: #2563eb;
             --secondary-color: #64748b;
             --success-color: #10b981;
-            --danger-color: #ef4444;            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
             --light-bg: #f8fafc;
             --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
             --card-hover-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
@@ -38,10 +36,6 @@
             margin: 20px;
             padding: 30px;
             min-height: calc(100vh - 40px);
-        }
-
-        .products-section {
-            /* Remove scroll from here */
         }
 
         .table-container {
@@ -164,77 +158,11 @@
             box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
         }
 
-        .order-summary {
-            position: sticky;
-            top: 20px;
-        }
-
         .order-card {
             border-radius: 15px;
             border: none;
             box-shadow: var(--card-shadow);
             background: linear-gradient(135deg, #ffffff, #f8fafc);
-        }
-
-        .order-header {
-            background: linear-gradient(135deg, var(--secondary-color), #475569);
-            color: white;
-            border-radius: 15px 15px 0 0;
-            padding: 20px;
-            font-weight: 600;
-        }
-
-        .order-item {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid var(--primary-color);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
-        }
-
-        .order-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-
-        .total-section {
-            background: linear-gradient(135deg, var(--primary-color), #1e40af);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .checkout-btn {
-            background: linear-gradient(135deg, var(--success-color), #059669);
-            border: none;
-            border-radius: 10px;
-            padding: 15px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .checkout-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .clear-btn {
-            background: linear-gradient(135deg, var(--danger-color), #dc2626);
-            border: none;
-            border-radius: 10px;
-            padding: 15px;
-            font-weight: 600;
-            color: white;
-            transition: all 0.3s ease;
-        }
-
-        .clear-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
         }
 
         .empty-state {
@@ -247,15 +175,6 @@
             font-size: 48px;
             margin-bottom: 15px;
             opacity: 0.5;
-        }
-
-        .badge-stock {
-            background: linear-gradient(135deg, var(--success-color), #059669);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
         }
 
         .price-display {
@@ -272,76 +191,47 @@
             font-weight: 700;
             font-size: 28px;
         }
-
-        .remove-btn {
-            background: none;
-            border: none;
-            color: var(--danger-color);
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .remove-btn:hover {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-in {
-            animation: slideIn 0.3s ease-out;
-        }
     </style>
 </head>
 <body>
 
     <div class="main-container">
-        <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="header-title mb-2">
-                    <i class="fas fa-cash-register me-3"></i>BGH POS
+                    <i class="fas fa-plug me-3"></i>BGH POS - Electronic Devices
                 </h1>
-                <p class="text-muted mb-0">Fast sales processing with barcode scanning support</p>
+                <p class="text-muted mb-0">POS with warranty and serial number capture</p>
             </div>
-            <div>
-                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-primary">
+            <div class="d-flex gap-2">
+                <a href="{{ route('pos.index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-cash-register me-2"></i>Standard POS
+                </a>
+                <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>
             </div>
         </div>
 
+        <div class="alert alert-info">
+            <strong>Electronic Devices Rules:</strong>
+            Each item requires a <strong>Serial Number</strong> and uses <strong>quantity = 1</strong>.
+        </div>
+
         <div class="row">
-            <!-- Left Column - Search and Products -->
             <div class="col-lg-8">
-                <!-- Search Section -->
                 <div class="search-section">
                     <h4 class="mb-3">
                         <i class="fas fa-search me-2"></i>Product Search
                     </h4>
                     <div class="input-group input-group-lg">
-                        <input id="search-input" type="text" class="form-control search-input" 
-                               placeholder="🔍 Search by product name, barcode, or model..." />
+                        <input id="search-input" type="text" class="form-control search-input" placeholder="🔍 Search by product name, barcode, or model..." />
                         <button id="search-btn" class="btn search-btn">
                             <i class="fas fa-search me-2"></i>Search
                         </button>
                     </div>
-                    <small class="mt-2 d-block opacity-75">
-                        <i class="fas fa-barcode me-1"></i>Use barcode scanner or click search to find products
-                    </small>
                 </div>
 
-                <!-- Products Table -->
                 <div class="card products-card">
                     <div class="card-header card-header-custom">
                         <div class="d-flex justify-content-between align-items-center">
@@ -378,12 +268,9 @@
                 </div>
             </div>
 
-            <!-- Right Column - Order Summary -->
             <div class="col-lg-4">
                 <div class="order-summary">
                     <div class="card order-card">
-                        <div class="order-header">
-                        </div>
                         <div class="card-body">
                             <div class="card">
                                 <div class="card-header bg-primary text-white">
@@ -393,6 +280,7 @@
                                     <div id="order-items" class="mb-3" style="max-height: 400px; overflow-y: auto;">
                                         <div class="text-muted text-center py-3">No items in cart</div>
                                     </div>
+
                                     <div class="border-top pt-3">
                                         <div class="mb-3">
                                             <label class="form-label fw-bold">Payment Method:</label>
@@ -401,15 +289,14 @@
                                                 <label class="btn btn-outline-success" for="payment_cash">
                                                     <i class="fas fa-money-bill-wave me-2"></i>Cash
                                                 </label>
-                                                
+
                                                 <input type="radio" class="btn-check" name="payment_method" id="payment_credit" value="credit">
                                                 <label class="btn btn-outline-primary" for="payment_credit">
                                                     <i class="fas fa-credit-card me-2"></i>Credit
                                                 </label>
                                             </div>
                                         </div>
-                                        
-                                        <!-- Credit details (shown only when credit is selected) -->
+
                                         <div id="credit-details" class="mb-3" style="display: none;">
                                             <div class="card border-warning">
                                                 <div class="card-body bg-light">
@@ -431,7 +318,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <h5 class="mb-0">Total:</h5>
                                             <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
@@ -454,10 +341,7 @@
         </div>
     </div>
 
-    <!-- SweetAlert2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -467,63 +351,50 @@
         const tableBody = document.querySelector('#results-table tbody');
         const resultsCount = document.getElementById('results-count');
 
-        if (!input || !btn || !tableBody || !resultsCount) {
-            console.error('Missing elements! Input: ' + !!input + ', Btn: ' + !!btn + ', Table: ' + !!tableBody + ', Count: ' + !!resultsCount);
-            return;
-        }
-
-        console.log('All elements found!'); // Debug
-
         async function search(mode='list'){
             const keyword = input.value.trim();
-            
-            // Always show products, even if keyword is empty
-            if(!keyword){ 
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading all products...</span>
-                            </div>
-                        </td>
-                    </tr>`;
-                resultsCount.textContent = 'Loading...';
-            } else {
-                // Show loading state for search
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Searching...</span>
-                            </div>
-                        </td>
-                    </tr>`;
-                resultsCount.textContent = 'Searching...';
-            }
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>`;
+            resultsCount.textContent = keyword ? 'Searching...' : 'Loading...';
 
             const url = "{{ route('pos.lookup') }}";
             const form = new FormData();
             form.set('barcode', keyword);
             form.set('mode', mode);
-            
+            form.set('electronics_only', '1');
+
             try {
                 const res = await fetch(url, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                         'Accept': 'application/json'
                     },
                     body: form
                 });
-            	    	const data = await res.json();
+                const data = await res.json();
 
-                console.log('API Response:', data); // Debugging
-
-                const items = data.items || (data.error ? [] : [data]);
+                let items = [];
+                if (Array.isArray(data)) {
+                    items = data;
+                } else if (data && Array.isArray(data.items)) {
+                    items = data.items;
+                } else if (data && data.items && typeof data.items === 'object') {
+                    items = data.items;
+                } else if (data && data.error) {
+                    items = [];
+                } else if (data) {
+                    items = [data];
+                }
                 resultsCount.textContent = `${items.length} products`;
-                
-                console.log('Items:', items); // Debugging
-                
+
                 if(items.length === 0){
                     tableBody.innerHTML = `
                         <tr>
@@ -536,15 +407,12 @@
                 }
 
                 tableBody.innerHTML = items.map(it => {
+                    const displayName = (it && (it.name || it.product_name || (it.product && it.product.product_name))) || 'N/A';
+                    const displayBarcode = (it && (it.barcode || it.product_barcode || (it.product && it.product.barcode))) || 'N/A';
+                    const displayPrice = (it && (it.price != null ? it.price : it.selling_price)) || 0;
+
                     const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => {
                         const units = Array.isArray(b.stock_units) ? b.stock_units : [];
-                        const unitsBadgesHtml = units.length > 0
-                            ? units.map(u => {
-                                const unitName = (u && u.unit_name) ? u.unit_name : '';
-                                const unitStock = (u && u.stock != null) ? u.stock : 0;
-                                return `<span class="badge bg-light text-dark border me-1">${unitStock}${unitName ? ' ' + unitName : ''}</span>`;
-                            }).join('')
-                            : '';
 
                         const unitsSelectHtml = units.length > 0
                             ? `
@@ -565,7 +433,6 @@
                                 <input class="form-check-input" type="radio" name="branch_${it.product_id}" id="branch_${it.product_id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
                                 <label class="form-check-label" for="branch_${it.product_id}_${b.branch_id}">
                                     ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
-                                    ${unitsBadgesHtml ? `<div class="mt-1">${unitsBadgesHtml}</div>` : ''}
                                     ${unitsSelectHtml ? `<div class="mt-1">${unitsSelectHtml}</div>` : ''}
                                 </label>
                             </div>
@@ -575,49 +442,31 @@
                     const canBeAdded = it.branches && it.branches.length > 0 && it.total_stock > 0;
 
                     return `
-                    <tr class="animate-in">
-                        <td>
-                            <div class="fw-semibold">${it.name}</div>
-                            ${it.model_number ? `<small class="text-muted">${it.model_number}</small>` : ''}
-                        </td>
-                        <td><code>${it.barcode||'N/A'}</code></td>
-                        <td class="text-end">
-                            <span class="badge ${it.total_stock > 10 ? 'bg-success' : 'bg-warning'}">
-                                ${it.total_stock ?? 0}
-                            </span>
-                        </td>
+                    <tr>
+                        <td><div class="fw-semibold">${displayName}</div></td>
+                        <td><code>${displayBarcode}</code></td>
+                        <td class="text-end"><span class="badge ${it.total_stock > 10 ? 'bg-success' : 'bg-warning'}">${it.total_stock ?? 0}</span></td>
                         <td>${branchesHtml}</td>
-                        <td class="text-end price-display" data-product-id="${it.product_id}">₱${(it.price||0).toFixed(2)}</td>
+                        <td class="text-end price-display" data-product-id="${it.product_id}">₱${Number(displayPrice || 0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${it.name.replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
                     </tr>`;
                 }).join('');
 
-                // After rendering rows, attach listeners to branch radios to update price display per product
                 items.forEach(it => {
                     const radios = document.querySelectorAll(`input[name="branch_${it.product_id}"]`);
-                    radios.forEach(r => {
-                        r.addEventListener('change', () => {
-                            updateProductPriceDisplay(it.product_id);
-                        });
-                    });
+                    radios.forEach(r => r.addEventListener('change', () => updateProductPriceDisplay(it.product_id)));
 
                     const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${it.product_id}"]`);
-                    unitSelects.forEach(sel => {
-                        sel.addEventListener('change', () => {
-                            updateProductPriceDisplay(it.product_id);
-                        });
-                    });
+                    unitSelects.forEach(sel => sel.addEventListener('change', () => updateProductPriceDisplay(it.product_id)));
 
-                    // Ensure initial price matches the initially checked branch
                     updateProductPriceDisplay(it.product_id);
                 });
 
             } catch (error) {
-                console.error('Search error:', error);
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="6" class="empty-state">
@@ -628,13 +477,11 @@
             }
         }
 
-        // Shopping cart functionality
         let cart = [];
 
         function updateProductPriceDisplay(productId) {
             const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
             const priceCell = document.querySelector(`td.price-display[data-product-id="${productId}"]`);
-
             if (!priceCell || !selectedBranchRadio) return;
 
             const branchId = selectedBranchRadio.value;
@@ -650,16 +497,14 @@
             const branchPrice = parseFloat(selectedBranchRadio.dataset.price || '0');
             priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
         }
-        
-        // Make functions globally accessible for onclick handlers
+
         window.addToOrder = function(button, productId, name) {
             const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
-            
             if (!selectedBranchRadio) {
                 Swal.fire('Error', 'Please select a branch.', 'error');
                 return;
             }
-            
+
             const branchId = parseInt(selectedBranchRadio.value);
             const branchName = selectedBranchRadio.dataset.branchName || selectedBranchRadio.labels[0].innerText.trim();
 
@@ -672,7 +517,7 @@
             if (unitSelect && unitSelect.value) {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
                 unitTypeId = parseInt(unitSelect.value);
-                unitName = opt.dataset.unitName || opt.dataset.unit_name || opt.textContent;
+                unitName = opt.dataset.unitName || opt.textContent;
                 stock = parseFloat(opt.dataset.stock || '0');
                 price = parseFloat(opt.dataset.price || '0');
             }
@@ -682,185 +527,72 @@
                 return;
             }
 
-            const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}`;
-            const existingItem = cart.find(item => item.cartIdentifier === cartIdentifier);
-            
-            if (existingItem) {
-                if (existingItem.quantity >= stock) {
-                    Swal.fire('Stock Limit', `Cannot add more. Only ${stock} available at ${branchName}.`, 'warning');
-                    return;
-                }
-                existingItem.quantity++;
-            } else {
-                cart.push({
-                    cartIdentifier: cartIdentifier,
-                    product_id: productId,
-                    branch_id: branchId,
-                    unit_type_id: unitTypeId,
-                    unit_name: unitName,
-                    name: name,
-                    branchName: branchName,
-                    price: price,
-                    quantity: 1,
-                    stock: stock
-                });
-            }
-            
+            const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
+
+            cart.push({
+                cartIdentifier,
+                product_id: productId,
+                branch_id: branchId,
+                unit_type_id: unitTypeId,
+                unit_name: unitName,
+                name,
+                branchName,
+                price,
+                quantity: 1,
+                stock,
+                serial_number: '',
+                warranty_months: 0,
+            });
+
             updateCartDisplay();
-            showNotification(`${name} (${branchName}) added to cart!`, 'success');
-        };
-        
-        function getQtyStepForItem(item) {
-            const unitName = String(item && item.unit_name ? item.unit_name : '');
-            if (/kilogram|\bkg\b/i.test(unitName)) {
-                return 0.01;
-            }
-            return 1;
-        }
-
-        function normalizeQty(n) {
-            const num = parseFloat(n);
-            if (!isFinite(num)) return 0;
-            return Math.round(num * 1000000) / 1000000;
-        }
-
-        function setCartItemQuantity(cartIdentifier, rawQty) {
-            const item = cart.find(item => item.cartIdentifier === cartIdentifier);
-            if (!item) return;
-
-            const newQuantity = normalizeQty(rawQty);
-
-            if (newQuantity <= 0) {
-                removeFromCart(cartIdentifier);
-                return;
-            }
-
-            if (newQuantity > item.stock) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Stock Limit Reached',
-                    text: `Cannot add more. Only ${item.stock} available in stock.`,
-                    confirmButtonColor: '#2563eb',
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-                updateCartDisplay();
-                return;
-            }
-
-            item.quantity = newQuantity;
-            updateCartDisplay();
-        }
-
-        window.setQuantity = function(cartIdentifier, qty) {
-            return setCartItemQuantity(cartIdentifier, qty);
         };
 
-        window.updateQuantity = function(cartIdentifier, change) {
-            const item = cart.find(item => item.cartIdentifier === cartIdentifier);
-            if (!item) return;
-
-            const step = getQtyStepForItem(item);
-            const current = normalizeQty(item.quantity);
-            const newQuantity = normalizeQty(current + (step * change));
-
-            return setCartItemQuantity(cartIdentifier, newQuantity);
-        };
-        
         window.removeFromCart = function(cartIdentifier) {
-            const itemIndex = cart.findIndex(item => item.cartIdentifier === cartIdentifier);
-            if (itemIndex > -1) {
-                const item = cart[itemIndex];
-                cart.splice(itemIndex, 1);
+            const idx = cart.findIndex(i => i.cartIdentifier === cartIdentifier);
+            if (idx > -1) {
+                cart.splice(idx, 1);
                 updateCartDisplay();
-                showNotification(`${item.name} removed from cart`, 'info');
             }
         };
-        
+
         window.clearCart = function() {
             if (cart.length === 0) return;
-            
-            Swal.fire({
-                title: 'Clear Entire Cart?',
-                text: "Are you sure you want to remove all items from the cart?",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, clear it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    cart = [];
-                    updateCartDisplay();
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Cart Cleared',
-                        text: 'All items have been removed from your cart.',
-                        timer: 2000,
-                        timerProgressBar: true,
-                        showConfirmButton: false
-                    });
-                }
-            });
+            cart = [];
+            updateCartDisplay();
         };
-        
+
+        window.setSerial = function(cartIdentifier, value) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item) return;
+            item.serial_number = String(value || '').trim();
+        };
+
+        window.setWarrantyMonths = function(cartIdentifier, value) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item) return;
+            const n = parseInt(value, 10);
+            item.warranty_months = isFinite(n) ? n : 0;
+        };
+
         window.checkout = function() {
             if (cart.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Cart is Empty',
-                    text: 'Please add items to your cart before checkout.',
-                    confirmButtonColor: '#2563eb',
-                    timer: 3000,
-                    timerProgressBar: true
-                });
+                Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add items to your cart before checkout.'});
                 return;
             }
-            
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const itemsList = cart.map(item => `${item.name} x${item.quantity} = ₱${(item.price * item.quantity).toFixed(2)}`).join('\n');
-            
-            Swal.fire({
-                title: 'Process Order?',
-                html: `
-                    <div style="text-align: left; font-family: monospace;">
-                        ${itemsList.split('\n').map(item => `<div>${item}</div>`).join('')}
-                        <hr>
-                        <div style="font-weight: bold; color: #2563eb;">Total: ₱${total.toFixed(2)}</div>
-                        <br>
-                        <div style="color: #ef4444; font-size: 12px;">
-                            <i class="fas fa-info-circle"></i> This will deduct stock and record the sale
-                        </div>
-                    </div>
-                `,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Process Order',
-                cancelButtonText: 'Cancel',
-                width: '500px'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    processOrder();
-                }
-            });
+
+            const missing = cart.find(i => !i.serial_number);
+            if (missing) {
+                Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
+                return;
+            }
+
+            processOrder();
         };
-        
+
         function processOrder() {
-            // Show loading
-            Swal.fire({
-                title: 'Processing Order...',
-                text: 'Please wait while we process your order.',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            // Send order to server
-            fetch('{{ route("pos.store") }}', {
+            Swal.fire({ title: 'Processing Order...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            fetch('{{ route("pos.electronics.store") }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -874,215 +606,112 @@
                         unit_type_id: item.unit_type_id,
                         unit_name: item.unit_name,
                         name: item.name,
-                        quantity: item.quantity,
-                        price: item.price
+                        quantity: 1,
+                        price: item.price,
+                        serial_number: item.serial_number,
+                        warranty_months: item.warranty_months,
                     })),
-                    total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                    total: cart.reduce((sum, item) => sum + (item.price * 1), 0),
                     payment_method: document.querySelector('input[name="payment_method"]:checked').value,
-                    customer_name: document.getElementById('customer_name').value,
-                    credit_due_date: document.getElementById('credit_due_date').value,
-                    credit_notes: document.getElementById('credit_notes').value
+                    customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
+                    credit_due_date: document.getElementById('credit_due_date') ? document.getElementById('credit_due_date').value : null,
+                    credit_notes: document.getElementById('credit_notes') ? document.getElementById('credit_notes').value : null,
                 })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     cart = [];
                     updateCartDisplay();
-                    
-                    // Clear customer name field
-                    document.getElementById('customer_name').value = '';
-                    
-                    // Check if this is a cash payment and auto-receipt is enabled
                     if (data.auto_receipt && data.receipt_url) {
-                        // Show success message then open receipt
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Order Completed!',
-                            text: 'Order has been processed successfully. Opening receipt...',
-                            confirmButtonColor: '#10b981',
-                            timer: 2000,
-                            timerProgressBar: true
-                        }).then(() => {
-                            // Open receipt in new window
-                            window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-                        });
+                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Opening receipt...', timer: 1500, showConfirmButton: false })
+                            .then(() => window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes'));
                     } else {
-                        // Regular success message for credit payments
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Order Completed!',
-                            text: 'Order has been processed successfully.',
-                            confirmButtonColor: '#10b981',
-                            timer: 3000,
-                            timerProgressBar: true
-                        });
+                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Order has been processed successfully.'});
                     }
-                    
-                    // Refresh products to show updated stock
                     search('list');
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Order Failed',
-                        text: data.message || 'There was an error processing your order.',
-                        confirmButtonColor: '#ef4444'
-                    });
+                    Swal.fire({ icon: 'error', title: 'Order Failed', text: data.message || 'There was an error processing your order.'});
                 }
             })
-            .catch(error => {
-                console.error('Order processing error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Order Failed',
-                    text: 'Network error. Please try again.',
-                    confirmButtonColor: '#ef4444'
-                });
+            .catch(() => {
+                Swal.fire({ icon: 'error', title: 'Order Failed', text: 'Network error. Please try again.'});
             });
         }
-        
+
         function updateCartDisplay() {
             const cartItems = document.getElementById('order-items');
             const totalAmount = document.getElementById('total-amount');
-            
-            console.log('updateCartDisplay called, cart:', cart); // Debug
-            console.log('Cart elements found:', !!cartItems, !!totalAmount); // Debug
-            
-            if (!cartItems || !totalAmount) {
-                console.error('Cart elements not found!');
-                return;
-            }
-            
+
             if (cart.length === 0) {
                 cartItems.innerHTML = '<div class="text-muted text-center py-3">No items in cart</div>';
                 totalAmount.textContent = '₱0.00';
                 return;
             }
-            
+
             let total = 0;
             cartItems.innerHTML = cart.map(item => {
-                const itemTotal = item.price * item.quantity;
+                const itemTotal = item.price * 1;
                 total += itemTotal;
-                const unitLabel = item.unit_name ? ` ${item.unit_name}` : '';
-                const step = getQtyStepForItem(item);
-                const qtyVal = normalizeQty(item.quantity);
-                
+
                 return `
-                    <div class="cart-item d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">${item.name}</div>
-                            <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x ${item.quantity}${unitLabel}</div>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity('${item.cartIdentifier}', -1)">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <input
-                                type="number"
-                                class="form-control form-control-sm mx-2"
-                                style="width: 90px;"
-                                value="${qtyVal}"
-                                min="0"
-                                step="${step}"
-                                inputmode="decimal"
-                                onchange="setQuantity('${item.cartIdentifier}', this.value)"
-                            >
-                            <button class="btn btn-sm btn-outline-success me-2" onclick="updateQuantity('${item.cartIdentifier}', 1)">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <div class="ms-3 text-end">
-                                <strong>₱${itemTotal.toFixed(2)}</strong>
+                    <div class="cart-item mb-2 p-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold">${item.name}</div>
+                                <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x 1</div>
                             </div>
+                            <div class="ms-2">
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mt-2">
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Serial Number</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="Enter serial" value="${item.serial_number || ''}" onchange="setSerial('${item.cartIdentifier}', this.value)">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Warranty (months)</label>
+                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" value="${item.warranty_months || 0}" onchange="setWarrantyMonths('${item.cartIdentifier}', this.value)">
+                            </div>
+                        </div>
+
+                        <div class="mt-2 text-end">
+                            <strong>₱${itemTotal.toFixed(2)}</strong>
                         </div>
                     </div>
                 `;
             }).join('');
-            
+
             totalAmount.textContent = `₱${total.toFixed(2)}`;
         }
 
-        function updateQuantity(cartIdentifier, change) {
-            return window.updateQuantity(cartIdentifier, change);
-        }
-
-        function removeFromCart(cartIdentifier) {
-            return window.removeFromCart(cartIdentifier);
-        }
-
-        function clearCart() {
-            return window.clearCart();
-        }
-        
-        // Payment method toggle
         document.addEventListener('DOMContentLoaded', function() {
             const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
-            
-            // Set default due date to today
-            const defaultDueDate = new Date();
-            dueDateInput.value = defaultDueDate.toISOString().split('T')[0];
-            dueDateInput.min = new Date().toISOString().split('T')[0]; // Today
-            
+
+            if (dueDateInput) {
+                dueDateInput.value = new Date().toISOString().split('T')[0];
+                dueDateInput.min = new Date().toISOString().split('T')[0];
+            }
+
             paymentRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
-                    if (this.value === 'credit') {
-                        creditDetails.style.display = 'block';
-                    } else {
-                        creditDetails.style.display = 'none';
-                    }
+                    if (!creditDetails) return;
+                    creditDetails.style.display = this.value === 'credit' ? 'block' : 'none';
                 });
             });
         });
-        
-        
-        
-        function showNotification(message, type = 'success') {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
 
-            const icon = type === 'success' ? 'success' : 'info';
-            const color = type === 'success' ? '#10b981' : '#3b82f6';
-            
-            Toast.fire({
-                icon: icon,
-                title: message,
-                background: '#fff',
-                color: '#333'
-            });
-        }
-
-        // Event listeners
-        btn.addEventListener('click', () => {
-            console.log('Search button clicked!'); // Debug
-            search('list');
-        });
-
-        // Auto-load all products when page loads
-        window.addEventListener('load', () => {
-            console.log('Auto-loading all products...'); // Debug
-            search('list');
-        });
-
-        // Also search when user types (live search)
-        input.addEventListener('input', () => {
-            search('list');
-        });
-
-        // Focus on search input when page loads
+        btn.addEventListener('click', () => search('list'));
+        window.addEventListener('load', () => search('list'));
+        input.addEventListener('input', () => search('list'));
         input.focus();
+
     })();
     </script>
 </body>
