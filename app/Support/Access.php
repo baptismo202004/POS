@@ -68,4 +68,25 @@ class Access
 
         return isset($permissions[$module]) && in_array($required, $permissions[$module]);
     }
+
+    /**
+     * Check if a user has only 'view' permission for a module.
+     *
+     * @param User|null $user
+     * @param string $module
+     * @return bool
+     */
+    public static function hasViewOnlyPermission(?User $user, string $module): bool
+    {
+        $permissions = self::getPermissions($user);
+
+        if (!isset($permissions[$module])) {
+            return false;
+        }
+
+        $modulePermissions = $permissions[$module];
+
+        // Check if the user has only 'view' permission
+        return in_array('view', $modulePermissions) && count($modulePermissions) === 1;
+    }
 }

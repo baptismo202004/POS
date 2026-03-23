@@ -275,7 +275,7 @@
                                         <th>Barcode</th>
                                         <th class="text-end">Stock</th>
                                         <th class="text-end">Price</th>
-                                        <th>Action</th>
+                                        <th class="text-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -366,29 +366,31 @@
 
     <script>
     (function(){
-        const input = document.getElementById('search-input');
-        const btn = document.getElementById('search-btn');
-        const tableBody = document.querySelector('#results-table tbody');
-        const resultsCount = document.getElementById('results-count');
+        document.addEventListener('DOMContentLoaded', function(){
+            const cashierBranchId = @json(optional(Auth::user())->branch_id);
+            const input = document.getElementById('search-input');
+            const btn = document.getElementById('search-btn');
+            const tableBody = document.querySelector('#results-table tbody');
+            const resultsCount = document.getElementById('results-count');
 
-        async function search(mode='list'){
-            const keyword = input.value.trim();
+            async function search(mode='list'){
+                const keyword = input.value.trim();
 
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </td>
-                </tr>`;
-            resultsCount.textContent = keyword ? 'Searching...' : 'Loading...';
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </td>
+                    </tr>`;
+                resultsCount.textContent = keyword ? 'Searching...' : 'Loading...';
 
-            const url = "{{ route('cashier.pos.lookup') }}";
-            const form = new FormData();
-            form.set('barcode', keyword);
-            form.set('mode', mode);
-            form.set('electronics_only', '1');
+                const url = "{{ route('cashier.pos.lookup') }}";
+                const form = new FormData();
+                form.set('barcode', keyword);
+                form.set('mode', mode);
+                form.set('electronics_only', '1');
 
             try {
                 const res = await fetch(url, {
@@ -430,66 +432,46 @@
                     return;
                 }
 
+                // Keep latest loaded items so Add button can resolve branch/unit without relying on hidden DOM inputs
+                window.__electronicsItemsById = window.__electronicsItemsById || {};
+                items.forEach(it => {
+                    const safeProductId = (it && (it.product_id != null ? it.product_id : it.id)) || 0;
+                    if (safeProductId) {
+                        // Filter branches to only include cashier's branch
+                        const branches = Array.isArray(it.branches) ? it.branches : [];
+                        it.branches = branches.filter(b => parseInt(b && b.branch_id) === parseInt(cashierBranchId));
+                        window.__electronicsItemsById[safeProductId] = it;
+                    }
+                });
+
                 tableBody.innerHTML = items.map(it => {
+                    const safeProductId = (it && (it.product_id != null ? it.product_id : it.id)) || 0;
                     const displayName = (it && (it.name || it.product_name || (it.product && it.product.product_name))) || 'N/A';
                     const displayBarcode = (it && (it.barcode || (it.product && it.product.barcode))) || 'N/A';
                     const displayPrice = (it && (it.price || it.selling_price)) || 0;
 
-                    const branches = Array.isArray(it.branches) ? it.branches : [];
-
-                    const branchesHtml = branches.length > 0 ? branches.map((b, index) => {
-                        const units = Array.isArray(b.stock_units) ? b.stock_units : [];
-                        const unitsSelectHtml = units.length > 0
-                            ? `
-                                <select class="form-select form-select-sm mt-1 js-unit-select" data-product-id="${it.id}" data-branch-id="${b.branch_id}">
-                                    ${units.map((u, uidx) => {
-                                        const unitName = (u && u.unit_name) ? u.unit_name : '';
-                                        const unitStock = (u && u.stock != null) ? u.stock : 0;
-                                        const unitPrice = (u && u.price != null) ? u.price : 0;
-                                        const unitTypeId = (u && u.unit_type_id != null) ? u.unit_type_id : '';
-                                        return `<option value="${unitTypeId}" data-stock="${unitStock}" data-price="${Number(unitPrice).toFixed(2)}" data-unit-name="${unitName}" ${uidx === 0 ? 'selected' : ''}>${unitName || 'Unit'} - ₱${Number(unitPrice).toFixed(2)}</option>`;
-                                    }).join('')}
-                                </select>
-                            `
-                            : '';
-
-                        return `
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="branch_${it.id}" id="branch_${it.id}_${b.branch_id}" value="${b.branch_id}" data-stock="${b.stock}" data-branch-name="${b.branch_name || ('Branch #' + b.branch_id)}" data-price="${(b.price || 0).toFixed(2)}" ${index === 0 ? 'checked' : ''}>
-                                <label class="form-check-label" for="branch_${it.id}_${b.branch_id}">
-                                    ${b.branch_name || ('Branch #' + b.branch_id)} <span class="badge bg-secondary">${b.stock}</span>
-                                    ${unitsSelectHtml ? `<div class="mt-1">${unitsSelectHtml}</div>` : ''}
-                                </label>
-                            </div>
-                        `;
-                    }).join('') : '<span class="text-muted">No stock</span>';
-
-                    const canBeAdded = it.branches && it.branches.length > 0;
+                    const canBeAdded = it.branches && it.branches.length > 0 && it.branches.some(b => (parseFloat(b && b.stock) || 0) > 0);
 
                     return `
                     <tr>
                         <td><div class="fw-semibold">${displayName}</div></td>
                         <td><code>${displayBarcode}</code></td>
                         <td class="text-end"><span class="badge ${it.total_stock > 10 ? 'bg-success' : 'bg-warning'}">${it.total_stock ?? 0}</span></td>
-                        <td>${branchesHtml}</td>
-                        <td class="text-end price-display" data-product-id="${it.id}">₱${Number(displayPrice || 0).toFixed(2)}</td>
+                        <td class="text-end price-display" data-product-id="${safeProductId}">₱${Number(displayPrice || 0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.id}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${safeProductId}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
                     </tr>`;
                 }).join('');
 
-                // After rendering, attach listeners for price updates
+                // Ensure initial price display uses latest per-unit price if available
                 items.forEach(it => {
-                    const radios = document.querySelectorAll(`input[name="branch_${it.id}"]`);
-                    radios.forEach(r => r.addEventListener('change', () => updateProductPriceDisplay(it.id)));
-
-                    const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${it.id}"]`);
-                    unitSelects.forEach(sel => sel.addEventListener('change', () => updateProductPriceDisplay(it.id)));
-
-                    updateProductPriceDisplay(it.id);
+                    const safeProductId = (it && (it.product_id != null ? it.product_id : it.id)) || 0;
+                    if (safeProductId) {
+                        updateProductPriceDisplay(safeProductId);
+                    }
                 });
 
             } catch (error) {
@@ -506,47 +488,59 @@
         let cart = [];
 
         function updateProductPriceDisplay(productId) {
-            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
             const priceCell = document.querySelector(`td.price-display[data-product-id="${productId}"]`);
 
-            if (!priceCell || !selectedBranchRadio) return;
+            if (!priceCell) return;
 
-            const branchId = selectedBranchRadio.value;
-            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+            const it = (window.__electronicsItemsById && window.__electronicsItemsById[productId]) ? window.__electronicsItemsById[productId] : null;
+            const branches = it && Array.isArray(it.branches) ? it.branches : [];
+            const firstBranch = branches.find(b => (parseFloat(b && b.stock) || 0) > 0) || branches[0];
+            const units = firstBranch && Array.isArray(firstBranch.stock_units) ? firstBranch.stock_units : [];
+            const firstUnit = units.find(u => (parseFloat(u && u.stock) || 0) > 0) || units[0];
 
-            if (unitSelect && unitSelect.value) {
-                const opt = unitSelect.options[unitSelect.selectedIndex];
-                const unitPrice = parseFloat(opt.dataset.price || '0');
+            if (firstUnit && firstUnit.price != null) {
+                const unitPrice = parseFloat(firstUnit.price || '0');
                 priceCell.textContent = `₱${unitPrice.toFixed(2)}`;
                 return;
             }
 
-            const branchPrice = parseFloat(selectedBranchRadio.dataset.price || '0');
-            priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
+            if (firstBranch && firstBranch.price != null) {
+                const branchPrice = parseFloat(firstBranch.price || '0');
+                priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
+                return;
+            }
         }
 
         window.addToOrder = function(button, productId, name) {
-            const selectedBranchRadio = document.querySelector(`input[name="branch_${productId}"]:checked`);
-            if (!selectedBranchRadio) {
-                Swal.fire('Error', 'Please select a branch.', 'error');
+            const it = (window.__electronicsItemsById && window.__electronicsItemsById[productId]) ? window.__electronicsItemsById[productId] : null;
+            const branches = it && Array.isArray(it.branches) ? it.branches : [];
+            const firstBranch = branches.find(b => (parseFloat(b && b.stock) || 0) > 0) || branches[0];
+            if (!firstBranch) {
+                Swal.fire('Error', 'No stock available for this product.', 'error');
                 return;
             }
 
-            const branchId = parseInt(selectedBranchRadio.value);
-            const branchName = selectedBranchRadio.dataset.branchName || selectedBranchRadio.labels[0].innerText.trim();
+            const branchId = parseInt(cashierBranchId || firstBranch.branch_id || firstBranch.id || 0);
+            const branchName = firstBranch.branch_name || ('Branch #' + branchId);
 
-            const unitSelect = document.querySelector(`select.js-unit-select[data-product-id="${productId}"][data-branch-id="${branchId}"]`);
+            const units = Array.isArray(firstBranch.stock_units) ? firstBranch.stock_units : [];
+            const firstUnit = units.find(u => (parseFloat(u && u.stock) || 0) > 0) || units[0];
+
             let unitTypeId = null;
             let unitName = null;
-            let stock = parseFloat(selectedBranchRadio.dataset.stock || '0');
-            let price = parseFloat(selectedBranchRadio.dataset.price || '0');
+            let stock = parseFloat(firstBranch.stock || '0');
+            let price = parseFloat(firstBranch.price || '0');
 
-            if (unitSelect && unitSelect.value) {
-                const opt = unitSelect.options[unitSelect.selectedIndex];
-                unitTypeId = parseInt(unitSelect.value);
-                unitName = opt.dataset.unitName || opt.textContent;
-                stock = parseFloat(opt.dataset.stock || '0');
-                price = parseFloat(opt.dataset.price || '0');
+            if (firstUnit) {
+                unitTypeId = parseInt(firstUnit.unit_type_id || 0) || null;
+                unitName = firstUnit.unit_name || null;
+                stock = parseFloat(firstUnit.stock || '0');
+                price = parseFloat(firstUnit.price || '0');
+            }
+
+            if (!(parseFloat(stock) > 0)) {
+                Swal.fire('Error', 'No stock available for this product.', 'error');
+                return;
             }
 
             const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
@@ -624,12 +618,12 @@
                 },
                 body: JSON.stringify({
                     products: cart.map(item => ({
-                        id: item.id,
+                        id: item.product_id || item.id,
                         branch_id: item.branch_id,
                         unit_type_id: item.unit_type_id,
                         unit_name: item.unit_name,
                         name: item.name,
-                        quantity: 1,
+                        quantity: item.quantity || 1,
                         price: item.price,
                         serial_number: item.serial_number,
                         warranty_months: item.warranty_months,
@@ -644,15 +638,59 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    cart = [];
-                    updateCartDisplay();
-                    if (data.auto_receipt && data.receipt_url) {
-                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Opening receipt...', timer: 1500, showConfirmButton: false })
-                            .then(() => window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes'));
+                    const receiptUrl = data.receipt_url;
+                    const total = cart.reduce((sum, item) => sum + (item.price * 1), 0);
+
+                    if (data.auto_receipt && receiptUrl) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Payment Confirmation',
+                            html: `
+                                <div class="text-start">
+                                    <div class="mb-2"><strong>Total:</strong> ₱${Number(total || 0).toFixed(2)}</div>
+                                    <label class="form-label">Amount Paid</label>
+                                    <input id="amount_paid" type="number" min="0" step="0.01" class="form-control" placeholder="Enter amount paid">
+                                    <div class="mt-2" id="change_display" style="font-weight:700; color:#2563eb;">Change: ₱0.00</div>
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Confirm & Open Receipt',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#10b981',
+                            cancelButtonColor: '#6b7280',
+                            didOpen: () => {
+                                const input = document.getElementById('amount_paid');
+                                const changeEl = document.getElementById('change_display');
+                                const compute = () => {
+                                    const paid = parseFloat(input.value || '0') || 0;
+                                    const change = paid - (parseFloat(total || 0) || 0);
+                                    changeEl.textContent = `Change: ₱${(change > 0 ? change : 0).toFixed(2)}`;
+                                };
+                                input.addEventListener('input', compute);
+                                input.focus();
+                                compute();
+                            },
+                            preConfirm: () => {
+                                const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
+                                if (paid < (parseFloat(total || 0) || 0)) {
+                                    Swal.showValidationMessage('Amount paid is less than total.');
+                                    return false;
+                                }
+                                return { paid };
+                            }
+                        }).then((result) => {
+                            if (!result.isConfirmed) return;
+                            cart = [];
+                            updateCartDisplay();
+                            search('list');
+                            window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                        });
                     } else {
+                        cart = [];
+                        updateCartDisplay();
+                        search('list');
                         Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Order has been processed successfully.'});
                     }
-                    search('list');
                 } else {
                     Swal.fire({ icon: 'error', title: 'Order Failed', text: data.message || 'There was an error processing your order.'});
                 }
@@ -741,6 +779,7 @@
             if (e.key === 'Enter') {
                 search('list');
             }
+        });
         });
     })();
     </script>

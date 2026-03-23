@@ -536,6 +536,8 @@
                 }
 
                 tableBody.innerHTML = items.map(it => {
+                    const safeName = String((it && (it.name || it.product_name)) || '');
+                    const safeProductId = (it && (it.product_id != null ? it.product_id : it.id)) || 0;
                     const branchesHtml = (it.branches && it.branches.length > 0) ? it.branches.map((b, index) => {
                         const units = Array.isArray(b.stock_units) ? b.stock_units : [];
                         const unitsBadgesHtml = units.length > 0
@@ -577,7 +579,7 @@
                     return `
                     <tr class="animate-in">
                         <td>
-                            <div class="fw-semibold">${it.name}</div>
+                            <div class="fw-semibold">${safeName || it.name || ''}</div>
                             ${it.model_number ? `<small class="text-muted">${it.model_number}</small>` : ''}
                         </td>
                         <td><code>${it.barcode||'N/A'}</code></td>
@@ -587,9 +589,9 @@
                             </span>
                         </td>
                         <td>${branchesHtml}</td>
-                        <td class="text-end price-display" data-product-id="${it.product_id}">₱${(it.price||0).toFixed(2)}</td>
+                        <td class="text-end price-display" data-product-id="${safeProductId}">₱${(it.price||0).toFixed(2)}</td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${it.name.replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${safeProductId}, '${safeName.replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -598,22 +600,23 @@
 
                 // After rendering rows, attach listeners to branch radios to update price display per product
                 items.forEach(it => {
-                    const radios = document.querySelectorAll(`input[name="branch_${it.product_id}"]`);
+                    const safeProductId = (it && (it.product_id != null ? it.product_id : it.id)) || 0;
+                    const radios = document.querySelectorAll(`input[name="branch_${safeProductId}"]`);
                     radios.forEach(r => {
                         r.addEventListener('change', () => {
-                            updateProductPriceDisplay(it.product_id);
+                            updateProductPriceDisplay(safeProductId);
                         });
                     });
 
-                    const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${it.product_id}"]`);
+                    const unitSelects = document.querySelectorAll(`select.js-unit-select[data-product-id="${safeProductId}"]`);
                     unitSelects.forEach(sel => {
                         sel.addEventListener('change', () => {
-                            updateProductPriceDisplay(it.product_id);
+                            updateProductPriceDisplay(safeProductId);
                         });
                     });
 
                     // Ensure initial price matches the initially checked branch
-                    updateProductPriceDisplay(it.product_id);
+                    updateProductPriceDisplay(safeProductId);
                 });
 
             } catch (error) {
@@ -887,27 +890,69 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    cart = [];
-                    updateCartDisplay();
-                    
+                    const receiptUrl = data.receipt_url;
+                    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
                     // Clear customer name field
                     document.getElementById('customer_name').value = '';
                     
                     // Check if this is a cash payment and auto-receipt is enabled
-                    if (data.auto_receipt && data.receipt_url) {
-                        // Show success message then open receipt
+                    if (data.auto_receipt && receiptUrl) {
+
                         Swal.fire({
                             icon: 'success',
-                            title: 'Order Completed!',
-                            text: 'Order has been processed successfully. Opening receipt...',
+                            title: 'Payment Confirmation',
+                            html: `
+                                <div class="text-start">
+                                    <div class="mb-2"><strong>Total:</strong> ₱${Number(total || 0).toFixed(2)}</div>
+                                    <label class="form-label">Amount Paid</label>
+                                    <input id="amount_paid" type="number" min="0" step="0.01" class="form-control" placeholder="Enter amount paid">
+                                    <div class="mt-2" id="change_display" style="font-weight:700; color:#2563eb;">Change: ₱0.00</div>
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Confirm & Open Receipt',
+                            cancelButtonText: 'Cancel',
                             confirmButtonColor: '#10b981',
-                            timer: 2000,
-                            timerProgressBar: true
-                        }).then(() => {
+                            cancelButtonColor: '#6b7280',
+                            didOpen: () => {
+                                const input = document.getElementById('amount_paid');
+                                const changeEl = document.getElementById('change_display');
+                                const compute = () => {
+                                    const paid = parseFloat(input.value || '0') || 0;
+                                    const change = paid - (parseFloat(total || 0) || 0);
+                                    changeEl.textContent = `Change: ₱${(change > 0 ? change : 0).toFixed(2)}`;
+                                };
+                                input.addEventListener('input', compute);
+                                input.focus();
+                                compute();
+                            },
+                            preConfirm: () => {
+                                const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
+                                if (paid < (parseFloat(total || 0) || 0)) {
+                                    Swal.showValidationMessage('Amount paid is less than total.');
+                                    return false;
+                                }
+                                return { paid };
+                            }
+                        }).then((result) => {
+                            if (!result.isConfirmed) {
+                                return;
+                            }
+
+                            cart = [];
+                            updateCartDisplay();
+
+                            // Refresh products to show updated stock
+                            search('list');
+
                             // Open receipt in new window
-                            window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                            window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                         });
                     } else {
+                        cart = [];
+                        updateCartDisplay();
+
                         // Regular success message for credit payments
                         Swal.fire({
                             icon: 'success',
@@ -917,10 +962,10 @@
                             timer: 3000,
                             timerProgressBar: true
                         });
+
+                        // Refresh products to show updated stock
+                        search('list');
                     }
-                    
-                    // Refresh products to show updated stock
-                    search('list');
                 } else {
                     Swal.fire({
                         icon: 'error',

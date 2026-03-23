@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use App\Models\StockIn;
 use Carbon\Carbon;
@@ -195,52 +196,76 @@ class PosAdminController extends Controller
                     }
                 }
 
-                // Resolve unit prices per branch from latest saved unit prices
-                $fallbackLatestStockIn = null;
-                if ($electronicsOnly) {
-                    $fallbackLatestStockIn = StockIn::with(['unitPrices.unitType'])
-                        ->where('product_id', (int) $p->id)
-                        ->whereHas('unitPrices')
-                        ->orderByDesc('id')
-                        ->first();
+                // Resolve unit prices per branch from latest saved unit prices PER unit_type.
+                // This prevents "only the last stocked unit type" from showing.
+                $fallbackUnitPrices = [];
+                if ($electronicsOnly && Schema::hasTable('stock_in_unit_prices')) {
+                    $fallbackUnitPrices = DB::table('stock_in_unit_prices')
+                        ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                        ->leftJoin('unit_types', 'unit_types.id', '=', 'stock_in_unit_prices.unit_type_id')
+                        ->where('stock_ins.product_id', (int) $p->id)
+                        ->orderByDesc('stock_ins.id')
+                        ->get([
+                            'stock_in_unit_prices.unit_type_id as unit_type_id',
+                            'stock_in_unit_prices.price as price',
+                            'unit_types.unit_name as unit_name',
+                        ])
+                        ->toArray();
                 }
 
                 foreach ($branchStocks as $bId => $bData) {
-                    $latestStockIn = StockIn::with(['unitPrices.unitType'])
-                        ->where('product_id', (int) $p->id)
-                        ->where('branch_id', (int) $bId)
-                        ->whereHas('unitPrices')
-                        ->orderByDesc('id')
-                        ->first();
+                    $rows = [];
+                    if (Schema::hasTable('stock_in_unit_prices')) {
+                        $rows = DB::table('stock_in_unit_prices')
+                            ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                            ->leftJoin('unit_types', 'unit_types.id', '=', 'stock_in_unit_prices.unit_type_id')
+                            ->where('stock_ins.product_id', (int) $p->id)
+                            ->where('stock_ins.branch_id', (int) $bId)
+                            ->orderByDesc('stock_ins.id')
+                            ->get([
+                                'stock_in_unit_prices.unit_type_id as unit_type_id',
+                                'stock_in_unit_prices.price as price',
+                                'unit_types.unit_name as unit_name',
+                            ])
+                            ->toArray();
+                    }
 
-                    if (!$latestStockIn && $fallbackLatestStockIn) {
-                        $latestStockIn = $fallbackLatestStockIn;
+                    if (empty($rows) && !empty($fallbackUnitPrices)) {
+                        $rows = $fallbackUnitPrices;
+                    }
+
+                    $latestPriceByUnitType = [];
+                    foreach ($rows as $r) {
+                        $ut = (int) ($r->unit_type_id ?? 0);
+                        $price = (float) ($r->price ?? 0);
+                        if ($ut <= 0 || $price <= 0) {
+                            continue;
+                        }
+                        if (!array_key_exists($ut, $latestPriceByUnitType)) {
+                            $latestPriceByUnitType[$ut] = [
+                                'unit_type_id' => $ut,
+                                'unit_name' => $r->unit_name ?? null,
+                                'price' => $price,
+                            ];
+                        }
                     }
 
                     $units = [];
-                    if ($latestStockIn) {
-                        foreach ($latestStockIn->unitPrices as $up) {
-                            $unitTypeId = (int) ($up->unit_type_id ?? 0);
-                            $price = (float) ($up->price ?? 0);
-                            if ($unitTypeId <= 0 || $price <= 0) {
-                                continue;
-                            }
-
-                            $factor = isset($unitFactors[$unitTypeId]) ? (float) $unitFactors[$unitTypeId] : 1.0;
-                            if (!is_finite($factor) || $factor <= 0) {
-                                $factor = 1.0;
-                            }
-
-                            $baseAvailable = (float) ($bData['stock'] ?? 0);
-                            $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
-
-                            $units[] = [
-                                'unit_type_id' => $unitTypeId,
-                                'unit_name' => optional($up->unitType)->unit_name,
-                                'stock' => (int) round($unitAvailable),
-                                'price' => (float) $price,
-                            ];
+                    foreach ($latestPriceByUnitType as $ut => $payload) {
+                        $factor = isset($unitFactors[$ut]) ? (float) $unitFactors[$ut] : 1.0;
+                        if (!is_finite($factor) || $factor <= 0) {
+                            $factor = 1.0;
                         }
+
+                        $baseAvailable = (float) ($bData['stock'] ?? 0);
+                        $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
+
+                        $units[] = [
+                            'unit_type_id' => (int) $payload['unit_type_id'],
+                            'unit_name' => $payload['unit_name'],
+                            'stock' => (int) round($unitAvailable),
+                            'price' => (float) $payload['price'],
+                        ];
                     }
 
                     $branchStocks[$bId]['stock_units'] = $units;
@@ -356,47 +381,74 @@ class PosAdminController extends Controller
             }
         }
 
-        $fallbackLatestStockIn = null;
-        if ($electronicsOnly) {
-            $fallbackLatestStockIn = StockIn::with(['unitPrices.unitType'])
-                ->where('product_id', (int) $product->id)
-                ->whereHas('unitPrices')
-                ->orderByDesc('id')
-                ->first();
+        $fallbackUnitPrices = [];
+        if ($electronicsOnly && Schema::hasTable('stock_in_unit_prices')) {
+            $fallbackUnitPrices = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->leftJoin('unit_types', 'unit_types.id', '=', 'stock_in_unit_prices.unit_type_id')
+                ->where('stock_ins.product_id', (int) $product->id)
+                ->orderByDesc('stock_ins.id')
+                ->get([
+                    'stock_in_unit_prices.unit_type_id as unit_type_id',
+                    'stock_in_unit_prices.price as price',
+                    'unit_types.unit_name as unit_name',
+                ])
+                ->toArray();
         }
 
         foreach ($branchStocks as $bId => $bData) {
-            $latestStockIn = StockIn::with(['unitPrices.unitType'])
-                ->where('product_id', (int) $product->id)
-                ->where('branch_id', (int) $bId)
-                ->whereHas('unitPrices')
-                ->orderByDesc('id')
-                ->first();
+            $rows = [];
+            if (Schema::hasTable('stock_in_unit_prices')) {
+                $rows = DB::table('stock_in_unit_prices')
+                    ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                    ->leftJoin('unit_types', 'unit_types.id', '=', 'stock_in_unit_prices.unit_type_id')
+                    ->where('stock_ins.product_id', (int) $product->id)
+                    ->where('stock_ins.branch_id', (int) $bId)
+                    ->orderByDesc('stock_ins.id')
+                    ->get([
+                        'stock_in_unit_prices.unit_type_id as unit_type_id',
+                        'stock_in_unit_prices.price as price',
+                        'unit_types.unit_name as unit_name',
+                    ])
+                    ->toArray();
+            }
 
-            if (!$latestStockIn && $fallbackLatestStockIn) {
-                $latestStockIn = $fallbackLatestStockIn;
+            if (empty($rows) && !empty($fallbackUnitPrices)) {
+                $rows = $fallbackUnitPrices;
+            }
+
+            $latestPriceByUnitType = [];
+            foreach ($rows as $r) {
+                $ut = (int) ($r->unit_type_id ?? 0);
+                $price = (float) ($r->price ?? 0);
+                if ($ut <= 0 || $price <= 0) {
+                    continue;
+                }
+                if (!array_key_exists($ut, $latestPriceByUnitType)) {
+                    $latestPriceByUnitType[$ut] = [
+                        'unit_type_id' => $ut,
+                        'unit_name' => $r->unit_name ?? null,
+                        'price' => $price,
+                    ];
+                }
             }
 
             $units = [];
-            if ($latestStockIn) {
-                foreach ($latestStockIn->unitPrices as $up) {
-                    $unitTypeId = (int) ($up->unit_type_id ?? 0);
-                    $price = (float) ($up->price ?? 0);
-                    if ($unitTypeId <= 0 || $price <= 0) continue;
-
-                    $factor = isset($unitFactors[$unitTypeId]) ? (float) $unitFactors[$unitTypeId] : 1.0;
-                    if (!is_finite($factor) || $factor <= 0) $factor = 1.0;
-
-                    $baseAvailable = (float) ($bData['stock'] ?? 0);
-                    $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
-
-                    $units[] = [
-                        'unit_type_id' => $unitTypeId,
-                        'unit_name' => optional($up->unitType)->unit_name,
-                        'stock' => (int) round($unitAvailable),
-                        'price' => (float) $price,
-                    ];
+            foreach ($latestPriceByUnitType as $ut => $payload) {
+                $factor = isset($unitFactors[$ut]) ? (float) $unitFactors[$ut] : 1.0;
+                if (!is_finite($factor) || $factor <= 0) {
+                    $factor = 1.0;
                 }
+
+                $baseAvailable = (float) ($bData['stock'] ?? 0);
+                $unitAvailable = $factor > 0 ? ($baseAvailable / $factor) : 0;
+
+                $units[] = [
+                    'unit_type_id' => (int) $payload['unit_type_id'],
+                    'unit_name' => $payload['unit_name'],
+                    'stock' => (int) round($unitAvailable),
+                    'price' => (float) $payload['price'],
+                ];
             }
 
             $branchStocks[$bId]['stock_units'] = $units;

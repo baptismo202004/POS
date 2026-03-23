@@ -384,7 +384,7 @@
                     <input type="text" name="search" id="product-search-input" class="form-control" placeholder="Search products..." value="{{ request('search') }}">
                 </div>
 
-                <a href="{{ route('cashier.products.create') }}" class="btn btn-primary">
+                <a href="{{ route('cashier.products.create') }}" class="btn btn-primary" id="addProductBtn">
                     <i class="fas fa-plus"></i>
                     Add New Product
                 </a>
@@ -458,6 +458,42 @@
 
 <script>
     $(document).ready(function () {
+        const isViewOnlyProducts = {{ !empty($isViewOnlyProducts) && $isViewOnlyProducts ? 'true' : 'false' }};
+        const canCreateProducts = {{ !empty($canCreateProducts) && $canCreateProducts ? 'true' : 'false' }};
+        const canEditProducts = {{ !empty($canEditProducts) && $canEditProducts ? 'true' : 'false' }};
+        const canDeleteProducts = {{ !empty($canDeleteProducts) && $canDeleteProducts ? 'true' : 'false' }};
+
+        const noPermissionAllMessage = "You don't have permission to add, edit, or delete products.";
+        const noPermissionEditDeleteMessage = "You don't have permission to edit and delete products.";
+        const noPermissionDeleteMessage = "You don't have permission to delete products.";
+
+        function showNoPermission() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Oops...',
+                text: noPermissionAllMessage,
+                confirmButtonColor: '#2196F3'
+            });
+        }
+
+        function showNoEditDeletePermission(messageOverride) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Oops...',
+                text: messageOverride || noPermissionEditDeleteMessage,
+                confirmButtonColor: '#2196F3'
+            });
+        }
+
+        function showNoDeletePermission(messageOverride) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Oops...',
+                text: messageOverride || noPermissionDeleteMessage,
+                confirmButtonColor: '#2196F3'
+            });
+        }
+
         let searchTimeout;
 
         $('#product-search-input').on('keyup', function () {
@@ -491,6 +527,14 @@
 
         // Edit selected: exactly one
         $('#editSelectedBtn').on('click', function(){
+            if (!canEditProducts) {
+                if (isViewOnlyProducts && !canCreateProducts) {
+                    showNoPermission();
+                } else {
+                    showNoEditDeletePermission();
+                }
+                return;
+            }
             const ids = $('#product-table-body input.product-select:checked').map(function(){ return this.value; }).get();
             if (ids.length !== 1){
                 Swal.fire({
@@ -506,6 +550,16 @@
 
         // Delete selected: one or many
         $('#deleteSelectedBtn').on('click', async function(){
+            if (!canDeleteProducts) {
+                if (isViewOnlyProducts && !canCreateProducts) {
+                    showNoPermission();
+                } else if (canEditProducts) {
+                    showNoDeletePermission();
+                } else {
+                    showNoEditDeletePermission();
+                }
+                return;
+            }
             const ids = $('#product-table-body input.product-select:checked').map(function(){ return this.value; }).get();
             if (ids.length === 0){
                 Swal.fire({
@@ -545,6 +599,23 @@
                         },
                         body: new URLSearchParams({ _method: 'DELETE', _token: token })
                     });
+                    if (res.status === 403) {
+                        let msg = null;
+                        try {
+                            const data = await res.json();
+                            msg = data?.message ?? null;
+                        } catch (e) {
+                            msg = null;
+                        }
+                        if (isViewOnlyProducts && !canCreateProducts) {
+                            showNoPermission();
+                        } else if (canEditProducts) {
+                            showNoDeletePermission(msg);
+                        } else {
+                            showNoEditDeletePermission(msg);
+                        }
+                        return;
+                    }
                     if (!res.ok) {
                         let msg = null;
                         try {
@@ -581,6 +652,13 @@
                 });
             }
         });
+
+        $('#addProductBtn').on('click', function(e){
+            if (!canCreateProducts) {
+                e.preventDefault();
+                showNoPermission();
+            }
+        });
     });
 
     // Use standard CashierSidebar from layouts
@@ -589,7 +667,7 @@
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: '{{ session('success') }}',
+                title: @json(session('success')),
                 showConfirmButton: false,
                 timer: 3000,
                 timerProgressBar: true,
@@ -602,7 +680,7 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Oops...',
-                text: '{{ session('error') }}',
+                text: @json(session('error')),
                 confirmButtonColor: '#2196F3'
             });
         @endif

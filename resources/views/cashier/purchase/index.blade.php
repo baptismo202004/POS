@@ -281,10 +281,12 @@
             </div>
 
             <div class="action-bar">
-                <a href="{{ route('cashier.purchases.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Add New Purchase
-                </a>
+                @if(!empty($canCreatePurchases) && $canCreatePurchases)
+                    <a href="{{ route('cashier.purchases.create') }}" class="btn btn-primary" id="addPurchaseBtn">
+                        <i class="fas fa-plus"></i>
+                        Add New Purchase
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -342,11 +344,42 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const isViewOnlyPurchases = {{ !empty($isViewOnlyPurchases) && $isViewOnlyPurchases ? 'true' : 'false' }};
+    const canCreatePurchases = {{ !empty($canCreatePurchases) && $canCreatePurchases ? 'true' : 'false' }};
+
+    const noPermissionCreateMessage = "You don't have permission to add purchases.";
+
+    const addPurchaseBtn = document.getElementById('addPurchaseBtn');
+    if (addPurchaseBtn) {
+        addPurchaseBtn.addEventListener('click', function(e) {
+            if (!canCreatePurchases) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Permission',
+                        text: noPermissionCreateMessage,
+                        confirmButtonColor: 'var(--theme-color)',
+                    });
+                }
+            }
+        });
+    }
+
     @if(session('success'))
         Swal.fire({
             title: 'Success!',
-            text: '{{ session('success') }}',
+            text: @json(session('success')),
             icon: 'success',
+            confirmButtonColor: 'var(--theme-color)',
+        });
+    @endif
+
+    @if(session('error'))
+        Swal.fire({
+            title: 'No Permission',
+            text: @json(session('error')),
+            icon: 'warning',
             confirmButtonColor: 'var(--theme-color)',
         });
     @endif

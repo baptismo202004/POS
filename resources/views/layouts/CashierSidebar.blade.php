@@ -653,7 +653,7 @@
                 <span>Products</span>
             </a>
             
-            @canAccess('product_category','edit')
+            @canAccess('product_category','view')
             <a href="{{ route('cashier.categories.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-tags sidebar-icon"></i>
@@ -663,19 +663,21 @@
             @endcanAccess
             @endcanAccess
 
-            <!-- Inventory Section -->
-            @canAccess('inventory','view')
-            <div class="section-label">INVENTORY</div>
-            
-            @canAccess('inventory','edit')
+            <!-- Purchases Section -->
+            @canAccess('purchases','view')
+            <div class="section-label">PURCHASES</div>
             <a href="{{ route('cashier.purchases.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-shopping-bag sidebar-icon"></i>
                 </span>
-                <span>Purchase</span>
+                <span>Purchases</span>
             </a>
             @endcanAccess
 
+            <!-- Inventory Section -->
+            @canAccess('inventory','view')
+            <div class="section-label">INVENTORY</div>
+            
             <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none inventory-toggle" data-submenu="inventory-submenu" aria-expanded="false">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-box sidebar-icon"></i>
@@ -688,7 +690,7 @@
                     <span>Inventory List</span>
                 </a>
 
-                @canAccess('inventory','edit')
+                @canAccess('stock_in','view')
                 <a href="{{ route('cashier.stockin.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
                     <span>Stock In</span>
                 </a>

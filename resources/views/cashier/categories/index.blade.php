@@ -491,10 +491,12 @@
                     <i class="fas fa-search"></i>
                     <input type="text" name="search" id="category-search-input" class="form-control" placeholder="Search categories..." value="{{ request('search') }}">
                 </div>
-                <button type="button" class="btn btn-add-category" data-bs-toggle="modal" data-bs-target="#categoryModal">
-                    <i class="fas fa-plus"></i>
-                    Add Category
-                </button>
+                @if(!empty($canCreateCategories) && $canCreateCategories)
+                    <button type="button" class="btn btn-add-category" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                        <i class="fas fa-plus"></i>
+                        Add Category
+                    </button>
+                @endif
                 <button type="button" id="editCategoryBtn" class="btn btn-edit-category" disabled>
                     <i class="fas fa-edit"></i>
                     Edit Category
@@ -628,6 +630,62 @@
 
 <script>
     // Use standard CashierSidebar from layouts
+        const isViewOnlyCategories = {{ !empty($isViewOnlyCategories) && $isViewOnlyCategories ? 'true' : 'false' }};
+        const canCreateCategories = {{ !empty($canCreateCategories) && $canCreateCategories ? 'true' : 'false' }};
+        const canEditCategories = {{ !empty($canEditCategories) && $canEditCategories ? 'true' : 'false' }};
+        const canDeleteCategories = {{ !empty($canDeleteCategories) && $canDeleteCategories ? 'true' : 'false' }};
+
+        const noPermissionAllMessage = "You don't have permission to add, edit, or delete categories.";
+        const noPermissionEditDeleteMessage = "You don't have permission to edit and delete categories.";
+        const noPermissionDeleteMessage = "You don't have permission to delete categories.";
+
+        function showNoPermission(messageOverride) {
+            if (typeof Swal === 'undefined') return;
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Permission',
+                text: messageOverride || noPermissionAllMessage,
+                confirmButtonColor: '#0D47A1'
+            });
+        }
+
+        function showNoEditDeletePermission(messageOverride) {
+            if (typeof Swal === 'undefined') return;
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Permission',
+                text: messageOverride || noPermissionEditDeleteMessage,
+                confirmButtonColor: '#0D47A1'
+            });
+        }
+
+        function showNoDeletePermission(messageOverride) {
+            if (typeof Swal === 'undefined') return;
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Permission',
+                text: messageOverride || noPermissionDeleteMessage,
+                confirmButtonColor: '#0D47A1'
+            });
+        }
+
+        function getDeletePermissionMessage() {
+            if (isViewOnlyCategories && !canCreateCategories) return noPermissionAllMessage;
+            if (canEditCategories) return noPermissionDeleteMessage;
+            return noPermissionEditDeleteMessage;
+        }
+
+        const addBtn = document.querySelector('.btn-add-category');
+        if (addBtn) {
+            addBtn.addEventListener('click', function(e) {
+                if (!canCreateCategories) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showNoPermission(noPermissionAllMessage);
+                }
+            });
+        }
+
         const editBtn = document.getElementById('editCategoryBtn');
         const deleteBtn = document.getElementById('deleteBtn');
         const checkboxes = document.querySelectorAll('.row-checkbox');
@@ -686,6 +744,14 @@
 
         if (editBtn) {
             editBtn.addEventListener('click', function() {
+                if (!canEditCategories) {
+                    if (isViewOnlyCategories && !canCreateCategories) {
+                        showNoPermission(noPermissionAllMessage);
+                    } else {
+                        showNoEditDeletePermission(noPermissionEditDeleteMessage);
+                    }
+                    return;
+                }
                 if (selectedIds.length === 1) {
                     const row = document.querySelector(`tr[data-id="${selectedIds[0]}"]`);
                     if (row) editCategory(selectedIds[0], row.dataset.name, row.dataset.status);
@@ -695,6 +761,10 @@
 
         if (deleteBtn) {
             deleteBtn.addEventListener('click', function() {
+                if (!canDeleteCategories) {
+                    showNoDeletePermission(getDeletePermissionMessage());
+                    return;
+                }
                 if (selectedIds.length === 0) return;
                 
                 const count = selectedIds.length;
@@ -734,7 +804,23 @@
                                     'Accept': 'application/json'
                                 }
                             })
-                            .then(response => response.json())
+                            .then(async response => {
+                                const contentType = response.headers.get('content-type');
+                                const isJson = contentType && contentType.includes('application/json');
+                                const payload = isJson ? await response.json() : { success: false, message: 'Invalid response format' };
+
+                                if (response.status === 403) {
+                                    reject(getDeletePermissionMessage());
+                                    return;
+                                }
+
+                                if (!response.ok) {
+                                    reject(payload.message || 'Deletion failed');
+                                    return;
+                                }
+
+                                return payload;
+                            })
                             .then(data => {
                                 if (data.success) {
                                     resolve(data);
@@ -806,6 +892,11 @@
 
     // Handle add category form submission
     document.getElementById('categoryForm')?.addEventListener('submit', function(e) {
+        if (!canCreateCategories) {
+            e.preventDefault();
+            showNoPermission(noPermissionAllMessage);
+            return;
+        }
         e.preventDefault();
         
         const formData = new FormData(this);
@@ -818,15 +909,21 @@
             },
             body: formData
         })
-        .then(response => {
-            // Check if response is JSON
+        .then(async response => {
             const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // If not JSON, treat as error
-                throw new Error('Invalid response format');
+            const isJson = contentType && contentType.includes('application/json');
+            const payload = isJson ? await response.json() : { success: false, message: 'Invalid response format' };
+
+            if (response.status === 403) {
+                showNoPermission(noPermissionAllMessage);
+                throw new Error('Forbidden');
             }
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Request failed');
+            }
+
+            return payload;
         })
         .then(data => {
             if (data.success) {
@@ -850,7 +947,6 @@
                     window.location.reload();
                 }, 1500);
             } else {
-                // Show error message
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'error',
@@ -874,6 +970,15 @@
 
     // Handle edit form submission
     document.getElementById('editCategoryForm')?.addEventListener('submit', function(e) {
+        if (!canEditCategories) {
+            e.preventDefault();
+            if (isViewOnlyCategories && !canCreateCategories) {
+                showNoPermission(noPermissionAllMessage);
+            } else {
+                showNoEditDeletePermission(noPermissionEditDeleteMessage);
+            }
+            return;
+        }
         e.preventDefault();
         
         const formData = new FormData(this);
@@ -890,15 +995,25 @@
             },
             body: formData
         })
-        .then(response => {
-            // Check if response is JSON
+        .then(async response => {
             const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // If not JSON, treat as error
-                throw new Error('Invalid response format');
+            const isJson = contentType && contentType.includes('application/json');
+            const payload = isJson ? await response.json() : { success: false, message: 'Invalid response format' };
+
+            if (response.status === 403) {
+                if (isViewOnlyCategories && !canCreateCategories) {
+                    showNoPermission(noPermissionAllMessage);
+                } else {
+                    showNoEditDeletePermission(noPermissionEditDeleteMessage);
+                }
+                throw new Error('Forbidden');
             }
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Request failed');
+            }
+
+            return payload;
         })
         .then(data => {
             if (data.success) {

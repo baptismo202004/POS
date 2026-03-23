@@ -1028,10 +1028,68 @@ function checkout() {
             saleData.items = [];
             updateOrderDisplay();
             
-            // Show success and redirect to receipt if cash payment
+                    // Show payment modal first, then redirect to receipt (cash flow)
             if (data.auto_receipt && data.receipt_url) {
-                // Redirect to receipt
-                window.location.href = data.receipt_url;
+                const pesos = (v) => {
+                    const n = Number(v);
+                    return Number.isFinite(n) ? `₱${n.toFixed(2)}` : '₱0.00';
+                };
+
+                const totalAmount = Number(total);
+
+                Swal.fire({
+                    title: 'Payment',
+                    html: `
+                        <div style="text-align:left">
+                            <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                                <div style="font-weight:700">Total</div>
+                                <div style="font-weight:900">${pesos(totalAmount)}</div>
+                            </div>
+                            <label for="amountPaid" style="font-weight:700;margin-top:10px;display:block">Amount Paid</label>
+                            <input id="amountPaid" type="number" min="0" step="0.01" class="swal2-input" placeholder="0.00" style="margin:8px 0 8px 0;" />
+                            <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px;">
+                                <div style="font-weight:700">Change</div>
+                                <div id="changeAmount" style="font-weight:900">${pesos(0)}</div>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'Proceed to Receipt',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: 'var(--success-color)',
+                    didOpen: () => {
+                        const input = document.getElementById('amountPaid');
+                        const changeEl = document.getElementById('changeAmount');
+                        if (input) {
+                            input.focus();
+                            input.addEventListener('input', () => {
+                                const paid = Number(input.value || 0);
+                                const change = paid - totalAmount;
+                                changeEl.textContent = pesos(change > 0 ? change : 0);
+                            });
+                        }
+                    },
+                    preConfirm: () => {
+                        const input = document.getElementById('amountPaid');
+                        const paid = Number(input && input.value ? input.value : 0);
+                        if (!Number.isFinite(paid) || paid <= 0) {
+                            Swal.showValidationMessage('Please enter a valid amount paid.');
+                            return false;
+                        }
+                        if (paid < totalAmount) {
+                            Swal.showValidationMessage('Amount paid is not enough.');
+                            return false;
+                        }
+                        return { paid, change: paid - totalAmount };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = data.receipt_url;
+                    } else {
+                        window.location.reload();
+                    }
+                });
             } else {
                 // For credit payments, show beautiful success message
                 if (selectedPayment === 'credit') {
@@ -1251,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify({ mode: 'list' })
+                    body: JSON.stringify({ mode: 'list', exclude_electronics: '1' })
                 });
 
                 const data = await response.json();
@@ -1289,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                body: JSON.stringify({ mode: 'search', keyword: keyword })
+                body: JSON.stringify({ mode: 'search', keyword: keyword, exclude_electronics: '1' })
             });
 
             const data = await response.json();

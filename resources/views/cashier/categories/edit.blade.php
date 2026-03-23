@@ -56,7 +56,7 @@
 
                         <div class="row">
                             <div class="col-md-8 mb-3">
-                                <label for="category_name" class="form-label">Category Name *</label>
+                                <label for="category_name" class="form-label">Category Name</label>
                                 <input type="text" name="category_name" id="category_name" class="form-control" value="{{ old('category_name', $category->category_name) }}" required>
                             </div>
 

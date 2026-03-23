@@ -440,6 +440,11 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        // Check if the user has only 'view' permission for the 'products' module
+        if (Access::hasViewOnlyPermission($user, 'products')) {
+            return redirect()->route('cashier.products.index')->with('error', 'You do not have permission to add new products.');
+        }
+
         return view('cashier.sales.create', compact('branchId'));
     }
 
@@ -495,6 +500,15 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        if (! Access::can($user, 'products', 'view')) {
+            abort(403);
+        }
+
+        $isViewOnlyProducts = Access::hasViewOnlyPermission($user, 'products');
+        $canCreateProducts = Access::can($user, 'products', 'create');
+        $canEditProducts = Access::can($user, 'products', 'edit');
+        $canDeleteProducts = Access::can($user, 'products', 'delete');
+
         $sortBy = $request->query('sort_by', 'id');
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
@@ -547,7 +561,15 @@ class CashierDashboardController extends Controller
             return view('cashier.products._product_table', compact('products'));
         }
 
-        return view('cashier.products.index', compact('products', 'sortBy', 'sortDirection'));
+        return view('cashier.products.index', compact(
+            'products',
+            'sortBy',
+            'sortDirection',
+            'isViewOnlyProducts',
+            'canCreateProducts',
+            'canEditProducts',
+            'canDeleteProducts'
+        ));
     }
 
     public function createProduct()
@@ -557,6 +579,11 @@ class CashierDashboardController extends Controller
 
         if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
+        }
+
+        if (! Access::can($user, 'products', 'create')) {
+            return redirect()->route('cashier.products.index')
+                ->with('error', "You don't have permission to add, edit, or delete products.");
         }
 
         $brands = Brand::all();
@@ -576,6 +603,11 @@ class CashierDashboardController extends Controller
 
         if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
+        }
+
+        if (! Access::can($user, 'products', 'create')) {
+            return redirect()->route('cashier.products.index')
+                ->with('error', "You don't have permission to add, edit, or delete products.");
         }
 
         // Select2 tags support: if a cashier types a new Brand/Category, Select2 will submit a string.
@@ -680,6 +712,11 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        if (! Access::can($user, 'products', 'edit')) {
+            return redirect()->route('cashier.products.index')
+                ->with('error', "You don't have permission to edit and delete products.");
+        }
+
         $product = Product::findOrFail($id);
         $brands = Brand::all();
         $categories = Category::all();
@@ -698,6 +735,11 @@ class CashierDashboardController extends Controller
 
         if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
+        }
+
+        if (! Access::can($user, 'products', 'edit')) {
+            return redirect()->route('cashier.products.index')
+                ->with('error', "You don't have permission to add, edit, or delete products.");
         }
 
         $product = Product::findOrFail($id);
@@ -786,6 +828,18 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        if (! Access::can($user, 'products', 'delete')) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "You don't have permission to delete products.",
+                ], 403);
+            }
+
+            return redirect()->route('cashier.products.index')
+                ->with('error', "You don't have permission to delete products.");
+        }
+
         $product = Product::findOrFail($id);
 
         try {
@@ -832,6 +886,15 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        if (! Access::can($user, 'product_category', 'view')) {
+            abort(403);
+        }
+
+        $isViewOnlyCategories = Access::hasViewOnlyPermission($user, 'product_category');
+        $canCreateCategories = Access::can($user, 'product_category', 'create');
+        $canEditCategories = Access::can($user, 'product_category', 'edit');
+        $canDeleteCategories = Access::can($user, 'product_category', 'delete');
+
         $sortBy = $request->query('sort_by', 'id');
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
@@ -844,7 +907,13 @@ class CashierDashboardController extends Controller
 
         $categories = $query->orderBy($sortBy, $sortDirection)->paginate(15);
 
-        return view('cashier.categories.index', compact('categories'));
+        return view('cashier.categories.index', compact(
+            'categories',
+            'isViewOnlyCategories',
+            'canCreateCategories',
+            'canEditCategories',
+            'canDeleteCategories'
+        ));
     }
 
     public function createCategory()
@@ -992,6 +1061,13 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        if (! Access::can($user, 'purchases', 'view')) {
+            abort(403);
+        }
+
+        $isViewOnlyPurchases = Access::hasViewOnlyPermission($user, 'purchases');
+        $canCreatePurchases = Access::can($user, 'purchases', 'create');
+
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
         $search = $request->query('search');
@@ -1028,7 +1104,13 @@ class CashierDashboardController extends Controller
 
         $purchases = $query->paginate(15);
 
-        return view('cashier.purchase.index', compact('purchases', 'sortBy', 'sortDirection'));
+        return view('cashier.purchase.index', compact(
+            'purchases',
+            'sortBy',
+            'sortDirection',
+            'isViewOnlyPurchases',
+            'canCreatePurchases'
+        ));
     }
 
     public function purchasesCreate(Request $request)
@@ -1038,6 +1120,11 @@ class CashierDashboardController extends Controller
 
         if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
+        }
+
+        if (! Access::can($user, 'purchases', 'create')) {
+            return redirect()->route('cashier.purchases.index')
+                ->with('error', "You don't have permission to add purchases.");
         }
 
         $suppliers = Supplier::all();
@@ -1054,6 +1141,11 @@ class CashierDashboardController extends Controller
 
         if (! $branchId) {
             abort(403, 'No branch assigned to this cashier');
+        }
+
+        if (! Access::can($user, 'purchases', 'create')) {
+            return redirect()->route('cashier.purchases.index')
+                ->with('error', "You don't have permission to add purchases.");
         }
 
         $validated = $request->validate([
@@ -1608,7 +1700,18 @@ class CashierDashboardController extends Controller
                                     $stockInPayload['initial_quantity'] = (int) round($enteredQty);
                                 }
 
-                                DB::table('stock_ins')->insert($stockInPayload);
+                                $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                                // Insert into stock_in_unit_prices if table exists
+                                if (Schema::hasTable('stock_in_unit_prices')) {
+                                    DB::table('stock_in_unit_prices')->insert([
+                                        'stock_in_id' => $stockInId,
+                                        'unit_type_id' => (int) $unitTypeId,
+                                        'price' => $newPrice,
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
+                                    ]);
+                                }
                             }
 
                             if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price')) {
@@ -1644,7 +1747,18 @@ class CashierDashboardController extends Controller
                             $stockInPayload['initial_quantity'] = (int) round($enteredQty);
                         }
 
-                        DB::table('stock_ins')->insert($stockInPayload);
+                        $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                        // Insert into stock_in_unit_prices if table exists
+                        if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
+                            DB::table('stock_in_unit_prices')->insert([
+                                'stock_in_id' => $stockInId,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => $newPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
                     }
 
                     if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price')) {
@@ -2711,6 +2825,22 @@ class CashierDashboardController extends Controller
         $keyword = $request->input('keyword', $request->input('barcode'));
         $mode = $request->input('mode', 'list');
         $electronicsOnly = (bool) $request->boolean('electronics_only');
+        $excludeElectronics = (bool) $request->boolean('exclude_electronics'); // New flag for regular POS
+
+        if ($electronicsOnly) {
+            Log::debug('POS electronics_only lookup', [
+                'branch_id' => $posBranchId,
+                'mode' => $mode,
+                'keyword' => $keyword,
+            ]);
+        }
+        if ($excludeElectronics) {
+            Log::debug('POS exclude_electronics lookup', [
+                'branch_id' => $posBranchId,
+                'mode' => $mode,
+                'keyword' => $keyword,
+            ]);
+        }
 
         if ($mode === 'list' && empty($keyword)) {
             // Return all products for cashier's branch
@@ -2727,6 +2857,26 @@ class CashierDashboardController extends Controller
                             ->orWhere('product_types.type_name', 'LIKE', '%elect%');
                     });
             }
+            if ($excludeElectronics) {
+                $productsQuery = $productsQuery
+                    ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                    ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                    ->where(function ($q) {
+                        $q->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
+                            ->where(function ($inner) {
+                                $inner->whereNull('product_types.is_electronic')
+                                      ->orWhere('product_types.is_electronic', false);
+                            })
+                            ->where(function ($inner) {
+                                $inner->whereNull('product_types.type_name')
+                                      ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
+                            });
+                    });
+            }
+
+            if ($electronicsOnly) {
+                Log::debug('POS electronics_only SQL', ['sql' => $productsQuery->toSql()]);
+            }
 
             $products = $productsQuery
                 ->whereExists(function ($exists) use ($posBranchId) {
@@ -2741,16 +2891,22 @@ class CashierDashboardController extends Controller
                 ->map(function ($product) use ($posBranchId, $inventory) {
                     $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 
-                    $stockedUnitTypeIds = [];
+                    $availableByUnitTypeId = [];
                     if (Schema::hasTable('stock_ins')) {
-                        $stockedUnitTypeIds = DB::table('stock_ins')
+                        $availableByUnitTypeId = DB::table('stock_ins')
                             ->where('product_id', (int) $product->id)
                             ->where('branch_id', (int) $posBranchId)
                             ->whereNotNull('unit_type_id')
-                            ->where('quantity', '>', 0)
-                            ->distinct()
-                            ->pluck('unit_type_id')
-                            ->map(fn ($v) => (int) $v)
+                            ->groupBy('unit_type_id')
+                            ->select('unit_type_id', DB::raw('SUM(quantity) as qty'), DB::raw('SUM(sold) as sold'))
+                            ->get()
+                            ->mapWithKeys(function ($r) {
+                                $ut = (int) ($r->unit_type_id ?? 0);
+                                $qty = (float) ($r->qty ?? 0);
+                                $sold = (float) ($r->sold ?? 0);
+                                $available = max(0, $qty - $sold);
+                                return [$ut => $available];
+                            })
                             ->toArray();
                     }
 
@@ -2791,13 +2947,15 @@ class CashierDashboardController extends Controller
                         }
                     }
 
-                    $stockUnits = $unitRows->map(function ($row) use ($totalStock, $unitPriceById, $stockedUnitTypeIds) {
+                    $stockUnits = $unitRows->map(function ($row) use ($totalStock, $unitPriceById, $availableByUnitTypeId) {
                         $factor = (float) ($row->conversion_factor ?? 1);
                         $factor = $factor > 0 ? $factor : 1;
 
                         $unitTypeId = (int) $row->unit_type_id;
                         $unitStock = 0.0;
-                        if (in_array($unitTypeId, $stockedUnitTypeIds, true)) {
+                        if (array_key_exists($unitTypeId, $availableByUnitTypeId)) {
+                            $unitStock = (float) $availableByUnitTypeId[$unitTypeId];
+                        } else {
                             $unitStock = (float) $totalStock / $factor;
                         }
 
@@ -2842,6 +3000,10 @@ class CashierDashboardController extends Controller
                     ];
                 });
 
+            if ($electronicsOnly) {
+                Log::debug('POS electronics_only result', ['count' => $products->count()]);
+            }
+
             return response()->json(['success' => true, 'products' => $products]);
         }
 
@@ -2855,6 +3017,22 @@ class CashierDashboardController extends Controller
                     $q->whereRaw("LOWER(TRIM(categories.category_type)) LIKE 'electronic%'")
                         ->orWhere('product_types.is_electronic', true)
                         ->orWhere('product_types.type_name', 'LIKE', '%elect%');
+                });
+        }
+        if ($excludeElectronics) {
+            $productsQuery = $productsQuery
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->leftJoin('product_types', 'products.product_type_id', '=', 'product_types.id')
+                ->where(function ($q) {
+                    $q->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
+                        ->where(function ($inner) {
+                            $inner->whereNull('product_types.is_electronic')
+                                  ->orWhere('product_types.is_electronic', false);
+                        })
+                        ->where(function ($inner) {
+                            $inner->whereNull('product_types.type_name')
+                                  ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
+                        });
                 });
         }
 
@@ -2885,16 +3063,22 @@ class CashierDashboardController extends Controller
         $inventory = app(InventoryService::class);
         $totalStock = $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 
-        $stockedUnitTypeIds = [];
+        $availableByUnitTypeId = [];
         if (Schema::hasTable('stock_ins')) {
-            $stockedUnitTypeIds = DB::table('stock_ins')
+            $availableByUnitTypeId = DB::table('stock_ins')
                 ->where('product_id', (int) $product->id)
                 ->where('branch_id', (int) $posBranchId)
                 ->whereNotNull('unit_type_id')
-                ->where('quantity', '>', 0)
-                ->distinct()
-                ->pluck('unit_type_id')
-                ->map(fn ($v) => (int) $v)
+                ->groupBy('unit_type_id')
+                ->select('unit_type_id', DB::raw('SUM(quantity) as qty'), DB::raw('SUM(sold) as sold'))
+                ->get()
+                ->mapWithKeys(function ($r) {
+                    $ut = (int) ($r->unit_type_id ?? 0);
+                    $qty = (float) ($r->qty ?? 0);
+                    $sold = (float) ($r->sold ?? 0);
+                    $available = max(0, $qty - $sold);
+                    return [$ut => $available];
+                })
                 ->toArray();
         }
 
@@ -2935,13 +3119,15 @@ class CashierDashboardController extends Controller
             }
         }
 
-        $stockUnits = $unitRows->map(function ($row) use ($totalStock, $unitPriceById, $stockedUnitTypeIds) {
+        $stockUnits = $unitRows->map(function ($row) use ($totalStock, $unitPriceById, $availableByUnitTypeId) {
             $factor = (float) ($row->conversion_factor ?? 1);
             $factor = $factor > 0 ? $factor : 1;
 
             $unitTypeId = (int) $row->unit_type_id;
             $unitStock = 0.0;
-            if (in_array($unitTypeId, $stockedUnitTypeIds, true)) {
+            if (array_key_exists($unitTypeId, $availableByUnitTypeId)) {
+                $unitStock = (float) $availableByUnitTypeId[$unitTypeId];
+            } else {
                 $unitStock = (float) $totalStock / $factor;
             }
 
@@ -3058,6 +3244,48 @@ class CashierDashboardController extends Controller
                 }
 
                 $inventory->decreaseStock((int) $posBranchId, (int) $productId, (float) $baseQty, 'sale', 'sales', (int) $sale->id, now());
+
+                if (Schema::hasTable('stock_ins')
+                    && Schema::hasColumn('stock_ins', 'sold')
+                    && Schema::hasColumn('stock_ins', 'quantity')
+                    && Schema::hasColumn('stock_ins', 'unit_type_id')
+                ) {
+                    $remainingToConsume = (float) $quantity;
+
+                    $stockInRows = DB::table('stock_ins')
+                        ->where('product_id', (int) $productId)
+                        ->where('branch_id', (int) $posBranchId)
+                        ->where('unit_type_id', (int) $unitTypeId)
+                        ->whereRaw('(quantity - COALESCE(sold, 0)) > 0')
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get(['id', 'quantity', 'sold']);
+
+                    foreach ($stockInRows as $row) {
+                        if ($remainingToConsume <= 0) {
+                            break;
+                        }
+
+                        $rowQty = (float) ($row->quantity ?? 0);
+                        $rowSold = (float) ($row->sold ?? 0);
+                        $rowAvailable = max(0, $rowQty - $rowSold);
+
+                        if ($rowAvailable <= 0) {
+                            continue;
+                        }
+
+                        $consumeNow = min($rowAvailable, $remainingToConsume);
+
+                        DB::table('stock_ins')
+                            ->where('id', (int) $row->id)
+                            ->update([
+                                'sold' => $rowSold + $consumeNow,
+                                'updated_at' => now(),
+                            ]);
+
+                        $remainingToConsume -= $consumeNow;
+                    }
+                }
 
                 $subtotal = $quantity * $price;
                 $serialNumber = isset($item['serial_number']) ? trim((string) $item['serial_number']) : null;

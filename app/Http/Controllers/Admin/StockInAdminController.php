@@ -226,7 +226,7 @@ class StockInAdminController extends Controller
                 $originalPrice = (float) ($item['original_price'] ?? 0);
 
                 // Baseline is purchase cost only (ignore existing stock-in base price)
-                // `original_price` is the purchase unit cost, so convert it to base-unit cost first.
+                // original_price is the purchase unit cost, so convert it to base-unit cost first.
                 $purchaseUnitTypeId = (int) (DB::table('purchase_items')
                     ->where('purchase_id', (int) $data['purchase_id'])
                     ->where('product_id', (int) $item['product_id'])
@@ -388,7 +388,7 @@ class StockInAdminController extends Controller
                 $originalPrice = (float) ($item['original_price'] ?? 0);
 
                 // Baseline is purchase cost only (ignore existing stock-in base price)
-                // `original_price` is the purchase unit cost, so convert it to base-unit cost first.
+                // original_price is the purchase unit cost, so convert it to base-unit cost first.
                 $purchaseUnitTypeId = (int) (DB::table('purchase_items')
                     ->where('purchase_id', (int) $purchaseId)
                     ->where('product_id', (int) $item['product_id'])
