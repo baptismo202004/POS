@@ -755,7 +755,7 @@
                     <a href="{{ route('superadmin.inventory.stock-management') }}" class="{{ request()->routeIs('superadmin.inventory.stock-management') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock Management</span>
                     </a>
-                    <a href="{{ route('admin.stockin.create') }}" class="{{ request()->routeIs('admin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                    <a href="{{ route('superadmin.stockin.index') }}" class="{{ request()->routeIs('superadmin.stockin.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Stock In</span>
                     </a>
                 </div>

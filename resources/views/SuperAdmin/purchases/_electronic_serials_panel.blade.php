@@ -4,7 +4,10 @@
             <h6 class="mb-0">Electronic product details & serials</h6>
             <p class="text-muted small mb-0">Add product serials / IMEIs. You can add multiple entries.</p>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm toggle-electronics-panel-btn">Hide</button>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary serial-counter" style="display: none;">0 serials</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm toggle-electronics-panel-btn">Hide</button>
+        </div>
     </div>
 
     <div class="electronics-panel-body mt-3">

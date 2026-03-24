@@ -67,8 +67,12 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Basic purchase information validation
             'purchase_date' => 'required|date',
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            
+            // CONDITION 4: Supplier Requirement - Supplier must be selected and must exist
+            'supplier_id' => 'required|exists:suppliers,id',
+            
             'reference_number' => [
                 'nullable',
                 'string',
@@ -79,6 +83,8 @@ class PurchaseController extends Controller
             ],
             'payment_status' => 'required|in:pending,paid',
             'items' => 'required|array|min:1',
+            
+            // Product item validations
             'items.*.is_new' => 'nullable|boolean',
             'items.*.product_id' => 'required_if:items.*.is_new,null|exists:products,id',
             'items.*.product_name' => 'required_if:items.*.is_new,1|string|max:255|unique:products,product_name',
@@ -86,8 +92,27 @@ class PurchaseController extends Controller
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
 
+            // Serial number validations
             'items.*.serials' => 'nullable|array',
-            'items.*.serials.*.serial_number' => 'required_with:items.*.serials|string|max:255|distinct',
+            
+            // COMBINED CONDITIONS 2 & 3: Serial Number Validation
+            // CONDITION 2: Serial Number Uniqueness - Must be unique within form and database
+            // CONDITION 3: Serial Number Format Validation - Length and character constraints
+            'items.*.serials.*.serial_number' => [
+                'required_with:items.*.serials',
+                'string',
+                'min:8', // Minimum 8 characters
+                'max:30', // Maximum 30 characters  
+                'regex:/^[A-Z0-9-]+$/i', // Only alphanumeric and hyphens allowed
+                'distinct', // Ensures uniqueness within current form
+                function ($attribute, $value, $fail) {
+                    // Check uniqueness in database (CONDITION 2)
+                    if (ProductSerial::where('serial_number', $value)->exists()) {
+                        $fail('Duplicate serial number detected: ' . $value);
+                    }
+                }
+            ],
+            
             'items.*.serials.*.warranty_expiry' => 'nullable|date',
         ]);
 
@@ -162,6 +187,8 @@ class PurchaseController extends Controller
 
                 $requiredSerialCount = (int) round($primaryQty * $conversionFactor);
 
+                // CONDITION 1: Number of serials MUST equal quantity
+                // Check if product requires serial numbers (electronic with serial)
                 $requiresSerials = $categoryType === 'electronic_with_serial';
                 $serials = $item['serials'] ?? [];
 
@@ -169,15 +196,18 @@ class PurchaseController extends Controller
                     $serials = [];
                 }
 
+                // If product requires serials, ensure serials are provided
                 if ($requiresSerials && count($serials) === 0) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'items' => ['Serials are required for Electronic (with serial) products.'],
                     ]);
                 }
 
+                // CONDITION 1: Serial count MUST exactly match required quantity
+                // Example: Qty = 5 → must input exactly 5 unique serial numbers
                 if (count($serials) > 0 && ($requiredSerialCount <= 0 || count($serials) !== $requiredSerialCount)) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'items' => ["Serial count must match quantity × unit conversion ({$requiredSerialCount})."],
+                        'items' => ["Serial numbers must match quantity. Required: {$requiredSerialCount}, Provided: " . count($serials)],
                     ]);
                 }
 
@@ -268,448 +298,38 @@ class PurchaseController extends Controller
             ->with('success', 'Purchase marked as paid successfully.');
     }
 
-    public function matchProduct(Request $request)
+    /**
+     * Check serial numbers for duplicates in database
+     * Used for AJAX validation during purchase creation
+     * Checks against all product serials including existing inventory
+     */
+    public function checkSerials(Request $request)
     {
-        $normalizeForCompare = function (string $s): string {
-            $s = strtoupper($s);
-            $s = preg_replace('/[^A-Z0-9]/', '', $s);
-            return $s ?? '';
-        };
-
-        try {
-            $text = (string) $request->input('text', '');
-            $lines = explode("\n", $text);
-            $matchedProducts = [];
-            $unmatchedProducts = [];
-            $referenceNumber = null;
-            $aggregated = [];
-
-            Log::info('OCR request received', [
-                'text_length' => strlen($text),
-                'lines_count' => count($lines),
-                'first_5_lines' => array_slice($lines, 0, 5),
-                'raw_text_preview' => substr($text, 0, 200)
-            ]);
-
-            foreach ($lines as $line) {
-                if (preg_match('/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i', $line, $matches)) {
-                    $referenceNumber = trim($matches[1]);
-                    break;
-                }
-            }
-
-            $normalizeName = function (string $name): string {
-                $name = preg_replace('/[^A-Za-z0-9\s\/\-\+\&\.]/', ' ', $name);
-                $name = preg_replace('/\s+/', ' ', $name);
-                $name = trim($name);
-                $name = preg_replace('/^(BY\s+|ALT\s+GR\s+|HOME\s+)/i', '', $name);
-                $name = trim($name);
-
-                // Never treat totals/summary lines as products
-                $lettersOnly = strtoupper(preg_replace('/[^A-Za-z]/', '', $name));
-                if (
-                    preg_match('/\b(SUBTOTAL|TOTAL|VAT|TAX|CHANGE|CASH|DISCOUNT|AMOUNT\s+DUE|GRAND\s+TOTAL)\b/i', $name)
-                    || preg_match('/^(SUBTOTAL|SUBTOT|SUBTOTL|SUBOTAL|SUBOTAl|SUBOTL|SUBTOAL)$/i', $lettersOnly)
-                    || str_contains($lettersOnly, 'SUBTOTAL')
-                    || str_contains($lettersOnly, 'GRANDTOTAL')
-                ) {
-                    return '';
-                }
-
-                return $name;
-            };
-
-            $findBestProductMatch = function (string $ocrName, float $minScore = 70.0) use ($normalizeForCompare) {
-                $ocrName = trim($ocrName);
-                if ($ocrName === '') {
-                    return null;
-                }
-
-                Log::info("OCR: Trying to match product", [
-                    'ocr_name' => $ocrName,
-                    'min_score' => $minScore
-                ]);
-
-                $tokens = preg_split('/\s+/', strtoupper(preg_replace('/[^A-Za-z0-9\s]/', ' ', $ocrName))) ?: [];
-                $tokens = array_values(array_filter($tokens, function ($t) {
-                    return strlen($t) >= 3;
-                }));
-
-                if (empty($tokens)) {
-                    return null;
-                }
-
-                $candidates = Product::all()
-                    ->map(fn($p) => ['product' => $p, 'name' => $p->product_name])
-                    ->filter(fn($c) => !empty($c['name']));
-
-                $best = null;
-                $bestScore = 0.0;
-
-                foreach ($candidates as $cand) {
-                    $candNorm = $normalizeForCompare($cand['name']);
-                    if ($candNorm === '') {
-                        continue;
-                    }
-
-                    $percent = 0.0;
-                    $ocrNorm = $normalizeForCompare($ocrName);
-                    similar_text($ocrNorm, $candNorm, $percent);
-
-                    // Also try partial matching
-                    $partialPercent = 0.0;
-                    if (strlen($ocrNorm) >= 3 && str_contains($candNorm, $ocrNorm)) {
-                        $partialPercent = (strlen($ocrNorm) / strlen($candNorm)) * 100;
-                    }
-
-                    // Use the higher score
-                    $finalScore = max($percent, $partialPercent);
-
-                    if ($finalScore > $bestScore) {
-                        $bestScore = $finalScore;
-                        $best = $cand['product'];
-                    }
-                }
-
-                // Lower the minimum score for better matching
-                $adjustedMinScore = max(50.0, $minScore - 20.0);
-
-                Log::info("OCR: Product match result", [
-                    'ocr_name' => $ocrName,
-                    'best_match' => $best ? $best->product_name : null,
-                    'best_score' => $bestScore,
-                    'required_score' => $adjustedMinScore
-                ]);
-
-                if ($bestScore >= $adjustedMinScore) {
-                    return $best;
-                }
-
-                return null;
-        };
-
-        $inItems = false;
-        $currentDesc = null;
-        $debug = [
-            'price_lines_matched' => 0,
-            'desc_lines_seen' => 0,
-            'items_aggregated' => 0,
-            'fallback_used' => false,
-            'desc_only_fuzzy_added' => 0,
-        ];
-
-        foreach ($lines as $index => $line) {
-            $line = trim($line);
-            
-            Log::info("OCR processing line", [
-                'line_number' => $index + 1,
-                'line_content' => $line,
-                'line_length' => strlen($line)
-            ]);
-            
-            if ($line === '') {
-                continue;
-            }
-
-                // Enter item section when we see the typical table header OR any line with QTY/DESC keywords
-            if (preg_match('/^DESC\s+QTY\b/i', $line) || preg_match('/\bQTY\b/i', $line) || preg_match('/\bDESC\b/i', $line)) {
-                $inItems = true;
-                $currentDesc = null;
-                Log::info("OCR: Found header, entering items section", ['line' => $line]);
-                continue;
-            }
-
-            // Also enter items if we see patterns that look like item lines
-            if (!$inItems && (
-                preg_match('/\d+\s+\d+\.?\d*\s+\d+\.?\d*/', $line) || // QTY PRICE TOTAL pattern
-                preg_match('/\d+\s+[A-Za-z].*\d+/', $line) || // QTY PRODUCT PRICE pattern
-                preg_match('/[A-Za-z].*\d+\.?\d*.*\d+\.?\d*/', $line) // PRODUCT PRICE TOTAL pattern
-            )) {
-                $inItems = true;
-                Log::info("OCR: Auto-detected items section", ['line' => $line]);
-            }
-
-            // Stop when totals start (only once we are already in items)
-            if ($inItems && preg_match('/^(TOTAL|SUBTOTAL|VAT|DISCOUNT|CASH|CHANGE)\b/i', $line)) {
-                break;
-            }
-
-                // Skip obvious non-item lines
-            if (preg_match('/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|REF|NO|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT|X|TAX|SERVICE|CHARGE|DRIVER|HELLO|GROSS|LESS)$/i', $line)) {
-                continue;
-            }
-            if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $line) || preg_match('/^\d{1,2}:\d{2}\s*(AM|PM)$/', $line)) {
-                continue;
-            }
-            if (preg_match('/^\d+(\.\d{2})?$/', $line)) {
-                continue;
-            }
-
-                // Receipt line format (common): QTY UNITPRICE AMOUNT + optional letters (V/NV)
-            // Be tolerant to OCR variations: allow comma separators, 1-2 decimals, and no space before trailing letters.
-            // Enhanced patterns for messy OCR text
-            if (preg_match('/^(\d{1,3})\s+([0-9,]+(?:\.[0-9]{1,2})?)\s+([0-9,]+(?:\.[0-9]{1,2})?)(?:\s*[A-Z]{1,4})?$/', $line, $m) ||
-                preg_match('/^(\d+)\s+([0-9.]+)\s+([0-9.]+)/', $line, $m) || // More lenient
-                preg_match('/(\d+)\s+([0-9.]+)\s+([0-9.]+)\s*[A-Z]/', $line, $m) // With trailing letters
-            ) {
-                $qty = (int) $m[1];
-                $unit = (float) str_replace(',', '', $m[2]);
-                $debug['price_lines_matched']++;
-
-                // If OCR missed the DESC/QTY header, assume we are in items once we see a price line
-                $inItems = true;
-
-                if ($currentDesc !== null) {
-                    $name = $normalizeName($currentDesc);
-                    if ($name !== '') {
-                        $key = strtoupper($name);
-                        if (!isset($aggregated[$key])) {
-                            $aggregated[$key] = [
-                                'name' => $name,
-                                'quantity' => 0,
-                                'cost' => $unit,
-                            ];
-                        }
-                        $aggregated[$key]['quantity'] += $qty;
-                        // keep first unit cost (or replace if 0)
-                        if (empty($aggregated[$key]['cost'])) {
-                            $aggregated[$key]['cost'] = $unit;
-                        }
-                    }
-                    $currentDesc = null;
-                }
-                continue;
-            }
-
-            // Collect description lines only after we've entered item section
-            if ($inItems) {
-                // Description line should contain letters
-                if (preg_match('/[A-Za-z]/', $line) && strlen($line) >= 3 && strlen($line) <= 80) {
-                    $debug['desc_lines_seen']++;
-                    $clean = $normalizeName($line);
-                    if ($clean === '') {
-                        continue;
-                    }
-
-                    // If a previous description exists and this looks like continuation, append
-                    if ($currentDesc !== null && !preg_match('/\b\d+\.\d{2}\b/', $clean)) {
-                        $currentDesc .= ' ' . $clean;
-                        $currentDesc = trim($currentDesc);
-                    } else {
-                        $currentDesc = $clean;
-                    }
-
-                    // Secondary recovery: if OCR misses the price-line, try to map desc lines directly to an existing product.
-                    // Use stricter similarity threshold to avoid adding noise.
-                    $best = $findBestProductMatch($currentDesc, 82.0);
-                    if ($best) {
-                        $key = strtoupper($normalizeName((string) $best->product_name));
-                        if ($key !== '' && !isset($aggregated[$key])) {
-                            $aggregated[$key] = [
-                                'name' => (string) $best->product_name,
-                                'quantity' => 1,
-                                'cost' => 0,
-                            ];
-                            $debug['desc_only_fuzzy_added']++;
-                        }
-                    }
-                }
-                continue;
-            }
+        $serialNumbers = $request->input('serial_numbers', []);
+        
+        if (!is_array($serialNumbers) || empty($serialNumbers)) {
+            return response()->json(['duplicates' => []]);
         }
 
-            // Fallback parsing for other receipt formats (when we couldn't aggregate anything)
-        if (empty($aggregated)) {
-            $debug['fallback_used'] = true;
+        // Check for existing serial numbers in ProductSerial table (all products)
+        $existingSerials = ProductSerial::whereIn('serial_number', $serialNumbers)
+            ->pluck('serial_number')
+            ->toArray();
 
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if ($line === '') {
-                    continue;
-                }
+        // Also check against any product barcodes or other serial fields if they exist
+        // This ensures uniqueness across all product identification numbers
+        $barcodeSerials = Product::whereIn('barcode', $serialNumbers)
+            ->pluck('barcode')
+            ->toArray();
 
-                $matched = false;
-                $quantity = 1;
-                $cost = 0;
-                $productName = '';
+        // Merge all duplicates
+        $allDuplicates = array_unique(array_merge($existingSerials, $barcodeSerials));
 
-                if (preg_match('/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|REF|NO|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT|X|TAX|SERVICE|CHARGE|DRIVER|HELLO|GROSS|LESS)$/i', $line)) {
-                    continue;
-                }
-                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $line) || preg_match('/^\d{1,2}:\d{2}\s*(AM|PM)$/', $line)) {
-                    continue;
-                }
-                if (preg_match('/^\d+(\.\d{2})?$/', $line)) {
-                    continue;
-                }
-                if (strlen($line) < 3) {
-                    continue;
-                }
-
-                // Fallback 4: Description-only lines (safe) - must look like a real product (has unit/packaging)
-                // Examples: "TANDUAY 5 YEARS 750ml/12", "SUPER Q GOLDEN BHON 227g/60"
-                if (!$matched) {
-                    $candidate = $normalizeName($line);
-                    if (
-                        $candidate !== ''
-                        && preg_match('/[A-Za-z]/', $candidate)
-                        && strlen($candidate) >= 5
-                        && strlen($candidate) <= 80
-                        && preg_match('/\b(\d+\s*(ML|L|G)\b|\d+\s*(ml|l|g)\b|\d+\s*YEARS\b|\d+\s*\+\s*\d+|\d+\s*\/\s*\d+|\d+\s*\/\d+)/i', $candidate)
-                    ) {
-                        $productName = $candidate;
-                        $quantity = 1;
-                        $cost = 0;
-                        $matched = true;
-                    }
-                }
-
-                // Enhanced fallback patterns for messy OCR text
-                if (preg_match('/^(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/', $line, $matches)) {
-                    $quantity = (int) $matches[1];
-                    $productName = $normalizeName((string) $matches[2]);
-                    $cost = (float) str_replace(',', '', $matches[3]);
-                    $matched = $productName !== '';
-                } elseif (preg_match('/^(\d+)\s+(.+?)\s+(\d+\.\d{2})$/', $line, $matches)) {
-                    $quantity = (int) $matches[1];
-                    $productName = $normalizeName((string) $matches[2]);
-                    $cost = (float) str_replace(',', '', $matches[3]);
-                    $matched = $productName !== '';
-                } elseif (preg_match('/^(.+?)\s+(\d+\.\d{2})$/', $line, $matches)) {
-                    $productName = $normalizeName((string) $matches[1]);
-                    if ($productName !== '' && preg_match('/[A-Za-z]/', $productName)) {
-                        $quantity = 1;
-                        $cost = (float) str_replace(',', '', $matches[2]);
-                        $matched = true;
-                    }
-                } elseif (preg_match('/^(\d+)\s+([0-9.]+)\s+([0-9.]+)\s*[A-Za-z]/', $line, $matches)) {
-                    // Handle patterns like "4 10.75 43.00Y"
-                    $quantity = (int) $matches[1];
-                    $cost = (float) str_replace(',', '', $matches[2]);
-                    $productName = 'OCR Item QTY' . $quantity . ' COST' . $cost;
-                    $matched = true;
-                }
-
-                if (!$matched || $productName === '') {
-                    continue;
-                }
-
-                $key = strtoupper($productName);
-                if (!isset($aggregated[$key])) {
-                    $aggregated[$key] = [
-                        'name' => $productName,
-                        'quantity' => 0,
-                        'cost' => $cost,
-                    ];
-                }
-                $aggregated[$key]['quantity'] += $quantity;
-                if (empty($aggregated[$key]['cost']) && $cost > 0) {
-                    $aggregated[$key]['cost'] = $cost;
-                }
-            }
-        }
-
-            foreach ($aggregated as $row) {
-                $productName = $row['name'];
-                $quantity = (int) ($row['quantity'] ?? 1);
-                $cost = (float) ($row['cost'] ?? 0);
-
-                $product = Product::where('product_name', 'like', '%' . $productName . '%')->first();
-                if (!$product) {
-                    $product = $findBestProductMatch($productName);
-                }
-                
-                if ($product) {
-                    $matchedProducts[] = [
-                        'id' => $product->id,
-                        'name' => $product->product_name,
-                        'quantity' => $quantity,
-                        'cost' => $cost,
-                    ];
-                } else {
-                    // Create new product automatically
-                    try {
-                        $newProduct = Product::create([
-                            'product_name' => $productName,
-                            'selling_price' => $cost * 1.5, // Default 50% markup
-                            'alert_quantity' => 10,
-                            'barcode' => 'OCR-' . strtoupper(substr(md5($productName . time()), 0, 8)),
-                            'model_number' => 'OCR-GEN',
-                        ]);
-
-                        // Assign default unit type (Piece)
-                        $defaultUnitType = UnitType::where('unit_name', 'like', '%Piece%')->orWhere('id', 1)->first();
-                        if ($defaultUnitType) {
-                            $newProduct->unitTypes()->attach($defaultUnitType->id);
-                        }
-
-                        Log::info("OCR: Created new product", [
-                            'product_name' => $productName,
-                            'product_id' => $newProduct->id,
-                            'cost' => $cost
-                        ]);
-
-                        $matchedProducts[] = [
-                            'id' => $newProduct->id,
-                            'name' => $newProduct->product_name,
-                            'quantity' => $quantity,
-                            'cost' => $cost,
-                            'is_new' => true, // Flag to show it's newly created
-                        ];
-                    } catch (\Exception $e) {
-                        Log::error("OCR: Failed to create product", [
-                            'product_name' => $productName,
-                            'error' => $e->getMessage()
-                        ]);
-                        
-                        // If creation fails, add to unmatched
-                        $unmatchedProducts[] = [
-                            'name' => $productName,
-                            'quantity' => $quantity,
-                            'cost' => $cost,
-                        ];
-                    }
-                }
-            }
-
-            $debug['items_aggregated'] = count($aggregated);
-
-            Log::info("OCR: Aggregation complete", [
-                'aggregated_count' => count($aggregated),
-                'aggregated_items' => $aggregated,
-                'debug_info' => $debug
-            ]);
-
-            $payload = [
-                'reference_number' => $referenceNumber,
-                'products' => $matchedProducts,
-                'unmatched_products' => $unmatchedProducts,
-            ];
-
-            if (config('app.debug')) {
-                $payload['debug'] = $debug;
-            }
-
-            return response()->json($payload);
-        } catch (\Throwable $e) {
-            Log::error('OCR matchProduct failed', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            $payload = [
-                'success' => false,
-                'message' => 'OCR processing failed',
-            ];
-
-            if (config('app.debug')) {
-                $payload['error'] = $e->getMessage();
-                $payload['error_file'] = $e->getFile();
-                $payload['error_line'] = $e->getLine();
-            }
-
-            return response()->json($payload, 500);
-        }
+        return response()->json([
+            'duplicates' => $allDuplicates,
+            'total_checked' => count($serialNumbers),
+            'duplicates_found' => count($allDuplicates)
+        ]);
     }
-}
+
+    }

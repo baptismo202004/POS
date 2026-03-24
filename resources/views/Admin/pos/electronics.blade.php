@@ -223,6 +223,119 @@
             font-weight: 700;
             font-size: 28px;
         }
+
+        /* Sidebar Styles */
+        .sidebar-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 600px;
+            height: 100%;
+            background: white;
+            border-radius: 15px 0 0 15px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease-in-out;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .sidebar-panel.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .main-content-panel {
+            margin-left: 600px;
+            transition: margin-left 0.3s ease-in-out;
+            min-height: 600px;
+            width: calc(100% - 600px);
+        }
+
+        .main-content-panel.full-width {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .sidebar-panel .search-section {
+            border-radius: 15px 15px 0 0;
+            padding: 14px;
+        }
+
+        .sidebar-panel .products-card {
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .sidebar-panel .card-header-custom {
+            border-left: none;
+            border-right: none;
+        }
+
+        /* Product details padding adjustments */
+        .sidebar-panel .products-card .card-body {
+            padding: 20px;
+        }
+
+        .sidebar-panel .table-custom td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        .sidebar-panel .table-custom th {
+            padding: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-panel .form-select {
+            padding: 8px 12px;
+            min-height: 38px;
+        }
+
+        .sidebar-panel .add-btn {
+            padding: 8px 16px;
+            font-weight: 600;
+        }
+
+        /* Enhanced padding for collapsed state */
+        .sidebar-panel.collapsed .products-card .card-body {
+            padding: 20px;
+        }
+
+        .sidebar-panel.collapsed .table-custom td {
+            padding: 18px 15px;
+        }
+
+        .sidebar-panel.collapsed .table-custom th {
+            padding: 18px 15px;
+        }
+
+        .sidebar-panel.collapsed .form-select {
+            padding: 10px 14px;
+            min-height: 42px;
+        }
+
+        .sidebar-panel.collapsed .add-btn {
+            padding: 10px 18px;
+        }
+
+        /* Hide scrollbars */
+        .product-list-container::-webkit-scrollbar,
+        .order-info-container::-webkit-scrollbar,
+        .order-items-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .product-list-container,
+        .order-info-container,
+        .order-items-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 <body>
@@ -236,6 +349,9 @@
                 <p class="text-muted mb-0">POS with warranty and serial number capture</p>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="toggleSidebar()" id="header-sidebar-toggle">
+                    <i class="fas fa-chevron-left me-2" id="header-toggle-icon"></i>Toggle Sidebar
+                </button>
                 <a href="{{ route('pos.index') }}" class="btn btn-outline-primary">
                     <i class="fas fa-cash-register me-2"></i>Standard POS
                 </a>
@@ -245,16 +361,15 @@
             </div>
         </div>
 
-        <div class="alert alert-info">
-            <strong>Electronic Devices Rules:</strong>
-            Each item requires a <strong>Serial Number</strong> and uses <strong>quantity = 1</strong>.
-        </div>
-
-        <div class="row">
-            <div class="col-lg-4">
+        <div class="position-relative">
+            <!-- Sidebar -->
+            <div id="sidebar" class="sidebar-panel">
                 <div class="search-section">
                     <h4 class="mb-3">
                         <i class="fas fa-search me-2"></i>Product Search
+                        <button class="btn btn-sm btn-outline-light float-end" onclick="toggleSidebar()" id="sidebar-toggle-btn">
+                            <i class="fas fa-chevron-left" id="sidebar-toggle-icon"></i>
+                        </button>
                     </h4>
                     <div class="input-group input-group-lg">
                         <input id="search-input" type="text" class="form-control search-input" placeholder="🔍 Search by product name, barcode, or model..." />
@@ -264,7 +379,7 @@
                     </div>
                 </div>
 
-                <div class="card products-card">
+                <div class="products-card" id="products-section">
                     <div class="card-header card-header-custom">
                         <div class="d-flex justify-content-between align-items-center">
                             <span>
@@ -274,7 +389,7 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive table-container">
+                        <div class="table-responsive product-list-container" style="max-height: calc(100vh - 350px); overflow-y: auto;">
                             <table class="table table-hover table-custom mb-0" id="results-table">
                                 <thead>
                                     <tr>
@@ -298,7 +413,8 @@
                 </div>
             </div>
 
-            <div class="col-lg-8">
+            <!-- Main Content -->
+            <div id="main-content" class="main-content-panel">
                 <div class="order-summary">
                     <div class="card order-card">
                         <div class="card-body">
@@ -306,41 +422,54 @@
                                 <div class="card-header bg-primary text-white">
                                     <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Summary</h5>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body order-info-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
                                     <div class="card mb-3">
                                         <div class="card-header bg-light">
                                             <strong>Customer Details</strong>
                                         </div>
                                         <div class="card-body">
-                                            <div class="mb-2">
-                                                <label class="form-label">Customer Name</label>
-                                                <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Company/School Name (optional)</label>
-                                                <input type="text" class="form-control" id="customer_company_school" placeholder="Enter company/school name">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Phone Number</label>
-                                                <input type="text" class="form-control" id="customer_phone" placeholder="Enter phone number">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Email (optional)</label>
-                                                <input type="email" class="form-control" id="customer_email" placeholder="Enter email">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Facebook (optional)</label>
-                                                <input type="text" class="form-control" id="customer_facebook" placeholder="Enter Facebook name/link">
-                                            </div>
-                                            <div class="mb-0">
-                                                <label class="form-label">Address</label>
-                                                <input type="text" class="form-control" id="customer_address" placeholder="Enter address">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Customer Name</label>
+                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Phone Number</label>
+                                                        <input type="text" class="form-control" id="customer_phone" placeholder="Enter phone number">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Email (optional)</label>
+                                                        <input type="email" class="form-control" id="customer_email" placeholder="Enter email">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Company/School Name (optional)</label>
+                                                        <input type="text" class="form-control" id="customer_company_school" placeholder="Enter company/school name">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Facebook (optional)</label>
+                                                        <input type="text" class="form-control" id="customer_facebook" placeholder="Enter Facebook name/link">
+                                                    </div>
+                                                    <div class="mb-0">
+                                                        <label class="form-label">Address</label>
+                                                        <input type="text" class="form-control" id="customer_address" placeholder="Enter address">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div id="order-items" class="mb-3" style="max-height: 400px; overflow-y: auto;">
-                                        <div class="text-muted text-center py-3">No items in cart</div>
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-light">
+                                            <strong>Order Items</strong>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div id="order-items" class="order-items-container">
+                                                <div class="text-muted text-center py-3">No items in cart</div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="border-top pt-3">
@@ -483,6 +612,18 @@
 
                     const branchesHtml = (it.branches && it.branches.length > 0)
                         ? (() => {
+                            let firstStockBranchSelected = false;
+                            let hasAnyStock = false;
+                            
+                            // First pass: check if any branch has stock
+                            it.branches.forEach(b => {
+                                const units = Array.isArray(b.stock_units) ? b.stock_units : [];
+                                const isSingleUnit = units.length === 1;
+                                const singleUnit = isSingleUnit ? units[0] : null;
+                                const unitStock = isSingleUnit ? (singleUnit?.stock ?? b.stock ?? 0) : (b.stock ?? 0);
+                                if (Number(unitStock || 0) > 0) hasAnyStock = true;
+                            });
+                            
                             const optionsHtml = it.branches.map((b, index) => {
                                 const units = Array.isArray(b.stock_units) ? b.stock_units : [];
                                 const isSingleUnit = units.length === 1;
@@ -491,6 +632,11 @@
                                 const unitTypeId = isSingleUnit ? (singleUnit?.unit_type_id ?? '') : '';
                                 const unitName = isSingleUnit ? (singleUnit?.unit_name ?? '') : '';
                                 const unitStock = isSingleUnit ? (singleUnit?.stock ?? b.stock ?? 0) : (b.stock ?? 0);
+                                const hasStock = Number(unitStock || 0) > 0;
+                                
+                                // Select first branch with stock, or first branch if no stock exists
+                                const shouldBeSelected = (hasStock && !firstStockBranchSelected) || (!hasAnyStock && index === 0);
+                                if (hasStock && !firstStockBranchSelected) firstStockBranchSelected = true;
 
                                 return `
                                     <option value="${b.branch_id}"
@@ -500,7 +646,7 @@
                                         data-unit-type-id="${unitTypeId}"
                                         data-unit-name="${unitName}"
                                         data-units='${JSON.stringify(units || [])}'
-                                        ${index === 0 ? 'selected' : ''}>
+                                        ${shouldBeSelected ? 'selected' : ''}>
                                         ${b.branch_name || ('Branch #' + b.branch_id)} (${Number(b.stock ?? 0)})
                                     </option>
                                 `;
@@ -528,7 +674,7 @@
                         <td>${branchesHtml}</td>
                         <td class="text-end price-display" data-product-id="${it.product_id}"><span class="text-muted">Select branch</span></td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'")}', ${it.warranty_coverage_months || 0})" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -545,6 +691,7 @@
                     });
 
                     renderUnitSelectForProduct(it.product_id);
+                    updateProductPriceDisplay(it.product_id);
                 });
 
             } catch (error) {
@@ -559,6 +706,30 @@
         }
 
         let cart = [];
+        let isSidebarCollapsed = false;
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const sidebarIcon = document.getElementById('sidebar-toggle-icon');
+            const headerIcon = document.getElementById('header-toggle-icon');
+            
+            isSidebarCollapsed = !isSidebarCollapsed;
+            
+            if (isSidebarCollapsed) {
+                // Hide sidebar to the left
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('full-width');
+                sidebarIcon.className = 'fas fa-chevron-right';
+                headerIcon.className = 'fas fa-chevron-right me-2';
+            } else {
+                // Show sidebar from the left
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('full-width');
+                sidebarIcon.className = 'fas fa-chevron-left';
+                headerIcon.className = 'fas fa-chevron-left me-2';
+            }
+        };
 
         function renderUnitSelectForProduct(productId) {
             const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
@@ -617,7 +788,7 @@
             priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
         }
 
-        window.addToOrder = function(button, productId, name) {
+        window.addToOrder = function(button, productId, name, warrantyCoverageMonths) {
             const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
             if (!branchSel || !branchSel.value) {
                 Swal.fire('Error', 'Please select a branch.', 'error');
@@ -648,23 +819,44 @@
                 }
             }
 
-            const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
+            // Check if product already exists in cart
+            const existingProductKey = `${productId}-${branchId}-${unitTypeId || 0}`;
+            const existingProduct = cart.find(item => 
+                item.product_id === productId && 
+                item.branch_id === branchId && 
+                item.unit_type_id === unitTypeId
+            );
 
-            cart.push({
-                cartIdentifier,
-                product_id: productId,
-                branch_id: branchId,
-                unit_type_id: unitTypeId,
-                unit_name: unitName,
-                name,
-                branchName,
-                price,
-                quantity: 1,
-                stock,
-                in_stock: stock > 0,
-                serial_number: '',
-                warranty_months: 0,
-            });
+            if (existingProduct) {
+                // Add new serial/warranty entry to existing product
+                const newEntry = {
+                    serial_number: '',
+                    warranty_months: warrantyCoverageMonths || 0,
+                    in_stock: stock > 0
+                };
+                existingProduct.entries.push(newEntry);
+                existingProduct.quantity = existingProduct.entries.length;
+            } else {
+                // Create new product entry
+                const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
+                cart.push({
+                    cartIdentifier,
+                    product_id: productId,
+                    branch_id: branchId,
+                    unit_type_id: unitTypeId,
+                    unit_name: unitName,
+                    name,
+                    branchName,
+                    price,
+                    quantity: 1,
+                    stock,
+                    entries: [{
+                        serial_number: '',
+                        warranty_months: warrantyCoverageMonths || 0,
+                        in_stock: stock > 0
+                    }]
+                });
+            }
 
             updateCartDisplay();
         };
@@ -683,17 +875,32 @@
             updateCartDisplay();
         };
 
-        window.setSerial = function(cartIdentifier, value) {
+        window.setSerial = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
-            if (!item) return;
-            item.serial_number = String(value || '').trim();
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+            item.entries[entryIndex].serial_number = String(value || '').trim();
         };
 
-        window.setWarrantyMonths = function(cartIdentifier, value) {
+        window.setWarrantyMonths = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
-            if (!item) return;
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
             const n = parseInt(value, 10);
-            item.warranty_months = isFinite(n) ? n : 0;
+            item.entries[entryIndex].warranty_months = isFinite(n) ? n : 0;
+        };
+
+        window.removeEntry = function(cartIdentifier, entryIndex) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+            
+            item.entries.splice(entryIndex, 1);
+            item.quantity = item.entries.length;
+            
+            // Remove product if no entries left
+            if (item.entries.length === 0) {
+                removeFromCart(cartIdentifier);
+            } else {
+                updateCartDisplay();
+            }
         };
 
         window.checkout = function() {
@@ -702,8 +909,11 @@
                 return;
             }
 
-            const missing = cart.find(i => i.in_stock && !i.serial_number);
-            if (missing) {
+            // Check for missing serial numbers in any entry
+            const missingEntry = cart.find(item => 
+                item.entries && item.entries.some(entry => entry.in_stock && !entry.serial_number)
+            );
+            if (missingEntry) {
                 Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
                 return;
             }
@@ -722,18 +932,20 @@
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    items: cart.map(item => ({
-                        product_id: item.product_id,
-                        branch_id: item.branch_id,
-                        unit_type_id: item.unit_type_id,
-                        unit_name: item.unit_name,
-                        name: item.name,
-                        quantity: 1,
-                        price: item.price,
-                        serial_number: item.serial_number,
-                        warranty_months: item.warranty_months,
-                    })),
-                    total: cart.reduce((sum, item) => sum + (item.price * 1), 0),
+                    items: cart.flatMap(item => 
+                        item.entries.map(entry => ({
+                            product_id: item.product_id,
+                            branch_id: item.branch_id,
+                            unit_type_id: item.unit_type_id,
+                            unit_name: item.unit_name,
+                            name: item.name,
+                            quantity: 1,
+                            price: item.price,
+                            serial_number: entry.serial_number,
+                            warranty_months: entry.warranty_months,
+                        }))
+                    ),
+                    total: cart.reduce((sum, item) => sum + (item.price * item.entries.length), 0),
                     payment_method: document.querySelector('input[name="payment_method"]:checked').value,
                     order_status: document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed',
                     notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
@@ -783,36 +995,55 @@
 
             let total = 0;
             cartItems.innerHTML = cart.map(item => {
-                const itemTotal = item.price * 1;
+                const itemTotal = item.price * item.entries.length;
                 total += itemTotal;
 
+                const entriesHtml = item.entries.map((entry, index) => `
+                    <div class="entry-item border rounded p-2 mb-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary">Unit ${index + 1}</span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeEntry('${item.cartIdentifier}', ${index})" title="Remove this unit">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Serial Number</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" 
+                                    value="${entry.serial_number || ''}" 
+                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)" 
+                                    ${entry.in_stock ? '' : 'disabled'}>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Warranty (months)</label>
+                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" 
+                                    value="${entry.warranty_months || 0}" 
+                                    onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
                 return `
-                    <div class="cart-item mb-2 p-2 border-bottom">
-                        <div class="d-flex justify-content-between align-items-start">
+                    <div class="cart-item mb-3 p-3 border rounded bg-white">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
                             <div class="flex-grow-1">
                                 <div class="fw-semibold">${item.name}</div>
-                                <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x 1</div>
+                                <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} x ${item.entries.length}</div>
                             </div>
                             <div class="ms-2">
-                                <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')">
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')" title="Remove all units">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="row g-2 mt-2">
-                            <div class="col-12">
-                                <label class="form-label mb-1 small">Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" placeholder="${item.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" value="${item.serial_number || ''}" onchange="setSerial('${item.cartIdentifier}', this.value)" ${item.in_stock ? '' : 'disabled'}>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label mb-1 small">Warranty (months)</label>
-                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" value="${item.warranty_months || 0}" onchange="setWarrantyMonths('${item.cartIdentifier}', this.value)">
-                            </div>
+                        <div class="entries-container">
+                            ${entriesHtml}
                         </div>
 
-                        <div class="mt-2 text-end">
-                            <strong>₱${itemTotal.toFixed(2)}</strong>
+                        <div class="mt-3 pt-2 border-top text-end">
+                            <strong>Subtotal: ₱${itemTotal.toFixed(2)}</strong>
                         </div>
                     </div>
                 `;

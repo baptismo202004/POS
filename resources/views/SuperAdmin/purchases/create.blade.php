@@ -150,10 +150,7 @@
                         <a href="{{ route('superadmin.purchases.index') }}" class="sp-btn sp-btn-outline">
                             <i class="fas fa-arrow-left"></i> Back to Purchases
                         </a>
-                        <button type="button" id="ocr-button" class="sp-btn sp-btn-amber">
-                            <i class="fas fa-eye"></i> OCR
-                        </button>
-                    </div>
+                                            </div>
                 </div>
 
                 <div class="sp-card">
@@ -649,6 +646,7 @@
             }
 
             updateSerialWarrantyDefaultsForRow(row);
+            updateSerialCounter(row); // Initialize counter when panel loads
         }
 
         const container = document.getElementById('items-container');
@@ -746,28 +744,7 @@
             });
         }
 
-        function addUnmatchedItem(productData = null) {
-            const unmatchedTemplate = document.getElementById('unmatched-item-template');
-            const node = unmatchedTemplate.content.cloneNode(true);
-
-            node.querySelectorAll('[name^="items[]"]').forEach(el => {
-                const name = el.getAttribute('name').replace('[]', `[${itemIndex}]`);
-                el.setAttribute('name', name);
-            });
-
-            container.appendChild(node);
-            const newRow = container.querySelector('.item-row:last-child');
-
-            if (productData) {
-                $(newRow).find('input[name$="[product_name]"]').val(productData.name);
-                $(newRow).find('input[name$="[primary_quantity]"]').val(productData.quantity);
-                $(newRow).find('input[name$="[cost]"]').val(productData.cost);
-            }
-
-            itemIndex++;
-            updateTotals();
-        }
-
+        
         function loadProductUnits(row, productId) {
             const unitSelect = row.querySelector('.unit-type-select');
 
@@ -844,6 +821,18 @@
             }
         });
 
+        // Function to update serial counter display
+        function updateSerialCounter(itemRow) {
+            const serialsContainer = itemRow.querySelector('.serial-entries-container');
+            const serialCounter = itemRow.querySelector('.serial-counter');
+            
+            if (serialsContainer && serialCounter) {
+                const serialCount = serialsContainer.children.length;
+                serialCounter.textContent = `${serialCount} serial${serialCount !== 1 ? 's' : ''}`;
+                serialCounter.style.display = serialCount > 0 ? 'inline-block' : 'none';
+            }
+        }
+
         container.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-item-btn')) {
                 e.target.closest('.item-row').remove();
@@ -872,10 +861,14 @@
                 serialsContainer.appendChild(node);
 
                 updateSerialWarrantyDefaultsForRow(itemRow);
+                updateSerialCounter(itemRow);
             }
 
             if (e.target.classList.contains('remove-serial-btn')) {
-                e.target.closest('.serial-entry-row').remove();
+                const serialRow = e.target.closest('.serial-entry-row');
+                const itemRow = serialRow.closest('.item-row');
+                serialRow.remove();
+                updateSerialCounter(itemRow);
             }
 
             if (e.target.classList.contains('toggle-electronics-panel-btn')) {
@@ -890,6 +883,13 @@
 
         document.querySelector('form[action="{{ route('superadmin.purchases.store') }}"]').addEventListener('submit', function (e) {
             let firstError = null;
+            const form = e.target;
+
+            // CONDITION 4: Supplier Requirement - Check if supplier is selected
+            const supplierSelect = document.querySelector('select[name="supplier_id"]');
+            if (!supplierSelect.value || supplierSelect.value === '') {
+                firstError = 'Supplier must be selected before saving purchase.';
+            }
 
             document.querySelectorAll('.item-row').forEach(row => {
                 const categoryType = row.dataset.categoryType || 'non_electronic';
@@ -902,9 +902,10 @@
                 const requiredSerialCount = Math.round(qty * conversionFactor);
 
                 const serialEntriesContainer = row.querySelector('.serial-entries-container');
-                const serialCount = serialEntriesContainer ? serialEntriesContainer.querySelectorAll('.serial-entry-row').length : 0;
+                const serialInputs = serialEntriesContainer ? serialEntriesContainer.querySelectorAll('input[name$="[serial_number]"]') : [];
+                const serialCount = serialInputs.length;
 
-                // If the product requires serials, enforce that there is at least one.
+                // CONDITION 1: Number of serials MUST equal quantity
                 if (requiresSerial && serialCount === 0) {
                     if (!firstError) {
                         firstError = 'This product requires serial numbers; please add them before saving.';
@@ -912,11 +913,49 @@
                     return;
                 }
 
-                // If serials were provided, they must match the expected quantity (adjusted by unit conversion).
                 if (serialCount > 0 && serialCount !== requiredSerialCount) {
                     if (!firstError) {
-                        firstError = 'Serial number should matched to the quantity.';
+                        firstError = `Serial numbers must match quantity. Required: ${requiredSerialCount}, Provided: ${serialCount}`;
                     }
+                    return;
+                }
+
+                // CONDITION 2: Serial Number Uniqueness - Check for duplicates within form
+                const serialNumbers = Array.from(serialInputs).map(input => input.value.trim()).filter(val => val !== '');
+                const uniqueSerials = new Set(serialNumbers);
+                
+                if (serialNumbers.length !== uniqueSerials.size) {
+                    if (!firstError) {
+                        firstError = 'Duplicate serial number detected in the current form. Please ensure all serial numbers are unique.';
+                    }
+                    return;
+                }
+
+                // CONDITION 3: Serial Number Format Validation
+                for (let serialInput of serialInputs) {
+                    const serial = serialInput.value.trim();
+                    if (serial === '') continue;
+                    
+                    // Check length constraints (8-30 characters)
+                    if (serial.length < 8 || serial.length > 30) {
+                        if (!firstError) {
+                            firstError = `Serial number "${serial}" must be between 8 and 30 characters long.`;
+                        }
+                        return;
+                    }
+                    
+                    // Check allowed characters (A-Z, 0-9, hyphen only)
+                    if (!/^[A-Z0-9-]+$/i.test(serial)) {
+                        if (!firstError) {
+                            firstError = `Serial number "${serial}" contains invalid characters. Only letters, numbers, and hyphens are allowed.`;
+                        }
+                        return;
+                    }
+                }
+
+                // Store serial numbers for database check
+                if (serialNumbers.length > 0) {
+                    form.dataset.serialNumbers = JSON.stringify(serialNumbers);
                 }
             });
 
@@ -924,14 +963,88 @@
                 e.preventDefault();
                 Swal.fire({
                     icon: 'error',
-                    title: 'Oops...',
-                    html: `<div style="text-align:left;">${firstError}</div>`,
+                    title: 'Validation Error',
+                    html: `
+                        <div style="text-align:left;">
+                            <p><strong>${firstError}</strong></p>
+                            <hr style="margin: 15px 0;">
+                            <p style="font-size: 14px; color: #666;">
+                                <strong>To make the purchase successful:</strong><br>
+                                • Ensure all serial numbers are unique<br>
+                                • Serial numbers must be 8-30 characters long<br>
+                                • Only letters, numbers, and hyphens allowed<br>
+                                • Serial count must match quantity<br>
+                                • Select a valid supplier
+                            </p>
+                        </div>
+                    `,
                     confirmButtonText: 'Got it',
                     backdrop: true,
                     showClass: {
                         popup: 'swal2-show swal2-animate-success',
                         backdrop: 'swal2-backdrop-show'
                     },
+                });
+                return;
+            }
+
+            // If we have serial numbers, check database uniqueness via AJAX
+            const serialNumbers = form.dataset.serialNumbers ? JSON.parse(form.dataset.serialNumbers) : [];
+            if (serialNumbers.length > 0) {
+                e.preventDefault(); // Prevent form submission temporarily
+                
+                // Check serial numbers against database
+                fetch('{{ route("superadmin.purchases.check-serials") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ serial_numbers: serialNumbers })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.duplicates && data.duplicates.length > 0) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Duplicate Serial Numbers Detected',
+                            html: `
+                                <div style="text-align:left;">
+                                    <p><strong>The following serial numbers already exist in the database:</strong></p>
+                                    <ul style="margin: 10px 0;">
+                                        ${data.duplicates.map(serial => `<li>${serial}</li>`).join('')}
+                                    </ul>
+                                    <hr style="margin: 15px 0;">
+                                    <p style="font-size: 14px; color: #666;">
+                                        <strong>Conflict Summary:</strong><br>
+                                        • Checked: ${data.total_checked || 'unknown'} serial number(s)<br>
+                                        • Conflicts found: ${data.duplicates_found || data.duplicates.length}<br>
+                                        • Checked against: Product serials, barcodes, and existing inventory
+                                    </p>
+                                    <p style="font-size: 14px; color: #666;">
+                                        <strong>To make the purchase successful:</strong><br>
+                                        • Use unique serial numbers not found in database<br>
+                                        • Check existing inventory for these serial numbers<br>
+                                        • Contact administrator if you believe this is an error
+                                    </p>
+                                </div>
+                            `,
+                            confirmButtonText: 'Got it',
+                            backdrop: true,
+                        });
+                    } else {
+                        // No database duplicates, submit form normally
+                        form.submit();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking serial numbers:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Validation Error',
+                        text: 'Unable to verify serial number uniqueness. Please try again.',
+                        confirmButtonText: 'Got it',
+                    });
                 });
             }
         });
@@ -1098,205 +1211,7 @@
             $(addSupplierModalEl).removeAttr('aria-hidden');
         });
 
-        // ----------------- OCR FUNCTIONALITY -----------------
-        const ocrButton = document.getElementById('ocr-button');
-        const ocrFileInput = document.createElement('input');
-        ocrFileInput.type = 'file';
-        ocrFileInput.accept = 'image/*';
-        ocrFileInput.multiple = true; // Allow multiple file selection
-
-        ocrButton.addEventListener('click', () => ocrFileInput.click());
-
-        ocrFileInput.addEventListener('change', function(event) {
-            const files = Array.from(event.target.files);
-            if (files.length === 0) return;
-
-            // Show loading with proper animation
-            Swal.fire({
-                title: 'Processing Receipt Images',
-                html: '<div style="display: flex; justify-content: center; margin: 20px 0;"><div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3085d6; border-radius: 50%; animation: spin 1s linear infinite;"></div></div><p>Scanning ' + files.length + ' image(s)... Please wait.</p><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>',
-                allowOutsideClick: false,
-                showConfirmButton: false
-            });
-
-            // Process all images
-            const allTexts = [];
-            let processedCount = 0;
-
-            files.forEach((file, index) => {
-                Tesseract.recognize(file, 'eng', { logger: m => console.log(`File ${index + 1}:`, m) })
-                    .then(({ data: { text } }) => {
-                        allTexts[index] = text;
-                        processedCount++;
-                        
-                        // Update loading message
-                        Swal.update({
-                            html: '<div style="display: flex; justify-content: center; margin: 20px 0;"><div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3085d6; border-radius: 50%; animation: spin 1s linear infinite;"></div></div><p>Processed ' + processedCount + '/' + files.length + ' image(s)... Please wait.</p><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>'
-                        });
-
-                        // When all images are processed
-                        if (processedCount === files.length) {
-                            // Combine all texts
-                            const combinedText = allTexts.filter(text => text).join('\n');
-                            
-                            // Filter the combined text to show only product items and reference number
-                            const lines = combinedText.split('\n');
-                            const filteredLines = [];
-                            let referenceNumber = null;
-                            
-                            lines.forEach(line => {
-                                line = line.trim();
-                                if (!line) return;
-                                
-                                // Check for reference number
-                                if (/(?:REFERENCE NO|REF NO|REFERENCE):\s*([A-Z0-9-]+)/i.test(line)) {
-                                    referenceNumber = line;
-                                    filteredLines.push(line);
-                                    return;
-                                }
-                                
-                                // Less restrictive filtering - capture more potential products
-                                // Skip only obvious non-product lines
-                                if (/^(TOTAL|SUBTOTAL|CASH|CHANGE|VAT|DISCOUNT|PAYMENT|AMOUNT|QTY|PRICE|ITEM|DESCRIPTION|ORDER|INVOICE|RECEIPT|THANK YOU|SHOPPING AT|OFFICIAL RECEIPT|X|TAX|SERVICE|CHARGE|DRIVER|HELLO|GROSS|LESS)$/i.test(line)) {
-                                    return;
-                                }
-                                
-                                // Skip lines that are just dates
-                                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(line) || /^\d{1,2}:\d{2}\s*(AM|PM)$/.test(line)) {
-                                    return;
-                                }
-                                
-                                // Skip lines that are just numbers
-                                if (/^\d+(\.\d{2})?$/.test(line)) {
-                                    return;
-                                }
-                                
-                                // Skip very short lines (likely OCR noise)
-                                if (line.length < 3) {
-                                    return;
-                                }
-                                
-                                // Include more lines - be less restrictive
-                                // Accept lines that contain letters and are reasonable length
-                                if (/[a-zA-Z]/.test(line) && line.length >= 3 && line.length <= 100) {
-                                    filteredLines.push(line);
-                                }
-                            });
-                            
-                            const filteredText = filteredLines.join('\n');
-
-                            // Auto-process the combined full text through backend (no preview modal)
-                            $.ajax({
-                                url: '{{ route("superadmin.purchases.ocr-product-match") }}',
-                                method: 'POST',
-                                data: { _token: '{{ csrf_token() }}', text: combinedText },
-                                success: function(response) {
-                                    console.log('OCR Response:', response);
-                                    Swal.close();
-                                    let message = '';
-                                    let icon = 'success';
-
-                                    // Auto-fill reference number if found
-                                    if (response.reference_number) {
-                                        $('input[name="reference_number"]').val(response.reference_number);
-                                        console.log('Reference number filled:', response.reference_number);
-                                    }
-
-                                    if (response.products && response.products.length > 0) {
-                                        message = '<div style="text-align: left;"><strong>Found Products:</strong><ul>';
-                                        response.products.forEach(function(product) {
-                                            message += `<li>${product.name} (Qty: ${product.quantity}, Cost: ${product.cost})</li>`;
-                                        });
-                                        message += '</ul></div>';
-
-                                        let newProductsCount = 0;
-                                        let existingProductsCount = 0;
-                                        
-                                        response.products.forEach(function(product) {
-                                            console.log('Adding product:', product);
-                                            if (product.is_new) {
-                                                newProductsCount++;
-                                            } else {
-                                                existingProductsCount++;
-                                            }
-                                            
-                                            addItem({
-                                                id: product.id,
-                                                quantity: product.quantity,
-                                                cost: product.cost
-                                            });
-                                        });
-                                        
-                                        if (existingProductsCount > 0) {
-                                            if (message) message += '<br>';
-                                            message += `<strong>${existingProductsCount} existing product(s) matched</strong>`;
-                                        }
-                                        
-                                        if (newProductsCount > 0) {
-                                            if (message) message += '<br>';
-                                            message += `<strong>${newProductsCount} new product(s) created</strong>`;
-                                        }
-                                    }
-
-                                    if (response.unmatched_products && response.unmatched_products.length > 0) {
-                                        if (message) message += '<br>';
-                                        message += '<div style="text-align: left;"><strong>New Products Added:</strong><ul>';
-                                        response.unmatched_products.forEach(function(product) {
-                                            message += `<li>${product.name} (Qty: ${product.quantity}, Cost: ${product.cost})</li>`;
-                                        });
-                                        message += '</ul></div>';
-
-                                        // Add unmatched products as new items with OCR data
-                                        response.unmatched_products.forEach(function(product) {
-                                            console.log('Adding unmatched product:', product);
-                                            addUnmatchedItem({
-                                                name: product.name,
-                                                quantity: product.quantity,
-                                                cost: product.cost
-                                            });
-                                        });
-                                    }
-
-                                    if (!message) {
-                                        message = 'Could not find any products from the scanned text.';
-                                        icon = 'warning';
-                                    } else {
-                                        message += '<br><small>Products have been added to the purchase list below. You can edit their details before saving.</small>';
-                                    }
-
-                                    console.log('Filtered text (debug):', filteredText);
-                                    console.log('Final message:', message);
-
-                                    // Add a small delay to ensure items are added before showing the message
-                                    setTimeout(() => {
-                                        Swal.fire({
-                                            title: 'OCR Scan Complete',
-                                            html: message,
-                                            icon: icon,
-                                            showConfirmButton: true,
-                                            confirmButtonText: 'OK'
-                                        });
-                                    }, 300);
-                                },
-                                error: function() {
-                                    Swal.close();
-                                    Swal.fire('Error', 'An error occurred while matching products.', 'error');
-                                }
-                            });
-                        }
-                    })
-                    .catch(err => {
-                        Swal.close();
-                        console.error('OCR Error for file', file.name, ':', err);
-                        Swal.fire({ 
-                            title: 'OCR Error', 
-                            text: 'Could not recognize text from ' + file.name, 
-                            icon: 'error' 
-                        });
-                    });
-            });
-        });
-
+        
     });
     </script>
 @endsection

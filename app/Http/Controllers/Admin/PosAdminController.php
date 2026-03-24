@@ -311,6 +311,7 @@ class PosAdminController extends Controller
                     'barcode' => $p->barcode,
                     'price' => $defaultPrice,
                     'total_stock' => (int) $totalStock,
+                    'warranty_coverage_months' => (int) ($p->warranty_coverage_months ?? 0),
                     'branches' => $branches,
                 ];
             })->values();
@@ -487,6 +488,7 @@ class PosAdminController extends Controller
             // Default to first branch price for single-result lookup
             'price' => isset($byBranch[0]) ? (float) ($byBranch[0]['price'] ?? 0) : 0.00,
             'total_stock' => (int) $totalStock,
+            'warranty_coverage_months' => (int) ($product->warranty_coverage_months ?? 0),
             'branches' => $byBranch,
         ]);
     }

@@ -1107,24 +1107,25 @@ Route::middleware('auth')->group(function () {
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
-        Route::post('/purchases/ocr-product-match', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'matchProduct'])->name('purchases.ocr-product-match');
-        Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
+        Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
+                Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');
+
+        // Stock In routes
+        Route::get('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'index'])->name('stockin.index');
+        Route::get('/stockin/create', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'stockInCreate'])->name('stockin.create');
+        Route::post('/stockin', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'stockInStore'])->name('stockin.store');
+        Route::get('/stockin/{stockMovement}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'show'])->name('stockin.show');
+        Route::get('/stockin/transaction/{stockInHeadId}', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'showTransaction'])->name('stockin.transaction');
+        Route::get('/stockin/purchases/{purchase}/products', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
+        Route::get('/stockin/purchases/{purchase}/products/{product}/serials', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'purchaseProductSerials'])->name('stockin.purchase-product-serials');
+        Route::post('/stockin/latest-unit-prices', [\App\Http\Controllers\SuperAdmin\StockInController::class, 'latestUnitPrices'])->name('stockin.latest-unit-prices');
     });
 
     // Admin routes
     Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-        // Stock In routes
-        Route::get('stockin', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInCreate'])->name('stockin.index');
-        Route::get('stockin/create', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInCreate'])->name('stockin.create');
-        Route::get('stockin/purchases/{purchase}/products/{product}/serials', [\App\Http\Controllers\Admin\StockInAdminController::class, 'purchaseProductSerials'])->name('stockin.purchase-product-serials');
-        Route::get('stockin/purchase/{purchase}/products', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products');
-        Route::post('stockin', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInStore'])->name('stockin.store');
-        Route::get('stockin/products-by-purchase/{purchase}', [\App\Http\Controllers\Admin\StockInAdminController::class, 'stockInProductsByPurchase'])->name('stockin.products-by-purchase');
-        Route::get('stockin/latest-unit-prices', [\App\Http\Controllers\Admin\StockInAdminController::class, 'latestUnitPrices'])->name('stockin.latest-unit-prices');
-
         // Sales route
         Route::get('sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('main.sales.index');
         Route::get('sales/management', [\App\Http\Controllers\Admin\SalesController::class, 'management'])->name('sales.management.index');

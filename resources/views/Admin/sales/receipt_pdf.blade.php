@@ -30,7 +30,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <img src="{{ public_path('images/BGH LOGO.png') }}" alt="Company Logo">
+        <img src="{{ public_path('images/BGH LOGO.png') }}" alt="BGH Logo">
         <h1>BGH IT Solutions</h1>
         <p>Purok A-1, Balirong City of Naga Cebu</p>
         <p>bghsupport@bghitsolutions.com</p>
