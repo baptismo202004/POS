@@ -929,8 +929,23 @@
         window.clearCart = function() {
             if (cart.length === 0) return;
             cart = [];
+            clearCustomerDetails();
             updateCartDisplay();
         };
+
+        function clearCustomerDetails() {
+            ['customer_name','customer_phone','customer_email','customer_company_school',
+             'customer_facebook','customer_address','order_notes','credit_notes'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const creditDetails = document.getElementById('credit-details');
+            if (creditDetails) creditDetails.style.display = 'none';
+            const paymentMethod = document.getElementById('payment_method');
+            if (paymentMethod) paymentMethod.value = 'cash';
+            const orderStatus = document.getElementById('order_status');
+            if (orderStatus) orderStatus.value = 'completed';
+        }
 
         window.setSerial = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
@@ -1149,6 +1164,7 @@
                 
                 if (data.success) {
                     cart = [];
+                    clearCustomerDetails();
                     updateCartDisplay();
                     const successMessage = isOrderMode 
                         ? 'Sales Order created successfully! Order is pending fulfillment.' 
@@ -1192,6 +1208,16 @@
                 merchandiseTotal.textContent = '₱0.00';
                 discountInput.value = '0.00';
                 taxInput.value = '0.00';
+                const displayMerchandise = document.getElementById('display-merchandise');
+                const displayDiscount = document.getElementById('display-discount');
+                const displayTax = document.getElementById('display-tax');
+                const displayDiscountLabel = document.getElementById('display-discount-label');
+                const displayTaxLabel = document.getElementById('display-tax-label');
+                if (displayMerchandise) displayMerchandise.textContent = '₱0.00';
+                if (displayDiscount) displayDiscount.textContent = '₱0.00';
+                if (displayTax) displayTax.textContent = '₱0.00';
+                if (displayDiscountLabel) displayDiscountLabel.textContent = 'Discount:';
+                if (displayTaxLabel) displayTaxLabel.textContent = 'Tax:';
                 return;
             }
 

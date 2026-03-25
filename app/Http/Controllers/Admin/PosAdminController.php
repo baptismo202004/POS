@@ -961,7 +961,7 @@ class PosAdminController extends Controller
                         ], 422);
                     }
 
-                    if ($serial->status !== 'in_stock') {
+                    if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,

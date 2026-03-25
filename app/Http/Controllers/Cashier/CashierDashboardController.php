@@ -1663,6 +1663,8 @@ class CashierDashboardController extends Controller
                 'items.*.unit_quantities' => 'nullable|array',
                 'items.*.unit_quantities.*' => 'nullable|numeric|min:0',
                 'items.*.branch_id' => 'required|exists:branches,id',
+                'items.*.serial_ids' => 'nullable|array',
+                'items.*.serial_ids.*' => 'integer|exists:product_serials,id',
             ]);
 
             $purchaseId = $data['purchase_id'];
@@ -1801,6 +1803,20 @@ class CashierDashboardController extends Controller
                             }
                         }
 
+                        // Update selected serials to in_stock
+                        $serialIds = $item['serial_ids'] ?? [];
+                        if (is_array($serialIds) && count($serialIds) > 0) {
+                            \App\Models\ProductSerial::query()
+                                ->whereIn('id', array_map('intval', $serialIds))
+                                ->where('purchase_id', (int) $purchaseId)
+                                ->where('product_id', (int) $item['product_id'])
+                                ->where('status', 'purchased')
+                                ->update([
+                                    'branch_id' => (int) $item['branch_id'],
+                                    'status' => 'in_stock',
+                                ]);
+                        }
+
                         continue;
                     }
 
@@ -1845,6 +1861,20 @@ class CashierDashboardController extends Controller
                             ->where('product_id', (int) $item['product_id'])
                             ->where('unit_type_id', (int) $item['unit_type_id'])
                             ->update(['price' => $newPrice, 'updated_at' => now()]);
+                    }
+
+                    // Update selected serials to in_stock
+                    $serialIds = $item['serial_ids'] ?? [];
+                    if (is_array($serialIds) && count($serialIds) > 0) {
+                        \App\Models\ProductSerial::query()
+                            ->whereIn('id', array_map('intval', $serialIds))
+                            ->where('purchase_id', (int) $purchaseId)
+                            ->where('product_id', (int) $item['product_id'])
+                            ->where('status', 'purchased')
+                            ->update([
+                                'branch_id' => (int) $item['branch_id'],
+                                'status' => 'in_stock',
+                            ]);
                     }
                 }
             });
@@ -3544,7 +3574,7 @@ class CashierDashboardController extends Controller
                         return response()->json(['success' => false, 'message' => 'Serial number does not belong to the selected branch.'], 422);
                     }
 
-                    if ($serial->status !== 'in_stock') {
+                    if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                         DB::rollBack();
 
                         return response()->json(['success' => false, 'message' => 'Serial number is not available (already sold/invalid).'], 422);

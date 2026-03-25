@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Receipt - {{ $sale->reference_number ?? $sale->id }}</title>
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #111; }
         .container { width: 100%; }
         .header { text-align: center; margin-bottom: 16px; }
         .header img { max-width: 90px; margin-bottom: 8px; }
@@ -30,7 +30,15 @@
 <body>
 <div class="container">
     <div class="header">
-        <img src="{{ public_path('images/BGH LOGO.png') }}" alt="BGH Logo">
+        @php
+            $logoPath = public_path('images/BGH LOGO.png');
+            $logoSrc = file_exists($logoPath)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+                : '';
+        @endphp
+        @if($logoSrc)
+            <img src="{{ $logoSrc }}" alt="BGH Logo">
+        @endif
         <h1>BGH IT Solutions</h1>
         <p>Purok A-1, Balirong City of Naga Cebu</p>
         <p>bghsupport@bghitsolutions.com</p>

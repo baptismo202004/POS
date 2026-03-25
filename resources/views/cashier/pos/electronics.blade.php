@@ -417,62 +417,108 @@
                                 </div>
                             </div>
 
-                            <div id="order-items" class="mb-3" style="max-height: 400px; overflow-y: auto;">
-                                <div class="text-muted text-center py-3">No items in cart</div>
-                            </div>
-                            <div class="border-top pt-3">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Payment Method:</label>
-                                    <div class="btn-group w-100" role="group">
-                                        <input type="radio" class="btn-check" name="payment_method" id="payment_cash" value="cash" checked>
-                                        <label class="btn btn-outline-success" for="payment_cash">
-                                            <i class="fas fa-money-bill-wave me-2"></i>Cash
-                                        </label>
-
-                                        <input type="radio" class="btn-check" name="payment_method" id="payment_credit" value="credit">
-                                        <label class="btn btn-outline-primary" for="payment_credit">
-                                            <i class="fas fa-credit-card me-2"></i>Credit
-                                        </label>
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Order Items</strong>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div id="order-items" class="order-items-container">
+                                        <div class="text-muted text-center py-3">No items in cart</div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div id="credit-details" class="mb-3" style="display:none;">
-                                    <div class="card border-warning">
-                                        <div class="card-body bg-light">
-                                            <h6 class="card-title text-warning mb-3">
-                                                <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
-                                            </h6>
-                                            <div class="mb-2">
-                                                <label class="form-label">Date:</label>
-                                                <input type="date" id="credit_due_date" class="form-control">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Notes:</label>
-                                                <textarea id="credit_notes" class="form-control" rows="2" placeholder="Add credit notes..."></textarea>
+                            <div class="border-top pt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Notes (optional):</label>
+                                            <textarea class="form-control" id="order_notes" rows="3" placeholder="Add notes..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Payment Method:</label>
+                                            <select class="form-select" id="payment_method">
+                                                <option value="cash" selected>Cash</option>
+                                                <option value="credit">Credit</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Order Status:</label>
+                                            <select class="form-select" id="order_status">
+                                                <option value="completed" selected>Completed</option>
+                                                <option value="pending">Pending (Quotation)</option>
+                                            </select>
+                                        </div>
+                                        <div id="credit-details" class="mb-3" style="display:none;">
+                                            <div class="card border-warning">
+                                                <div class="card-body bg-light">
+                                                    <h6 class="card-title text-warning mb-3">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
+                                                    </h6>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Date:</label>
+                                                        <input type="date" id="credit_due_date" class="form-control" value="{{ date('Y-m-d') }}">
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <label class="form-label">Notes:</label>
+                                                        <textarea id="credit_notes" class="form-control" rows="2" placeholder="Add credit notes..."></textarea>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Notes (optional):</label>
-                                    <textarea class="form-control" id="order_notes" rows="2" placeholder="Add notes..."></textarea>
+                                <div class="border-top pt-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold">Merchandise Total:</label>
+                                            <h4 class="text-primary mb-0" id="merchandise-total">₱0.00</h4>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold">Discount:</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">₱</span>
+                                                <input type="text" class="form-control" id="discount-amount" placeholder="0.00 or 10%" value="0.00">
+                                            </div>
+                                            <small class="text-muted">Enter amount (e.g., 100.00) or percentage (e.g., 10%)</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold">Tax:</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">₱</span>
+                                                <input type="text" class="form-control" id="tax-amount" placeholder="0.00 or 12%" value="0.00">
+                                            </div>
+                                            <small class="text-muted">Enter amount (e.g., 100.00) or percentage (e.g., 12%)</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-top pt-3 mt-3" id="simple-summary-display">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="fw-bold">Merchandise:</span>
+                                            <span class="fw-bold" id="display-merchandise">₱0.00</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span id="display-discount-label">Discount:</span>
+                                            <span class="fw-bold text-danger" id="display-discount">₱0.00</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span id="display-tax-label">Tax:</span>
+                                            <span class="fw-bold text-info" id="display-tax">₱0.00</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-top pt-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">Total:</h5>
+                                            <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 class="mb-0">Total:</h5>
-                                    <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Order Status:</label>
-                                    <select class="form-select" id="order_status">
-                                        <option value="completed" selected>Completed</option>
-                                        <option value="pending">Pending (Quotation)</option>
-                                    </select>
-                                </div>
-
-                                <div class="d-grid gap-2">
+                                <div class="d-grid gap-2 mt-3">
                                     <button class="btn btn-success btn-lg" onclick="checkout()">
                                         <i class="fas fa-credit-card me-2"></i>Checkout
                                     </button>
@@ -743,8 +789,23 @@
         window.clearCart = function() {
             if (cart.length === 0) return;
             cart = [];
+            clearCustomerDetails();
             updateCartDisplay();
         };
+
+        function clearCustomerDetails() {
+            ['customer_name','customer_phone','customer_email','customer_company_school',
+             'customer_facebook','customer_address','order_notes','credit_notes'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const creditDetails = document.getElementById('credit-details');
+            if (creditDetails) creditDetails.style.display = 'none';
+            const paymentMethod = document.getElementById('payment_method');
+            if (paymentMethod) paymentMethod.value = 'cash';
+            const orderStatus = document.getElementById('order_status');
+            if (orderStatus) orderStatus.value = 'completed';
+        }
 
         window.setSerial = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
@@ -815,7 +876,7 @@
                         }))
                     ),
                     total: cart.reduce((sum, item) => sum + (item.price * ((item.entries || []).length || 0)), 0),
-                    payment_method: document.querySelector('input[name="payment_method"]:checked').value,
+                    payment_method: document.getElementById('payment_method') ? document.getElementById('payment_method').value : 'cash',
                     order_status: document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed',
                     notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
                     customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
@@ -837,6 +898,7 @@
 
                     if (receiptPdfUrl) {
                         cart = [];
+                        clearCustomerDetails();
                         updateCartDisplay();
                         search('list');
                         Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt PDF...', timer: 1500, showConfirmButton: false })
@@ -884,12 +946,14 @@
                         }).then((result) => {
                             if (!result.isConfirmed) return;
                             cart = [];
+                            clearCustomerDetails();
                             updateCartDisplay();
                             search('list');
                             window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                         });
                     } else {
                         cart = [];
+                        clearCustomerDetails();
                         updateCartDisplay();
                         search('list');
                         Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Order has been processed successfully.'});
@@ -906,10 +970,26 @@
         function updateCartDisplay() {
             const cartItems = document.getElementById('order-items');
             const totalAmount = document.getElementById('total-amount');
+            const merchandiseTotal = document.getElementById('merchandise-total');
+            const discountInput = document.getElementById('discount-amount');
+            const taxInput = document.getElementById('tax-amount');
 
             if (cart.length === 0) {
                 cartItems.innerHTML = '<div class="text-muted text-center py-3">No items in cart</div>';
                 totalAmount.textContent = '₱0.00';
+                if (merchandiseTotal) merchandiseTotal.textContent = '₱0.00';
+                if (discountInput) discountInput.value = '0.00';
+                if (taxInput) taxInput.value = '0.00';
+                const displayMerchandise = document.getElementById('display-merchandise');
+                const displayDiscount = document.getElementById('display-discount');
+                const displayTax = document.getElementById('display-tax');
+                const displayDiscountLabel = document.getElementById('display-discount-label');
+                const displayTaxLabel = document.getElementById('display-tax-label');
+                if (displayMerchandise) displayMerchandise.textContent = '₱0.00';
+                if (displayDiscount) displayDiscount.textContent = '₱0.00';
+                if (displayTax) displayTax.textContent = '₱0.00';
+                if (displayDiscountLabel) displayDiscountLabel.textContent = 'Discount:';
+                if (displayTaxLabel) displayTaxLabel.textContent = 'Tax:';
                 return;
             }
 
@@ -928,18 +1008,34 @@
                             </button>
                         </div>
                         <div class="row g-2">
-                            <div class="col-12">
+                            <div class="col-md-6">
                                 <label class="form-label mb-1 small">Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" 
-                                    value="${entry.serial_number || ''}" 
-                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)" 
+                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}"
+                                    value="${entry.serial_number || ''}"
+                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)"
                                     ${entry.in_stock ? '' : 'disabled'}>
                             </div>
-                            <div class="col-12">
+                            <div class="col-md-6">
                                 <label class="form-label mb-1 small">Warranty (months)</label>
-                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" 
-                                    value="${entry.warranty_months || 0}" 
+                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0"
+                                    value="${entry.warranty_months || 0}"
                                     onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="warranty_activate_${item.cartIdentifier}_${index}"
+                                        onchange="toggleWarrantyActivation('${item.cartIdentifier}', ${index}, this.checked)"
+                                        ${entry.warranty_activated ? 'checked' : ''}>
+                                    <label class="form-check-label small" for="warranty_activate_${item.cartIdentifier}_${index}">
+                                        <i class="fas fa-shield-alt me-1"></i>Activate Warranty Coverage
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <label class="form-label mb-1 small fw-bold">Subtotal:</label>
+                                <h5 class="text-primary mb-0">₱${item.price.toFixed(2)}</h5>
                             </div>
                         </div>
                     </div>
@@ -948,17 +1044,15 @@
                 return `
                     <div class="cart-item mb-3 p-3 border rounded bg-white">
                         <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
+                            <div class="flex-grow-1">
                                 <div class="fw-bold">${item.name}</div>
-                                <small class="text-muted">${item.branchName} - ₱${item.price.toFixed(2)} × ${entries.length}</small>
+                                <div class="text-muted small">${item.branchName} - ₱${item.price.toFixed(2)} × ${entries.length}</div>
                             </div>
-                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')" title="Remove product">
+                            <button class="btn btn-sm btn-outline-danger ms-2" onclick="removeFromCart('${item.cartIdentifier}')" title="Remove product">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-
                         ${entriesHtml}
-
                         <div class="border-top pt-2 text-end">
                             <strong>Subtotal: ₱${itemTotal.toFixed(2)}</strong>
                         </div>
@@ -966,30 +1060,67 @@
                 `;
             }).join('');
 
-            totalAmount.textContent = `₱${total.toFixed(2)}`;
+            const discountValue = discountInput ? discountInput.value.trim() : '0';
+            const taxValue = taxInput ? taxInput.value.trim() : '0';
+            const discount = parseAmountOrPercentage(discountValue, total);
+            const tax = parseAmountOrPercentage(taxValue, total);
+            const finalTotal = total - discount + tax;
+
+            if (merchandiseTotal) merchandiseTotal.textContent = `₱${total.toFixed(2)}`;
+            totalAmount.textContent = `₱${finalTotal.toFixed(2)}`;
+
+            const displayMerchandise = document.getElementById('display-merchandise');
+            const displayDiscountLabel = document.getElementById('display-discount-label');
+            const displayDiscount = document.getElementById('display-discount');
+            const displayTaxLabel = document.getElementById('display-tax-label');
+            const displayTax = document.getElementById('display-tax');
+
+            if (displayMerchandise) displayMerchandise.textContent = `₱${total.toFixed(2)}`;
+            if (displayDiscountLabel) displayDiscountLabel.textContent = discountValue.includes('%') ? `Discount (${parseFloat(discountValue)}%):` : 'Discount:';
+            if (displayDiscount) displayDiscount.textContent = `₱${discount.toFixed(2)}`;
+            if (displayTaxLabel) displayTaxLabel.textContent = taxValue.includes('%') ? `Tax (${parseFloat(taxValue)}%):` : 'Tax:';
+            if (displayTax) displayTax.textContent = `₱${tax.toFixed(2)}`;
         }
 
+        function parseAmountOrPercentage(value, baseAmount) {
+            if (!value) return 0;
+            if (String(value).includes('%')) {
+                return baseAmount * ((parseFloat(value) || 0) / 100);
+            }
+            return parseFloat(value) || 0;
+        }
+
+        window.toggleWarrantyActivation = function(cartIdentifier, entryIndex, isChecked) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+            item.entries[entryIndex].warranty_activated = isChecked;
+            if (isChecked && !item.entries[entryIndex].warranty_months) {
+                item.entries[entryIndex].warranty_months = 12;
+                updateCartDisplay();
+            }
+        };
+
         function initPaymentMethodUI() {
-            const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
+            const paymentSelect = document.getElementById('payment_method');
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
 
-            if (dueDateInput) {
+            if (dueDateInput && !dueDateInput.value) {
                 dueDateInput.value = new Date().toISOString().split('T')[0];
                 dueDateInput.min = new Date().toISOString().split('T')[0];
             }
 
-            const applyVisibility = () => {
-                if (!creditDetails) return;
-                const selected = document.querySelector('input[name="payment_method"]:checked');
-                creditDetails.style.display = (selected && selected.value === 'credit') ? 'block' : 'none';
-            };
+            if (paymentSelect) {
+                paymentSelect.addEventListener('change', function() {
+                    if (!creditDetails) return;
+                    creditDetails.style.display = this.value === 'credit' ? 'block' : 'none';
+                });
+            }
 
-            paymentRadios.forEach(radio => {
-                radio.addEventListener('change', applyVisibility);
-            });
-
-            applyVisibility();
+            const discountInput = document.getElementById('discount-amount');
+            const taxInput = document.getElementById('tax-amount');
+            if (discountInput) discountInput.addEventListener('input', updateCartDisplay);
+            if (taxInput) taxInput.addEventListener('input', updateCartDisplay);
         }
 
         // Initialize

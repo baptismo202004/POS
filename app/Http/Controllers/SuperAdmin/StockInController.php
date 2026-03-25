@@ -426,7 +426,6 @@ class StockInController extends Controller
                         ->where('purchase_id', (int) $purchaseId)
                         ->where('product_id', (int) $productId)
                         ->where('status', 'purchased')
-                        ->whereNull('branch_id')
                         ->count();
 
                     if ($validSerialCount !== $selectedSerialIds->count()) {
@@ -576,7 +575,6 @@ class StockInController extends Controller
                         ->where('purchase_id', (int) $purchaseId)
                         ->where('product_id', (int) $item['product_id'])
                         ->where('status', 'purchased')
-                        ->whereNull('branch_id')
                         ->update([
                             'branch_id' => (int) $item['branch_id'],
                             'status' => 'in_stock',
