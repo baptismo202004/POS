@@ -65,19 +65,26 @@ class StockInController extends Controller
 
     public function stockInCreate()
     {
+        $purchasedSub = DB::table('purchase_items')
+            ->select('purchase_id', DB::raw('SUM(quantity) as total_purchased'))
+            ->groupBy('purchase_id');
+
+        $stockedInSub = DB::table('stock_ins')
+            ->select('purchase_id', DB::raw('SUM(quantity) as total_stocked'))
+            ->whereNotNull('purchase_id')
+            ->groupBy('purchase_id');
+
         $purchases = DB::table('purchases')
-            ->join('purchase_items', 'purchase_items.purchase_id', '=', 'purchases.id')
             ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
-            ->leftJoin('stock_ins', 'stock_ins.purchase_id', '=', 'purchases.id')
+            ->joinSub($purchasedSub, 'pi_totals', 'pi_totals.purchase_id', '=', 'purchases.id')
+            ->leftJoinSub($stockedInSub, 'si_totals', 'si_totals.purchase_id', '=', 'purchases.id')
             ->select(
                 'purchases.id',
                 'purchases.reference_number',
                 'purchases.purchase_date',
                 'suppliers.supplier_name as supplier_name',
-                DB::raw('SUM(purchase_items.quantity) - COALESCE(SUM(stock_ins.quantity), 0) as remaining_quantity')
+                DB::raw('pi_totals.total_purchased - COALESCE(si_totals.total_stocked, 0) as remaining_quantity')
             )
-            ->groupBy('purchases.id', 'purchases.reference_number', 'purchases.purchase_date', 'suppliers.supplier_name')
-            ->havingRaw('SUM(purchase_items.quantity) > COALESCE(SUM(stock_ins.quantity), 0)')
             ->orderBy('purchases.purchase_date', 'desc')
             ->get();
 
@@ -203,7 +210,6 @@ class StockInController extends Controller
             ->where('purchase_id', $purchase->id)
             ->where('product_id', $product->id)
             ->where('status', 'purchased')
-            ->whereNull('branch_id')
             ->orderBy('id')
             ->get(['id', 'serial_number', 'warranty_expiry_date']);
 

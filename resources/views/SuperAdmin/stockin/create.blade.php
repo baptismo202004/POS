@@ -213,10 +213,6 @@
                                                     <div class="sp-mini-label">Reference #</div>
                                                     <div class="sp-mini-value" id="purchase-ref-label">-</div>
                                                 </div>
-                                                <div>
-                                                    <div class="sp-mini-label">Available to Stock In</div>
-                                                    <div class="sp-mini-value" id="purchase-remaining-label">-</div>
-                                                </div>
                                                 <div class="ms-auto">
                                                     <div class="position-relative">
                                                         <button class="sp-btn sp-btn-soft" type="button" id="purchase-products-dropdown-btn" disabled>
@@ -296,7 +292,6 @@
         var supplierLabel = document.getElementById('purchase-supplier-label');
         var dateLabel = document.getElementById('purchase-date-label');
         var refLabel = document.getElementById('purchase-ref-label');
-        var remainingLabel = document.getElementById('purchase-remaining-label');
         var productsDropdownBtn = document.getElementById('purchase-products-dropdown-btn');
         var productsPanel = document.getElementById('purchase-products-panel');
         var productsCheckboxes = document.getElementById('purchase-products-checkboxes');
@@ -415,18 +410,16 @@
         }
 
         function setPurchaseLabelsFromOption(opt) {
-            if (!supplierLabel || !dateLabel || !refLabel || !remainingLabel) return;
+            if (!supplierLabel || !dateLabel || !refLabel) return;
             if (!opt) {
                 supplierLabel.textContent = '-';
                 dateLabel.textContent = '-';
                 refLabel.textContent = '-';
-                remainingLabel.textContent = '-';
                 return;
             }
             supplierLabel.textContent = opt.dataset.supplierName || '-';
             dateLabel.textContent = opt.dataset.purchaseDate || '-';
             refLabel.textContent = opt.dataset.referenceNumber || '-';
-            remainingLabel.textContent = (opt.dataset.remainingQuantity ? (opt.dataset.remainingQuantity + ' remaining') : '-');
         }
 
         function renderProductCheckboxes(items) {

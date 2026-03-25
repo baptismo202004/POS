@@ -414,16 +414,10 @@
                 <select name="items[][product_id]" class="form-select product-select" required>
                     <option value="">-- Select Product --</option>
                     @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->product_name }}</option>
+                        <option value="{{ $product->id }}" data-category-id="{{ $product->category_id }}" data-category-type="{{ $product->category->type }}">
+                            {{ $product->product_name }}
+                        </option>
                     @endforeach
-                </select>
-            </div>
-
-            <div class="col-md-2">
-                <label class="form-label">Product Type</label>
-                <select name="items[][product_type]" class="form-select product-type-select">
-                    <option value="non-electronic" selected>Non-Electronic</option>
-                    <option value="electronic">Electronic</option>
                 </select>
             </div>
 
@@ -438,18 +432,6 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">× Base</label>
-                <div class="input-group">
-                    <input type="number" name="items[][multiplier]" class="form-control multiplier-input" min="1" value="1" step="0.0001" required>
-                    <select class="form-select base-unit-select" name="items[][base_unit_type_id]">
-                        <option value="">Base</option>
-                    </select>
-                </div>
-            </div>
-
-            <input type="hidden" name="items[][base_quantity]" class="base-qty-input" value="1">
-
-            <div class="col-md-2">
                 <label class="form-label">Cost</label>
                 <input type="number" name="items[][cost]" class="form-control item-cost" step="0.01" required>
             </div>
@@ -458,6 +440,28 @@
                 <label class="form-label invisible">Remove</label>
                 <button type="button" class="btn btn-danger remove-item-btn w-100">Remove</button>
             </div>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-12 serials-container d-none">
+                <div class="electronics-panel-host" data-loaded="0"></div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="serial-entry-template">
+    <div class="row g-3 align-items-center serial-entry-row mb-2">
+        <div class="col-md-4">
+            <label class="form-label">Serial Number / IMEI</label>
+            <input type="text" name="serial_number" class="form-control" placeholder="Enter serial number" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Warranty Expiry</label>
+            <input type="date" name="warranty_expiry" class="form-control">
+        </div>
+        <div class="col-md-1">
+            <label class="form-label invisible">Remove</label>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-serial-btn w-100">Remove</button>
         </div>
     </div>
 </template>
@@ -595,77 +599,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const itemsContainer = document.getElementById('items-container');
+    const addItemBtn = document.getElementById('add-item-btn');
     const template = document.getElementById('item-template');
-    const addBtn = document.getElementById('add-item-btn');
-    const grandTotal = document.getElementById('grand-total');
+
+    if (!template) {
+        console.error('Error: item-template not found in the DOM.');
+        return;
+    }
+
     let itemIndex = 0;
-
-    function recalcBaseQuantity(row) {
-        if (!row) return;
-        const primaryInput = row.querySelector('.primary-qty-input');
-        const multiplierInput = row.querySelector('.multiplier-input');
-        const baseInput = row.querySelector('.base-qty-input');
-        if (!primaryInput || !multiplierInput || !baseInput) return;
-        const primaryVal = parseFloat(primaryInput.value) || 0;
-        const multVal = parseFloat(multiplierInput.value) || 1;
-        baseInput.value = primaryVal * multVal;
-    }
-
-    function updateTotals() {
-        let total = 0;
-        itemsContainer.querySelectorAll('.item-row').forEach(row => {
-            const qty = parseFloat(row.querySelector('.primary-qty-input')?.value || '0');
-            const cost = parseFloat(row.querySelector('.item-cost')?.value || '0');
-            total += (qty * cost);
-        });
-        grandTotal.value = total.toFixed(2);
-    }
-
-    function loadProductUnits(row, productId) {
-        const unitSelect = row.querySelector('.unit-type-select');
-        const baseUnitSelect = row.querySelector('.base-unit-select');
-        const multiplierInput = row.querySelector('.multiplier-input');
-
-        if (!unitSelect || !baseUnitSelect || !multiplierInput) return;
-
-        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
-        baseUnitSelect.innerHTML = '<option value="">Base</option>';
-        multiplierInput.value = 1;
-        recalcBaseQuantity(row);
-
-        if (!productId) return;
-
-        $.getJSON(`/cashier/products/${productId}/unit-types`, function (response) {
-            const units = response.units || [];
-
-            units.forEach(function (unit) {
-                const option = document.createElement('option');
-                option.value = unit.id;
-                option.textContent = unit.name;
-                option.dataset.conversionFactor = unit.conversion_factor || 1;
-                unitSelect.appendChild(option);
-
-                const baseOpt = document.createElement('option');
-                baseOpt.value = unit.id;
-                baseOpt.textContent = unit.name;
-                baseUnitSelect.appendChild(baseOpt);
-            });
-
-            const baseUnit = units.find(u => u.is_base);
-            if (baseUnit) {
-                baseUnitSelect.value = String(baseUnit.id);
-            }
-
-            if (units.length === 1) {
-                unitSelect.value = units[0].id;
-                const conv = units[0].conversion_factor || 1;
-                multiplierInput.value = conv;
-                recalcBaseQuantity(row);
-                updateTotals();
-            }
-        }).fail(function () {
-        });
-    }
 
     function wireRow(row) {
         const removeBtn = row.querySelector('.remove-item-btn');
@@ -677,7 +619,252 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+
+    function updateTotals() {
+        let grandTotal = 0;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const primaryInput = row.querySelector('input[name$="[primary_quantity]"]');
+            const quantity = primaryInput ? (parseFloat(primaryInput.value) || 0) : 0;
+            const cost = parseFloat(row.querySelector('.item-cost').value) || 0;
+            grandTotal += quantity * cost;
+        });
+        const grandTotalInput = document.getElementById('grand-total');
+        if (grandTotalInput) {
+            grandTotalInput.value = grandTotal.toFixed(2);
+        }
+    }
+    function updateRowConversionFactor(row) {
+        if (!row) return;
+        const select = row.querySelector('.unit-type-select');
+        if (!select) return;
+
+        const option = select.selectedOptions?.[0];
+        const factor = option?.dataset?.conversionFactor;
+        row.dataset.conversionFactor = (typeof factor !== 'undefined' && factor !== null) ? factor : '1';
+    }
+
+    function loadProductUnits(row, productId) {
+        const unitSelect = row.querySelector('.unit-type-select');
+
+        if (!unitSelect) {
+            console.warn('Missing unit controls for row, cannot load units');
+            return;
+        }
+
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+
+        if (!productId) {
+            console.warn('No productId passed to loadProductUnits');
+            return;
+        }
+
+        console.log('Requesting unit types for product ID:', productId);
+
+        $.getJSON(`/cashier/products/${productId}/unit-types`, function (response) {
+            console.log('Unit types response for product', productId, response);
+            const units = response.units || [];
+
+            units.forEach(function (unit) {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.name;
+                option.dataset.conversionFactor = (typeof unit.conversion_factor !== 'undefined' && unit.conversion_factor !== null)
+                    ? unit.conversion_factor
+                    : 1;
+                unitSelect.appendChild(option);
+            });
+
+            // If only one unit, auto-select it as the primary unit and set multiplier
+            if (units.length === 1) {
+                unitSelect.value = units[0].id;
+            }
+
+            updateRowConversionFactor(row);
+        }).fail(function () {
+            // On failure, keep the select empty but leave the controls usable
+        });
+    }
+
+    // --- PRODUCT METADATA & CATEGORY TYPE UTILITY FUNCTIONS ---
+    const productsMeta = {};
+    @foreach($products as $p)
+        productsMeta["{{ $p->id }}"] = {
+            category_type: "{{ $p->category?->category_type ?? 'non_electronic' }}",
+            warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }}
+        };
+    @endforeach
+
+    function normalizeCategoryType(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function isElectronicCategoryType(categoryType) {
+        const ct = normalizeCategoryType(categoryType);
+        return ct === 'electronic_without_serial' || ct === 'electronic_with_serial';
+    }
+
+    function requiresSerials(categoryType) {
+        return normalizeCategoryType(categoryType) === 'electronic_with_serial';
+    }
+
+    async function ensureElectronicsPanelLoaded(row) {
+        const host = row.querySelector('.electronics-panel-host');
+        if (!host) return;
+        if (host.dataset.loaded === '1') return;
+
+        const url = '{{ route('cashier.purchases.electronics.panel') }}';
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await res.text();
+        host.innerHTML = html;
+        host.dataset.loaded = '1';
+
+        // Wire events inside loaded panel
+        const sameToggle = host.querySelector('.js-same-expiry-toggle');
+        const sharedInput = host.querySelector('.js-shared-expiry-input');
+        if (sameToggle) {
+            sameToggle.addEventListener('change', function() {
+                updateSerialWarrantyDefaultsForRow(row);
+            });
+        }
+        if (sharedInput) {
+            sharedInput.addEventListener('input', function() {
+                updateSerialWarrantyDefaultsForRow(row);
+            });
+        }
+
+        updateSerialWarrantyDefaultsForRow(row);
+        updateSerialCounter(row);
+    }
+
+    function applyCategoryTypeUI(row, productId) {
+        if (!row) return;
+
+        const meta = productsMeta[String(productId)] || { category_type: 'non_electronic' };
+        row.dataset.categoryType = normalizeCategoryType(meta.category_type || 'non_electronic');
+
+        const serialsContainer = row.querySelector('.serials-container');
+        if (!serialsContainer) return;
+
+        if (isElectronicCategoryType(row.dataset.categoryType)) {
+            serialsContainer.classList.remove('d-none');
+            ensureElectronicsPanelLoaded(row);
+
+            // Only show serial entry UI if category requires serials
+            const host = serialsContainer.querySelector('.electronics-panel-host');
+            if (host) {
+                const body = host.querySelector('.electronics-panel-body');
+                if (body) {
+                    body.classList.toggle('d-none', !requiresSerials(row.dataset.categoryType));
+                }
+            }
+        } else {
+            serialsContainer.classList.add('d-none');
+            const host = serialsContainer.querySelector('.electronics-panel-host');
+            if (host) {
+                host.innerHTML = '';
+                host.dataset.loaded = '0';
+            }
+        }
+
+        updateRowConversionFactor(row);
+    }
+
+    // --- DATE & WARRANTY UTILITY FUNCTIONS ---
+    function ymd(d) {
+        return d.toISOString().slice(0, 10);
+    }
+
+    function parseYmd(value) {
+        if (!value) return null;
+        const parts = String(value).split('-');
+        if (parts.length !== 3) return null;
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const dt = new Date(y, m, day);
+        if (Number.isNaN(dt.getTime())) return null;
+        return dt;
+    }
+
+    function addMonthsSafe(dateObj, months) {
+        const d = new Date(dateObj.getTime());
+        const day = d.getDate();
+        d.setMonth(d.getMonth() + months);
+
+        // Handle month overflow (e.g. Jan 31 + 1 month)
+        if (d.getDate() < day) {
+            d.setDate(0);
+        }
+        return d;
+    }
+
+    function computeWarrantyExpiry(purchaseDateStr, warrantyMonths) {
+        const purchaseDate = parseYmd(purchaseDateStr);
+        if (!purchaseDate) return '';
+        const m = parseInt(String(warrantyMonths || '0'), 10);
+        if (!m || m <= 0) return '';
+        return ymd(addMonthsSafe(purchaseDate, m));
+    }
+
+    function getPurchaseDateValue() {
+        const inp = document.querySelector('input[name="purchase_date"]');
+        return inp ? inp.value : '';
+    }
+
+    function updateSerialWarrantyDefaultsForRow(row) {
+        if (!row) return;
+        const productId = row.querySelector('.product-select')?.value;
+        const meta = productsMeta[String(productId)] || { warranty_coverage_months: 0 };
+        const purchaseDateStr = getPurchaseDateValue();
+        const computed = computeWarrantyExpiry(purchaseDateStr, meta.warranty_coverage_months);
+
+        const host = row.querySelector('.electronics-panel-host');
+        if (!host || host.dataset.loaded !== '1') return;
+
+        const sameToggle = host.querySelector('.js-same-expiry-toggle');
+        const sharedWrap = host.querySelector('.js-shared-expiry-wrap');
+        const sharedInput = host.querySelector('.js-shared-expiry-input');
+        const serialInputs = host.querySelectorAll('input[type="date"][name$="[warranty_expiry]"]');
+
+        if (sharedInput && !sharedInput.value && computed) {
+            sharedInput.value = computed;
+        }
+
+        if (sameToggle && sameToggle.checked) {
+            if (sharedWrap) sharedWrap.classList.remove('d-none');
+            const val = (sharedInput && sharedInput.value) ? sharedInput.value : computed;
+            serialInputs.forEach(function(inp) {
+                inp.value = val || '';
+            });
+        } else {
+            if (sharedWrap) sharedWrap.classList.add('d-none');
+            serialInputs.forEach(function(inp) {
+                if (!inp.value && computed) {
+                    inp.value = computed;
+                }
+            });
+        }
+    }
+
+    function updateSerialCounter(itemRow) {
+        const serialsContainer = itemRow.querySelector('.serial-entries-container');
+        const serialCounter = itemRow.querySelector('.serial-counter');
+        
+        if (serialsContainer && serialCounter) {
+            const serialCount = serialsContainer.children.length;
+            serialCounter.textContent = `${serialCount} serial${serialCount !== 1 ? 's' : ''}`;
+            serialCounter.style.display = serialCount > 0 ? 'inline-block' : 'none';
+        }
+    }
+
+
+
     function addRow() {
+        if (!template.content) {
+            console.error('Error: Template content is not supported in this browser.');
+            return;
+        }
+
         const node = template.content.cloneNode(true);
         node.querySelectorAll('[name^="items[]"]').forEach(el => {
             const name = el.getAttribute('name').replace('[]', `[${itemIndex}]`);
@@ -687,14 +874,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = itemsContainer.querySelector('.item-row:last-child');
         if (!row) return;
         wireRow(row);
-        recalcBaseQuantity(row);
         itemIndex++;
         updateTotals();
         return row;
     }
 
-    if (addBtn) {
-        addBtn.addEventListener('click', addRow);
+    if (addItemBtn) {
+        addItemBtn.addEventListener('click', addRow);
     }
 
     addRow();
@@ -779,29 +965,128 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.target.classList.contains('product-select')) {
                 const row = e.target.closest('.item-row');
                 const productId = e.target.value;
+                applyCategoryTypeUI(row, productId);
                 loadProductUnits(row, productId);
             }
 
             if (e.target.classList.contains('unit-type-select')) {
                 const row = e.target.closest('.item-row');
-                const selectedOption = e.target.options[e.target.selectedIndex];
-                const conv = selectedOption ? parseFloat(selectedOption.dataset.conversionFactor || '1') : 1;
-                const multiplierInput = row.querySelector('.multiplier-input');
-                if (multiplierInput) {
-                    multiplierInput.value = conv;
-                }
-                recalcBaseQuantity(row);
+                updateRowConversionFactor(row);
                 updateTotals();
             }
         });
 
         itemsContainer.addEventListener('input', function(e) {
-            if (e.target.classList.contains('primary-qty-input') || e.target.classList.contains('multiplier-input') || e.target.classList.contains('item-cost')) {
+            if (e.target.classList.contains('primary-qty-input') || e.target.classList.contains('item-cost')) {
                 const row = e.target.closest('.item-row');
-                recalcBaseQuantity(row);
                 updateTotals();
             }
         });
+
+        // --- ADD / REMOVE SERIALS ---
+        itemsContainer.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-item-btn')) {
+                e.target.closest('.item-row').remove();
+                updateTotals();
+            }
+
+            if (e.target.classList.contains('add-serial-btn')) {
+                console.log('Add serial button clicked!');
+                
+                const itemRow = e.target.closest('.item-row');
+                const serialsContainer = itemRow.querySelector('.serial-entries-container');
+                const serialTemplate = document.getElementById('serial-entry-template');
+                const itemIndex = Array.from(itemsContainer.children).indexOf(itemRow);
+                const serialIndex = serialsContainer.children.length;
+
+                console.log('Creating serial entry for item:', itemIndex, 'serial:', serialIndex);
+
+                const node = serialTemplate.content.cloneNode(true);
+
+                node.querySelector('[name="serial_number"]').name = `items[${itemIndex}][serials][${serialIndex}][serial_number]`;
+                const warrantyInput = node.querySelector('[name="warranty_expiry"]');
+                warrantyInput.name = `items[${itemIndex}][serials][${serialIndex}][warranty_expiry]`;
+                
+                // Pre-calculate warranty expiry based on purchase date and product warranty
+                const productId = itemRow.querySelector('.product-select')?.value;
+                const meta = productsMeta[String(productId)] || { warranty_coverage_months: 0 };
+                const purchaseDateStr = getPurchaseDateValue();
+                const computed = computeWarrantyExpiry(purchaseDateStr, meta.warranty_coverage_months);
+                warrantyInput.value = computed || '';
+
+                serialsContainer.appendChild(node);
+
+                updateSerialWarrantyDefaultsForRow(itemRow);
+                updateSerialCounter(itemRow);
+            }
+
+            if (e.target.classList.contains('remove-serial-btn')) {
+                const serialRow = e.target.closest('.serial-entry-row');
+                const itemRow = serialRow.closest('.item-row');
+                serialRow.remove();
+                updateSerialCounter(itemRow);
+            }
+
+            if (e.target.classList.contains('toggle-electronics-panel-btn')) {
+                const row = e.target.closest('.item-row');
+                const body = row.querySelector('.electronics-panel-body');
+                if (body) {
+                    body.classList.toggle('d-none');
+                    e.target.textContent = body.classList.contains('d-none') ? 'Show' : 'Hide';
+                }
+            }
+        });
+
+        // Update warranty expiry for all rows when purchase date changes
+        const purchaseDateInput = document.querySelector('input[name="purchase_date"]');
+        if (purchaseDateInput) {
+            purchaseDateInput.addEventListener('change', function() {
+                document.querySelectorAll('.item-row').forEach(row => {
+                    updateSerialWarrantyDefaultsForRow(row);
+                });
+            });
+        }
+
+        // Form submission validation for serials
+        const purchaseForm = document.querySelector('form[method="POST"][action*="purchases"]');
+        if (purchaseForm) {
+            purchaseForm.addEventListener('submit', function(e) {
+                let hasError = false;
+                let errorMessage = '';
+
+                document.querySelectorAll('.item-row').forEach(row => {
+                    const categoryType = row.dataset.categoryType || 'non_electronic';
+                    const requiresSerial = requiresSerials(categoryType);
+                    
+                    if (requiresSerial) {
+                        const qtyInput = row.querySelector('input[name$="[primary_quantity]"]');
+                        const qty = qtyInput ? parseInt(qtyInput.value || '0') : 0;
+                        
+                        const serialsContainer = row.querySelector('.serial-entries-container');
+                        const serialCount = serialsContainer ? serialsContainer.children.length : 0;
+                        
+                        const productSelect = row.querySelector('.product-select');
+                        const productName = productSelect ? productSelect.selectedOptions[0]?.textContent : 'Product';
+                        
+                        if (serialCount !== qty) {
+                            hasError = true;
+                            errorMessage += `${productName}: Expected ${qty} serial(s) but found ${serialCount}.\n`;
+                        }
+                    }
+                });
+
+                if (hasError) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Serial Count Mismatch',
+                        html: errorMessage.replace(/\n/g, '<br>'),
+                        confirmButtonText: 'Okay',
+                        confirmButtonColor: 'var(--theme-color)'
+                    });
+                }
+            });
+        }
     }
 });
 </script>

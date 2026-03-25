@@ -394,6 +394,49 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        @if(session('success') && session('prompt_stockin'))
+        Swal.fire({
+            title: 'Purchase Saved!',
+            text: 'Do you want to automatically stock in all items to your branch?',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-boxes-stacked"></i> Auto Stock In',
+            cancelButtonText: 'Stay in Purchase',
+            confirmButtonColor: '#0D47A1',
+            cancelButtonColor: '#6b84aa',
+            reverseButtons: false,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Stocking in...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                fetch('{{ route('cashier.purchases.auto-stockin', $purchase->id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Done!', text: data.message, confirmButtonColor: '#0D47A1' });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#0D47A1' });
+                    }
+                }).catch(() => {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong.', confirmButtonColor: '#0D47A1' });
+                });
+            }
+        });
+        @elseif(session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: '{{ session('success') }}',
+            confirmButtonText: 'Okay',
+            confirmButtonColor: 'var(--theme-color)'
+        });
+        @endif
+
         const form = document.querySelector('form[data-confirm-mark-paid]');
         if (!form || typeof Swal === 'undefined') return;
 

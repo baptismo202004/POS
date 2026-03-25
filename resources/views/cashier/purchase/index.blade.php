@@ -260,6 +260,24 @@
             text-align: center;
             color: var(--muted);
         }
+
+        .purchases-page .tbl-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Nunito', sans-serif;
+            text-decoration: none;
+            transition: all .18s ease;
+            color: var(--blue);
+            background: rgba(13,71,161,0.08);
+        }
+        .purchases-page .tbl-btn:hover { background: rgba(13,71,161,0.16); color: var(--navy); }
     </style>
 @endpush
 
@@ -305,17 +323,14 @@
                             <th>Payment Status</th>
                             <th>Items</th>
                             <th>Total Cost</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($purchases as $purchase)
                             <tr>
                                 <td>{{ $purchase->reference_number ?: 'N/A' }}</td>
-                                <td>
-                                    <a href="{{ route('cashier.purchases.show', $purchase->id) }}">
-                                        {{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}
-                                    </a>
-                                </td>
+                                <td>{{ optional($purchase->purchase_date)->format('M d, Y') ?? 'N/A' }}</td>
                                 <td>
                                     <span class="badge {{ $purchase->payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark' }}">
                                         {{ ucfirst($purchase->payment_status) }}
@@ -323,10 +338,15 @@
                                 </td>
                                 <td>{{ $purchase->items_count ?? 0 }} item(s)</td>
                                 <td><strong>₱{{ number_format($purchase->total_cost, 2) }}</strong></td>
+                                <td>
+                                    <a href="{{ route('cashier.purchases.show', $purchase->id) }}" class="tbl-btn">
+                                        <i class="fas fa-eye"></i> View Items
+                                    </a>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="empty-row">No purchases found.</td>
+                                <td colspan="6" class="empty-row">No purchases found.</td>
                             </tr>
                         @endforelse
                     </tbody>

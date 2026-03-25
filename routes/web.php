@@ -3,11 +3,6 @@
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\PosAdminController;
 use App\Http\Controllers\Cashier\CashierDashboardController;
-use App\Http\Controllers\Cashier\CreditController;
-use App\Http\Controllers\Cashier\CustomerController as CashierCustomerController;
-use App\Http\Controllers\Cashier\ExpenseController;
-use App\Http\Controllers\Cashier\RefundController;
-use App\Http\Controllers\Cashier\SalesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\InventoryController;
@@ -143,6 +138,8 @@ Route::post('/cashier/purchases', [CashierDashboardController::class, 'purchases
 Route::get('/cashier/purchases/{purchase}', [CashierDashboardController::class, 'purchasesShow'])->middleware('auth')->name('cashier.purchases.show');
 Route::post('/cashier/purchases/{purchase}/mark-paid', [CashierDashboardController::class, 'purchasesMarkPaid'])->middleware('auth')->name('cashier.purchases.mark-paid');
 Route::get('/cashier/products/{product}/unit-types', [CashierDashboardController::class, 'getProductUnitTypes'])->middleware('auth')->name('cashier.products.unit-types');
+Route::get('/cashier/purchases/electronics/panel', [\App\Http\Controllers\Cashier\PurchaseElectronicsController::class, 'panel'])->middleware('auth')->name('cashier.purchases.electronics.panel');
+Route::post('/cashier/purchases/check-serials', [CashierDashboardController::class, 'purchasesCheckSerials'])->middleware('auth')->name('cashier.purchases.check-serials');
 
 // Cashier Suppliers
 Route::post('/cashier/suppliers', [CashierDashboardController::class, 'supplierStore'])->middleware('auth')->name('cashier.suppliers.store');
@@ -160,6 +157,8 @@ Route::get('/cashier/stockin', [CashierDashboardController::class, 'stockInIndex
 Route::get('/cashier/stockin/create', [CashierDashboardController::class, 'stockInCreate'])->middleware('auth')->name('cashier.stockin.create');
 Route::post('/cashier/stockin', [CashierDashboardController::class, 'stockInStore'])->middleware('auth')->name('cashier.stockin.store');
 Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboardController::class, 'stockInProductsByPurchase'])->middleware('auth')->name('cashier.stockin.products-by-purchase');
+Route::get('/cashier/stockin/products-by-purchase/{purchase}/serials/{product}', [CashierDashboardController::class, 'stockInPurchaseProductSerials'])->middleware('auth')->name('cashier.stockin.purchase-product-serials');
+Route::post('/cashier/purchases/{purchase}/auto-stockin', [CashierDashboardController::class, 'autoStockIn'])->middleware('auth')->name('cashier.purchases.auto-stockin');
 
 // Cashier Refunds
 Route::get('/cashier/refunds', [CashierDashboardController::class, 'refundsIndex'])->middleware('auth')->name('cashier.refunds.index');
@@ -1023,6 +1022,7 @@ Route::get('/cashier/pos/electronics', [CashierDashboardController::class, 'posE
 Route::post('/cashier/pos/lookup', [CashierDashboardController::class, 'posLookup'])->name('cashier.pos.lookup')->middleware('auth');
 Route::post('/cashier/pos/store', [CashierDashboardController::class, 'posStore'])->name('cashier.pos.store')->middleware('auth');
 Route::get('/cashier/pos/receipt/{sale}', [CashierDashboardController::class, 'receipt'])->name('cashier.pos.receipt')->middleware('auth');
+Route::get('/cashier/pos/receipt-pdf/{sale}', [CashierDashboardController::class, 'receiptPdf'])->name('cashier.pos.receipt.pdf')->middleware('auth');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();
@@ -1109,7 +1109,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
         Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
-                Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
+        Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');

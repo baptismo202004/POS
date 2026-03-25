@@ -211,6 +211,78 @@
             font-weight: 700;
             font-size: 28px;
         }
+
+        /* Sidebar Styles */
+        .sidebar-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 600px;
+            height: 100%;
+            background: white;
+            border-radius: 15px 0 0 15px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease-in-out;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .sidebar-panel.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .main-content-panel {
+            margin-left: 600px;
+            transition: margin-left 0.3s ease-in-out;
+            min-height: 600px;
+            width: calc(100% - 600px);
+        }
+
+        .main-content-panel.full-width {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .sidebar-panel .search-section {
+            border-radius: 15px 15px 0 0;
+            padding: 14px;
+        }
+
+        .sidebar-panel .products-card {
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .sidebar-panel .card-header-custom {
+            border-left: none;
+            border-right: none;
+        }
+
+        /* Product details padding adjustments */
+        .sidebar-panel .products-card .card-body {
+            padding: 20px;
+        }
+
+        .sidebar-panel .table-custom td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        .sidebar-panel .table-custom th {
+            padding: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-panel .add-btn {
+            padding: 8px 16px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -224,6 +296,9 @@
                 <p class="text-muted mb-0">POS with warranty and serial number capture</p>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="toggleSidebar()" id="header-sidebar-toggle">
+                    <i class="fas fa-chevron-left me-2" id="header-toggle-icon"></i>Toggle Sidebar
+                </button>
                 <a href="{{ route('cashier.sales.create') }}" class="btn btn-outline-primary">
                     <i class="fas fa-cash-register me-2"></i>Standard POS
                 </a>
@@ -238,11 +313,15 @@
             Each item requires a <strong>Serial Number</strong> and uses <strong>quantity = 1</strong>.
         </div>
 
-        <div class="row">
-            <div class="col-lg-8">
+        <div class="position-relative">
+            <!-- Sidebar -->
+            <div id="sidebar" class="sidebar-panel">
                 <div class="search-section">
                     <h4 class="mb-3">
                         <i class="fas fa-search me-2"></i>Product Search
+                        <button class="btn btn-sm btn-outline-light float-end" onclick="toggleSidebar()" id="sidebar-toggle-btn">
+                            <i class="fas fa-chevron-left" id="sidebar-toggle-icon"></i>
+                        </button>
                     </h4>
                     <div class="input-group input-group-lg">
                         <input id="search-input" type="text" class="form-control search-input" 
@@ -292,13 +371,52 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <!-- Main Content -->
+            <div id="main-content" class="main-content-panel">
                 <div class="order-summary">
                     <div class="card order-card">
                         <div class="card-header bg-primary text-white">
                             <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Summary</h5>
                         </div>
                         <div class="card-body">
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Customer Details</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <label class="form-label">Customer Name</label>
+                                                <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Phone Number</label>
+                                                <input type="text" class="form-control" id="customer_phone" placeholder="Enter phone number">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Email (optional)</label>
+                                                <input type="email" class="form-control" id="customer_email" placeholder="Enter email">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <label class="form-label">Company/School Name (optional)</label>
+                                                <input type="text" class="form-control" id="customer_company_school" placeholder="Enter company/school name">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label">Facebook (optional)</label>
+                                                <input type="text" class="form-control" id="customer_facebook" placeholder="Enter Facebook name/link">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label">Address</label>
+                                                <input type="text" class="form-control" id="customer_address" placeholder="Enter address">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="order-items" class="mb-3" style="max-height: 400px; overflow-y: auto;">
                                 <div class="text-muted text-center py-3">No items in cart</div>
                             </div>
@@ -325,24 +443,33 @@
                                                 <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
                                             </h6>
                                             <div class="mb-2">
-                                                <label class="form-label">Customer</label>
-                                                <input type="text" id="customer_name" class="form-control" placeholder="Customer name">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label">Due Date</label>
+                                                <label class="form-label">Date:</label>
                                                 <input type="date" id="credit_due_date" class="form-control">
                                             </div>
                                             <div class="mb-2">
-                                                <label class="form-label">Notes</label>
-                                                <textarea id="credit_notes" class="form-control" rows="2"></textarea>
+                                                <label class="form-label">Notes:</label>
+                                                <textarea id="credit_notes" class="form-control" rows="2" placeholder="Add credit notes..."></textarea>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Notes (optional):</label>
+                                    <textarea class="form-control" id="order_notes" rows="2" placeholder="Add notes..."></textarea>
+                                </div>
+
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="mb-0">Total:</h5>
                                     <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Order Status:</label>
+                                    <select class="form-select" id="order_status">
+                                        <option value="completed" selected>Completed</option>
+                                        <option value="pending">Pending (Quotation)</option>
+                                    </select>
                                 </div>
 
                                 <div class="d-grid gap-2">
@@ -487,6 +614,31 @@
 
         let cart = [];
 
+        let isSidebarCollapsed = false;
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const sidebarIcon = document.getElementById('sidebar-toggle-icon');
+            const headerIcon = document.getElementById('header-toggle-icon');
+
+            if (!sidebar || !mainContent) return;
+
+            isSidebarCollapsed = !isSidebarCollapsed;
+
+            if (isSidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('full-width');
+                if (sidebarIcon) sidebarIcon.className = 'fas fa-chevron-right';
+                if (headerIcon) headerIcon.className = 'fas fa-chevron-right me-2';
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('full-width');
+                if (sidebarIcon) sidebarIcon.className = 'fas fa-chevron-left';
+                if (headerIcon) headerIcon.className = 'fas fa-chevron-left me-2';
+            }
+        };
+
         function updateProductPriceDisplay(productId) {
             const priceCell = document.querySelector(`td.price-display[data-product-id="${productId}"]`);
 
@@ -545,21 +697,37 @@
 
             const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
 
-            cart.push({
-                cartIdentifier,
-                product_id: productId,
-                branch_id: branchId,
-                unit_type_id: unitTypeId,
-                unit_name: unitName,
-                name,
-                branchName,
-                price,
-                quantity: 1,
-                stock,
-                in_stock: stock > 0,
+            const sameGroup = cart.find(i =>
+                parseInt(i.product_id) === parseInt(productId)
+                && parseInt(i.branch_id) === parseInt(branchId)
+                && parseInt(i.unit_type_id || 0) === parseInt(unitTypeId || 0)
+            );
+
+            const newEntry = {
                 serial_number: '',
                 warranty_months: 0,
-            });
+                in_stock: stock > 0,
+            };
+
+            if (sameGroup) {
+                sameGroup.entries = Array.isArray(sameGroup.entries) ? sameGroup.entries : [];
+                sameGroup.entries.push(newEntry);
+                sameGroup.quantity = sameGroup.entries.length;
+            } else {
+                cart.push({
+                    cartIdentifier,
+                    product_id: productId,
+                    branch_id: branchId,
+                    unit_type_id: unitTypeId,
+                    unit_name: unitName,
+                    name,
+                    branchName,
+                    price,
+                    quantity: 1,
+                    stock,
+                    entries: [newEntry],
+                });
+            }
 
             updateCartDisplay();
         };
@@ -578,17 +746,31 @@
             updateCartDisplay();
         };
 
-        window.setSerial = function(cartIdentifier, value) {
+        window.setSerial = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
-            if (!item) return;
-            item.serial_number = String(value || '').trim();
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+            item.entries[entryIndex].serial_number = String(value || '').trim();
         };
 
-        window.setWarrantyMonths = function(cartIdentifier, value) {
+        window.setWarrantyMonths = function(cartIdentifier, entryIndex, value) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
-            if (!item) return;
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
             const n = parseInt(value, 10);
-            item.warranty_months = isFinite(n) ? n : 0;
+            item.entries[entryIndex].warranty_months = isFinite(n) ? n : 0;
+        };
+
+        window.removeEntry = function(cartIdentifier, entryIndex) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+
+            item.entries.splice(entryIndex, 1);
+            item.quantity = item.entries.length;
+
+            if (item.entries.length === 0) {
+                removeFromCart(cartIdentifier);
+            } else {
+                updateCartDisplay();
+            }
         };
 
         window.checkout = function() {
@@ -597,8 +779,10 @@
                 return;
             }
 
-            const missing = cart.find(i => i.in_stock && !i.serial_number);
-            if (missing) {
+            const missingEntry = cart.find(item =>
+                item.entries && item.entries.some(entry => entry.in_stock && !entry.serial_number)
+            );
+            if (missingEntry) {
                 Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
                 return;
             }
@@ -617,20 +801,29 @@
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    products: cart.map(item => ({
-                        id: item.product_id || item.id,
-                        branch_id: item.branch_id,
-                        unit_type_id: item.unit_type_id,
-                        unit_name: item.unit_name,
-                        name: item.name,
-                        quantity: item.quantity || 1,
-                        price: item.price,
-                        serial_number: item.serial_number,
-                        warranty_months: item.warranty_months,
-                    })),
-                    total: cart.reduce((sum, item) => sum + (item.price * 1), 0),
+                    products: cart.flatMap(item =>
+                        (item.entries || []).map(entry => ({
+                            id: item.product_id || item.id,
+                            branch_id: item.branch_id,
+                            unit_type_id: item.unit_type_id,
+                            unit_name: item.unit_name,
+                            name: item.name,
+                            quantity: 1,
+                            price: item.price,
+                            serial_number: entry.serial_number,
+                            warranty_months: entry.warranty_months,
+                        }))
+                    ),
+                    total: cart.reduce((sum, item) => sum + (item.price * ((item.entries || []).length || 0)), 0),
                     payment_method: document.querySelector('input[name="payment_method"]:checked').value,
+                    order_status: document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed',
+                    notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
                     customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
+                    customer_company_school_name: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
+                    customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
+                    customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null,
+                    customer_facebook: document.getElementById('customer_facebook') ? document.getElementById('customer_facebook').value : null,
+                    customer_address: document.getElementById('customer_address') ? document.getElementById('customer_address').value : null,
                     credit_due_date: document.getElementById('credit_due_date') ? document.getElementById('credit_due_date').value : null,
                     credit_notes: document.getElementById('credit_notes') ? document.getElementById('credit_notes').value : null,
                 })
@@ -639,7 +832,17 @@
             .then(data => {
                 if (data.success) {
                     const receiptUrl = data.receipt_url;
-                    const total = cart.reduce((sum, item) => sum + (item.price * 1), 0);
+                    const receiptPdfUrl = data.receipt_pdf_url;
+                    const total = cart.reduce((sum, item) => sum + (item.price * ((item.entries || []).length || 0)), 0);
+
+                    if (receiptPdfUrl) {
+                        cart = [];
+                        updateCartDisplay();
+                        search('list');
+                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt PDF...', timer: 1500, showConfirmButton: false })
+                            .then(() => window.open(receiptPdfUrl, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes'));
+                        return;
+                    }
 
                     if (data.auto_receipt && receiptUrl) {
                         Swal.fire({
@@ -712,36 +915,53 @@
 
             let total = 0;
             cartItems.innerHTML = cart.map(item => {
-                const itemTotal = item.price * 1;
+                const entries = Array.isArray(item.entries) ? item.entries : [];
+                const itemTotal = item.price * entries.length;
                 total += itemTotal;
 
-                return `
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                            <div class="fw-bold">${item.name}</div>
-                            <small class="text-muted">${item.branchName} - ₱${item.price.toFixed(2)} × 1</small>
+                const entriesHtml = entries.map((entry, index) => `
+                    <div class="entry-item border rounded p-2 mb-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary">Unit ${index + 1}</span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeEntry('${item.cartIdentifier}', ${index})" title="Remove this unit">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <div class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-outline-secondary me-2" disabled>-</button>
-                            <span class="mx-2">1</span>
-                            <button class="btn btn-sm btn-outline-secondary me-2" disabled>+</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Serial Number</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" 
+                                    value="${entry.serial_number || ''}" 
+                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)" 
+                                    ${entry.in_stock ? '' : 'disabled'}>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label mb-1 small">Warranty (months)</label>
+                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" 
+                                    value="${entry.warranty_months || 0}" 
+                                    onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="cart-item mb-3 p-3 border rounded bg-white">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-bold">${item.name}</div>
+                                <small class="text-muted">${item.branchName} - ₱${item.price.toFixed(2)} × ${entries.length}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.cartIdentifier}')" title="Remove product">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </div>
-                    <div class="row g-2 mb-2">
-                        <div class="col-12">
-                            <label class="form-label mb-1 small">Serial Number</label>
-                            <input type="text" class="form-control form-control-sm" placeholder="${item.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" value="${item.serial_number || ''}" onchange="setSerial('${item.cartIdentifier}', this.value)" ${item.in_stock ? '' : 'disabled'}>
+
+                        ${entriesHtml}
+
+                        <div class="border-top pt-2 text-end">
+                            <strong>Subtotal: ₱${itemTotal.toFixed(2)}</strong>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label mb-1 small">Warranty (months)</label>
-                            <input type="number" min="0" class="form-control form-control-sm" placeholder="0" value="${item.warranty_months || 0}" onchange="setWarrantyMonths('${item.cartIdentifier}', this.value)">
-                        </div>
-                    </div>
-                    <div class="text-end mb-3">
-                        <strong>₱${itemTotal.toFixed(2)}</strong>
                     </div>
                 `;
             }).join('');
@@ -749,7 +969,7 @@
             totalAmount.textContent = `₱${total.toFixed(2)}`;
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        function initPaymentMethodUI() {
             const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
@@ -759,17 +979,18 @@
                 dueDateInput.min = new Date().toISOString().split('T')[0];
             }
 
+            const applyVisibility = () => {
+                if (!creditDetails) return;
+                const selected = document.querySelector('input[name="payment_method"]:checked');
+                creditDetails.style.display = (selected && selected.value === 'credit') ? 'block' : 'none';
+            };
+
             paymentRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (!creditDetails) return;
-                    if (this.value === 'credit') {
-                        creditDetails.style.display = 'block';
-                    } else {
-                        creditDetails.style.display = 'none';
-                    }
-                });
+                radio.addEventListener('change', applyVisibility);
             });
-        });
+
+            applyVisibility();
+        }
 
         // Initialize
         search('list');
@@ -780,6 +1001,8 @@
                 search('list');
             }
         });
+
+        initPaymentMethodUI();
         });
     })();
     </script>

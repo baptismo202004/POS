@@ -191,8 +191,8 @@
             box-shadow: 0 0 0 3px rgba(66,165,245,0.12);
         }
 
-        .stockin-create-theme .table-responsive { overflow-x: hidden; }
-        .stockin-create-theme table.table { width: 100%; border-collapse: collapse; margin: 0; table-layout: fixed; }
+        .stockin-create-theme .table-responsive { overflow-x: auto; }
+        .stockin-create-theme table.table { width: 100%; border-collapse: collapse; margin: 0; table-layout: auto; }
         .stockin-create-theme table.table thead th {
             padding: 12px 14px;
             font-size: 10px;
@@ -202,22 +202,25 @@
             color: rgba(255,255,255,0.92);
             background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
             border-bottom: 1px solid rgba(255,255,255,0.12);
-            white-space: normal;
-            word-break: break-word;
-        }
-        .stockin-create-theme table.table thead th:last-child,
-        .stockin-create-theme table.table td:last-child {
-            width: 190px;
             white-space: nowrap;
         }
+        .stockin-create-theme table.table thead th:nth-child(1) { min-width: 120px; }
+        .stockin-create-theme table.table thead th:nth-child(2) { min-width: 160px; }
+        .stockin-create-theme table.table thead th:nth-child(3) { min-width: 140px; }
+        .stockin-create-theme table.table thead th:nth-child(4) { min-width: 150px; }
+        .stockin-create-theme table.table thead th:nth-child(5) { min-width: 260px; }
+        .stockin-create-theme table.table thead th:nth-child(6) { min-width: 120px; white-space: nowrap; }
         .stockin-create-theme table.table td {
             padding: 12px 14px;
             font-size: 13px;
-            vertical-align: middle;
+            vertical-align: top;
             color: var(--text);
             white-space: normal;
             word-break: break-word;
         }
+        /* Serial panel header fix */
+        .js-serials-panel .d-flex.justify-content-between { flex-wrap: nowrap; gap: 8px; }
+        .js-serials-panel .small { white-space: nowrap; }
 
         .stockin-create-theme .add-branch {
             white-space: nowrap;
@@ -250,6 +253,21 @@
         }
 
         .card-rounded{ border-radius: 12px; }
+
+        .stockin-table-scroll {
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            max-height: 60vh;
+            overflow: auto;
+        }
+        .stockin-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--navy);
+        }
+        .stockin-active-row { background-color: #fff8e1 !important; }
+        .stockin-active-row > td { background-color: transparent !important; }
     </style>
 @endpush
 
@@ -340,19 +358,16 @@
 
                                 <div id="purchase-items-form-container" class="mb-3" style="display: none;">
                                     <h5 class="mt-4">Items to Stock In</h5>
-                                    <div class="table-responsive">
+                                    <div class="table-responsive stockin-table-scroll">
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
                                                     <th>Product</th>
                                                     <th>Purchased Qty</th>
-                                                    <th>Remaining to Stock</th>
-                                                    <th>Unit Type</th>
-                                                    <th>Branch</th>
-                                                    <th>Stock-In Qty</th>
                                                     <th>Original Price</th>
-                                                    <th>New Price</th>
-                                                    <th style="width: 190px;">Actions</th>
+                                                    <th>Branch</th>
+                                                    <th>Stock Price and Quantity</th>
+                                                    <th style="width: 110px;">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="purchase-items-table-body"></tbody>
@@ -396,7 +411,6 @@
         var supplierLabel = document.getElementById('purchase-supplier-label');
         var dateLabel = document.getElementById('purchase-date-label');
         var refLabel = document.getElementById('purchase-ref-label');
-        var remainingLabel = document.getElementById('purchase-remaining-label');
         var productsDropdownBtn = document.getElementById('purchase-products-dropdown-btn');
         var productsPanel = document.getElementById('purchase-products-panel');
         var productsCheckboxes = document.getElementById('purchase-products-checkboxes');
@@ -421,21 +435,15 @@
         }
 
         function setPurchaseLabelsFromOption(opt) {
-            // Update labels only if their elements exist (remaining may be removed).
             if (!opt) {
                 if (supplierLabel) supplierLabel.textContent = '-';
                 if (dateLabel) dateLabel.textContent = '-';
                 if (refLabel) refLabel.textContent = '-';
-                if (remainingLabel) remainingLabel.textContent = '-';
                 return;
             }
-
             if (supplierLabel) supplierLabel.textContent = opt.dataset.supplierName || '-';
             if (dateLabel) dateLabel.textContent = opt.dataset.purchaseDate || '-';
             if (refLabel) refLabel.textContent = opt.dataset.referenceNumber || '-';
-            if (remainingLabel) {
-                remainingLabel.textContent = (opt.dataset.remainingQuantity ? (opt.dataset.remainingQuantity + ' remaining') : '-');
-            }
         }
 
         function renderProductCheckboxes(items) {
@@ -483,74 +491,377 @@
             latestPurchaseItems
                 .filter(function(item) { return selected.indexOf(String(item.product_id)) !== -1; })
                 .forEach(function(item) {
-                    var productName = item.product ? item.product.product_name : 'N/A';
-                    var purchasedQty = item.quantity || 0;
-                    var purchasedQtyDisplay = purchasedQty;
-                    if (item.unit_type && item.unit_type.unit_name) {
-                        purchasedQtyDisplay += ' ' + item.unit_type.unit_name;
-                    }
-
-                    var unitTypeOptions = '<option value="">No unit types</option>';
-                    if (item.unit_types && item.unit_types.length > 0) {
-                        unitTypeOptions = item.unit_types.map(function(ut) {
-                            return '<option value="' + ut.id + '">' + ut.unit_name + '</option>';
-                        }).join('');
-                    }
-
                     var idx = stockInRowIndex++;
+                    var productName = item.product ? item.product.product_name : 'N/A';
+                    var purchaseUnitName = (item.unit_type && item.unit_type.unit_name) ? item.unit_type.unit_name : '';
+                    var baseUnitName = item.base_unit_name || '';
+                    var purchaseFactor = parseFloat(item.purchase_factor || 1) || 1;
+
+                    var purchasedQty = parseFloat(item.purchased_qty != null ? item.purchased_qty : (item.quantity || 0)) || 0;
+                    var purchasedBase = parseFloat(item.purchased_base != null ? item.purchased_base : 0) || 0;
+                    var remainingBaseQty = parseFloat(item.remaining_base != null ? item.remaining_base : (item.quantity || 0)) || 0;
+
+                    function fmtNumber(n) {
+                        var num = Number(n);
+                        if (!isFinite(num)) return '0';
+                        var fixed = num.toFixed(6);
+                        return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+                    }
+
+                    var purchasedQtyDisplay = fmtNumber(purchasedQty) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                    if (baseUnitName) {
+                        purchasedQtyDisplay = fmtNumber(purchasedQty) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(purchasedBase) + ' ' + baseUnitName;
+                    }
+
+                    var remainingPurchaseUnits = Math.floor(remainingBaseQty / (purchaseFactor || 1));
+                    if (!isFinite(remainingPurchaseUnits) || remainingPurchaseUnits < 0) remainingPurchaseUnits = 0;
+
+                    var remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                    if (baseUnitName) {
+                        remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(remainingBaseQty) + ' ' + baseUnitName;
+                    }
+
+                    var categoryType = item.category_type || 'non_electronic';
+                    var showSerialPicker = categoryType === 'electronic_with_serial';
+
+                    var unitTypes = Array.isArray(item.unit_types) ? item.unit_types : [];
+                    var baseUnit = null;
+                    unitTypes.forEach(function(ut) { if (ut && ut.is_base) baseUnit = ut; });
+                    if (!baseUnit && unitTypes.length > 0) baseUnit = unitTypes[0];
+
+                    var unitTypesHtml = '<div class="text-muted small">No unit types</div>';
+                    if (unitTypes.length > 0) {
+                        var defaultUnitId = baseUnit ? baseUnit.id : unitTypes[0].id;
+                        unitTypesHtml =
+                            '<input type="hidden" class="js-unit-type-id" name="items[' + idx + '][unit_type_id]" value="' + defaultUnitId + '">' +
+                            unitTypes.map(function(ut) {
+                                var utName = ut.unit_name || 'Unit';
+                                var factor = parseFloat(ut.conversion_factor || '1') || 1;
+                                return (
+                                    '<div class="border rounded p-2 mb-2">' +
+                                        '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                                            '<div class="fw-semibold">' + escapeHtml(utName) + '</div>' +
+                                            '<span class="js-unit-factor d-none" data-unit-id="' + ut.id + '" data-factor="' + factor + '"></span>' +
+                                        '</div>' +
+                                        '<div class="row g-2">' +
+                                            '<div class="col-6">' +
+                                                '<label class="small text-muted mb-1">New Price</label>' +
+                                                '<input type="number" class="form-control form-control-sm js-new-price-unit" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" name="items[' + idx + '][unit_prices][' + ut.id + ']" min="0" step="0.01" value="0.00" required>' +
+                                            '</div>' +
+                                            '<div class="col-6">' +
+                                                '<label class="small text-muted mb-1">Stock In</label>' +
+                                                '<input type="number" class="form-control form-control-sm js-stockin-qty-unit" data-product-id="' + item.product_id + '" data-row-idx="' + idx + '" data-unit-id="' + ut.id + '" name="items[' + idx + '][unit_quantities][' + ut.id + ']" min="0" value="0">' +
+                                            '</div>' +
+                                        '</div>' +
+                                    '</div>'
+                                );
+                            }).join('');
+                    }
+
+                    var serialPickerHtml = showSerialPicker ? (
+                        '<div class="mt-2">' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary js-open-serials" data-row-idx="' + idx + '" data-product-id="' + item.product_id + '">Search Serials</button>' +
+                            '<div class="border rounded p-2 mt-2 js-serials-panel" data-loaded="0" data-row-idx="' + idx + '" data-product-id="' + item.product_id + '" style="display:none;">' +
+                                '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                                    '<div class="small">Selected <span class="js-serial-selected-count">0</span> / <span class="js-serial-required-count">0</span> required</div>' +
+                                    '<div class="d-flex gap-2">' +
+                                        '<button type="button" class="btn btn-sm btn-outline-secondary js-serial-select-all">Select All</button>' +
+                                        '<button type="button" class="btn btn-sm btn-outline-secondary js-close-serials">Close</button>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<input type="text" class="form-control form-control-sm js-serial-search mb-2" placeholder="Search serial..." style="max-width:220px;">' +
+                                '<div class="small text-muted js-serials-loading">Loading...</div>' +
+                                '<div class="js-serials-list" style="max-height:180px;overflow:auto;"></div>' +
+                                '<div class="js-serials-hidden-inputs"></div>' +
+                            '</div>' +
+                        '</div>'
+                    ) : '';
+
                     var rowHtml =
                         '<tr>' +
                             '<td>' +
                                 escapeHtml(productName) +
                                 '<input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '">' +
                             '</td>' +
-                            '<td>' + escapeHtml(purchasedQtyDisplay) + '</td>' +
                             '<td>' +
-                                '<span class="fw-semibold js-remaining-to-stock" data-product-id="' + item.product_id + '" data-original-remaining="' + purchasedQty + '">' + escapeHtml(String(purchasedQty)) + '</span>' +
+                                '<div>' + escapeHtml(purchasedQtyDisplay) + '</div>' +
+                                '<div class="text-muted" style="font-size:12px;">' +
+                                    '<span class="js-remaining-display"' +
+                                        ' data-product-id="' + item.product_id + '"' +
+                                        ' data-original-remaining="' + remainingBaseQty + '"' +
+                                        ' data-purchase-factor="' + purchaseFactor + '"' +
+                                        ' data-purchase-unit-name="' + escapeHtml(purchaseUnitName) + '"' +
+                                        ' data-base-unit-name="' + escapeHtml(baseUnitName) + '"' +
+                                    '>Remaining: ' + escapeHtml(remainingDisplay) + '</span>' +
+                                '</div>' +
+                                '<span class="fw-semibold js-remaining-to-stock d-none" data-product-id="' + item.product_id + '" data-original-remaining="' + remainingBaseQty + '">' + escapeHtml(String(remainingBaseQty)) + '</span>' +
                             '</td>' +
                             '<td>' +
-                                '<select class="form-select" name="items[' + idx + '][unit_type_id]">' +
-                                    unitTypeOptions +
-                                '</select>' +
+                                '<input type="number" class="form-control js-original-price" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
                             '</td>' +
                             '<td>' +
-                                '<span class="form-control" style="background: rgba(240,246,255,0.55);">' + escapeHtml(cashierBranchName || 'Branch') + '</span>' +
+                                '<span class="form-control" style="background:rgba(240,246,255,0.55);">' + escapeHtml(cashierBranchName || 'Branch') + '</span>' +
                                 '<input type="hidden" name="items[' + idx + '][branch_id]" value="' + (cashierBranchId ? String(cashierBranchId) : '') + '">' +
                             '</td>' +
                             '<td>' +
-                                '<input type="number" class="form-control js-stockin-qty" data-product-id="' + item.product_id + '" data-original-remaining="' + purchasedQty + '" name="items[' + idx + '][quantity]" min="0" value="0">' +
+                                '<input type="hidden" class="js-stockin-qty-base" data-product-id="' + item.product_id + '" name="items[' + idx + '][quantity]" value="0">' +
+                                unitTypesHtml +
+                                serialPickerHtml +
                             '</td>' +
                             '<td>' +
-                                '<input type="number" class="form-control" name="items[' + idx + '][original_price]" min="0" step="0.01" value="' + (item.unit_price || '0.00') + '" readonly>' +
-                            '</td>' +
-                            '<td>' +
-                                '<input type="number" class="form-control" name="items[' + idx + '][new_price]" min="0" step="0.01" value="0.00" required>' +
-                            '</td>' +
-                            '<td>' +
-                                '<div class="actions-cell">' +
-                                    '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Stock</button>' +
-                                    '<button type="button" class="btn btn-sm btn-outline-danger remove-branch" data-product-id="' + item.product_id + '">Remove</button>' +
-                                '</div>' +
+                                '<button type="button" class="btn btn-sm btn-outline-secondary add-branch" data-product-id="' + item.product_id + '">Add Branch</button>' +
+                                '<button type="button" class="btn btn-sm btn-outline-danger mt-1 js-remove-row">Remove</button>' +
                             '</td>' +
                         '</tr>';
 
                     tableBody.insertAdjacentHTML('beforeend', rowHtml);
+
+                    var insertedRow = tableBody.querySelector('tr:last-child');
+                    if (insertedRow) {
+                        var remainingEl = insertedRow.querySelector('.js-remaining-to-stock');
+                        if (remainingEl) {
+                            remainingEl.dataset.originalRemaining = String(remainingBaseQty);
+                            remainingEl.dataset.remainingBase = String(remainingBaseQty);
+                        }
+                    }
                 });
 
-            container.style.display = '';
-
+            container.style.display = 'block';
             updateRemainingToStockAll();
+            syncStockInQtyToBaseAll();
+        }
+
+        function syncStockInQtyToBaseAll() {
+            if (!tableBody) return;
+            tableBody.querySelectorAll('tr').forEach(function(row) {
+                var baseInput = row.querySelector('input.js-stockin-qty-base');
+                if (!baseInput) return;
+                var totalBase = 0;
+                row.querySelectorAll('input.js-stockin-qty-unit').forEach(function(inp) {
+                    var entered = parseFloat(inp.value || '0') || 0;
+                    var unitId = String(inp.dataset.unitId || '');
+                    var factorEl = unitId ? row.querySelector('.js-unit-factor[data-unit-id="' + unitId + '"]') : null;
+                    var factor = factorEl ? (parseFloat(factorEl.dataset.factor || '1') || 1) : 1;
+                    totalBase += (entered * factor);
+                });
+                baseInput.value = String(totalBase);
+            });
         }
 
         function updateRemainingToStockAll() {
-            // Keep the remaining display fixed to the original remaining value.
-            // Validation/capping is handled in the qty input handler.
             if (!tableBody) return;
-            var remainingEls = tableBody.querySelectorAll('.js-remaining-to-stock');
-            remainingEls.forEach(function(el) {
+            var totals = {};
+            tableBody.querySelectorAll('input.js-stockin-qty-base').forEach(function(input) {
+                var pid = String(input.dataset.productId || '');
+                if (!pid) return;
+                totals[pid] = (totals[pid] || 0) + (parseFloat(input.value || '0') || 0);
+            });
+
+            function fmtNumber(n) {
+                var num = Number(n);
+                if (!isFinite(num)) return '0';
+                var fixed = num.toFixed(6);
+                return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+            }
+
+            tableBody.querySelectorAll('.js-remaining-display').forEach(function(el) {
+                var pid = String(el.dataset.productId || '');
                 var original = parseFloat(el.dataset.originalRemaining || '0') || 0;
-                el.textContent = String(Number.isFinite(original) ? original : 0);
-                el.classList.remove('text-danger');
+                var used = totals[pid] || 0;
+                var remainingBase = Math.max(0, original - used);
+
+                var purchaseFactor = parseFloat(el.dataset.purchaseFactor || '1') || 1;
+                if (purchaseFactor <= 0) purchaseFactor = 1;
+                var purchaseUnitName = el.dataset.purchaseUnitName || '';
+                var baseUnitName = el.dataset.baseUnitName || '';
+
+                var remainingPurchaseUnits = Math.floor(remainingBase / purchaseFactor);
+                if (!isFinite(remainingPurchaseUnits) || remainingPurchaseUnits < 0) remainingPurchaseUnits = 0;
+
+                var remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '');
+                if (baseUnitName) {
+                    remainingDisplay = fmtNumber(remainingPurchaseUnits) + (purchaseUnitName ? (' ' + purchaseUnitName) : '') + ' / ' + fmtNumber(remainingBase) + ' ' + baseUnitName;
+                }
+                el.textContent = 'Remaining: ' + remainingDisplay;
+            });
+        }
+
+        // Serial picker support
+        function fetchPurchaseProductSerials(purchaseId, productId) {
+            var url = '{{ url('cashier/stockin/products-by-purchase') }}/' + purchaseId + '/serials/' + productId;
+            return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .catch(function() { return null; });
+        }
+
+        function renderSerialsIntoPanel(panel, idx, serials) {
+            var list = panel.querySelector('.js-serials-list');
+            var hiddenWrap = panel.querySelector('.js-serials-hidden-inputs');
+            var loading = panel.querySelector('.js-serials-loading');
+            if (!list || !hiddenWrap) return;
+            if (loading) loading.style.display = 'none';
+            list.innerHTML = '';
+            hiddenWrap.innerHTML = '';
+            if (!serials || serials.length === 0) {
+                list.innerHTML = '<div class="text-muted small">No available serials for this purchase/product.</div>';
+                return;
+            }
+            serials.forEach(function(s) {
+                var row = document.createElement('div');
+                row.className = 'form-check';
+                row.innerHTML =
+                    '<input class="form-check-input js-serial-checkbox" type="checkbox" value="' + escapeHtml(s.id) + '" id="serial-' + idx + '-' + escapeHtml(s.id) + '">' +
+                    '<label class="form-check-label" for="serial-' + idx + '-' + escapeHtml(s.id) + '">' + escapeHtml(s.serial_number) + '</label>';
+                list.appendChild(row);
+            });
+        }
+
+        function syncSerialHiddenInputs(panel, idx) {
+            var hiddenWrap = panel.querySelector('.js-serials-hidden-inputs');
+            if (!hiddenWrap) return;
+            hiddenWrap.innerHTML = '';
+            panel.querySelectorAll('.js-serial-checkbox:checked').forEach(function(cb) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'items[' + idx + '][serial_ids][]';
+                inp.value = cb.value;
+                hiddenWrap.appendChild(inp);
+            });
+        }
+
+        function requiredSerialCountForRow(row) {
+            var baseInput = row ? row.querySelector('input.js-stockin-qty-base') : null;
+            var qty = baseInput ? (parseFloat(baseInput.value || '0') || 0) : 0;
+            return Math.max(0, Math.round(qty));
+        }
+
+        function updateSerialIndicatorForRow(row) {
+            if (!row) return;
+            var panel = row.querySelector('.js-serials-panel');
+            if (!panel) return;
+            var requiredEl = panel.querySelector('.js-serial-required-count');
+            var selectedEl = panel.querySelector('.js-serial-selected-count');
+            if (!requiredEl || !selectedEl) return;
+            var required = requiredSerialCountForRow(row);
+            var selected = panel.querySelectorAll('.js-serial-checkbox:checked').length;
+            requiredEl.textContent = String(required);
+            selectedEl.textContent = String(selected);
+        }
+
+        if (tableBody) {
+            tableBody.addEventListener('input', function(e) {
+                if (!e.target) return;
+                if (e.target.classList.contains('js-stockin-qty-unit')) {
+                    syncStockInQtyToBaseAll();
+                    updateRemainingToStockAll();
+                    updateSerialIndicatorForRow(e.target.closest('tr'));
+                }
+                if (e.target.classList.contains('js-serial-search')) {
+                    var panel = e.target.closest('.js-serials-panel');
+                    if (!panel) return;
+                    var q = (e.target.value || '').toLowerCase();
+                    panel.querySelectorAll('.form-check').forEach(function(r) {
+                        r.style.display = (r.textContent || '').toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+                    });
+                }
+            });
+
+            tableBody.addEventListener('change', function(e) {
+                if (!e.target) return;
+                if (e.target.classList.contains('js-serial-checkbox')) {
+                    var panel = e.target.closest('.js-serials-panel');
+                    if (!panel) return;
+                    syncSerialHiddenInputs(panel, panel.dataset.rowIdx);
+                    updateSerialIndicatorForRow(e.target.closest('tr'));
+                }
+            });
+
+            tableBody.addEventListener('click', async function(e) {
+                var openBtn = e.target.closest ? e.target.closest('.js-open-serials') : null;
+                if (openBtn) {
+                    var idx = openBtn.dataset.rowIdx;
+                    var productId = openBtn.dataset.productId;
+                    var purchaseId = purchaseSelect ? purchaseSelect.value : '';
+                    if (!idx || !productId || !purchaseId) return;
+                    var panel = tableBody.querySelector('.js-serials-panel[data-row-idx="' + idx + '"]');
+                    if (!panel) return;
+                    panel.style.display = 'block';
+                    if (panel.dataset.loaded !== '1') {
+                        var payload = await fetchPurchaseProductSerials(purchaseId, productId);
+                        renderSerialsIntoPanel(panel, idx, payload && payload.serials ? payload.serials : []);
+                        panel.dataset.loaded = '1';
+                    }
+                    updateSerialIndicatorForRow(openBtn.closest('tr'));
+                    return;
+                }
+
+                var selectAllSerialBtn = e.target.closest ? e.target.closest('.js-serial-select-all') : null;
+                if (selectAllSerialBtn) {
+                    var panel = selectAllSerialBtn.closest('.js-serials-panel');
+                    var row = selectAllSerialBtn.closest('tr');
+                    if (!panel || !row) return;
+                    var required = requiredSerialCountForRow(row);
+                    var toSelect = required - panel.querySelectorAll('.js-serial-checkbox:checked').length;
+                    var checkboxes = panel.querySelectorAll('.js-serial-checkbox');
+                    for (var i = 0; i < checkboxes.length && toSelect > 0; i++) {
+                        if (!checkboxes[i].checked && checkboxes[i].closest('.form-check').style.display !== 'none') {
+                            checkboxes[i].checked = true;
+                            toSelect--;
+                        }
+                    }
+                    syncSerialHiddenInputs(panel, panel.dataset.rowIdx);
+                    updateSerialIndicatorForRow(row);
+                    return;
+                }
+
+                var closeBtn = e.target.closest ? e.target.closest('.js-close-serials') : null;
+                if (closeBtn) {
+                    var p = closeBtn.closest('.js-serials-panel');
+                    if (p) p.style.display = 'none';
+                    return;
+                }
+
+                if (e.target.classList.contains('js-remove-row')) {
+                    var row = e.target.closest('tr');
+                    if (row) { row.remove(); updateRemainingToStockAll(); }
+                    return;
+                }
+
+                if (e.target.classList.contains('add-branch')) {
+                    var currentRow = e.target.closest('tr');
+                    if (!currentRow) return;
+                    var newIdx = stockInRowIndex++;
+                    var clone = currentRow.cloneNode(true);
+                    clone.querySelectorAll('input[name^="items["], select[name^="items["]').forEach(function(el) {
+                        var name = el.getAttribute('name');
+                        if (!name) return;
+                        el.setAttribute('name', name.replace(/items\[\d+\]/, 'items[' + newIdx + ']'));
+                        if (name.indexOf('[quantity]') !== -1 || name.indexOf('[unit_quantities]') !== -1) el.value = '0';
+                        if (name.indexOf('[unit_prices]') !== -1) el.value = '0.00';
+                    });
+                    clone.querySelectorAll('.js-serials-panel').forEach(function(p) {
+                        p.dataset.loaded = '0';
+                        p.style.display = 'none';
+                        p.dataset.rowIdx = newIdx;
+                        var list = p.querySelector('.js-serials-list');
+                        var hidden = p.querySelector('.js-serials-hidden-inputs');
+                        var loading = p.querySelector('.js-serials-loading');
+                        if (list) list.innerHTML = '';
+                        if (hidden) hidden.innerHTML = '';
+                        if (loading) { loading.style.display = ''; loading.textContent = 'Loading...'; }
+                    });
+                    currentRow.parentNode.insertBefore(clone, currentRow.nextSibling);
+                    updateRemainingToStockAll();
+                    return;
+                }
+            });
+
+            // Active row highlight
+            tableBody.addEventListener('focusin', function(e) {
+                var row = e.target.closest ? e.target.closest('tr') : null;
+                if (!row) return;
+                tableBody.querySelectorAll('tr.stockin-active-row').forEach(function(r) { r.classList.remove('stockin-active-row'); });
+                row.classList.add('stockin-active-row');
             });
         }
 
@@ -558,42 +869,29 @@
             purchaseSelect.addEventListener('change', async function () {
                 var purchaseId = purchaseSelect.value;
                 tableBody.innerHTML = '';
-
                 latestPurchaseItems = [];
                 if (productsCheckboxes) productsCheckboxes.innerHTML = '';
-                if (productsDropdownBtn) {
-                    productsDropdownBtn.disabled = true;
-                }
+                if (productsDropdownBtn) productsDropdownBtn.disabled = true;
 
                 var selectedOpt = purchaseSelect.options[purchaseSelect.selectedIndex];
                 setPurchaseLabelsFromOption(selectedOpt && selectedOpt.value ? selectedOpt : null);
 
-                if (!purchaseId) {
-                    container.style.display = 'none';
-                    return;
-                }
+                if (!purchaseId) { container.style.display = 'none'; return; }
 
                 try {
                     var res = await fetch('{{ url('cashier/stockin/products-by-purchase') }}/' + purchaseId, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
-                    
-                    if (!res.ok) {
-                        throw new Error('HTTP error! status: ' + res.status);
-                    }
-                    
+                    if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                     var data = await res.json();
-
                     if (data.items && data.items.length > 0) {
                         latestPurchaseItems = data.items;
                         renderProductCheckboxes(latestPurchaseItems);
-                        if (productsDropdownBtn) {
-                            productsDropdownBtn.disabled = false;
-                        }
-
+                        if (productsDropdownBtn) productsDropdownBtn.disabled = false;
                         if (productsCheckboxes) {
-                            var allCbs = productsCheckboxes.querySelectorAll('.purchase-product-checkbox');
-                            allCbs.forEach(function(cb) { if (!cb.disabled) cb.checked = true; });
+                            productsCheckboxes.querySelectorAll('.purchase-product-checkbox').forEach(function(cb) {
+                                if (!cb.disabled) cb.checked = true;
+                            });
                         }
                         renderStockInTableFromSelection();
                     } else {
@@ -608,11 +906,7 @@
 
         if (productsDropdownBtn) {
             productsDropdownBtn.addEventListener('click', function(e) {
-                if (productsDropdownBtn.disabled) {
-                    e.preventDefault();
-                    return;
-                }
-
+                if (productsDropdownBtn.disabled) { e.preventDefault(); return; }
                 e.preventDefault();
                 setProductsPanelOpen(!isProductsPanelOpen());
             });
@@ -636,161 +930,32 @@
         if (selectAllBtn) {
             selectAllBtn.addEventListener('click', function() {
                 if (!productsCheckboxes) return;
-                var cbs = productsCheckboxes.querySelectorAll('.purchase-product-checkbox');
-                cbs.forEach(function(cb) { if (!cb.disabled) cb.checked = true; });
+                productsCheckboxes.querySelectorAll('.purchase-product-checkbox').forEach(function(cb) {
+                    if (!cb.disabled) cb.checked = true;
+                });
                 renderStockInTableFromSelection();
-            });
-        }
-
-        // Delegated handler for Add Branch button
-        if (tableBody) {
-            tableBody.addEventListener('click', function(e) {
-                if (!e.target.classList.contains('add-branch')) return;
-
-                var currentRow = e.target.closest('tr');
-                if (!currentRow) return;
-
-                var newIdx = stockInRowIndex++;
-                var clone = currentRow.cloneNode(true);
-
-                // Update all name attributes in the cloned row to use the new index
-                var inputs = clone.querySelectorAll('input[name^="items["], select[name^="items["]');
-                inputs.forEach(function(el) {
-                    var name = el.getAttribute('name');
-                    if (!name) return;
-                    name = name.replace(/items\[(\d+)\]/, 'items[' + newIdx + ']');
-                    el.setAttribute('name', name);
-
-                    // Reset values for branch, quantity, and new_price
-                    if (name.endsWith('[branch_id]')) {
-                        el.value = cashierBranchId ? String(cashierBranchId) : '';
-                    }
-                    if (name.endsWith('[quantity]')) {
-                        el.value = 0;
-                    }
-                    if (name.endsWith('[new_price]')) {
-                        el.value = '0.00';
-                    }
-                });
-
-                // Insert cloned row after the current one
-                currentRow.parentNode.insertBefore(clone, currentRow.nextSibling);
-
-                updateRemainingToStockAll();
-            });
-        }
-
-        // Delegated handler for Remove button
-        if (tableBody) {
-            tableBody.addEventListener('click', function(e) {
-                if (!e.target.classList.contains('remove-branch')) return;
-                var currentRow = e.target.closest('tr');
-                if (!currentRow) return;
-                currentRow.remove();
-                updateRemainingToStockAll();
-            });
-        }
-
-        if (tableBody) {
-            tableBody.addEventListener('input', function(e) {
-                if (!e.target.classList.contains('js-stockin-qty')) return;
-                var current = e.target;
-                var pid = String(current.dataset.productId || '');
-                var original = parseFloat(current.dataset.originalRemaining || '0') || 0;
-
-                // Sum other rows for same product
-                var othersTotal = 0;
-                var allForProduct = tableBody.querySelectorAll('input.js-stockin-qty[data-product-id="' + pid + '"]');
-                allForProduct.forEach(function(input) {
-                    if (input === current) return;
-                    othersTotal += (parseFloat(input.value || '0') || 0);
-                });
-
-                var allowable = original - othersTotal;
-                if (allowable < 0) allowable = 0;
-
-                var val = parseFloat(current.value || '0') || 0;
-                if (val > allowable) {
-                    current.value = allowable;
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Stock-in quantity too high',
-                            text: 'You can only stock in up to ' + allowable + ' for this product based on remaining quantity.',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    }
-                }
-
-                updateRemainingToStockAll();
             });
         }
 
         if (form) {
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
-                var formData = new FormData(form);
-                
                 try {
                     var response = await fetch('{{ route('cashier.stockin.store') }}', {
                         method: 'POST',
-                        body: formData
+                        body: new FormData(form)
                     });
-                    
                     var result = await response.json();
-                    
                     if (result.success) {
-                        var inputs = form.querySelectorAll('input[name$="quantity"]');
-                        inputs.forEach(function(input) {
-                            var currentValue = parseInt(input.value) || 0;
-                            if (currentValue > 0) {
-                                input.value = currentValue - parseInt(input.value);
-                            }
-                        });
-                        
                         form.reset();
                         container.style.display = 'none';
                         tableBody.innerHTML = '';
-                        
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: result.message,
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        } else {
-                            alert('Success: ' + result.message);
-                        }
+                        Swal.fire({ icon: 'success', title: 'Success!', text: result.message, timer: 2000, showConfirmButton: false });
                     } else {
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: result.message || 'Something went wrong',
-                                timer: 3000,
-                                showConfirmButton: false
-                            });
-                        } else {
-                            alert('Error: ' + (result.message || 'Something went wrong'));
-                        }
+                        Swal.fire({ icon: 'error', title: 'Error!', text: result.message || 'Something went wrong', timer: 3000, showConfirmButton: false });
                     }
                 } catch (error) {
-                    console.error('Submit error:', error);
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Something went wrong. Please try again.',
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert('Error: Something went wrong. Please try again.');
-                    }
+                    Swal.fire({ icon: 'error', title: 'Error!', text: 'Something went wrong. Please try again.', timer: 3000, showConfirmButton: false });
                 }
             });
         }

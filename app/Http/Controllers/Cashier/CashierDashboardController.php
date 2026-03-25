@@ -12,16 +12,18 @@ use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Product;
+use App\Models\ProductSerial;
 use App\Models\ProductType;
 use App\Models\Refund;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\UnitType;
-use App\Models\ProductSerial;
 use App\Services\InventoryService;
 use App\Support\Access;
 use Carbon\Carbon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -525,7 +527,7 @@ class CashierDashboardController extends Controller
 
         // Apply branch filtering - show products that are:
         // 1. Associated with the branch in product_branch, OR
-        // 2. Have stock in the branch, OR  
+        // 2. Have stock in the branch, OR
         // 3. Have been purchased (exist in purchase_items)
         $query->where(function ($q) use ($branchId) {
             $q->whereExists(function ($exists) use ($branchId) {
@@ -1156,13 +1158,22 @@ class CashierDashboardController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.primary_quantity' => 'required|numeric|min:1',
-            'items.*.multiplier' => 'required|numeric|min:1',
-            'items.*.base_quantity' => 'required|numeric|min:1',
             'items.*.unit_type_id' => 'required|exists:unit_types,id',
             'items.*.cost' => 'required|numeric|min:0',
+            'items.*.serials' => 'nullable|array',
+            'items.*.serials.*.serial_number' => [
+                'required_with:items.*.serials',
+                'string',
+                'distinct',
+                function ($attribute, $value, $fail) {
+                    if (\App\Models\ProductSerial::where('serial_number', $value)->exists()) {
+                        $fail('Duplicate serial number: '.$value);
+                    }
+                },
+            ],
+            'items.*.serials.*.warranty_expiry' => 'nullable|date',
         ]);
 
-        $purchaseId = null;
         DB::transaction(function () use ($validated, $branchId, &$purchaseId) {
             $totalCost = 0;
             $purchaseId = DB::table('purchases')->insertGetId([
@@ -1178,25 +1189,26 @@ class CashierDashboardController extends Controller
             ]);
 
             $itemsToInsert = [];
-            foreach ($validated['items'] as $item) {
-                $primaryQty = (float) $item['primary_quantity'];
-                $multiplier = (float) $item['multiplier'];
-                $baseQty = $primaryQty * $multiplier;
-                $cost = (float) $item['cost'];
+            $serialsByItemIndex = [];
 
+            foreach ($validated['items'] as $index => $item) {
+                $primaryQty = (float) $item['primary_quantity'];
+                $cost = (float) $item['cost'];
                 $subtotal = $primaryQty * $cost;
                 $totalCost += $subtotal;
 
                 $itemsToInsert[] = [
                     'purchase_id' => $purchaseId,
                     'product_id' => $item['product_id'],
-                    'quantity' => $baseQty,
+                    'quantity' => $primaryQty,
                     'unit_type_id' => $item['unit_type_id'],
                     'unit_cost' => $cost,
                     'subtotal' => $subtotal,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
+
+                $serialsByItemIndex[$index] = $item['serials'] ?? [];
             }
 
             if (! empty($itemsToInsert)) {
@@ -1207,9 +1219,30 @@ class CashierDashboardController extends Controller
                 'total_cost' => $totalCost,
                 'updated_at' => now(),
             ]);
+
+            // Save serial numbers to product_serials
+            foreach ($validated['items'] as $index => $item) {
+                $serials = $serialsByItemIndex[$index] ?? [];
+                foreach ($serials as $s) {
+                    if (empty($s['serial_number'])) {
+                        continue;
+                    }
+                    \App\Models\ProductSerial::create([
+                        'product_id' => $item['product_id'],
+                        'purchase_id' => $purchaseId,
+                        'branch_id' => $branchId,
+                        'serial_number' => $s['serial_number'],
+                        'status' => 'purchased',
+                        'warranty_expiry_date' => $s['warranty_expiry'] ?? null,
+                        'sale_item_id' => null,
+                    ]);
+                }
+            }
         });
 
-        return redirect()->route('cashier.purchases.show', ['purchase' => $purchaseId])->with('success', 'Purchase created successfully');
+        return redirect()->route('cashier.purchases.show', ['purchase' => $purchaseId])
+            ->with('success', 'Purchase created successfully')
+            ->with('prompt_stockin', true);
     }
 
     public function getProductUnitTypes(Product $product)
@@ -1299,6 +1332,25 @@ class CashierDashboardController extends Controller
         return redirect()
             ->route('cashier.purchases.show', ['purchase' => $purchaseModel->id])
             ->with('success', 'Purchase marked as paid successfully.');
+    }
+
+    public function purchasesCheckSerials(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $serialNumbers = $request->input('serial_numbers', []);
+
+        if (! is_array($serialNumbers) || empty($serialNumbers)) {
+            return response()->json(['duplicates' => []]);
+        }
+
+        $existing = \App\Models\ProductSerial::whereIn('serial_number', $serialNumbers)
+            ->pluck('serial_number')
+            ->toArray();
+
+        return response()->json([
+            'duplicates' => $existing,
+            'total_checked' => count($serialNumbers),
+            'duplicates_found' => count($existing),
+        ]);
     }
 
     public function purchasesMatchProduct(Request $request)
@@ -1429,7 +1481,8 @@ class CashierDashboardController extends Controller
                 'returnTo'
             ));
         } catch (\Exception $e) {
-            Log::error('Error loading cashier full credit history: ' . $e->getMessage());
+            Log::error('Error loading cashier full credit history: '.$e->getMessage());
+
             return back()->with('error', 'Unable to load credit history');
         }
     }
@@ -1469,13 +1522,22 @@ class CashierDashboardController extends Controller
             ->map(function ($product) use ($branchId, $inventory) {
                 $currentStock = (float) $inventory->availableStockBase((int) $product->id, (int) $branchId);
 
+                // Compute total sold from stock_ins for this product and branch
+                $totalSold = 0;
+                if (Schema::hasTable('stock_ins')) {
+                    $totalSold = DB::table('stock_ins')
+                        ->where('product_id', $product->id)
+                        ->where('branch_id', $branchId)
+                        ->sum('sold');
+                }
+
                 return (object) [
                     'id' => $product->id,
                     'product_name' => $product->product_name,
                     'brand' => $product->brand->brand_name ?? 'N/A',
                     'category' => $product->category->category_name ?? 'N/A',
                     'current_stock' => $currentStock,
-                    'total_sold' => 0,
+                    'total_sold' => (float) $totalSold,
                     'selling_price' => $product->selling_price,
                     'total_revenue' => 0,
                 ];
@@ -1548,12 +1610,29 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        // Get purchases for current branch that have available stock
+        // Get purchases for current branch
+        $purchasedSub = DB::table('purchase_items')
+            ->select('purchase_id', DB::raw('SUM(quantity) as total_purchased'))
+            ->groupBy('purchase_id');
+
+        $stockedInSub = DB::table('stock_ins')
+            ->select('purchase_id', DB::raw('SUM(quantity) as total_stocked'))
+            ->whereNotNull('purchase_id')
+            ->groupBy('purchase_id');
+
         $purchases = DB::table('purchases')
-            ->where('branch_id', $branchId)
-            ->leftJoin('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
-            ->select('purchases.*', 'suppliers.supplier_name')
-            ->orderBy('purchase_date', 'desc')
+            ->where('purchases.branch_id', $branchId)
+            ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            ->joinSub($purchasedSub, 'pi_totals', 'pi_totals.purchase_id', '=', 'purchases.id')
+            ->leftJoinSub($stockedInSub, 'si_totals', 'si_totals.purchase_id', '=', 'purchases.id')
+            ->select(
+                'purchases.id',
+                'purchases.reference_number',
+                'purchases.purchase_date',
+                'suppliers.supplier_name',
+                DB::raw('pi_totals.total_purchased - COALESCE(si_totals.total_stocked, 0) as remaining_quantity')
+            )
+            ->orderBy('purchases.purchase_date', 'desc')
             ->get();
 
         $cashierBranchName = (string) (DB::table('branches')->where('id', $branchId)->value('branch_name') ?? '');
@@ -1783,7 +1862,7 @@ class CashierDashboardController extends Controller
         }
     }
 
-    public function stockInProductsByPurchase($purchase)
+    public function stockInProductsByPurchase($purchase): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
         $branchId = $user->branch_id;
@@ -1795,63 +1874,190 @@ class CashierDashboardController extends Controller
         try {
             $purchaseModel = \App\Models\Purchase::findOrFail($purchase);
 
-            // Ensure the purchase belongs to the cashier's branch
             if ($purchaseModel->branch_id != $branchId) {
                 abort(403, 'Purchase not found for this branch');
             }
 
-            $purchaseItems = $purchaseModel->items()->with(['product.unitTypes', 'unitType'])->get();
+            $purchaseItems = $purchaseModel->items()->with([
+                'product.unitTypes' => function ($q) {
+                    $q->withPivot('conversion_factor', 'is_base');
+                },
+                'product.category',
+                'unitType',
+            ])->get();
 
             $items = $purchaseItems->map(function ($item) {
-                // Calculate how many units have already been stocked in for this purchase + product
-                $alreadyStockedBase = (float) DB::table('stock_movements')
-                    ->where('source_type', 'purchases')
-                    ->where('source_id', (int) $item->purchase_id)
-                    ->where('product_id', (int) $item->product_id)
-                    ->where('movement_type', 'purchase')
-                    ->sum('quantity_base');
+                $purchaseUnitTypeId = (int) ($item->unit_type_id ?? 0);
+                $purchaseUnitName   = $item->unitType?->unit_name;
 
-                $factor = (float) (DB::table('product_unit_type')
+                $purchaseFactor = (float) (DB::table('product_unit_type')
                     ->where('product_id', (int) $item->product_id)
-                    ->where('unit_type_id', (int) ($item->unit_type_id ?? 0))
+                    ->where('unit_type_id', $purchaseUnitTypeId)
                     ->value('conversion_factor') ?? 1);
-                $factor = $factor > 0 ? $factor : 1;
+                $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
 
-                $purchasedBase = (float) ($item->quantity ?? 0) * $factor;
-                $remainingQuantity = (float) $purchasedBase - (float) $alreadyStockedBase;
+                $alreadyStockedBase = (float) DB::table('stock_ins')
+                    ->where('purchase_id', (int) $item->purchase_id)
+                    ->where('product_id', (int) $item->product_id)
+                    ->sum('quantity');
 
-                // Skip items that are already fully stocked in
-                if ($remainingQuantity <= 0) {
-                    return null;
-                }
+                $purchasedQty  = (float) ($item->quantity ?? 0);
+                $purchasedBase = $purchasedQty * $purchaseFactor;
+                $remainingBase = max(0, $purchasedBase - $alreadyStockedBase);
 
                 $unitTypes = $item->product->unitTypes ?? collect();
 
-                // If the product has no unit types assigned, fallback to all unit types
-                if ($unitTypes instanceof \Illuminate\Support\Collection ? $unitTypes->isEmpty() : empty($unitTypes)) {
+                if ($unitTypes instanceof \Illuminate\Support\Collection && $unitTypes->isEmpty()) {
                     $unitTypes = \App\Models\UnitType::orderBy('unit_name')->get();
                 }
 
-                $result = [
-                    'product_id' => $item->product_id,
-                    'product' => $item->product,
-                    'quantity' => $remainingQuantity,
-                    'unit_price' => $item->unit_cost,
-                    'unit_types' => $unitTypes->values(),
-                    'unit_type' => $item->unitType,
+                $unitTypesPayload = collect($unitTypes)->map(function ($ut) {
+                    return [
+                        'id'                => $ut->id,
+                        'unit_name'         => $ut->unit_name,
+                        'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
+                        'is_base'           => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
+                    ];
+                })->values();
+
+                $baseUnit     = collect($unitTypes)->firstWhere('pivot.is_base', true);
+                $baseUnitName = $baseUnit?->unit_name;
+
+                $conversionParts = [];
+                if ($baseUnitName) {
+                    foreach ($unitTypesPayload as $u) {
+                        if (! empty($u['is_base'])) {
+                            continue;
+                        }
+                        $f = (float) ($u['conversion_factor'] ?? 0);
+                        if ($f > 0) {
+                            $fText             = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
+                            $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
+                        }
+                    }
+                }
+
+                return [
+                    'product_id'           => $item->product_id,
+                    'product'              => $item->product,
+                    'category_type'        => $item->product?->category?->category_type ?? 'non_electronic',
+                    'quantity'             => $remainingBase,
+                    'purchased_qty'        => $purchasedQty,
+                    'purchased_base'       => $purchasedBase,
+                    'remaining_base'       => $remainingBase,
+                    'purchase_unit_name'   => $purchaseUnitName,
+                    'purchase_factor'      => $purchaseFactor,
+                    'base_unit_name'       => $baseUnitName,
+                    'conversion_summary'   => implode(', ', $conversionParts),
+                    'unit_price'           => $item->unit_cost,
+                    'unit_types'           => $unitTypesPayload,
+                    'unit_type'            => $item->unitType,
                 ];
+            })->values();
 
-                return $result;
-            })->filter()->values();
-
-            return response()->json([
-                'items' => $items,
-            ]);
+            return response()->json(['items' => $items]);
 
         } catch (\Exception $e) {
             return response()->json(['items' => [], 'error' => $e->getMessage()]);
         }
     }
+    public function stockInPurchaseProductSerials(\App\Models\Purchase $purchase, \App\Models\Product $product): \Illuminate\Http\JsonResponse
+        {
+            $user = Auth::user();
+
+            if ($purchase->branch_id !== $user->branch_id) {
+                abort(403);
+            }
+
+            $serials = \App\Models\ProductSerial::query()
+                ->where('purchase_id', $purchase->id)
+                ->where('product_id', $product->id)
+                ->where('status', 'purchased')
+                ->orderBy('id')
+                ->get(['id', 'serial_number', 'warranty_expiry_date']);
+
+            return response()->json([
+                'purchase_id' => $purchase->id,
+                'product_id'  => $product->id,
+                'serials'     => $serials,
+            ]);
+        }
+    public function autoStockIn($purchase): \Illuminate\Http\JsonResponse
+        {
+            $user = Auth::user();
+            $branchId = $user->branch_id;
+
+            if (! $branchId) {
+                return response()->json(['success' => false, 'message' => 'No branch assigned.'], 403);
+            }
+
+            $purchaseModel = \App\Models\Purchase::with(['items.unitType'])
+                ->where('id', $purchase)
+                ->where('branch_id', $branchId)
+                ->first();
+
+            if (! $purchaseModel) {
+                return response()->json(['success' => false, 'message' => 'Purchase not found.'], 404);
+            }
+
+            $inventory = app(InventoryService::class);
+
+            try {
+                DB::transaction(function () use ($purchaseModel, $branchId, $inventory) {
+                    foreach ($purchaseModel->items as $item) {
+                        $productId  = (int) $item->product_id;
+                        $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                        $qty        = (float) ($item->quantity ?? 0);
+                        $unitCost   = (float) ($item->unit_cost ?? 0);
+
+                        if ($qty <= 0) {
+                            continue;
+                        }
+
+                        $qtyBase = $inventory->convertToBaseQuantity($productId, $unitTypeId, $qty);
+                        $inventory->increaseStock($branchId, $productId, $qtyBase, 'purchase', 'purchases', (int) $purchaseModel->id, now());
+
+                        $stockInPayload = [
+                            'product_id'  => $productId,
+                            'branch_id'   => $branchId,
+                            'purchase_id' => (int) $purchaseModel->id,
+                            'unit_type_id' => $unitTypeId ?: null,
+                            'quantity'    => (int) round($qty),
+                            'price'       => $unitCost,
+                            'created_at'  => now(),
+                            'updated_at'  => now(),
+                        ];
+
+                        if (Schema::hasColumn('stock_ins', 'initial_quantity')) {
+                            $stockInPayload['initial_quantity'] = (int) round($qty);
+                        }
+
+                        $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                        if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
+                            DB::table('stock_in_unit_prices')->insert([
+                                'stock_in_id'  => $stockInId,
+                                'unit_type_id' => $unitTypeId,
+                                'price'        => $unitCost,
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
+
+                        if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price') && $unitTypeId) {
+                            DB::table('product_unit_type')
+                                ->where('product_id', $productId)
+                                ->where('unit_type_id', $unitTypeId)
+                                ->update(['price' => $unitCost, 'updated_at' => now()]);
+                        }
+                    }
+                });
+
+                return response()->json(['success' => true, 'message' => 'All items stocked in successfully.']);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+        }
 
     /**
      * Display refunds for the cashier's branch.
@@ -2865,11 +3071,11 @@ class CashierDashboardController extends Controller
                         $q->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
                             ->where(function ($inner) {
                                 $inner->whereNull('product_types.is_electronic')
-                                      ->orWhere('product_types.is_electronic', false);
+                                    ->orWhere('product_types.is_electronic', false);
                             })
                             ->where(function ($inner) {
                                 $inner->whereNull('product_types.type_name')
-                                      ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
+                                    ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
                             });
                     });
             }
@@ -2905,6 +3111,7 @@ class CashierDashboardController extends Controller
                                 $qty = (float) ($r->qty ?? 0);
                                 $sold = (float) ($r->sold ?? 0);
                                 $available = max(0, $qty - $sold);
+
                                 return [$ut => $available];
                             })
                             ->toArray();
@@ -3027,11 +3234,11 @@ class CashierDashboardController extends Controller
                     $q->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
                         ->where(function ($inner) {
                             $inner->whereNull('product_types.is_electronic')
-                                  ->orWhere('product_types.is_electronic', false);
+                                ->orWhere('product_types.is_electronic', false);
                         })
                         ->where(function ($inner) {
                             $inner->whereNull('product_types.type_name')
-                                  ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
+                                ->orWhere('product_types.type_name', 'NOT LIKE', '%elect%');
                         });
                 });
         }
@@ -3077,6 +3284,7 @@ class CashierDashboardController extends Controller
                     $qty = (float) ($r->qty ?? 0);
                     $sold = (float) ($r->sold ?? 0);
                     $available = max(0, $qty - $sold);
+
                     return [$ut => $available];
                 })
                 ->toArray();
@@ -3191,6 +3399,8 @@ class CashierDashboardController extends Controller
             $total = $request->input('total');
             $paymentMethod = $request->input('payment_method');
             $customerName = $request->input('customer_name');
+            $requestedOrderStatus = $request->input('order_status', 'completed');
+            $notes = $request->filled('notes') ? trim((string) $request->input('notes')) : null;
             $creditDueDate = $request->input('credit_due_date');
             $creditNotes = $request->input('credit_notes');
             $items = $request->input('products');
@@ -3199,17 +3409,25 @@ class CashierDashboardController extends Controller
                 return response()->json(['success' => false, 'message' => 'No items provided for sale']);
             }
 
+            $finalStatus = in_array($requestedOrderStatus, ['completed', 'pending'], true) ? $requestedOrderStatus : 'completed';
+
             // Create sale record
-            $sale = Sale::create([
+            $salePayload = [
                 'branch_id' => $branchId,
                 'cashier_id' => $user->id,
                 'total_amount' => $total,
                 'payment_method' => $paymentMethod,
                 'customer_name' => $customerName,
-                'status' => 'completed',
+                'status' => $finalStatus,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($notes !== null && $notes !== '' && Schema::hasColumn('sales', 'notes')) {
+                $salePayload['notes'] = $notes;
+            }
+
+            $sale = Sale::create($salePayload);
 
             $posBranchId = (int) $branchId;
 
@@ -3310,21 +3528,25 @@ class CashierDashboardController extends Controller
                     $serial = ProductSerial::where('serial_number', $serialNumber)->first();
                     if (! $serial) {
                         DB::rollBack();
+
                         return response()->json(['success' => false, 'message' => 'Invalid serial number (not found in inventory).'], 422);
                     }
 
                     if ((int) $serial->product_id !== $productId) {
                         DB::rollBack();
+
                         return response()->json(['success' => false, 'message' => 'Serial number does not match the selected product.'], 422);
                     }
 
                     if ((int) $serial->branch_id !== (int) $branchId) {
                         DB::rollBack();
+
                         return response()->json(['success' => false, 'message' => 'Serial number does not belong to the selected branch.'], 422);
                     }
 
                     if ($serial->status !== 'in_stock') {
                         DB::rollBack();
+
                         return response()->json(['success' => false, 'message' => 'Serial number is not available (already sold/invalid).'], 422);
                     }
 
@@ -3352,7 +3574,7 @@ class CashierDashboardController extends Controller
                     'sale_id' => $sale->id,
                     'status' => 'active',
                     'date' => $creditDueDate ?? now()->addDays(30),
-                    'notes' => $creditNotes ?? 'Credit from POS Sale #'.$sale->id,
+                    'description' => $creditNotes ?? 'Credit from POS Sale #'.$sale->id,
                     'credit_type' => 'sales',
                 ], $branchId, $user->id);
             }
@@ -3362,6 +3584,8 @@ class CashierDashboardController extends Controller
             // Generate receipt URL if cash payment
             $receiptUrl = null;
             $autoReceipt = $paymentMethod === 'cash';
+
+            $receiptPdfUrl = route('cashier.pos.receipt.pdf', $sale->id);
 
             if ($autoReceipt) {
                 $receiptUrl = route('cashier.pos.receipt', $sale->id);
@@ -3373,6 +3597,7 @@ class CashierDashboardController extends Controller
                 'sale_id' => $sale->id,
                 'auto_receipt' => $autoReceipt,
                 'receipt_url' => $receiptUrl,
+                'receipt_pdf_url' => $receiptPdfUrl,
             ]);
 
         } catch (\Exception $e) {
@@ -3418,6 +3643,7 @@ class CashierDashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error loading credit limits data: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Error loading credit limits data']);
         }
     }
@@ -3456,6 +3682,7 @@ class CashierDashboardController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating credit limits: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Error updating credit limits']);
         }
     }
@@ -3472,6 +3699,32 @@ class CashierDashboardController extends Controller
         $relatedSales = collect(); // Empty collection for individual receipts
 
         return view('cashier.sales.receipt', compact('sale', 'barcode', 'receiptGroupId', 'relatedSales'));
+    }
+
+    public function receiptPdf($saleId)
+    {
+        $sale = Sale::with(['saleItems.product', 'saleItems.unitType', 'cashier', 'branch', 'customer'])->findOrFail($saleId);
+
+        $serialsBySaleItemId = ProductSerial::whereIn('sale_item_id', $sale->saleItems->pluck('id')->filter())
+            ->get()
+            ->keyBy('sale_item_id');
+
+        $options = new Options;
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $html = view('cashier.sales.receipt_pdf', compact('sale', 'serialsBySaleItemId'))->render();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'receipt-'.($sale->reference_number ?: $sale->id).'.pdf';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
     }
 
     /**
@@ -3502,6 +3755,7 @@ class CashierDashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error creating supplier: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error creating supplier. Please try again.',
             ], 500);
@@ -3608,7 +3862,7 @@ class CashierDashboardController extends Controller
                 ->with('success', 'Credit updated successfully!');
         } catch (\Exception $e) {
             Log::error('Error updating credit: '.$e->getMessage());
-            
+
             // Check if it's an AJAX request (multiple methods)
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
 
@@ -3647,6 +3901,7 @@ class CashierDashboardController extends Controller
                 ->with('success', 'Credit deleted successfully!');
         } catch (\Exception $e) {
             Log::error('Error deleting credit: '.$e->getMessage());
+
             return redirect()->back()
                 ->with('error', 'Error deleting credit. Please try again.');
         }

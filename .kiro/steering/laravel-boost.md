@@ -1,5 +1,5 @@
 ---
-alwaysApply: true
+inclusion: always
 ---
 <laravel-boost-guidelines>
 === foundation rules ===
