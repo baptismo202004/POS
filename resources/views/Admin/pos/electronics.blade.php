@@ -473,55 +473,112 @@
                                     </div>
 
                                     <div class="border-top pt-3">
-                                        <div class="mb-3">
-                                            <label class="form-label fw-bold">Payment Method:</label>
-                                            <div class="btn-group w-100" role="group">
-                                                <input type="radio" class="btn-check" name="payment_method" id="payment_cash" value="cash" checked>
-                                                <label class="btn btn-outline-success" for="payment_cash">
-                                                    <i class="fas fa-money-bill-wave me-2"></i>Cash
-                                                </label>
-
-                                                <input type="radio" class="btn-check" name="payment_method" id="payment_credit" value="credit">
-                                                <label class="btn btn-outline-primary" for="payment_credit">
-                                                    <i class="fas fa-credit-card me-2"></i>Credit
-                                                </label>
+                                        <div class="row">
+                                            <!-- Left Column: Notes -->
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Notes (optional):</label>
+                                                    <textarea class="form-control" id="order_notes" rows="3" placeholder="Add notes..."></textarea>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div id="credit-details" class="mb-3" style="display: none;">
-                                            <div class="card border-warning">
-                                                <div class="card-body bg-light">
-                                                    <h6 class="card-title text-warning mb-3">
-                                                        <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
-                                                    </h6>
-                                                    <div class="mb-2">
-                                                        <label class="form-label">Date:</label>
-                                                        <input type="date" class="form-control" id="credit_due_date" value="{{ date('Y-m-d') }}">
-                                                    </div>
-                                                    <div class="mb-2">
-                                                        <label class="form-label">Notes:</label>
-                                                        <textarea class="form-control" id="credit_notes" rows="2" placeholder="Add credit notes..."></textarea>
+                                            <!-- Right Column: Payment Details -->
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Payment Method:</label>
+                                                    <select class="form-select" id="payment_method">
+                                                        <option value="cash" selected>Cash</option>
+                                                        <option value="credit">Credit</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Order Status:</label>
+                                                    <select class="form-select" id="order_status">
+                                                        <option value="completed" selected>Completed</option>
+                                                        <option value="pending">Pending (Quotation)</option>
+                                                    </select>
+                                                </div>
+
+                                                <div id="credit-details" class="mb-3" style="display: none;">
+                                                    <div class="card border-warning">
+                                                        <div class="card-body bg-light">
+                                                            <h6 class="card-title text-warning mb-3">
+                                                                <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
+                                                            </h6>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Date:</label>
+                                                                <input type="date" class="form-control" id="credit_due_date" value="{{ date('Y-m-d') }}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Notes:</label>
+                                                                <textarea class="form-control" id="credit_notes" rows="2" placeholder="Add credit notes..."></textarea>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label fw-bold">Notes (optional):</label>
-                                            <textarea class="form-control" id="order_notes" rows="2" placeholder="Add notes..."></textarea>
+                                        <!-- Merchandise Total Section -->
+                                        <div class="border-top pt-3">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <div class="mb-0">
+                                                        <label class="form-label fw-bold">Merchandise Total:</label>
+                                                        <h4 class="text-primary mb-0" id="merchandise-total">₱0.00</h4>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-0">
+                                                        <label class="form-label fw-bold">Discount:</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">₱</span>
+                                                            <input type="text" class="form-control" id="discount-amount" 
+                                                                placeholder="0.00 or 10%" value="0.00">
+                                                        </div>
+                                                        <small class="text-muted">Enter amount (e.g., 100.00) or percentage (e.g., 10%)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-0">
+                                                        <label class="form-label fw-bold">Tax:</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">₱</span>
+                                                            <input type="text" class="form-control" id="tax-amount" 
+                                                                placeholder="0.00 or 12%" value="0.00">
+                                                        </div>
+                                                        <small class="text-muted">Enter amount (e.g., 100.00) or percentage (e.g., 12%)</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Simple Summary Display -->
+                                            <div class="border-top pt-3" id="simple-summary-display">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="fw-bold">Merchandise:</span>
+                                                    <span class="fw-bold" id="display-merchandise">₱0.00</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span id="display-discount-label">Discount:</span>
+                                                    <span class="fw-bold text-danger" id="display-discount">₱0.00</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span id="display-tax-label">Tax:</span>
+                                                    <span class="fw-bold text-info" id="display-tax">₱0.00</span>
+                                                </div>
+                                            </div>
+
+
+
+                                            <div class="border-top pt-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h5 class="mb-0">Total:</h5>
+                                                    <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 class="mb-0">Total:</h5>
-                                            <h4 class="mb-0 text-primary" id="total-amount">₱0.00</h4>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label fw-bold">Order Status:</label>
-                                            <select class="form-select" id="order_status">
-                                                <option value="completed" selected>Completed</option>
-                                                <option value="pending">Pending (Quotation)</option>
-                                            </select>
-                                        </div>
                                         <div class="d-grid gap-2">
                                             <button class="btn btn-success btn-lg" onclick="checkout()">
                                                 <i class="fas fa-credit-card me-2"></i>Checkout
@@ -888,6 +945,21 @@
             item.entries[entryIndex].warranty_months = isFinite(n) ? n : 0;
         };
 
+        window.toggleWarrantyActivation = function(cartIdentifier, entryIndex, isChecked) {
+            const item = cart.find(i => i.cartIdentifier === cartIdentifier);
+            if (!item || !item.entries || !item.entries[entryIndex]) return;
+            
+            // Store warranty activation state
+            item.entries[entryIndex].warranty_activated = isChecked;
+            
+            // If activating warranty and no warranty months set, set default from product
+            if (isChecked && (!item.entries[entryIndex].warranty_months || item.entries[entryIndex].warranty_months === 0)) {
+                // This would need the product data, for now we'll just set a default
+                item.entries[entryIndex].warranty_months = 12; // Default 12 months
+                updateCartDisplay(); // Refresh to show the updated warranty months
+            }
+        };
+
         window.removeEntry = function(cartIdentifier, entryIndex) {
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
             if (!item || !item.entries || !item.entries[entryIndex]) return;
@@ -904,92 +976,222 @@
         };
 
         window.checkout = function() {
+            // Get order status to determine validation mode
+            const orderStatus = document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed';
+            const isOrderMode = orderStatus === 'pending';
+
+            // 1. Check if cart has at least 1 item (common for both modes)
             if (cart.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add items to your cart before checkout.'});
+                Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add at least 1 item to your cart before checkout.'});
                 return;
             }
 
-            // Check for missing serial numbers in any entry
-            const missingEntry = cart.find(item => 
-                item.entries && item.entries.some(entry => entry.in_stock && !entry.serial_number)
-            );
-            if (missingEntry) {
-                Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
+            // 2. Validate each item in cart (common for both modes)
+            for (let i = 0; i < cart.length; i++) {
+                const item = cart[i];
+                
+                // Check quantity > 0 (common for both modes)
+                if (item.quantity <= 0 || item.entries.length <= 0) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Quantity', text: `Item "${item.name}" must have quantity greater than 0.`});
+                    return;
+                }
+                
+                // Check price > 0 (common for both modes)
+                if (item.price <= 0) {
+                    if (item.price === 0) {
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Zero Price Item', 
+                            text: `Item "${item.name}" has a price of ₱0.00. This item cannot be processed. Please select a product with valid pricing or contact administrator to set the correct price.` 
+                        });
+                    } else {
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Invalid Price', 
+                            text: `Item "${item.name}" has an invalid price (₱${item.price.toFixed(2)}). Price must be greater than 0.` 
+                        });
+                    }
+                    return;
+                }
+
+                // Only check serial numbers for completed mode (not order mode)
+                if (!isOrderMode) {
+                    for (let j = 0; j < item.entries.length; j++) {
+                        const entry = item.entries[j];
+                        if (entry.in_stock && !entry.serial_number) {
+                            Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: `Please enter serial number for "${item.name}" - Unit ${j + 1} before checkout.`});
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // 3. Validate customer information (different requirements for each mode)
+            const customerName = document.getElementById('customer_name').value.trim();
+            const customerPhone = document.getElementById('customer_phone').value.trim();
+            const customerAddress = document.getElementById('customer_address').value.trim();
+
+            // Customer name is required for both modes
+            if (!customerName) {
+                Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter customer name before checkout.'});
+                document.getElementById('customer_name').focus();
                 return;
             }
 
-            processOrder();
+            // Phone and address are only required for completed mode
+            if (!isOrderMode) {
+                if (!customerPhone) {
+                    Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter phone number before checkout.'});
+                    document.getElementById('customer_phone').focus();
+                    return;
+                }
+
+                if (!customerAddress) {
+                    Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter address before checkout.'});
+                    document.getElementById('customer_address').focus();
+                    return;
+                }
+            }
+
+            // All validations passed, proceed with order processing
+            processOrder(isOrderMode);
         };
 
-        function processOrder() {
-            Swal.fire({ title: 'Processing Order...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        function processOrder(isOrderMode = false) {
+            const orderStatus = isOrderMode ? 'pending' : 'completed';
+            const processingText = isOrderMode ? 'Processing Sales Order...' : 'Processing Order...';
+            
+            Swal.fire({ title: processingText, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-            fetch('{{ route("pos.electronics.store") }}', {
+            // Prepare items in the structure backend expects - with entries array
+            const items = cart.map(item => {
+                if (!item.entries || !Array.isArray(item.entries)) {
+                    console.error('Item missing entries array:', item);
+                    return null;
+                }
+                return {
+                    product_id: item.product_id,
+                    branch_id: item.branch_id,
+                    unit_type_id: item.unit_type_id,
+                    unit_name: item.unit_name,
+                    name: item.name,
+                    quantity: item.entries.length,
+                    price: item.price,
+                    unit_price: item.price, // unit_price at item level
+                    entries: item.entries.map(entry => ({
+                        serial_number: entry.serial_number || null, // Allow null for order mode
+                        warranty_months: entry.warranty_months || 0,
+                        in_stock: entry.in_stock || false,
+                        unit_price: item.price, // unit_price at entry level
+                    })),
+                };
+            }).filter(item => item !== null); // Remove any null items
+
+            const orderData = {
+                items: items,
+                total: cart.reduce((sum, item) => sum + (item.price * (item.entries ? item.entries.length : 0)), 0),
+                payment_method: document.getElementById('payment_method').value,
+                order_status: orderStatus,
+                is_order_mode: isOrderMode, // Flag to indicate this is a sales order
+                notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
+                customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
+                customer_company_school: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
+                customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
+                customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null,
+                customer_facebook: document.getElementById('customer_facebook') ? document.getElementById('customer_facebook').value : null,
+                customer_address: document.getElementById('customer_address') ? document.getElementById('customer_address').value : null,
+                credit_due_date: document.getElementById('credit_due_date') ? document.getElementById('credit_due_date').value : null,
+                credit_notes: document.getElementById('credit_notes') ? document.getElementById('credit_notes').value : null,
+            };
+
+            console.log('Sending order data:', orderData);
+            console.log('Items structure:', JSON.stringify(orderData.items, null, 2));
+            console.log('First item details:', orderData.items[0] ? {
+                has_unit_price_item: 'unit_price' in orderData.items[0],
+                unit_price_item_value: orderData.items[0].unit_price,
+                has_entries: 'entries' in orderData.items[0],
+                entries_count: orderData.items[0].entries ? orderData.items[0].entries.length : 0,
+                first_entry: orderData.items[0].entries ? orderData.items[0].entries[0] : null
+            } : 'No items');
+
+            fetch('{{ route("pos.electronics.checkout") }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    items: cart.flatMap(item => 
-                        item.entries.map(entry => ({
-                            product_id: item.product_id,
-                            branch_id: item.branch_id,
-                            unit_type_id: item.unit_type_id,
-                            unit_name: item.unit_name,
-                            name: item.name,
-                            quantity: 1,
-                            price: item.price,
-                            serial_number: entry.serial_number,
-                            warranty_months: entry.warranty_months,
-                        }))
-                    ),
-                    total: cart.reduce((sum, item) => sum + (item.price * item.entries.length), 0),
-                    payment_method: document.querySelector('input[name="payment_method"]:checked').value,
-                    order_status: document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed',
-                    notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
-                    customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
-                    customer_company_school_name: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
-                    customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
-                    customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null,
-                    customer_facebook: document.getElementById('customer_facebook') ? document.getElementById('customer_facebook').value : null,
-                    customer_address: document.getElementById('customer_address') ? document.getElementById('customer_address').value : null,
-                    credit_due_date: document.getElementById('credit_due_date') ? document.getElementById('credit_due_date').value : null,
-                    credit_notes: document.getElementById('credit_notes') ? document.getElementById('credit_notes').value : null,
-                })
+                body: JSON.stringify(orderData)
             })
-            .then(r => r.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    // Try to get error details from response
+                    return response.text().then(text => {
+                        console.log('Error response text:', text);
+                        try {
+                            const errorData = JSON.parse(text);
+                            console.log('Parsed error data:', errorData);
+                            throw new Error(errorData.message || `Server error: ${response.status}`);
+                        } catch (e) {
+                            console.log('Could not parse error as JSON:', e);
+                            throw new Error(`Server error: ${response.status} - ${text.substring(0, 200)}`);
+                        }
+                    });
+                }
+                
+                return response.json();
+            })
             .then(data => {
+                console.log('Success response data:', data);
+                
                 if (data.success) {
                     cart = [];
                     updateCartDisplay();
-                    if (data.receipt_pdf_url) {
-                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt PDF...', timer: 1500, showConfirmButton: false })
-                            .then(() => window.open(data.receipt_pdf_url, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes'));
-                    } else if (data.auto_receipt && data.receipt_url) {
-                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt...', timer: 1500, showConfirmButton: false })
-                            .then(() => window.open(data.receipt_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes'));
-                    } else {
-                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: data.message || 'Order has been processed successfully.'});
-                    }
+                    const successMessage = isOrderMode 
+                        ? 'Sales Order created successfully! Order is pending fulfillment.' 
+                        : data.message || 'Electronic items purchase completed successfully.';
+                    const successTitle = isOrderMode ? 'Sales Order Created!' : 'Order Saved!';
+                    
+                    Swal.fire({ icon: 'success', title: successTitle, text: successMessage});
                     search('list');
                 } else {
+                    console.log('Order failed:', data);
                     Swal.fire({ icon: 'error', title: 'Order Failed', text: data.message || 'There was an error processing your order.'});
                 }
             })
-            .catch(() => {
-                Swal.fire({ icon: 'error', title: 'Order Failed', text: 'Network error. Please try again.'});
+            .catch(error => {
+                console.error('Order processing error:', error);
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Order Failed', 
+                    text: error.message || 'Network error. Please try again.',
+                    footer: '<small>Check browser console for more details</small>'
+                });
             });
         }
 
         function updateCartDisplay() {
             const cartItems = document.getElementById('order-items');
             const totalAmount = document.getElementById('total-amount');
+            const merchandiseTotal = document.getElementById('merchandise-total');
+            const discountInput = document.getElementById('discount-amount');
+            const taxInput = document.getElementById('tax-amount');
+
+            // Defensive checks for DOM elements
+            if (!cartItems || !totalAmount || !merchandiseTotal || !discountInput || !taxInput) {
+                console.error('Required DOM elements not found');
+                return;
+            }
 
             if (cart.length === 0) {
                 cartItems.innerHTML = '<div class="text-muted text-center py-3">No items in cart</div>';
                 totalAmount.textContent = '₱0.00';
+                merchandiseTotal.textContent = '₱0.00';
+                discountInput.value = '0.00';
+                taxInput.value = '0.00';
                 return;
             }
 
@@ -1007,18 +1209,38 @@
                             </button>
                         </div>
                         <div class="row g-2">
-                            <div class="col-12">
+                            <!-- Left Column: Serial Number -->
+                            <div class="col-md-6">
                                 <label class="form-label mb-1 small">Serial Number</label>
                                 <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" 
                                     value="${entry.serial_number || ''}" 
                                     onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)" 
                                     ${entry.in_stock ? '' : 'disabled'}>
                             </div>
-                            <div class="col-12">
+                            <!-- Right Column: Warranty -->
+                            <div class="col-md-6">
                                 <label class="form-label mb-1 small">Warranty (months)</label>
                                 <input type="number" min="0" class="form-control form-control-sm" placeholder="0" 
                                     value="${entry.warranty_months || 0}" 
                                     onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
+                            </div>
+                        </div>
+                        <!-- Warranty Activation and Subtotal -->
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="warranty_activate_${item.cartIdentifier}_${index}" 
+                                        onchange="toggleWarrantyActivation('${item.cartIdentifier}', ${index}, this.checked)">
+                                    <label class="form-check-label small" for="warranty_activate_${item.cartIdentifier}_${index}">
+                                        <i class="fas fa-shield-alt me-1"></i>Activate Warranty Coverage
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="mb-0">
+                                    <label class="form-label mb-1 small fw-bold">Subtotal:</label>
+                                    <h5 class="text-primary mb-0">₱${item.price.toFixed(2)}</h5>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1049,11 +1271,170 @@
                 `;
             }).join('');
 
-            totalAmount.textContent = `₱${total.toFixed(2)}`;
+            // Parse discount and tax (support both amount and percentage)
+            const discountValue = discountInput.value.trim();
+            const taxValue = taxInput.value.trim();
+            
+            const discount = parseAmountOrPercentage(discountValue, total);
+            const tax = parseAmountOrPercentage(taxValue, total);
+            
+            const merchandiseSubtotal = total;
+            const finalTotal = merchandiseSubtotal - discount + tax;
+
+            // Update display
+            merchandiseTotal.textContent = `₱${merchandiseSubtotal.toFixed(2)}`;
+            discountInput.value = discountValue;
+            taxInput.value = taxValue;
+            totalAmount.textContent = `₱${finalTotal.toFixed(2)}`;
+            
+            // Update simple summary display with defensive checks
+            const displayMerchandise = document.getElementById('display-merchandise');
+            const displayDiscountLabel = document.getElementById('display-discount-label');
+            const displayDiscount = document.getElementById('display-discount');
+            const displayTaxLabel = document.getElementById('display-tax-label');
+            const displayTax = document.getElementById('display-tax');
+            
+            if (displayMerchandise) {
+                displayMerchandise.textContent = `₱${merchandiseSubtotal.toFixed(2)}`;
+            }
+            
+            // Format discount display
+            if (displayDiscountLabel && displayDiscount) {
+                if (discountValue.includes('%')) {
+                    const percentage = parseFloat(discountValue.replace('%', '')) || 0;
+                    displayDiscountLabel.textContent = `Discount (${percentage}%):`;
+                } else {
+                    displayDiscountLabel.textContent = 'Discount:';
+                }
+                displayDiscount.textContent = `₱${discount.toFixed(2)}`;
+            }
+            
+            // Format tax display
+            if (displayTaxLabel && displayTax) {
+                if (taxValue.includes('%')) {
+                    const percentage = parseFloat(taxValue.replace('%', '')) || 0;
+                    displayTaxLabel.textContent = `Tax (${percentage}%):`;
+                } else {
+                    displayTaxLabel.textContent = 'Tax:';
+                }
+                displayTax.textContent = `₱${tax.toFixed(2)}`;
+            }
+            
+            // Update calculation breakdown if visible
+            const breakdown = document.getElementById('calculation-breakdown');
+            if (breakdown && breakdown.style.display !== 'none') {
+                updateCalculationBreakdown();
+            }
+            
+            // Update simple summary if visible
+            const summary = document.getElementById('final-summary');
+            if (summary && summary.style.display !== 'none') {
+                updateSimpleSummary();
+            }
         }
 
+        function parseAmountOrPercentage(value, baseAmount) {
+            if (!value) return 0;
+            
+            // Check if value contains % for percentage
+            if (value.includes('%')) {
+                const percentage = parseFloat(value.replace('%', '')) || 0;
+                return baseAmount * (percentage / 100);
+            }
+            
+            // Otherwise, treat as fixed amount
+            return parseFloat(value) || 0;
+        }
+
+        function toggleDetailedBreakdown() {
+            document.getElementById('calculation-breakdown').style.display = 'block';
+            document.getElementById('final-summary').style.display = 'none';
+        }
+
+        function toggleSimpleSummary() {
+            document.getElementById('calculation-breakdown').style.display = 'none';
+            document.getElementById('final-summary').style.display = 'block';
+            updateSimpleSummary();
+        }
+
+        function updateSimpleSummary() {
+            const merchandiseTotal = parseFloat(document.getElementById('merchandise-total').textContent.replace('₱', '').replace(',', '')) || 0;
+            const discountValue = document.getElementById('discount-amount').value.trim();
+            const taxValue = document.getElementById('tax-amount').value.trim();
+            
+            const discount = parseAmountOrPercentage(discountValue, merchandiseTotal);
+            const tax = parseAmountOrPercentage(taxValue, merchandiseTotal);
+            const finalTotal = merchandiseTotal - discount + tax;
+            
+            // Update simple summary
+            document.getElementById('summary-merchandise-total').textContent = `₱${merchandiseTotal.toFixed(2)}`;
+            document.getElementById('summary-discount-amount').textContent = `-₱${discount.toFixed(2)}`;
+            document.getElementById('summary-tax-amount').textContent = `+₱${tax.toFixed(2)}`;
+            document.getElementById('summary-final-total').textContent = `₱${finalTotal.toFixed(2)}`;
+        }
+
+        function toggleCalculationBreakdown() {
+            const breakdown = document.getElementById('calculation-breakdown');
+            const button = event.target;
+            
+            if (breakdown.style.display === 'none') {
+                breakdown.style.display = 'block';
+                button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Calculation Details';
+                updateCalculationBreakdown();
+            } else {
+                breakdown.style.display = 'none';
+                button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Calculation Details';
+            }
+        }
+
+        function updateCalculationBreakdown() {
+            const merchandiseTotal = parseFloat(document.getElementById('merchandise-total').textContent.replace('₱', '').replace(',', '')) || 0;
+            const discountValue = document.getElementById('discount-amount').value.trim();
+            const taxValue = document.getElementById('tax-amount').value.trim();
+            
+            const discount = parseAmountOrPercentage(discountValue, merchandiseTotal);
+            const tax = parseAmountOrPercentage(taxValue, merchandiseTotal);
+            const subtotalAfterDiscount = merchandiseTotal - discount;
+            
+            // Update breakdown elements
+            document.getElementById('breakdown-merchandise').textContent = `₱${merchandiseTotal.toFixed(2)}`;
+            
+            if (discountValue.includes('%')) {
+                const percentage = parseFloat(discountValue.replace('%', '')) || 0;
+                document.getElementById('breakdown-discount-rate').textContent = `${percentage}%`;
+            } else {
+                const discountRate = merchandiseTotal > 0 ? (discount / merchandiseTotal * 100) : 0;
+                document.getElementById('breakdown-discount-rate').textContent = `${discountRate.toFixed(2)}%`;
+            }
+            document.getElementById('breakdown-discount-amount').textContent = `₱${discount.toFixed(2)}`;
+            
+            document.getElementById('breakdown-subtotal').textContent = `₱${subtotalAfterDiscount.toFixed(2)}`;
+            
+            if (taxValue.includes('%')) {
+                const percentage = parseFloat(taxValue.replace('%', '')) || 0;
+                document.getElementById('breakdown-tax-rate').textContent = `${percentage}%`;
+            } else {
+                const taxRate = subtotalAfterDiscount > 0 ? (tax / subtotalAfterDiscount * 100) : 0;
+                document.getElementById('breakdown-tax-rate').textContent = `${taxRate.toFixed(2)}%`;
+            }
+            document.getElementById('breakdown-tax-amount').textContent = `₱${tax.toFixed(2)}`;
+        }
+
+        // Add event listeners for discount and tax inputs
         document.addEventListener('DOMContentLoaded', function() {
-            const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
+            const discountInput = document.getElementById('discount-amount');
+            const taxInput = document.getElementById('tax-amount');
+            
+            if (discountInput) {
+                discountInput.addEventListener('input', updateCartDisplay);
+            }
+            if (taxInput) {
+                taxInput.addEventListener('input', updateCartDisplay);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentSelect = document.getElementById('payment_method');
             const creditDetails = document.getElementById('credit-details');
             const dueDateInput = document.getElementById('credit_due_date');
 
@@ -1062,12 +1443,12 @@
                 dueDateInput.min = new Date().toISOString().split('T')[0];
             }
 
-            paymentRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
+            if (paymentSelect) {
+                paymentSelect.addEventListener('change', function() {
                     if (!creditDetails) return;
                     creditDetails.style.display = this.value === 'credit' ? 'block' : 'none';
                 });
-            });
+            }
         });
 
         btn.addEventListener('click', () => search('list'));

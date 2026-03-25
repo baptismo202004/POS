@@ -1014,6 +1014,7 @@ Route::post('/pos/cashier/validate', [PosAdminController::class, 'validateCashie
 // POS Route - Electronic Devices
 Route::get('/pos/electronics', [PosAdminController::class, 'electronicsIndex'])->name('pos.electronics.index')->middleware('auth');
 Route::post('/pos/electronics', [PosAdminController::class, 'electronicsStore'])->name('pos.electronics.store')->middleware('auth');
+Route::post('/pos/electronics/checkout', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'store'])->name('pos.electronics.checkout')->middleware('auth');
 
 Route::post('/admin/pos/checkout', [\App\Http\Controllers\Admin\PosController::class, 'checkout'])->name('admin.pos.checkout')->middleware('auth');
 
