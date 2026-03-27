@@ -344,6 +344,9 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
+                                            <a href="{{ route('cashier.sales.show', $sale) }}" class="btn btn-outline-primary" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
                                             <a href="{{ route('cashier.pos.receipt', $sale) }}" class="btn btn-outline-success" title="Receipt">
                                                 <i class="fas fa-receipt"></i>
                                             </a>

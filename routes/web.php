@@ -109,6 +109,8 @@ Route::get('/cashier/dashboard/low-stock', [CashierDashboardController::class, '
 Route::get('/cashier/sales', [CashierDashboardController::class, 'salesIndex'])->middleware('auth')->name('cashier.sales.index');
 Route::get('/cashier/sales/create', [CashierDashboardController::class, 'salesCreate'])->middleware('auth')->name('cashier.sales.create');
 Route::get('/cashier/sales/reports', [CashierDashboardController::class, 'salesReports'])->middleware('auth')->name('cashier.sales.reports');
+Route::get('/cashier/sales/{sale}', [CashierDashboardController::class, 'salesShow'])->middleware('auth')->name('cashier.sales.show');
+Route::post('/cashier/sales/{sale}/mark-completed', [CashierDashboardController::class, 'salesMarkCompleted'])->middleware('auth')->name('cashier.sales.mark-completed');
 Route::post('/cashier/sales/{sale}/void', [CashierDashboardController::class, 'voidSale'])->middleware('auth')->name('cashier.sales.void');
 Route::post('/cashier/sales/{sale}/quick-refund', [CashierDashboardController::class, 'quickRefund'])->middleware('auth')->name('cashier.sales.quick-refund');
 

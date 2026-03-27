@@ -302,6 +302,138 @@ class CashierDashboardController extends Controller
 
         return view('cashier.sales.index', compact('sales', 'sortBy', 'sortDirection'));
     }
+    public function salesShow(\App\Models\Sale $sale): \Illuminate\View\View
+        {
+            $user = Auth::user();
+
+            if ($sale->branch_id !== $user->branch_id) {
+                abort(403);
+            }
+
+            $sale->load(['saleItems.product', 'saleItems.unitType', 'branch', 'cashier', 'customer']);
+
+            $serialsBySaleItemId = \App\Models\ProductSerial::whereIn('sale_item_id', $sale->saleItems->pluck('id')->filter())
+                ->get()
+                ->keyBy('sale_item_id');
+
+            return view('cashier.sales.show', compact('sale', 'serialsBySaleItemId'));
+        }
+    public function salesMarkCompleted(Request $request, \App\Models\Sale $sale): \Illuminate\Http\RedirectResponse
+        {
+            if ($sale->branch_id !== Auth::user()->branch_id) {
+                abort(403);
+            }
+
+            if ($sale->status !== 'pending') {
+                return redirect()->back()->with('error', 'Only pending orders can be marked as completed.');
+            }
+
+            $sale->load(['saleItems.product', 'saleItems.unitType', 'branch']);
+            $serials = $request->input('serials', []);
+            if (! is_array($serials)) {
+                $serials = [];
+            }
+
+            $usedSerials = [];
+            foreach ($sale->saleItems as $saleItem) {
+                $trackingType = (string) ($saleItem->product->tracking_type ?? 'none');
+                if ($trackingType === 'none') {
+                    continue;
+                }
+                $value = trim((string) ($serials[(string) $saleItem->id] ?? ''));
+                if ($value === '') {
+                    return redirect()->back()->with('error', 'Serial number is required for all serialized items before completing.');
+                }
+                $key = strtolower($value);
+                if (isset($usedSerials[$key])) {
+                    return redirect()->back()->with('error', 'Duplicate serial number entered: ' . $value);
+                }
+                $usedSerials[$key] = true;
+            }
+
+            try {
+                DB::beginTransaction();
+
+                foreach ($sale->saleItems as $saleItem) {
+                    $trackingType = (string) ($saleItem->product->tracking_type ?? 'none');
+                    $serialNumber = trim((string) ($serials[(string) $saleItem->id] ?? ''));
+                    $productId    = (int) $saleItem->product_id;
+                    $branchId     = (int) $sale->branch_id;
+
+                    if ($trackingType !== 'none') {
+                        $serial = \App\Models\ProductSerial::where('serial_number', $serialNumber)->first();
+                        if (! $serial) {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Invalid serial number: ' . $serialNumber);
+                        }
+                        if ((int) $serial->product_id !== $productId) {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Serial does not match product: ' . $serialNumber);
+                        }
+                        if ($serial->status === 'sold') {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Serial is already sold: ' . $serialNumber);
+                        }
+                        if (! in_array((string) $serial->status, ['purchased', 'in_stock', 'assigned'], true)) {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Serial is not eligible for sale: ' . $serialNumber);
+                        }
+
+                        $warrantyMonths = (int) ($saleItem->warranty_months ?? 0);
+                        $serial->status               = 'sold';
+                        $serial->sold_at              = Carbon::now();
+                        $serial->branch_id            = $branchId;
+                        $serial->sale_item_id         = $saleItem->id;
+                        $serial->warranty_expiry_date = $warrantyMonths > 0
+                            ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
+                            : null;
+                        $serial->save();
+                        continue;
+                    }
+
+                    $unitTypeId = (int) $saleItem->unit_type_id;
+                    $quantity   = (float) $saleItem->quantity;
+                    $factor     = (float) (DB::table('product_unit_type')
+                        ->where('product_id', $productId)
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+                    if ($factor <= 0) {
+                        $factor = 1.0;
+                    }
+
+                    $remaining = $quantity * $factor;
+                    $stocks = \App\Models\StockIn::where('product_id', $productId)
+                        ->where('branch_id', $branchId)
+                        ->where('quantity', '>', DB::raw('sold'))
+                        ->orderBy('id')
+                        ->get();
+
+                    foreach ($stocks as $stock) {
+                        if ($remaining <= 0) break;
+                        $available = $stock->quantity - $stock->sold;
+                        $deduct    = min($remaining, $available);
+                        $stock->sold += $deduct;
+                        $stock->save();
+                        $remaining -= $deduct;
+                    }
+
+                    if ($remaining > 0) {
+                        DB::rollBack();
+                        return redirect()->back()->with('error', 'Insufficient stock to complete this order.');
+                    }
+                }
+
+                $sale->status = 'completed';
+                $sale->save();
+
+                DB::commit();
+
+                return redirect()->route('cashier.sales.show', $sale)->with('success', 'Order marked as completed.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'Failed to complete order: ' . $e->getMessage());
+            }
+        }
 
     /**
      * Perform a quick full refund for a sale from the cashier sales list.
