@@ -10,7 +10,6 @@ use App\Models\ProductSerial;
 use App\Models\Purchase;
 use App\Models\StockIn;
 use App\Models\StockInsHead;
-use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,9 +30,9 @@ class StockInController extends Controller
                     'branches.branch_name',
                     'purchases.reference_number as purchase_reference',
                     'suppliers.supplier_name',
-                    'users.name as created_by_name'
+                    'users.name as created_by_name',
                 ]);
-            
+
             // Apply sorting if requested
             if ($request->has('sort')) {
                 $direction = $request->get('direction', 'asc');
@@ -53,13 +52,14 @@ class StockInController extends Controller
             } else {
                 $query->orderBy('stock_ins_head.created_at', 'desc');
             }
-            
+
             $stockIns = $query->paginate(15);
-            
+
             return view('SuperAdmin.stockin.index', compact('stockIns'));
         } catch (\Exception $e) {
-            Log::error('Error loading Stock In index page: ' . $e->getMessage());
-            return response()->view('errors.500', ['message' => 'Error loading stock records: ' . $e->getMessage()], 500);
+            Log::error('Error loading Stock In index page: '.$e->getMessage());
+
+            return response()->view('errors.500', ['message' => 'Error loading stock records: '.$e->getMessage()], 500);
         }
     }
 
@@ -121,7 +121,9 @@ class StockInController extends Controller
                 $purchasedQty = (float) ($item->quantity ?? 0);
                 $purchasedBase = $purchasedQty * $purchaseFactor;
                 $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
 
                 $primaryPurchased = (float) ($item->primary_quantity ?? 0);
                 $primaryRemaining = $primaryPurchased;
@@ -130,7 +132,7 @@ class StockInController extends Controller
                     $primaryRemaining = $primaryPurchased * $ratio;
                 }
 
-                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
+                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: ".json_encode($item->product->unitTypes ?? []));
 
                 $unitTypes = $item->product->unitTypes ?? collect();
 
@@ -149,13 +151,13 @@ class StockInController extends Controller
                 $conversionParts = [];
                 if ($baseUnitName) {
                     foreach ($unitTypesPayload as $u) {
-                        if (!empty($u['is_base'])) {
+                        if (! empty($u['is_base'])) {
                             continue;
                         }
                         $f = (float) ($u['conversion_factor'] ?? 0);
                         if ($f > 0) {
                             $fText = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
-                            $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
+                            $conversionParts[] = '1 '.$u['unit_name'].' × '.$fText.' '.$baseUnitName;
                         }
                     }
                 }
@@ -189,17 +191,19 @@ class StockInController extends Controller
                     'base_unit_type_id' => $baseUnit?->id,
                 ];
 
-                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
+                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: ".json_encode($result));
+
                 return $result;
             })->values();
 
-            Log::info("[STOCK_IN_PRODUCTS] Final items data: " . json_encode($items->toArray()));
+            Log::info('[STOCK_IN_PRODUCTS] Final items data: '.json_encode($items->toArray()));
 
             return response()->json([
                 'items' => $items,
             ]);
         } catch (\Exception $e) {
-            Log::error("[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: " . $e->getMessage());
+            Log::error('[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: '.$e->getMessage());
+
             return response()->json(['items' => [], 'error' => $e->getMessage()]);
         }
     }
@@ -292,7 +296,7 @@ class StockInController extends Controller
                 $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
 
                 $baseReferencePrice = $originalPrice / $purchaseFactor;
-                if (!is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
+                if (! is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
                     $baseReferencePrice = 0;
                 }
 
@@ -364,7 +368,9 @@ class StockInController extends Controller
                     ->sum('quantity');
 
                 $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
 
                 $requestedBase = 0.0;
                 foreach ($rows as $row) {
@@ -373,16 +379,21 @@ class StockInController extends Controller
                         foreach ($unitQuantities as $unitTypeId => $enteredQty) {
                             $enteredQty = (float) $enteredQty;
                             $unitTypeId = (int) $unitTypeId;
-                            if ($enteredQty <= 0) continue;
+                            if ($enteredQty <= 0) {
+                                continue;
+                            }
 
                             $factor = (float) (DB::table('product_unit_type')
                                 ->where('product_id', (int) $productId)
                                 ->where('unit_type_id', $unitTypeId)
                                 ->value('conversion_factor') ?? 1);
-                            if ($factor <= 0) $factor = 1;
+                            if ($factor <= 0) {
+                                $factor = 1;
+                            }
 
                             $requestedBase += ($enteredQty * $factor);
                         }
+
                         continue;
                     }
 
@@ -407,10 +418,10 @@ class StockInController extends Controller
 
                     $selectedSerialIds = collect($rows)
                         ->pluck('serial_ids')
-                        ->filter(fn($v) => is_array($v))
+                        ->filter(fn ($v) => is_array($v))
                         ->flatten()
-                        ->map(fn($v) => (int) $v)
-                        ->filter(fn($v) => $v > 0)
+                        ->map(fn ($v) => (int) $v)
+                        ->filter(fn ($v) => $v > 0)
                         ->unique()
                         ->values();
 
@@ -442,8 +453,8 @@ class StockInController extends Controller
                 'branch_id' => $items[0]['branch_id'], // Use first item's branch
                 'purchase_id' => $purchaseId,
                 'stock_in_date' => now(),
-                'reference_number' => 'STK-' . date('Y') . '-' . str_pad(StockInsHead::count() + 1, 4, '0', STR_PAD_LEFT),
-                'total_quantity' => collect($items)->sum(function($item) {
+                'reference_number' => 'STK-'.date('Y').'-'.str_pad(StockInsHead::count() + 1, 4, '0', STR_PAD_LEFT),
+                'total_quantity' => collect($items)->sum(function ($item) {
                     return (float) ($item['quantity'] ?? 0);
                 }),
                 'status' => 'completed',
@@ -466,7 +477,7 @@ class StockInController extends Controller
                 $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
 
                 $baseReferencePrice = $originalPrice / $purchaseFactor;
-                if (!is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
+                if (! is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
                     $baseReferencePrice = 0;
                 }
 
@@ -475,7 +486,7 @@ class StockInController extends Controller
                 $unitQuantities = $item['unit_quantities'] ?? [];
                 $unitPrices = $item['unit_prices'] ?? [];
 
-                if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
+                if (! is_array($unitQuantities) || count($unitQuantities) === 0) {
                     Log::info('[STOCK_IN] Processing item (legacy)', [
                         'product_id' => $item['product_id'],
                         'branch_id' => $item['branch_id'],
@@ -503,13 +514,21 @@ class StockInController extends Controller
                         ->increment('quantity_base', $qtyBaseRounded);
 
                     foreach ($unitPrices as $unitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $unitTypeId],
-                            ['price' => (float) $unitPrice]
+                        DB::table('stock_in_unit_prices')->upsert(
+                            [
+                                'stock_in_id' => $stockIn->id,
+                                'unit_type_id' => (int) $unitTypeId,
+                                'price' => (float) $unitPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ],
+                            ['stock_in_id', 'unit_type_id'],
+                            ['price', 'updated_at']
                         );
                     }
 
                     $stockIns[] = $stockIn->id;
+
                     continue;
                 }
 
@@ -525,7 +544,9 @@ class StockInController extends Controller
                         ->where('product_id', (int) $item['product_id'])
                         ->where('unit_type_id', $unitTypeId)
                         ->value('conversion_factor') ?? 1);
-                    if ($factor <= 0) $factor = 1;
+                    if ($factor <= 0) {
+                        $factor = 1;
+                    }
 
                     $qtyBase = $enteredQty * $factor;
                     $qtyBaseRounded = (float) (int) round($qtyBase);
@@ -557,10 +578,17 @@ class StockInController extends Controller
                         )
                         ->increment('quantity_base', $qtyBaseRounded);
 
-                    foreach ($unitPrices as $upUnitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $upUnitTypeId],
-                            ['price' => (float) $unitPrice]
+                    if (isset($unitPrices[$unitTypeId])) {
+                        DB::table('stock_in_unit_prices')->upsert(
+                            [
+                                'stock_in_id' => $stockIn->id,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => (float) $unitPrices[$unitTypeId],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ],
+                            ['stock_in_id', 'unit_type_id'],
+                            ['price', 'updated_at']
                         );
                     }
 
@@ -584,7 +612,7 @@ class StockInController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($stockIns) . ' items added successfully. Reference: ' . $stockInHead->reference_number,
+                'message' => count($stockIns).' items added successfully. Reference: '.$stockInHead->reference_number,
                 'stock_in_ids' => $stockIns,
                 'stock_in_head_id' => $stockInHead->id,
                 'redirect_url' => route('superadmin.stockin.transaction', $stockInHead->id),
@@ -597,7 +625,7 @@ class StockInController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error adding stock: ' . $e->getMessage(),
+                'message' => 'Error adding stock: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -612,9 +640,9 @@ class StockInController extends Controller
             $stockMovement = DB::table('stock_movements')
                 ->join('products', 'stock_movements.product_id', '=', 'products.id')
                 ->join('branches', 'stock_movements.branch_id', '=', 'branches.id')
-                ->leftJoin('purchases', function($join) {
+                ->leftJoin('purchases', function ($join) {
                     $join->on('stock_movements.source_type', '=', DB::raw("'purchases'"))
-                         ->on('stock_movements.source_id', '=', 'purchases.id');
+                        ->on('stock_movements.source_id', '=', 'purchases.id');
                 })
                 ->where('stock_movements.id', $stockMovement)
                 ->select([
@@ -627,7 +655,7 @@ class StockInController extends Controller
                 ])
                 ->first();
 
-            if (!$stockMovement) {
+            if (! $stockMovement) {
                 return redirect()->route('superadmin.stockin.index')
                     ->with('error', 'Stock-in record not found.');
             }
@@ -656,11 +684,12 @@ class StockInController extends Controller
             }
 
             return view('SuperAdmin.stockin.show', compact('stockMovement', 'relatedMovements', 'purchaseDetails'));
-            
+
         } catch (\Exception $e) {
-            Log::error('Error loading Stock In details: ' . $e->getMessage());
+            Log::error('Error loading Stock In details: '.$e->getMessage());
+
             return redirect()->route('superadmin.stockin.index')
-                ->with('error', 'Error loading stock-in details: ' . $e->getMessage());
+                ->with('error', 'Error loading stock-in details: '.$e->getMessage());
         }
     }
 
@@ -674,7 +703,7 @@ class StockInController extends Controller
             $stockInHead = StockInsHead::with([
                 'branch',
                 'purchase.supplier',
-                'creator'
+                'creator',
             ])->findOrFail($stockInHeadId);
 
             // Get stock items directly from stock_ins table for this transaction
@@ -692,7 +721,7 @@ class StockInController extends Controller
                     'stock_ins.created_at',
                     'products.product_name',
                     'unit_types.unit_name',
-                    'stock_in_unit_prices.price as unit_price'
+                    'stock_in_unit_prices.price as unit_price',
                 ])
                 ->orderBy('stock_ins.created_at', 'desc')
                 ->get();
@@ -700,13 +729,13 @@ class StockInController extends Controller
             // Group by product and format the data
             $formattedMovements = $stockItems->groupBy('product_id')->map(function ($items, $productId) {
                 $firstItem = $items->first();
-                
+
                 // Get unit prices for this product
                 $unitPrices = $items->filter(function ($item) {
-                    return !is_null($item->unit_name) && !is_null($item->unit_price);
+                    return ! is_null($item->unit_name) && ! is_null($item->unit_price);
                 })->mapWithKeys(function ($item) {
                     return [
-                        $item->unit_name => number_format($item->unit_price, 2)
+                        $item->unit_name => number_format($item->unit_price, 2),
                     ];
                 });
 
@@ -718,16 +747,17 @@ class StockInController extends Controller
                     'product_name' => $firstItem->product_name,
                     'quantity' => $totalQuantity,
                     'unit_prices' => $unitPrices,
-                    'created_at' => $firstItem->created_at
+                    'created_at' => $firstItem->created_at,
                 ];
             });
 
             return view('SuperAdmin.stockin.transaction', compact('stockInHead', 'stockItems', 'formattedMovements'));
-            
+
         } catch (\Exception $e) {
-            Log::error('Error loading stock transaction details: ' . $e->getMessage());
+            Log::error('Error loading stock transaction details: '.$e->getMessage());
+
             return redirect()->route('superadmin.stockin.index')
-                ->with('error', 'Error loading transaction details: ' . $e->getMessage());
+                ->with('error', 'Error loading transaction details: '.$e->getMessage());
         }
     }
 

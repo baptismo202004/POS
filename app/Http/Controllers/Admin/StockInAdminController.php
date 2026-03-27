@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Models\ProductSerial;
 use App\Models\StockIn;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -66,7 +65,9 @@ class StockInAdminController extends Controller
                 $purchasedQty = (float) ($item->quantity ?? 0);
                 $purchasedBase = $purchasedQty * $purchaseFactor;
                 $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
 
                 $primaryPurchased = (float) ($item->primary_quantity ?? 0);
                 $primaryRemaining = $primaryPurchased;
@@ -75,7 +76,7 @@ class StockInAdminController extends Controller
                     $primaryRemaining = $primaryPurchased * $ratio;
                 }
 
-                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: " . json_encode($item->product->unitTypes ?? []));
+                Log::info("[STOCK_IN_PRODUCTS] Product ID: {$item->product_id}, Remaining: {$remainingBase}, Unit Types: ".json_encode($item->product->unitTypes ?? []));
 
                 $unitTypes = $item->product->unitTypes ?? collect();
 
@@ -94,13 +95,13 @@ class StockInAdminController extends Controller
                 $conversionParts = [];
                 if ($baseUnitName) {
                     foreach ($unitTypesPayload as $u) {
-                        if (!empty($u['is_base'])) {
+                        if (! empty($u['is_base'])) {
                             continue;
                         }
                         $f = (float) ($u['conversion_factor'] ?? 0);
                         if ($f > 0) {
                             $fText = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
-                            $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
+                            $conversionParts[] = '1 '.$u['unit_name'].' × '.$fText.' '.$baseUnitName;
                         }
                     }
                 }
@@ -134,17 +135,19 @@ class StockInAdminController extends Controller
                     'base_unit_type_id' => $baseUnit?->id,
                 ];
 
-                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: " . json_encode($result));
+                Log::info("[STOCK_IN_PRODUCTS] Result for item {$item->product_id}: ".json_encode($result));
+
                 return $result;
             })->values();
 
-            Log::info("[STOCK_IN_PRODUCTS] Final items data: " . json_encode($items->toArray()));
+            Log::info('[STOCK_IN_PRODUCTS] Final items data: '.json_encode($items->toArray()));
 
             return response()->json([
                 'items' => $items,
             ]);
         } catch (\Exception $e) {
-            Log::error("[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: " . $e->getMessage());
+            Log::error('[STOCK_IN_PRODUCTS_BY_PURCHASE] Error: '.$e->getMessage());
+
             return response()->json(['items' => [], 'error' => $e->getMessage()]);
         }
     }
@@ -238,7 +241,7 @@ class StockInAdminController extends Controller
                 $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
 
                 $baseReferencePrice = $originalPrice / $purchaseFactor;
-                if (!is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
+                if (! is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
                     $baseReferencePrice = 0;
                 }
 
@@ -310,7 +313,9 @@ class StockInAdminController extends Controller
                     ->sum('quantity');
 
                 $remainingBase = (float) $purchasedBase - (float) $alreadyStockedBase;
-                if ($remainingBase < 0) $remainingBase = 0;
+                if ($remainingBase < 0) {
+                    $remainingBase = 0;
+                }
 
                 $requestedBase = 0.0;
                 foreach ($rows as $row) {
@@ -319,16 +324,21 @@ class StockInAdminController extends Controller
                         foreach ($unitQuantities as $unitTypeId => $enteredQty) {
                             $enteredQty = (float) $enteredQty;
                             $unitTypeId = (int) $unitTypeId;
-                            if ($enteredQty <= 0) continue;
+                            if ($enteredQty <= 0) {
+                                continue;
+                            }
 
                             $factor = (float) (DB::table('product_unit_type')
                                 ->where('product_id', (int) $productId)
                                 ->where('unit_type_id', $unitTypeId)
                                 ->value('conversion_factor') ?? 1);
-                            if ($factor <= 0) $factor = 1;
+                            if ($factor <= 0) {
+                                $factor = 1;
+                            }
 
                             $requestedBase += ($enteredQty * $factor);
                         }
+
                         continue;
                     }
 
@@ -353,10 +363,10 @@ class StockInAdminController extends Controller
 
                     $selectedSerialIds = collect($rows)
                         ->pluck('serial_ids')
-                        ->filter(fn($v) => is_array($v))
+                        ->filter(fn ($v) => is_array($v))
                         ->flatten()
-                        ->map(fn($v) => (int) $v)
-                        ->filter(fn($v) => $v > 0)
+                        ->map(fn ($v) => (int) $v)
+                        ->filter(fn ($v) => $v > 0)
                         ->unique()
                         ->values();
 
@@ -400,7 +410,7 @@ class StockInAdminController extends Controller
                 $purchaseFactor = $purchaseFactor > 0 ? $purchaseFactor : 1;
 
                 $baseReferencePrice = $originalPrice / $purchaseFactor;
-                if (!is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
+                if (! is_finite($baseReferencePrice) || $baseReferencePrice < 0) {
                     $baseReferencePrice = 0;
                 }
 
@@ -409,7 +419,7 @@ class StockInAdminController extends Controller
                 $unitQuantities = $item['unit_quantities'] ?? [];
                 $unitPrices = $item['unit_prices'] ?? [];
 
-                if (!is_array($unitQuantities) || count($unitQuantities) === 0) {
+                if (! is_array($unitQuantities) || count($unitQuantities) === 0) {
                     Log::info('[STOCK_IN] Processing item (legacy)', [
                         'product_id' => $item['product_id'],
                         'branch_id' => $item['branch_id'],
@@ -437,13 +447,21 @@ class StockInAdminController extends Controller
                         ->increment('quantity_base', $qtyBaseRounded);
 
                     foreach ($unitPrices as $unitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $unitTypeId],
-                            ['price' => (float) $unitPrice]
+                        DB::table('stock_in_unit_prices')->upsert(
+                            [
+                                'stock_in_id' => $stockIn->id,
+                                'unit_type_id' => (int) $unitTypeId,
+                                'price' => (float) $unitPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ],
+                            ['stock_in_id', 'unit_type_id'],
+                            ['price', 'updated_at']
                         );
                     }
 
                     $stockIns[] = $stockIn->id;
+
                     continue;
                 }
 
@@ -459,7 +477,9 @@ class StockInAdminController extends Controller
                         ->where('product_id', (int) $item['product_id'])
                         ->where('unit_type_id', $unitTypeId)
                         ->value('conversion_factor') ?? 1);
-                    if ($factor <= 0) $factor = 1;
+                    if ($factor <= 0) {
+                        $factor = 1;
+                    }
 
                     $qtyBase = $enteredQty * $factor;
                     $qtyBaseRounded = (float) (int) round($qtyBase);
@@ -491,10 +511,17 @@ class StockInAdminController extends Controller
                         )
                         ->increment('quantity_base', $qtyBaseRounded);
 
-                    foreach ($unitPrices as $upUnitTypeId => $unitPrice) {
-                        $stockIn->unitPrices()->updateOrCreate(
-                            ['unit_type_id' => (int) $upUnitTypeId],
-                            ['price' => (float) $unitPrice]
+                    if (isset($unitPrices[$unitTypeId])) {
+                        DB::table('stock_in_unit_prices')->upsert(
+                            [
+                                'stock_in_id' => $stockIn->id,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => (float) $unitPrices[$unitTypeId],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ],
+                            ['stock_in_id', 'unit_type_id'],
+                            ['price', 'updated_at']
                         );
                     }
 
@@ -519,7 +546,7 @@ class StockInAdminController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($stockIns) . ' items added successfully',
+                'message' => count($stockIns).' items added successfully',
                 'stock_in_ids' => $stockIns,
             ]);
         } catch (\Exception $e) {
@@ -530,7 +557,7 @@ class StockInAdminController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error adding stock: ' . $e->getMessage(),
+                'message' => 'Error adding stock: '.$e->getMessage(),
             ], 500);
         }
     }

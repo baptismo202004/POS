@@ -1120,6 +1120,26 @@
             // Intentionally kept as a no-op now that we display Remaining to Stock in base units only.
         }
 
+        function syncSelectedUnitPricesToHidden() {
+            if (!tableBody) return;
+            tableBody.querySelectorAll('tr').forEach(function(row) {
+                var hiddenNewPrice = row.querySelector('input.js-selected-new-price');
+                if (!hiddenNewPrice) return;
+                var firstPriceInput = row.querySelector('input.js-new-price-unit');
+                if (firstPriceInput) {
+                    var val = parseFloat(firstPriceInput.value || '0') || 0;
+                    hiddenNewPrice.value = val > 0 ? String(val) : '0.01';
+                }
+            });
+        }
+
+        function updateNewPriceValidityAll() {
+            if (!tableBody) return;
+            tableBody.querySelectorAll('input.js-new-price-unit').forEach(function(inp) {
+                inp.setCustomValidity('');
+            });
+        }
+
         function syncStockInQtyToBaseAll() {
             if (!tableBody) return;
             var rows = tableBody.querySelectorAll('tr');

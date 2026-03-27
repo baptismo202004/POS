@@ -800,10 +800,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function computeWarrantyExpiry(purchaseDateStr, warrantyMonths) {
         const purchaseDate = parseYmd(purchaseDateStr);
-        if (!purchaseDate) return '';
         const m = parseInt(String(warrantyMonths || '0'), 10);
-        if (!m || m <= 0) return '';
-        return ymd(addMonthsSafe(purchaseDate, m));
+        if (m > 0 && purchaseDate) {
+            return ymd(addMonthsSafe(purchaseDate, m));
+        }
+        // Default to today's date when no warranty months configured
+        return ymd(new Date());
     }
 
     function getPurchaseDateValue() {
@@ -826,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const sharedInput = host.querySelector('.js-shared-expiry-input');
         const serialInputs = host.querySelectorAll('input[type="date"][name$="[warranty_expiry]"]');
 
-        if (sharedInput && !sharedInput.value && computed) {
+        if (sharedInput && !sharedInput.value) {
             sharedInput.value = computed;
         }
 
@@ -839,7 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             if (sharedWrap) sharedWrap.classList.add('d-none');
             serialInputs.forEach(function(inp) {
-                if (!inp.value && computed) {
+                if (!inp.value) {
                     inp.value = computed;
                 }
             });

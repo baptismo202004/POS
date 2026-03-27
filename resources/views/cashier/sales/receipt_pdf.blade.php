@@ -51,7 +51,7 @@
         <div class="col">
             <div class="box">
                 <div class="title">Order Information</div>
-                <div><strong>Date:</strong> {{ $sale->created_at->format('M d, Y h:i A') }}</div>
+                <div><strong>Date:</strong> {{ $sale->created_at->setTimezone('Asia/Manila')->format('M d, Y h:i A') }}</div>
                 <div><strong>Order Status:</strong> {{ ucfirst($sale->status) }}</div>
                 <div><strong>Payment Type:</strong> {{ ucfirst($sale->payment_method) }}</div>
                 <div><strong>Payment Status:</strong> {{ $sale->payment_method === 'cash' ? 'Paid' : 'Unpaid' }}</div>

@@ -302,138 +302,149 @@ class CashierDashboardController extends Controller
 
         return view('cashier.sales.index', compact('sales', 'sortBy', 'sortDirection'));
     }
+
     public function salesShow(\App\Models\Sale $sale): \Illuminate\View\View
-        {
-            $user = Auth::user();
+    {
+        $user = Auth::user();
 
-            if ($sale->branch_id !== $user->branch_id) {
-                abort(403);
-            }
-
-            $sale->load(['saleItems.product', 'saleItems.unitType', 'branch', 'cashier', 'customer']);
-
-            $serialsBySaleItemId = \App\Models\ProductSerial::whereIn('sale_item_id', $sale->saleItems->pluck('id')->filter())
-                ->get()
-                ->keyBy('sale_item_id');
-
-            return view('cashier.sales.show', compact('sale', 'serialsBySaleItemId'));
+        if ($sale->branch_id !== $user->branch_id) {
+            abort(403);
         }
+
+        $sale->load(['saleItems.product', 'saleItems.unitType', 'branch', 'cashier', 'customer']);
+
+        $serialsBySaleItemId = \App\Models\ProductSerial::whereIn('sale_item_id', $sale->saleItems->pluck('id')->filter())
+            ->get()
+            ->keyBy('sale_item_id');
+
+        return view('cashier.sales.show', compact('sale', 'serialsBySaleItemId'));
+    }
+
     public function salesMarkCompleted(Request $request, \App\Models\Sale $sale): \Illuminate\Http\RedirectResponse
-        {
-            if ($sale->branch_id !== Auth::user()->branch_id) {
-                abort(403);
-            }
+    {
+        if ($sale->branch_id !== Auth::user()->branch_id) {
+            abort(403);
+        }
 
-            if ($sale->status !== 'pending') {
-                return redirect()->back()->with('error', 'Only pending orders can be marked as completed.');
-            }
+        if ($sale->status !== 'pending') {
+            return redirect()->back()->with('error', 'Only pending orders can be marked as completed.');
+        }
 
-            $sale->load(['saleItems.product', 'saleItems.unitType', 'branch']);
-            $serials = $request->input('serials', []);
-            if (! is_array($serials)) {
-                $serials = [];
-            }
+        $sale->load(['saleItems.product', 'saleItems.unitType', 'branch']);
+        $serials = $request->input('serials', []);
+        if (! is_array($serials)) {
+            $serials = [];
+        }
 
-            $usedSerials = [];
+        $usedSerials = [];
+        foreach ($sale->saleItems as $saleItem) {
+            $trackingType = (string) ($saleItem->product->tracking_type ?? 'none');
+            if ($trackingType === 'none') {
+                continue;
+            }
+            $value = trim((string) ($serials[(string) $saleItem->id] ?? ''));
+            if ($value === '') {
+                return redirect()->back()->with('error', 'Serial number is required for all serialized items before completing.');
+            }
+            $key = strtolower($value);
+            if (isset($usedSerials[$key])) {
+                return redirect()->back()->with('error', 'Duplicate serial number entered: '.$value);
+            }
+            $usedSerials[$key] = true;
+        }
+
+        try {
+            DB::beginTransaction();
+
             foreach ($sale->saleItems as $saleItem) {
                 $trackingType = (string) ($saleItem->product->tracking_type ?? 'none');
-                if ($trackingType === 'none') {
+                $serialNumber = trim((string) ($serials[(string) $saleItem->id] ?? ''));
+                $productId = (int) $saleItem->product_id;
+                $branchId = (int) $sale->branch_id;
+
+                if ($trackingType !== 'none') {
+                    $serial = \App\Models\ProductSerial::where('serial_number', $serialNumber)->first();
+                    if (! $serial) {
+                        DB::rollBack();
+
+                        return redirect()->back()->with('error', 'Invalid serial number: '.$serialNumber);
+                    }
+                    if ((int) $serial->product_id !== $productId) {
+                        DB::rollBack();
+
+                        return redirect()->back()->with('error', 'Serial does not match product: '.$serialNumber);
+                    }
+                    if ($serial->status === 'sold') {
+                        DB::rollBack();
+
+                        return redirect()->back()->with('error', 'Serial is already sold: '.$serialNumber);
+                    }
+                    if (! in_array((string) $serial->status, ['purchased', 'in_stock', 'assigned'], true)) {
+                        DB::rollBack();
+
+                        return redirect()->back()->with('error', 'Serial is not eligible for sale: '.$serialNumber);
+                    }
+
+                    $warrantyMonths = (int) ($saleItem->warranty_months ?? 0);
+                    $serial->status = 'sold';
+                    $serial->sold_at = Carbon::now();
+                    $serial->branch_id = $branchId;
+                    $serial->sale_item_id = $saleItem->id;
+                    $serial->warranty_expiry_date = $warrantyMonths > 0
+                        ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
+                        : null;
+                    $serial->save();
+
                     continue;
                 }
-                $value = trim((string) ($serials[(string) $saleItem->id] ?? ''));
-                if ($value === '') {
-                    return redirect()->back()->with('error', 'Serial number is required for all serialized items before completing.');
+
+                $unitTypeId = (int) $saleItem->unit_type_id;
+                $quantity = (float) $saleItem->quantity;
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', $productId)
+                    ->where('unit_type_id', $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                if ($factor <= 0) {
+                    $factor = 1.0;
                 }
-                $key = strtolower($value);
-                if (isset($usedSerials[$key])) {
-                    return redirect()->back()->with('error', 'Duplicate serial number entered: ' . $value);
+
+                $remaining = $quantity * $factor;
+                $stocks = \App\Models\StockIn::where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->where('quantity', '>', DB::raw('sold'))
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($stocks as $stock) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+                    $available = $stock->quantity - $stock->sold;
+                    $deduct = min($remaining, $available);
+                    $stock->sold += $deduct;
+                    $stock->save();
+                    $remaining -= $deduct;
                 }
-                $usedSerials[$key] = true;
+
+                if ($remaining > 0) {
+                    DB::rollBack();
+
+                    return redirect()->back()->with('error', 'Insufficient stock to complete this order.');
+                }
             }
 
-            try {
-                DB::beginTransaction();
+            $sale->status = 'completed';
+            $sale->save();
 
-                foreach ($sale->saleItems as $saleItem) {
-                    $trackingType = (string) ($saleItem->product->tracking_type ?? 'none');
-                    $serialNumber = trim((string) ($serials[(string) $saleItem->id] ?? ''));
-                    $productId    = (int) $saleItem->product_id;
-                    $branchId     = (int) $sale->branch_id;
+            DB::commit();
 
-                    if ($trackingType !== 'none') {
-                        $serial = \App\Models\ProductSerial::where('serial_number', $serialNumber)->first();
-                        if (! $serial) {
-                            DB::rollBack();
-                            return redirect()->back()->with('error', 'Invalid serial number: ' . $serialNumber);
-                        }
-                        if ((int) $serial->product_id !== $productId) {
-                            DB::rollBack();
-                            return redirect()->back()->with('error', 'Serial does not match product: ' . $serialNumber);
-                        }
-                        if ($serial->status === 'sold') {
-                            DB::rollBack();
-                            return redirect()->back()->with('error', 'Serial is already sold: ' . $serialNumber);
-                        }
-                        if (! in_array((string) $serial->status, ['purchased', 'in_stock', 'assigned'], true)) {
-                            DB::rollBack();
-                            return redirect()->back()->with('error', 'Serial is not eligible for sale: ' . $serialNumber);
-                        }
+            return redirect()->route('cashier.sales.show', $sale)->with('success', 'Order marked as completed.');
+        } catch (\Exception $e) {
+            DB::rollBack();
 
-                        $warrantyMonths = (int) ($saleItem->warranty_months ?? 0);
-                        $serial->status               = 'sold';
-                        $serial->sold_at              = Carbon::now();
-                        $serial->branch_id            = $branchId;
-                        $serial->sale_item_id         = $saleItem->id;
-                        $serial->warranty_expiry_date = $warrantyMonths > 0
-                            ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
-                            : null;
-                        $serial->save();
-                        continue;
-                    }
-
-                    $unitTypeId = (int) $saleItem->unit_type_id;
-                    $quantity   = (float) $saleItem->quantity;
-                    $factor     = (float) (DB::table('product_unit_type')
-                        ->where('product_id', $productId)
-                        ->where('unit_type_id', $unitTypeId)
-                        ->value('conversion_factor') ?? 1);
-                    if ($factor <= 0) {
-                        $factor = 1.0;
-                    }
-
-                    $remaining = $quantity * $factor;
-                    $stocks = \App\Models\StockIn::where('product_id', $productId)
-                        ->where('branch_id', $branchId)
-                        ->where('quantity', '>', DB::raw('sold'))
-                        ->orderBy('id')
-                        ->get();
-
-                    foreach ($stocks as $stock) {
-                        if ($remaining <= 0) break;
-                        $available = $stock->quantity - $stock->sold;
-                        $deduct    = min($remaining, $available);
-                        $stock->sold += $deduct;
-                        $stock->save();
-                        $remaining -= $deduct;
-                    }
-
-                    if ($remaining > 0) {
-                        DB::rollBack();
-                        return redirect()->back()->with('error', 'Insufficient stock to complete this order.');
-                    }
-                }
-
-                $sale->status = 'completed';
-                $sale->save();
-
-                DB::commit();
-
-                return redirect()->route('cashier.sales.show', $sale)->with('success', 'Order marked as completed.');
-            } catch (\Exception $e) {
-                DB::rollBack();
-                return redirect()->back()->with('error', 'Failed to complete order: ' . $e->getMessage());
-            }
+            return redirect()->back()->with('error', 'Failed to complete order: '.$e->getMessage());
         }
+    }
 
     /**
      * Perform a quick full refund for a sale from the cashier sales list.
@@ -1917,13 +1928,17 @@ class CashierDashboardController extends Controller
 
                                 // Insert into stock_in_unit_prices if table exists
                                 if (Schema::hasTable('stock_in_unit_prices')) {
-                                    DB::table('stock_in_unit_prices')->insert([
-                                        'stock_in_id' => $stockInId,
-                                        'unit_type_id' => (int) $unitTypeId,
-                                        'price' => $newPrice,
-                                        'created_at' => now(),
-                                        'updated_at' => now(),
-                                    ]);
+                                    DB::table('stock_in_unit_prices')->upsert(
+                                        [
+                                            'stock_in_id' => $stockInId,
+                                            'unit_type_id' => (int) $unitTypeId,
+                                            'price' => $newPrice,
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ],
+                                        ['stock_in_id', 'unit_type_id'],
+                                        ['price', 'updated_at']
+                                    );
                                 }
                             }
 
@@ -1978,13 +1993,17 @@ class CashierDashboardController extends Controller
 
                         // Insert into stock_in_unit_prices if table exists
                         if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
-                            DB::table('stock_in_unit_prices')->insert([
-                                'stock_in_id' => $stockInId,
-                                'unit_type_id' => $unitTypeId,
-                                'price' => $newPrice,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
+                            DB::table('stock_in_unit_prices')->upsert(
+                                [
+                                    'stock_in_id' => $stockInId,
+                                    'unit_type_id' => $unitTypeId,
+                                    'price' => $newPrice,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ],
+                                ['stock_in_id', 'unit_type_id'],
+                                ['price', 'updated_at']
+                            );
                         }
                     }
 
@@ -2050,7 +2069,7 @@ class CashierDashboardController extends Controller
 
             $items = $purchaseItems->map(function ($item) {
                 $purchaseUnitTypeId = (int) ($item->unit_type_id ?? 0);
-                $purchaseUnitName   = $item->unitType?->unit_name;
+                $purchaseUnitName = $item->unitType?->unit_name;
 
                 $purchaseFactor = (float) (DB::table('product_unit_type')
                     ->where('product_id', (int) $item->product_id)
@@ -2063,7 +2082,7 @@ class CashierDashboardController extends Controller
                     ->where('product_id', (int) $item->product_id)
                     ->sum('quantity');
 
-                $purchasedQty  = (float) ($item->quantity ?? 0);
+                $purchasedQty = (float) ($item->quantity ?? 0);
                 $purchasedBase = $purchasedQty * $purchaseFactor;
                 $remainingBase = max(0, $purchasedBase - $alreadyStockedBase);
 
@@ -2075,14 +2094,14 @@ class CashierDashboardController extends Controller
 
                 $unitTypesPayload = collect($unitTypes)->map(function ($ut) {
                     return [
-                        'id'                => $ut->id,
-                        'unit_name'         => $ut->unit_name,
+                        'id' => $ut->id,
+                        'unit_name' => $ut->unit_name,
                         'conversion_factor' => isset($ut->pivot->conversion_factor) ? (float) $ut->pivot->conversion_factor : 1.0,
-                        'is_base'           => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
+                        'is_base' => isset($ut->pivot->is_base) ? (bool) $ut->pivot->is_base : false,
                     ];
                 })->values();
 
-                $baseUnit     = collect($unitTypes)->firstWhere('pivot.is_base', true);
+                $baseUnit = collect($unitTypes)->firstWhere('pivot.is_base', true);
                 $baseUnitName = $baseUnit?->unit_name;
 
                 $conversionParts = [];
@@ -2093,27 +2112,27 @@ class CashierDashboardController extends Controller
                         }
                         $f = (float) ($u['conversion_factor'] ?? 0);
                         if ($f > 0) {
-                            $fText             = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
-                            $conversionParts[] = '1 ' . $u['unit_name'] . ' × ' . $fText . ' ' . $baseUnitName;
+                            $fText = rtrim(rtrim(number_format($f, 6, '.', ''), '0'), '.');
+                            $conversionParts[] = '1 '.$u['unit_name'].' × '.$fText.' '.$baseUnitName;
                         }
                     }
                 }
 
                 return [
-                    'product_id'           => $item->product_id,
-                    'product'              => $item->product,
-                    'category_type'        => $item->product?->category?->category_type ?? 'non_electronic',
-                    'quantity'             => $remainingBase,
-                    'purchased_qty'        => $purchasedQty,
-                    'purchased_base'       => $purchasedBase,
-                    'remaining_base'       => $remainingBase,
-                    'purchase_unit_name'   => $purchaseUnitName,
-                    'purchase_factor'      => $purchaseFactor,
-                    'base_unit_name'       => $baseUnitName,
-                    'conversion_summary'   => implode(', ', $conversionParts),
-                    'unit_price'           => $item->unit_cost,
-                    'unit_types'           => $unitTypesPayload,
-                    'unit_type'            => $item->unitType,
+                    'product_id' => $item->product_id,
+                    'product' => $item->product,
+                    'category_type' => $item->product?->category?->category_type ?? 'non_electronic',
+                    'quantity' => $remainingBase,
+                    'purchased_qty' => $purchasedQty,
+                    'purchased_base' => $purchasedBase,
+                    'remaining_base' => $remainingBase,
+                    'purchase_unit_name' => $purchaseUnitName,
+                    'purchase_factor' => $purchaseFactor,
+                    'base_unit_name' => $baseUnitName,
+                    'conversion_summary' => implode(', ', $conversionParts),
+                    'unit_price' => $item->unit_cost,
+                    'unit_types' => $unitTypesPayload,
+                    'unit_type' => $item->unitType,
                 ];
             })->values();
 
@@ -2123,103 +2142,105 @@ class CashierDashboardController extends Controller
             return response()->json(['items' => [], 'error' => $e->getMessage()]);
         }
     }
+
     public function stockInPurchaseProductSerials(\App\Models\Purchase $purchase, \App\Models\Product $product): \Illuminate\Http\JsonResponse
-        {
-            $user = Auth::user();
+    {
+        $user = Auth::user();
 
-            if ($purchase->branch_id !== $user->branch_id) {
-                abort(403);
-            }
-
-            $serials = \App\Models\ProductSerial::query()
-                ->where('purchase_id', $purchase->id)
-                ->where('product_id', $product->id)
-                ->where('status', 'purchased')
-                ->orderBy('id')
-                ->get(['id', 'serial_number', 'warranty_expiry_date']);
-
-            return response()->json([
-                'purchase_id' => $purchase->id,
-                'product_id'  => $product->id,
-                'serials'     => $serials,
-            ]);
+        if ($purchase->branch_id !== $user->branch_id) {
+            abort(403);
         }
+
+        $serials = \App\Models\ProductSerial::query()
+            ->where('purchase_id', $purchase->id)
+            ->where('product_id', $product->id)
+            ->where('status', 'purchased')
+            ->orderBy('id')
+            ->get(['id', 'serial_number', 'warranty_expiry_date']);
+
+        return response()->json([
+            'purchase_id' => $purchase->id,
+            'product_id' => $product->id,
+            'serials' => $serials,
+        ]);
+    }
+
     public function autoStockIn($purchase): \Illuminate\Http\JsonResponse
-        {
-            $user = Auth::user();
-            $branchId = $user->branch_id;
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
 
-            if (! $branchId) {
-                return response()->json(['success' => false, 'message' => 'No branch assigned.'], 403);
-            }
-
-            $purchaseModel = \App\Models\Purchase::with(['items.unitType'])
-                ->where('id', $purchase)
-                ->where('branch_id', $branchId)
-                ->first();
-
-            if (! $purchaseModel) {
-                return response()->json(['success' => false, 'message' => 'Purchase not found.'], 404);
-            }
-
-            $inventory = app(InventoryService::class);
-
-            try {
-                DB::transaction(function () use ($purchaseModel, $branchId, $inventory) {
-                    foreach ($purchaseModel->items as $item) {
-                        $productId  = (int) $item->product_id;
-                        $unitTypeId = (int) ($item->unit_type_id ?? 0);
-                        $qty        = (float) ($item->quantity ?? 0);
-                        $unitCost   = (float) ($item->unit_cost ?? 0);
-
-                        if ($qty <= 0) {
-                            continue;
-                        }
-
-                        $qtyBase = $inventory->convertToBaseQuantity($productId, $unitTypeId, $qty);
-                        $inventory->increaseStock($branchId, $productId, $qtyBase, 'purchase', 'purchases', (int) $purchaseModel->id, now());
-
-                        $stockInPayload = [
-                            'product_id'  => $productId,
-                            'branch_id'   => $branchId,
-                            'purchase_id' => (int) $purchaseModel->id,
-                            'unit_type_id' => $unitTypeId ?: null,
-                            'quantity'    => (int) round($qty),
-                            'price'       => $unitCost,
-                            'created_at'  => now(),
-                            'updated_at'  => now(),
-                        ];
-
-                        if (Schema::hasColumn('stock_ins', 'initial_quantity')) {
-                            $stockInPayload['initial_quantity'] = (int) round($qty);
-                        }
-
-                        $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
-
-                        if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
-                            DB::table('stock_in_unit_prices')->insert([
-                                'stock_in_id'  => $stockInId,
-                                'unit_type_id' => $unitTypeId,
-                                'price'        => $unitCost,
-                                'created_at'   => now(),
-                                'updated_at'   => now(),
-                            ]);
-                        }
-
-                        if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price') && $unitTypeId) {
-                            DB::table('product_unit_type')
-                                ->where('product_id', $productId)
-                                ->where('unit_type_id', $unitTypeId)
-                                ->update(['price' => $unitCost, 'updated_at' => now()]);
-                        }
-                    }
-                });
-
-                return response()->json(['success' => true, 'message' => 'All items stocked in successfully.']);
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-            }
+        if (! $branchId) {
+            return response()->json(['success' => false, 'message' => 'No branch assigned.'], 403);
         }
+
+        $purchaseModel = \App\Models\Purchase::with(['items.unitType'])
+            ->where('id', $purchase)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (! $purchaseModel) {
+            return response()->json(['success' => false, 'message' => 'Purchase not found.'], 404);
+        }
+
+        $inventory = app(InventoryService::class);
+
+        try {
+            DB::transaction(function () use ($purchaseModel, $branchId, $inventory) {
+                foreach ($purchaseModel->items as $item) {
+                    $productId = (int) $item->product_id;
+                    $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                    $qty = (float) ($item->quantity ?? 0);
+                    $unitCost = (float) ($item->unit_cost ?? 0);
+
+                    if ($qty <= 0) {
+                        continue;
+                    }
+
+                    $qtyBase = $inventory->convertToBaseQuantity($productId, $unitTypeId, $qty);
+                    $inventory->increaseStock($branchId, $productId, $qtyBase, 'purchase', 'purchases', (int) $purchaseModel->id, now());
+
+                    $stockInPayload = [
+                        'product_id' => $productId,
+                        'branch_id' => $branchId,
+                        'purchase_id' => (int) $purchaseModel->id,
+                        'unit_type_id' => $unitTypeId ?: null,
+                        'quantity' => (int) round($qty),
+                        'price' => $unitCost,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    if (Schema::hasColumn('stock_ins', 'initial_quantity')) {
+                        $stockInPayload['initial_quantity'] = (int) round($qty);
+                    }
+
+                    $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                    if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
+                        DB::table('stock_in_unit_prices')->insert([
+                            'stock_in_id' => $stockInId,
+                            'unit_type_id' => $unitTypeId,
+                            'price' => $unitCost,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price') && $unitTypeId) {
+                        DB::table('product_unit_type')
+                            ->where('product_id', $productId)
+                            ->where('unit_type_id', $unitTypeId)
+                            ->update(['price' => $unitCost, 'updated_at' => now()]);
+                    }
+                }
+            });
+
+            return response()->json(['success' => true, 'message' => 'All items stocked in successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 
     /**
      * Display refunds for the cashier's branch.
@@ -3247,12 +3268,14 @@ class CashierDashboardController extends Controller
             }
 
             $products = $productsQuery
-                ->whereExists(function ($exists) use ($posBranchId) {
-                    $exists->select(DB::raw(1))
-                        ->from('branch_stocks')
-                        ->whereColumn('branch_stocks.product_id', 'products.id')
-                        ->where('branch_stocks.branch_id', (int) $posBranchId)
-                        ->where('branch_stocks.quantity_base', '>', 0);
+                ->when(! $electronicsOnly, function ($q) use ($posBranchId) {
+                    $q->whereExists(function ($exists) use ($posBranchId) {
+                        $exists->select(DB::raw(1))
+                            ->from('branch_stocks')
+                            ->whereColumn('branch_stocks.product_id', 'products.id')
+                            ->where('branch_stocks.branch_id', (int) $posBranchId)
+                            ->where('branch_stocks.quantity_base', '>', 0);
+                    });
                 })
                 ->with(['unitTypes'])
                 ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number'])
@@ -3410,12 +3433,14 @@ class CashierDashboardController extends Controller
                 ->orWhere('product_name', 'like', '%'.$keyword.'%')
                 ->orWhere('model_number', 'like', '%'.$keyword.'%');
         })
-            ->whereExists(function ($exists) use ($posBranchId) {
-                $exists->select(DB::raw(1))
-                    ->from('branch_stocks')
-                    ->whereColumn('branch_stocks.product_id', 'products.id')
-                    ->where('branch_stocks.branch_id', (int) $posBranchId)
-                    ->where('branch_stocks.quantity_base', '>', 0);
+            ->when(! $electronicsOnly, function ($q) use ($posBranchId) {
+                $q->whereExists(function ($exists) use ($posBranchId) {
+                    $exists->select(DB::raw(1))
+                        ->from('branch_stocks')
+                        ->whereColumn('branch_stocks.product_id', 'products.id')
+                        ->where('branch_stocks.branch_id', (int) $posBranchId)
+                        ->where('branch_stocks.quantity_base', '>', 0);
+                });
             })
             ->with(['unitTypes'])
             ->get();
@@ -3593,7 +3618,7 @@ class CashierDashboardController extends Controller
 
             $posBranchId = (int) $branchId;
 
-            // Create sale items and update stock
+            // Create sale items and update stock per the three-mode rules
             foreach ($items as $item) {
                 $productId = (int) ($item['id'] ?? 0);
                 $quantity = (int) ($item['quantity'] ?? 0);
@@ -3606,70 +3631,28 @@ class CashierDashboardController extends Controller
                     return response()->json(['success' => false, 'message' => 'Invalid item payload.']);
                 }
 
+                // If no unit_type_id provided, try to resolve from stock_ins for this product/branch
                 if (empty($unitTypeId)) {
-                    DB::rollBack();
-
-                    return response()->json(['success' => false, 'message' => 'Unit type is required for each item.'], 422);
-                }
-
-                $baseQty = $inventory->convertToBaseQuantity((int) $productId, (int) $unitTypeId, (float) $quantity);
-                $availableBase = $inventory->availableStockBase((int) $productId, (int) $posBranchId);
-                if ($availableBase < $baseQty) {
-                    DB::rollBack();
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Insufficient stock for selected unit type.',
-                    ], 422);
-                }
-
-                $inventory->decreaseStock((int) $posBranchId, (int) $productId, (float) $baseQty, 'sale', 'sales', (int) $sale->id, now());
-
-                if (Schema::hasTable('stock_ins')
-                    && Schema::hasColumn('stock_ins', 'sold')
-                    && Schema::hasColumn('stock_ins', 'quantity')
-                    && Schema::hasColumn('stock_ins', 'unit_type_id')
-                ) {
-                    $remainingToConsume = (float) $quantity;
-
-                    $stockInRows = DB::table('stock_ins')
-                        ->where('product_id', (int) $productId)
-                        ->where('branch_id', (int) $posBranchId)
-                        ->where('unit_type_id', (int) $unitTypeId)
-                        ->whereRaw('(quantity - COALESCE(sold, 0)) > 0')
+                    $fallbackUnitTypeId = DB::table('stock_ins')
+                        ->where('product_id', $productId)
+                        ->where('branch_id', $posBranchId)
+                        ->whereNotNull('unit_type_id')
                         ->orderBy('id')
-                        ->lockForUpdate()
-                        ->get(['id', 'quantity', 'sold']);
+                        ->value('unit_type_id');
 
-                    foreach ($stockInRows as $row) {
-                        if ($remainingToConsume <= 0) {
-                            break;
-                        }
+                    if ($fallbackUnitTypeId) {
+                        $unitTypeId = (int) $fallbackUnitTypeId;
+                    } else {
+                        DB::rollBack();
 
-                        $rowQty = (float) ($row->quantity ?? 0);
-                        $rowSold = (float) ($row->sold ?? 0);
-                        $rowAvailable = max(0, $rowQty - $rowSold);
-
-                        if ($rowAvailable <= 0) {
-                            continue;
-                        }
-
-                        $consumeNow = min($rowAvailable, $remainingToConsume);
-
-                        DB::table('stock_ins')
-                            ->where('id', (int) $row->id)
-                            ->update([
-                                'sold' => $rowSold + $consumeNow,
-                                'updated_at' => now(),
-                            ]);
-
-                        $remainingToConsume -= $consumeNow;
+                        return response()->json(['success' => false, 'message' => 'Unit type is required for each item.'], 422);
                     }
                 }
 
-                $subtotal = $quantity * $price;
                 $serialNumber = isset($item['serial_number']) ? trim((string) $item['serial_number']) : null;
                 $warrantyMonths = isset($item['warranty_months']) ? (int) $item['warranty_months'] : 0;
+
+                $subtotal = $quantity * $price;
 
                 $saleItemPayload = [
                     'sale_id' => $sale->id,
@@ -3678,34 +3661,89 @@ class CashierDashboardController extends Controller
                     'unit_price' => $price,
                     'subtotal' => $subtotal,
                 ];
-
                 if (Schema::hasColumn('sale_items', 'unit_type_id')) {
                     $saleItemPayload['unit_type_id'] = $unitTypeId;
+                }
+                if (Schema::hasColumn('sale_items', 'warranty_months')) {
+                    $saleItemPayload['warranty_months'] = $warrantyMonths;
                 }
 
                 $saleItem = SaleItem::create($saleItemPayload);
 
-                // If serial number is provided, mark it sold and attach to the sale item.
-                if (! empty($serialNumber)) {
+                // PENDING MODE — no stock/serial processing
+                if ($finalStatus === 'pending') {
+                    continue;
+                }
+
+                // COMPLETED MODE — determine available stock for this item
+                $factor = (float) (DB::table('product_unit_type')
+                    ->where('product_id', (int) $productId)
+                    ->where('unit_type_id', (int) $unitTypeId)
+                    ->value('conversion_factor') ?? 1);
+                $factor = $factor > 0 ? $factor : 1;
+
+                $baseQty = (float) $quantity * $factor;
+                $availableBase = (float) (DB::table('branch_stocks')
+                    ->where('product_id', (int) $productId)
+                    ->where('branch_id', (int) $posBranchId)
+                    ->value('quantity_base') ?? 0);
+                $fulfillBase = min($baseQty, $availableBase);
+
+                // Deduct from branch_stocks and record stock movement
+                if ($fulfillBase > 0) {
+                    DB::table('branch_stocks')
+                        ->where('product_id', (int) $productId)
+                        ->where('branch_id', (int) $posBranchId)
+                        ->decrement('quantity_base', $fulfillBase);
+
+                    DB::table('stock_movements')->insert([
+                        'product_id' => (int) $productId,
+                        'branch_id' => (int) $posBranchId,
+                        'movement_type' => 'sale',
+                        'source_type' => 'sales',
+                        'source_id' => (int) $sale->id,
+                        'quantity_base' => -$fulfillBase,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    // Update sold count on stock_ins rows (FIFO)
+                    $fulfillQty = $fulfillBase / $factor;
+                    $remaining = $fulfillQty;
+
+                    $stockInRows = DB::table('stock_ins')
+                        ->where('product_id', (int) $productId)
+                        ->where('branch_id', (int) $posBranchId)
+                        ->whereRaw('(quantity - COALESCE(sold, 0)) > 0')
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get(['id', 'quantity', 'sold']);
+
+                    foreach ($stockInRows as $row) {
+                        if ($remaining <= 0) {
+                            break;
+                        }
+                        $available = (float) $row->quantity - (float) ($row->sold ?? 0);
+                        $consumeNow = min($available, $remaining);
+                        DB::table('stock_ins')->where('id', $row->id)
+                            ->update(['sold' => (float) ($row->sold ?? 0) + $consumeNow, 'updated_at' => now()]);
+                        $remaining -= $consumeNow;
+                    }
+                }
+
+                // Serial processing — only if serial provided and stock was available
+                if (! empty($serialNumber) && $fulfillBase > 0) {
                     $serial = ProductSerial::where('serial_number', $serialNumber)->first();
                     if (! $serial) {
                         DB::rollBack();
 
                         return response()->json(['success' => false, 'message' => 'Invalid serial number (not found in inventory).'], 422);
                     }
-
                     if ((int) $serial->product_id !== $productId) {
                         DB::rollBack();
 
                         return response()->json(['success' => false, 'message' => 'Serial number does not match the selected product.'], 422);
                     }
-
-                    if ((int) $serial->branch_id !== (int) $branchId) {
-                        DB::rollBack();
-
-                        return response()->json(['success' => false, 'message' => 'Serial number does not belong to the selected branch.'], 422);
-                    }
-
                     if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                         DB::rollBack();
 
@@ -3715,9 +3753,10 @@ class CashierDashboardController extends Controller
                     $serial->status = 'sold';
                     $serial->sold_at = now();
                     $serial->sale_item_id = $saleItem->id;
-                    if ($warrantyMonths > 0) {
-                        $serial->warranty_expiry_date = Carbon::now()->addMonths($warrantyMonths)->toDateString();
-                    }
+                    $serial->branch_id = $branchId;
+                    $serial->warranty_expiry_date = $warrantyMonths > 0
+                        ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
+                        : null;
                     $serial->save();
                 }
             }

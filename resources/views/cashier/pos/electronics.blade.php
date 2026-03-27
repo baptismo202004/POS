@@ -623,13 +623,13 @@
                     const displayBarcode = (it && (it.barcode || (it.product && it.product.barcode))) || 'N/A';
                     const displayPrice = (it && (it.price || it.selling_price)) || 0;
 
-                    const canBeAdded = it.branches && it.branches.length > 0 && it.branches.some(b => (parseFloat(b && b.stock) || 0) > 0);
+                    const canBeAdded = it.branches && it.branches.length > 0;
 
                     return `
                     <tr>
                         <td><div class="fw-semibold">${displayName}</div></td>
                         <td><code>${displayBarcode}</code></td>
-                        <td class="text-end"><span class="badge ${it.total_stock > 10 ? 'bg-success' : 'bg-warning'}">${it.total_stock ?? 0}</span></td>
+                        <td class="text-end"><span class="badge ${it.total_stock > 10 ? 'bg-success' : (it.total_stock > 0 ? 'bg-warning' : 'bg-secondary')}">${it.total_stock ?? 0}</span></td>
                         <td class="text-end price-display" data-product-id="${safeProductId}">₱${Number(displayPrice || 0).toFixed(2)}</td>
                         <td class="text-end">
                             <button class="btn add-btn" onclick="addToOrder(this, ${safeProductId}, '${String(displayName).replace(/'/g, "\\'")}')" ${!canBeAdded ? 'disabled' : ''}>
@@ -714,7 +714,7 @@
             const branches = it && Array.isArray(it.branches) ? it.branches : [];
             const firstBranch = branches.find(b => (parseFloat(b && b.stock) || 0) > 0) || branches[0];
             if (!firstBranch) {
-                Swal.fire('Error', 'No stock available for this product.', 'error');
+                Swal.fire('Error', 'Product has no branch information.', 'error');
                 return;
             }
 
@@ -726,22 +726,15 @@
 
             let unitTypeId = null;
             let unitName = null;
-            let stock = parseFloat(firstBranch.stock || '0');
+            let totalStock = parseFloat(firstBranch.stock || '0');
             let price = parseFloat(firstBranch.price || '0');
 
             if (firstUnit) {
                 unitTypeId = parseInt(firstUnit.unit_type_id || 0) || null;
                 unitName = firstUnit.unit_name || null;
-                stock = parseFloat(firstUnit.stock || '0');
+                totalStock = parseFloat(firstUnit.stock || '0');
                 price = parseFloat(firstUnit.price || '0');
             }
-
-            if (!(parseFloat(stock) > 0)) {
-                Swal.fire('Error', 'No stock available for this product.', 'error');
-                return;
-            }
-
-            const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
 
             const sameGroup = cart.find(i =>
                 parseInt(i.product_id) === parseInt(productId)
@@ -749,10 +742,15 @@
                 && parseInt(i.unit_type_id || 0) === parseInt(unitTypeId || 0)
             );
 
+            // How many units already in cart for this product/branch/unit
+            const alreadyInCart = sameGroup ? (sameGroup.entries || []).length : 0;
+            // This new entry gets stock if there's still remaining stock
+            const inStock = (alreadyInCart < totalStock);
+
             const newEntry = {
                 serial_number: '',
                 warranty_months: 0,
-                in_stock: stock > 0,
+                in_stock: inStock,
             };
 
             if (sameGroup) {
@@ -760,6 +758,7 @@
                 sameGroup.entries.push(newEntry);
                 sameGroup.quantity = sameGroup.entries.length;
             } else {
+                const cartIdentifier = `${productId}-${branchId}-${unitTypeId || 0}-${Date.now()}`;
                 cart.push({
                     cartIdentifier,
                     product_id: productId,
@@ -770,7 +769,7 @@
                     branchName,
                     price,
                     quantity: 1,
-                    stock,
+                    stock: totalStock,
                     entries: [newEntry],
                 });
             }
@@ -835,17 +834,50 @@
         };
 
         window.checkout = function() {
+            const orderStatus = document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed';
+            const isPending = orderStatus === 'pending';
+
+            // --- COMMON CHECKS (all modes) ---
             if (cart.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add items to your cart before checkout.'});
+                Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add items to your cart before checkout.' });
                 return;
             }
 
-            const missingEntry = cart.find(item =>
-                item.entries && item.entries.some(entry => entry.in_stock && !entry.serial_number)
-            );
-            if (missingEntry) {
-                Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: 'Please enter serial number for all items before checkout.'});
+            for (const item of cart) {
+                if (!item.entries || item.entries.length === 0) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Quantity', text: `"${item.name}" must have at least 1 unit.` });
+                    return;
+                }
+                if (item.price < 0) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Price', text: `"${item.name}" has an invalid price.` });
+                    return;
+                }
+            }
+
+            const customerName = document.getElementById('customer_name') ? document.getElementById('customer_name').value.trim() : '';
+            if (!customerName) {
+                Swal.fire({ icon: 'warning', title: 'Missing Customer', text: 'Please enter a customer name before checkout.' });
+                document.getElementById('customer_name').focus();
                 return;
+            }
+
+            // --- PENDING MODE: skip all stock/serial checks ---
+            if (isPending) {
+                processOrder();
+                return;
+            }
+
+            // --- COMPLETED MODE: validate serials only for fulfillable qty ---
+            for (const item of cart) {
+                const entries = item.entries || [];
+                // Only entries marked in_stock need a serial
+                const fulfillableEntries = entries.filter(e => e.in_stock);
+                for (let i = 0; i < fulfillableEntries.length; i++) {
+                    if (!fulfillableEntries[i].serial_number) {
+                        Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: `Please enter serial number for "${item.name}" - Unit ${i + 1} (in-stock unit).` });
+                        return;
+                    }
+                }
             }
 
             processOrder();
