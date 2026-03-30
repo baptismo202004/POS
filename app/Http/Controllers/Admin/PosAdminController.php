@@ -741,34 +741,26 @@ class PosAdminController extends Controller
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
 
+            // PENDING mode: skip all stock/serial checks entirely
             $shouldBePending = ($requestedOrderStatus === 'pending');
-            foreach ($items as $item) {
-                $productId = $item['product_id'] ?? null;
-                $itemBranchId = $item['branch_id'] ?? null;
-                $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
-                $quantity = $item['quantity'] ?? null;
 
-                if (empty($productId) || empty($itemBranchId) || empty($unitTypeId)) {
-                    continue;
-                }
+            // COMPLETED mode: also force pending if any item has zero available stock
+            if (!$shouldBePending) {
+                foreach ($items as $item) {
+                    $productId  = $item['product_id'] ?? null;
+                    $itemBranchId = $item['branch_id'] ?? null;
+                    $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
+                    if (empty($productId) || empty($itemBranchId) || empty($unitTypeId)) continue;
 
-                $factor = (float) (DB::table('product_unit_type')
-                    ->where('product_id', (int) $productId)
-                    ->where('unit_type_id', (int) $unitTypeId)
-                    ->value('conversion_factor') ?? 1);
-                if ($factor <= 0) {
-                    $factor = 1.0;
-                }
+                    $availableQty = (float) (StockIn::where('product_id', (int) $productId)
+                        ->where('branch_id', (int) $itemBranchId)
+                        ->selectRaw('COALESCE(SUM(quantity - sold), 0) AS available')
+                        ->value('available') ?? 0);
 
-                $requestedBaseQty = (float) $quantity * $factor;
-                $availableBaseQty = (float) (StockIn::where('product_id', (int) $productId)
-                    ->where('branch_id', (int) $itemBranchId)
-                    ->selectRaw('COALESCE(SUM(quantity - sold), 0) AS available')
-                    ->value('available') ?? 0);
-
-                if ($requestedBaseQty > $availableBaseQty) {
-                    $shouldBePending = true;
-                    break;
+                    if ($availableQty <= 0) {
+                        $shouldBePending = true;
+                        break;
+                    }
                 }
             }
 
@@ -818,14 +810,20 @@ class PosAdminController extends Controller
                 $sale->save();
             }
 
+            // COMPLETED mode: process each item with per-item stock awareness.
+            // Three cases:
+            //   COMPLETE ORDER   – all items have enough stock
+            //   PARTIAL ORDER    – some items have stock, some don't (or partially available)
+            //   OUT OF STOCK     – no item has any stock
+            // Rule: only validate serials / deduct stock for the fulfillable portion.
+            // Items with zero available stock are recorded as sale items but skipped for
+            // stock deduction and serial validation.
             foreach ($items as $item) {
-                $productId = $item['product_id'] ?? null;
-                $branchId = $item['branch_id'] ?? null;
+                $productId  = $item['product_id'] ?? null;
+                $branchId   = $item['branch_id'] ?? null;
                 $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
-                $quantity = $item['quantity'] ?? null;
-                $price = $item['price'] ?? null;
-                $serialNumber = isset($item['serial_number']) ? trim((string) $item['serial_number']) : '';
-                $warrantyMonths = isset($item['warranty_months']) ? (int) $item['warranty_months'] : 0;
+                $entries    = $item['entries'] ?? [];   // each entry = 1 unit with its own serial/warranty
+                $price      = $item['price'] ?? null;
 
                 if (empty($productId) || empty($branchId) || empty($unitTypeId)) {
                     DB::rollBack();
@@ -835,24 +833,12 @@ class PosAdminController extends Controller
                     ], 422);
                 }
 
-                if ((float) $quantity !== 1.0) {
+                if (empty($entries)) {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => 'Electronic devices require quantity of 1 per item (per serial).',
+                        'message' => 'Each item must have at least one entry.',
                     ], 422);
-                }
-
-                if (!$shouldBePending && $serialNumber === '') {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Serial number is required for in-stock electronic devices.',
-                    ], 422);
-                }
-
-                if ($warrantyMonths < 0) {
-                    $warrantyMonths = 0;
                 }
 
                 $factor = (float) (DB::table('product_unit_type')
@@ -863,72 +849,115 @@ class PosAdminController extends Controller
                     $factor = 1.0;
                 }
 
-                $requestedBaseQty = (float) $quantity * $factor;
-                if (!is_finite($requestedBaseQty) || $requestedBaseQty <= 0) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid quantity for the selected unit type.',
-                    ], 422);
+                // How many base units are available for this item in this branch
+                $availableBaseQty = (float) (StockIn::where('product_id', (int) $productId)
+                    ->where('branch_id', (int) $branchId)
+                    ->selectRaw('COALESCE(SUM(quantity - sold), 0) AS available')
+                    ->value('available') ?? 0);
+
+                // Fulfillable entries = entries that can actually be deducted from stock
+                // (capped by available stock; each entry = 1 base unit * factor)
+                $fulfillableCount = 0;
+                if ($availableBaseQty > 0) {
+                    $fulfillableCount = (int) min(count($entries), floor($availableBaseQty / $factor));
                 }
 
-                if (!$shouldBePending) {
-                    $stockRecords = StockIn::where('product_id', $productId)
-                        ->where('branch_id', $branchId)
-                        ->where('quantity', '>', DB::raw('sold'))
-                        ->orderBy('id', 'asc')
-                        ->get();
-
-                    $remainingBaseQuantity = $requestedBaseQty;
-
-                    foreach ($stockRecords as $stock) {
-                        if ($remainingBaseQuantity <= 0) {
-                            break;
+                // PENDING mode: skip all stock/serial work, just record the sale item
+                // Every entry is fully pending — nothing is fulfilled yet.
+                if ($shouldBePending) {
+                    foreach ($entries as $entry) {
+                        $warrantyMonths = isset($entry['warranty_months']) ? max(0, (int) $entry['warranty_months']) : 0;
+                        $saleItemPayload = [
+                            'sale_id'                 => $sale->id,
+                            'product_id'              => $productId,
+                            'quantity'                => 1,
+                            'unit_price'              => $price,
+                            'subtotal'                => $price,
+                            'fulfilled_qty'           => 0,
+                            'pending_qty'             => 1,
+                            'available_stock_at_sale' => $availableBaseQty,
+                            'fulfillment_status'      => 'pending',
+                            'is_for_procurement'      => true,
+                        ];
+                        if (Schema::hasColumn('sale_items', 'warranty_months')) {
+                            $saleItemPayload['warranty_months'] = $warrantyMonths;
                         }
-
-                        $availableStock = $stock->quantity - $stock->sold;
-                        $toDeduct = min($remainingBaseQuantity, $availableStock);
-
-                        $stock->sold += $toDeduct;
-                        $stock->save();
-
-                        $remainingBaseQuantity -= $toDeduct;
-
-                        \App\Models\StockOut::create([
-                            'stock_in_id' => $stock->id,
-                            'product_id' => $productId,
-                            'sale_id' => $sale->id,
-                            'quantity' => $toDeduct,
-                            'branch_id' => $branchId,
-                        ]);
+                        if (Schema::hasColumn('sale_items', 'unit_type_id')) {
+                            $saleItemPayload['unit_type_id'] = $unitTypeId;
+                        }
+                        SaleItem::create($saleItemPayload);
                     }
+                    continue;
+                }
 
-                    if ($remainingBaseQuantity > 0) {
+                // COMPLETED mode — validate serials only for fulfillable entries
+                for ($i = 0; $i < count($entries); $i++) {
+                    $entry        = $entries[$i];
+                    $isFulfillable = $i < $fulfillableCount;
+                    $serialNumber = isset($entry['serial_number']) ? trim((string) $entry['serial_number']) : '';
+                    $warrantyMonths = isset($entry['warranty_months']) ? max(0, (int) $entry['warranty_months']) : 0;
+
+                    if ($isFulfillable && $serialNumber === '') {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => "Insufficient stock for product: " . ($item['name'] ?? 'Unknown'),
+                            'message' => 'Serial number is required for in-stock item "' . ($item['name'] ?? 'Unknown') . '" (unit ' . ($i + 1) . ').',
                         ], 422);
                     }
-                }
 
-                $saleItemPayload = [
-                    'sale_id' => $sale->id,
-                    'product_id' => $productId,
-                    'quantity' => $quantity,
-                    'unit_price' => $price,
-                    'subtotal' => $price * $quantity,
-                ];
+                    // Deduct stock for fulfillable entries (FIFO)
+                    if ($isFulfillable) {
+                        $requestedBaseQty = 1.0 * $factor;
+                        $stockRecords = StockIn::where('product_id', $productId)
+                            ->where('branch_id', $branchId)
+                            ->where('quantity', '>', DB::raw('sold'))
+                            ->orderBy('id', 'asc')
+                            ->get();
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('sale_items', 'warranty_months')) {
-                    $saleItemPayload['warranty_months'] = $warrantyMonths;
-                }
+                        $remaining = $requestedBaseQty;
+                        foreach ($stockRecords as $stock) {
+                            if ($remaining <= 0) break;
+                            $available = $stock->quantity - $stock->sold;
+                            $toDeduct  = min($remaining, $available);
+                            $stock->sold += $toDeduct;
+                            $stock->save();
+                            $remaining -= $toDeduct;
+                            \App\Models\StockOut::create([
+                                'stock_in_id' => $stock->id,
+                                'product_id'  => $productId,
+                                'sale_id'     => $sale->id,
+                                'quantity'    => $toDeduct,
+                                'branch_id'   => $branchId,
+                            ]);
+                        }
+                    }
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('sale_items', 'unit_type_id')) {
-                    $saleItemPayload['unit_type_id'] = $unitTypeId;
-                }
+                    // Create sale item record with fulfillment tracking
+                    // fulfilled_qty = 1 if this entry is fulfillable, else 0
+                    // pending_qty   = 0 if fulfillable, else 1 (needs procurement)
+                    $entryFulfilledQty = $isFulfillable ? 1 : 0;
+                    $entryPendingQty   = $isFulfillable ? 0 : 1;
+                    $entryStatus       = $isFulfillable ? 'fulfilled' : 'pending';
 
-                $saleItem = SaleItem::create($saleItemPayload);
+                    $saleItemPayload = [
+                        'sale_id'                 => $sale->id,
+                        'product_id'              => $productId,
+                        'quantity'                => 1,
+                        'unit_price'              => $price,
+                        'subtotal'                => $price,
+                        'fulfilled_qty'           => $entryFulfilledQty,
+                        'pending_qty'             => $entryPendingQty,
+                        'available_stock_at_sale' => $availableBaseQty,
+                        'fulfillment_status'      => $entryStatus,
+                        'is_for_procurement'      => !$isFulfillable,
+                    ];
+                    if (Schema::hasColumn('sale_items', 'warranty_months')) {
+                        $saleItemPayload['warranty_months'] = $warrantyMonths;
+                    }
+                    if (Schema::hasColumn('sale_items', 'unit_type_id')) {
+                        $saleItemPayload['unit_type_id'] = $unitTypeId;
+                    }
+                    $saleItem = SaleItem::create($saleItemPayload);
 
                 $warrantyExpiry = null;
                 if ($warrantyMonths > 0) {

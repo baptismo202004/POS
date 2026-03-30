@@ -14,13 +14,22 @@ class SaleItem extends Model
         'unit_price',
         'subtotal',
         'warranty_months',
+        'fulfilled_qty',
+        'pending_qty',
+        'available_stock_at_sale',
+        'fulfillment_status',
+        'is_for_procurement',
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
-        'unit_price' => 'decimal:2',
-        'subtotal' => 'decimal:2',
-        'warranty_months' => 'integer',
+        'quantity'               => 'decimal:2',
+        'unit_price'             => 'decimal:2',
+        'subtotal'               => 'decimal:2',
+        'warranty_months'        => 'integer',
+        'fulfilled_qty'          => 'decimal:2',
+        'pending_qty'            => 'decimal:2',
+        'available_stock_at_sale'=> 'decimal:2',
+        'is_for_procurement'     => 'boolean',
     ];
 
     public function sale()

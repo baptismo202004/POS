@@ -990,86 +990,131 @@
             }
         };
 
-        window.checkout = function() {
+        // TODO: Implement serial number update functionality
+        // This will be handled by backend during order processing
+        // window.updateSerialNumbersAsSold = async function(saleId) { ... };
+
+        window.checkout = async function() {
             // Get order status to determine validation mode
             const orderStatus = document.getElementById('order_status') ? document.getElementById('order_status').value : 'completed';
             const isOrderMode = orderStatus === 'pending';
 
-            // 1. Check if cart has at least 1 item (common for both modes)
+            // 1. Cart must have at least one item
             if (cart.length === 0) {
                 Swal.fire({ icon: 'info', title: 'Cart is Empty', text: 'Please add at least 1 item to your cart before checkout.'});
                 return;
             }
 
-            // 2. Validate each item in cart (common for both modes)
+            // 2. Basic item validation (applies to ALL modes)
             for (let i = 0; i < cart.length; i++) {
                 const item = cart[i];
-                
-                // Check quantity > 0 (common for both modes)
-                if (item.quantity <= 0 || item.entries.length <= 0) {
-                    Swal.fire({ icon: 'error', title: 'Invalid Quantity', text: `Item "${item.name}" must have quantity greater than 0.`});
-                    return;
-                }
-                
-                // Check price > 0 (common for both modes)
-                if (item.price <= 0) {
-                    if (item.price === 0) {
-                        Swal.fire({ 
-                            icon: 'error', 
-                            title: 'Zero Price Item', 
-                            text: `Item "${item.name}" has a price of ₱0.00. This item cannot be processed. Please select a product with valid pricing or contact administrator to set the correct price.` 
-                        });
-                    } else {
-                        Swal.fire({ 
-                            icon: 'error', 
-                            title: 'Invalid Price', 
-                            text: `Item "${item.name}" has an invalid price (₱${item.price.toFixed(2)}). Price must be greater than 0.` 
-                        });
-                    }
+
+                if (!item.entries || item.entries.length === 0) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Item', text: `Item "${item.name}" must have at least one unit.`});
                     return;
                 }
 
-                // Only check serial numbers for completed mode (not order mode)
-                if (!isOrderMode) {
-                    for (let j = 0; j < item.entries.length; j++) {
-                        const entry = item.entries[j];
-                        if (entry.in_stock && !entry.serial_number) {
-                            Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: `Please enter serial number for "${item.name}" - Unit ${j + 1} before checkout.`});
-                            return;
-                        }
-                    }
+                if (item.price < 0) {
+                    Swal.fire({ icon: 'error', title: 'Invalid Price', text: `Item "${item.name}" has an invalid price.`});
+                    return;
+                }
+
+                if (item.price === 0) {
+                    Swal.fire({ icon: 'error', title: 'Zero Price Item', text: `Item "${item.name}" has a price of ₱0.00. Please set a valid price or contact the administrator.`});
+                    return;
                 }
             }
 
-            // 3. Validate customer information (different requirements for each mode)
+            // 3. Customer name required for ALL modes
             const customerName = document.getElementById('customer_name').value.trim();
-            const customerPhone = document.getElementById('customer_phone').value.trim();
-            const customerAddress = document.getElementById('customer_address').value.trim();
-
-            // Customer name is required for both modes
             if (!customerName) {
-                Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter customer name before checkout.'});
+                Swal.fire({ icon: 'warning', title: 'Missing Customer', text: 'Please enter customer name before checkout.'});
                 document.getElementById('customer_name').focus();
                 return;
             }
 
-            // Phone and address are only required for completed mode
-            if (!isOrderMode) {
-                if (!customerPhone) {
-                    Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter phone number before checkout.'});
-                    document.getElementById('customer_phone').focus();
-                    return;
-                }
+            // --- PENDING MODE ends here ---
+            if (isOrderMode) {
+                processOrder(true);
+                return;
+            }
 
-                if (!customerAddress) {
-                    Swal.fire({ icon: 'warning', title: 'Missing Customer Information', text: 'Please enter address before checkout.'});
-                    document.getElementById('customer_address').focus();
-                    return;
+            // --- COMPLETED MODE additional checks ---
+
+            // 4. Phone and address required for completed orders
+            const customerPhone = document.getElementById('customer_phone').value.trim();
+            const customerAddress = document.getElementById('customer_address').value.trim();
+
+            if (!customerPhone) {
+                Swal.fire({ icon: 'warning', title: 'Missing Customer Info', text: 'Please enter phone number before checkout.'});
+                document.getElementById('customer_phone').focus();
+                return;
+            }
+            if (!customerAddress) {
+                Swal.fire({ icon: 'warning', title: 'Missing Customer Info', text: 'Please enter address before checkout.'});
+                document.getElementById('customer_address').focus();
+                return;
+            }
+
+            // 5. Serial validation — only for in-stock entries
+            for (let i = 0; i < cart.length; i++) {
+                const item = cart[i];
+                for (let j = 0; j < item.entries.length; j++) {
+                    const entry = item.entries[j];
+                    if (entry.in_stock && !entry.serial_number) {
+                        Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: `Please enter serial number for "${item.name}" — Unit ${j + 1}.`});
+                        return;
+                    }
                 }
             }
 
-            // All validations passed, proceed with order processing
-            processOrder(isOrderMode);
+            // 6. Cash payment: prompt for amount paid
+            const paymentMethod = document.getElementById('payment_method').value;
+            if (paymentMethod === 'cash') {
+                const discountVal = document.getElementById('discount-amount').value.trim();
+                const taxVal = document.getElementById('tax-amount').value.trim();
+                const merchandise = cart.reduce((s, item) => s + item.price * item.entries.length, 0);
+                const discount = parseAmountOrPercentage(discountVal, merchandise);
+                const tax = parseAmountOrPercentage(taxVal, merchandise);
+                const total = merchandise - discount + tax;
+
+                const { value: amountPaid, isConfirmed } = await Swal.fire({
+                    title: 'Cash Payment',
+                    html: `
+                        <div class="mb-2"><strong>Total:</strong> ₱${total.toFixed(2)}</div>
+                        <label class="form-label">Amount Paid</label>
+                        <input id="amount_paid" type="number" min="0" step="0.01" class="form-control" placeholder="Enter amount paid">
+                        <div class="mt-2" id="change_display" style="font-weight:700;color:#2563eb;">Change: ₱0.00</div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Confirm',
+                    cancelButtonColor: '#6b7280',
+                    didOpen: () => {
+                        const input = document.getElementById('amount_paid');
+                        const changeEl = document.getElementById('change_display');
+                        const compute = () => {
+                            const paid = parseFloat(input.value || '0') || 0;
+                            const change = paid - total;
+                            changeEl.textContent = `Change: ₱${Math.max(0, change).toFixed(2)}`;
+                            changeEl.style.color = change < 0 ? '#ef4444' : '#2563eb';
+                        };
+                        input.addEventListener('input', compute);
+                        input.focus();
+                    },
+                    preConfirm: () => {
+                        const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
+                        if (paid < total) {
+                            Swal.showValidationMessage('Amount paid is less than total.');
+                            return false;
+                        }
+                        return paid;
+                    }
+                });
+
+                if (!isConfirmed) return;
+            }
+
+            processOrder(false);
         };
 
         function processOrder(isOrderMode = false) {
@@ -1093,6 +1138,7 @@
                     quantity: item.entries.length,
                     price: item.price,
                     unit_price: item.price, // unit_price at item level
+                    subtotal: item.price * item.entries.length, // Add subtotal field for backend
                     entries: item.entries.map(entry => ({
                         serial_number: entry.serial_number || null, // Allow null for order mode
                         warranty_months: entry.warranty_months || 0,
@@ -1108,9 +1154,10 @@
                 payment_method: document.getElementById('payment_method').value,
                 order_status: orderStatus,
                 is_order_mode: isOrderMode, // Flag to indicate this is a sales order
+                validate_serials: !isOrderMode, // Request backend to validate serials for completed orders
                 notes: document.getElementById('order_notes') ? document.getElementById('order_notes').value : null,
                 customer_name: document.getElementById('customer_name') ? document.getElementById('customer_name').value : null,
-                customer_company_school: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
+                customer_company_school_name: document.getElementById('customer_company_school') ? document.getElementById('customer_company_school').value : null,
                 customer_phone: document.getElementById('customer_phone') ? document.getElementById('customer_phone').value : null,
                 customer_email: document.getElementById('customer_email') ? document.getElementById('customer_email').value : null,
                 customer_facebook: document.getElementById('customer_facebook') ? document.getElementById('customer_facebook').value : null,
@@ -1129,7 +1176,7 @@
                 first_entry: orderData.items[0].entries ? orderData.items[0].entries[0] : null
             } : 'No items');
 
-            fetch('{{ route("pos.electronics.checkout") }}', {
+            fetch('{{ route("pos.electronics.store") }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1149,6 +1196,12 @@
                         try {
                             const errorData = JSON.parse(text);
                             console.log('Parsed error data:', errorData);
+                            
+                            // For 422 validation errors, return the error data instead of throwing
+                            if (response.status === 422) {
+                                return errorData;
+                            }
+                            
                             throw new Error(errorData.message || `Server error: ${response.status}`);
                         } catch (e) {
                             console.log('Could not parse error as JSON:', e);
@@ -1160,9 +1213,12 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Success response data:', data);
+                console.log('Response data:', data);
                 
                 if (data.success) {
+                    // TODO: Update serial numbers as sold once route is created
+                    // For now, serial numbers will be updated by backend during order processing
+                    
                     cart = [];
                     clearCustomerDetails();
                     updateCartDisplay();
@@ -1175,7 +1231,32 @@
                     search('list');
                 } else {
                     console.log('Order failed:', data);
-                    Swal.fire({ icon: 'error', title: 'Order Failed', text: data.message || 'There was an error processing your order.'});
+                    
+                    // Handle validation errors (422 status) specifically
+                    if (data.errors && Array.isArray(data.errors)) {
+                        const firstError = data.errors[0];
+                        const errorMessage = `The serial number <strong>${firstError}</strong> is not valid for this product. Please check the serial number and try again.`;
+                        
+                        console.log('Serial validation error:', firstError);
+                        
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Invalid Serial Number', 
+                            html: errorMessage,
+                            confirmButtonText: 'OK',
+                            didOpen: () => {
+                                // Force refresh of any cached JavaScript
+                                console.log('Forcing refresh to clear any cached error messages...');
+                            }
+                        });
+                    } else {
+                        // Handle other errors (500, etc.)
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Order Failed', 
+                            text: data.message || 'There was an error processing your order.' 
+                        });
+                    }
                 }
             })
             .catch(error => {
@@ -1256,6 +1337,7 @@
                             <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="warranty_activate_${item.cartIdentifier}_${index}" 
+                                        ${entry.in_stock ? 'checked' : ''}
                                         onchange="toggleWarrantyActivation('${item.cartIdentifier}', ${index}, this.checked)">
                                     <label class="form-check-label small" for="warranty_activate_${item.cartIdentifier}_${index}">
                                         <i class="fas fa-shield-alt me-1"></i>Activate Warranty Coverage
@@ -1357,6 +1439,9 @@
             if (summary && summary.style.display !== 'none') {
                 updateSimpleSummary();
             }
+
+            // Auto-shift Order Status to pending if any item has no stock
+            syncOrderStatus();
         }
 
         function parseAmountOrPercentage(value, baseAmount) {
@@ -1370,6 +1455,44 @@
             
             // Otherwise, treat as fixed amount
             return parseFloat(value) || 0;
+        }
+
+        // Auto-manage the Order Status dropdown.
+        // If any item in the cart has at least one out-of-stock entry, force status to pending
+        // and lock the dropdown so the cashier cannot override it.
+        // When all items are in stock, unlock and restore to completed.
+        function syncOrderStatus() {
+            const statusSelect = document.getElementById('order_status');
+            if (!statusSelect) return;
+
+            const hasOutOfStock = cart.some(item =>
+                item.entries && item.entries.some(e => !e.in_stock)
+            );
+
+            if (hasOutOfStock) {
+                statusSelect.value = 'pending';
+                statusSelect.disabled = true;
+                statusSelect.title = 'Automatically set to Pending because one or more items are out of stock.';
+            } else {
+                statusSelect.disabled = false;
+                statusSelect.title = '';
+                // Only reset to completed if it was force-locked before (don't override manual selection)
+                if (statusSelect.dataset.autoLocked === 'true') {
+                    statusSelect.value = 'completed';
+                }
+                statusSelect.dataset.autoLocked = hasOutOfStock ? 'true' : 'false';
+            }
+
+            if (hasOutOfStock) {
+                statusSelect.dataset.autoLocked = 'true';
+            }
+
+            // Show/hide credit details based on current payment method (unchanged)
+            const creditDetails = document.getElementById('credit-details');
+            const paymentMethod = document.getElementById('payment_method');
+            if (creditDetails && paymentMethod) {
+                creditDetails.style.display = paymentMethod.value === 'credit' ? 'block' : 'none';
+            }
         }
 
         function toggleDetailedBreakdown() {

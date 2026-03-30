@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockIn;
 use App\Models\SaleItem;
+use App\Models\ProductSerial;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -67,7 +68,7 @@ class PurchaseElectronicsController extends Controller
 
                     foreach ($item['entries'] as $entry) {
                         $serialNumber = $entry['serial_number'] ?? '';
-                        
+
                         // If there's stock, require serial number
                         if ($hasStock && empty(trim($serialNumber))) {
                             DB::rollBack();
@@ -89,6 +90,36 @@ class PurchaseElectronicsController extends Controller
                 }
             }
 
+            // Check if serial validation is requested (for completed orders)
+            if ($request->input('validate_serials', false)) {
+                $validationErrors = [];
+                
+                foreach ($request->input('items', []) as $item) {
+                    foreach ($item['entries'] as $entry) {
+                        if (!empty($entry['serial_number']) && $entry['in_stock']) {
+                            // Check if serial exists for this product and branch
+                            $serialExists = ProductSerial::where('serial_number', $entry['serial_number'])
+                                ->where('product_id', $item['product_id'])
+                                ->where('branch_id', $item['branch_id'])
+                                ->where('status', 'available') // Only available serials
+                                ->exists();
+                            
+                            if (!$serialExists) {
+                                $validationErrors[] = "Serial number {$entry['serial_number']} is not valid for product {$item['name']}";
+                            }
+                        }
+                    }
+                }
+                
+                if (!empty($validationErrors)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => implode(', ', $validationErrors),
+                        'errors' => $validationErrors
+                    ], 422);
+                }
+            }
+            
             // Determine branch from first item
             $branchId = Auth::user()->branch_id;
             if (!empty($items)) {
@@ -135,6 +166,8 @@ class PurchaseElectronicsController extends Controller
                         'price' => $price,
                         'serial_number' => isset($entry['serial_number']) ? $entry['serial_number'] : null,
                         'warranty_months' => isset($entry['warranty_months']) ? $entry['warranty_months'] : 0,
+                        'unit_price' => $item['unit_price'],
+                        'subtotal' => $item['subtotal'],
                     ]);
 
                     // Update stock
