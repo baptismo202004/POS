@@ -301,6 +301,16 @@
                 </div>
 
                 <div class="sp-ph-actions">
+                    <a href="{{ route('superadmin.inventory.procurement') }}" class="btn btn-warning btn-sm fw-bold d-flex align-items-center gap-2">
+                        <i class="fas fa-truck-loading"></i>
+                        Procurement Needs
+                        @php
+                            $procCount = \App\Models\SaleItem::where('is_for_procurement', true)->where('pending_qty', '>', 0)->distinct('product_id')->count('product_id');
+                        @endphp
+                        @if($procCount > 0)
+                            <span class="badge bg-danger rounded-pill">{{ $procCount }}</span>
+                        @endif
+                    </a>
                     <div class="sp-search-wrap">
                         <i class="fas fa-search"></i>
                         <input type="text" class="sp-search-input" id="searchFilterHeader" placeholder="Search..." value="{{ request('search') }}">

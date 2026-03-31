@@ -154,6 +154,18 @@ Route::get('/cashier/stock-management', [\App\Http\Controllers\SuperAdmin\StockM
     ->middleware('auth')
     ->name('cashier.stock-management.index');
 
+// Cashier Procurement Needs (branch-scoped)
+Route::get('/cashier/procurement', [CashierDashboardController::class, 'procurement'])->middleware('auth')->name('cashier.procurement');
+
+// Cashier Dashboard Alerts (JSON)
+Route::get('/cashier/dashboard/alerts', [CashierDashboardController::class, 'dashboardAlerts'])->middleware('auth')->name('cashier.dashboard.alerts');
+
+// Cashier Product Lifecycle
+Route::get('/cashier/products/{product}/lifecycle', [CashierDashboardController::class, 'productLifecycle'])->middleware('auth')->name('cashier.products.lifecycle');
+
+// Cashier Purchase Lifecycle
+Route::get('/cashier/purchases/{purchase}/lifecycle', [CashierDashboardController::class, 'purchaseLifecycle'])->middleware('auth')->name('cashier.purchases.lifecycle');
+
 // Cashier Stock In (under Inventory)
 Route::get('/cashier/stockin', [CashierDashboardController::class, 'stockInIndex'])->middleware('auth')->name('cashier.stockin.index');
 Route::get('/cashier/stockin/create', [CashierDashboardController::class, 'stockInCreate'])->middleware('auth')->name('cashier.stockin.create');
@@ -866,6 +878,20 @@ Route::get('/dashboard/widgets', function (Request $request) {
             $refundsToday = 0;
         }
 
+        // 14. Procurement Needs — items ordered but pending fulfillment due to no stock
+        try {
+            $procurementNeeds = DB::table('sale_items')
+                ->where('is_for_procurement', true)
+                ->where('pending_qty', '>', 0)
+                ->distinct('product_id')
+                ->count('product_id');
+
+            Log::info('Procurement needs calculated', ['count' => $procurementNeeds]);
+        } catch (\Exception $e) {
+            Log::error('Error calculating procurement needs: '.$e->getMessage());
+            $procurementNeeds = 0;
+        }
+
         // ROW 3: OPERATIONS SNAPSHOT
 
         // 11. Cashier Performance
@@ -952,6 +978,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
                 'belowCostSales' => $belowCostSales,
                 'highDiscountUsage' => $highDiscountUsage,
                 'refunds' => $refundsToday,
+                'procurementNeeds' => $procurementNeeds,
             ],
 
             // Row 3: Operations
@@ -1046,6 +1073,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/create', [SuperAdminProductController::class, 'create'])->middleware('ability:products,edit')->name('products.create');
         Route::post('/products', [SuperAdminProductController::class, 'store'])->middleware('ability:products,edit')->name('products.store');
         Route::get('/products/{product}', [SuperAdminProductController::class, 'show'])->middleware('ability:products,view')->name('products.show');
+        Route::get('/products/{product}/lifecycle', [SuperAdminProductController::class, 'lifecycle'])->middleware('ability:products,view')->name('products.lifecycle');
+        Route::post('/products/{product}/repairs', [SuperAdminProductController::class, 'storeRepair'])->middleware('ability:products,edit')->name('products.repairs.store');
         Route::get('/products/{product}/edit', [SuperAdminProductController::class, 'edit'])->middleware('ability:products,edit')->name('products.edit');
         Route::put('/products/{product}', [SuperAdminProductController::class, 'update'])->middleware('ability:products,edit')->name('products.update');
         Route::post('/products/{product}/unit-conversions', [SuperAdminProductController::class, 'storeUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.store');
@@ -1068,6 +1097,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/out-of-stock', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'outOfStock'])->name('inventory.out-of-stock');
         Route::get('/inventory/stock-management', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'index'])->name('inventory.stock-management');
+        Route::get('/inventory/procurement', [\App\Http\Controllers\SuperAdmin\StockManagementController::class, 'procurement'])->name('inventory.procurement');
         Route::post('/inventory/{product}/adjust', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'adjust'])->name('inventory.adjust');
         Route::post('/inventory/{product}/stock-in', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'stockIn'])->name('inventory.stock-in');
         Route::get('/inventory/out-of-stock/export', [\App\Http\Controllers\SuperAdmin\InventoryController::class, 'exportOutOfStockPDF'])->name('inventory.out-of-stock.export');
@@ -1109,6 +1139,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('purchases.create');
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
+        Route::get('/purchases/{purchase}/lifecycle', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'lifecycle'])->name('purchases.lifecycle');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
         Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
         Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');

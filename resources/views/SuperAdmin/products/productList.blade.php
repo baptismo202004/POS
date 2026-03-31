@@ -264,7 +264,7 @@
                                         @endif
                                     </div>
 
-                                    <div class="col-md-4">
+                                    <div class="col-md-4 electronic-field d-none">
                                         <label class="form-label">Warranty Type</label>
                                         <select name="warranty_type" class="form-control">
                                             <option value="none" {{ $isEdit && $product->warranty_type == 'none' ? 'selected' : '' }}>None</option>
@@ -273,7 +273,7 @@
                                         </select>
                                     </div>
 
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Warranty Coverage (months)</label>
                                         <input type="number" name="warranty_coverage_months" min="0" class="form-control" value="{{ $isEdit ? $product->warranty_coverage_months : '' }}">
                                     </div>

@@ -165,7 +165,10 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="m-0">Product Details</h2>
             <div class="d-flex gap-2">
-                <a href="{{ route('superadmin.products.index') }}" class="btn btn-primary">Back to Products</a>
+                <a href="{{ route('superadmin.products.lifecycle', $product) }}" class="btn btn-primary">
+                    <i class="fas fa-history me-1"></i> Product Lifecycle
+                </a>
+                <a href="{{ route('superadmin.products.index') }}" class="btn btn-outline-secondary">Back to Products</a>
             </div>
         </div>
 

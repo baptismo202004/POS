@@ -55,12 +55,21 @@
                         @method('PUT')
 
                         <div class="row">
-                            <div class="col-md-8 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="category_name" class="form-label">Category Name</label>
                                 <input type="text" name="category_name" id="category_name" class="form-control" value="{{ old('category_name', $category->category_name) }}" required>
                             </div>
 
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label for="category_type" class="form-label">Category Type</label>
+                                <select name="category_type" id="category_type" class="form-select" required>
+                                    <option value="non_electronic" {{ old('category_type', $category->category_type) === 'non_electronic' ? 'selected' : '' }}>Non Electronic</option>
+                                    <option value="electronic_without_serial" {{ old('category_type', $category->category_type) === 'electronic_without_serial' ? 'selected' : '' }}>Electronic without serial</option>
+                                    <option value="electronic_with_serial" {{ old('category_type', $category->category_type) === 'electronic_with_serial' ? 'selected' : '' }}>Electronic with serial</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
                                 <label for="status" class="form-label">Status</label>
                                 <select name="status" id="status" class="form-select">
                                     <option value="active" {{ old('status', $category->status) === 'active' ? 'selected' : '' }}>Active</option>

@@ -907,6 +907,15 @@
                 <div class="cd-kpi-value">₱{{ number_format($cashOnHandToday, 2) }}</div>
                 <div class="cd-kpi-label">Cash on Hand Today</div>
             </div>
+
+            <div class="cd-kpi-card" data-color="amber" data-label="Procurement Needs" data-icon="truck-loading" onclick="window.location.href='{{ route('cashier.procurement') }}'">
+                <div class="cd-kpi-bar amber"></div>
+                <div class="cd-kpi-top">
+                    <div class="cd-kpi-icon amber"><i class="fas fa-truck-loading"></i></div>
+                </div>
+                <div class="cd-kpi-value" id="procurementCount">—</div>
+                <div class="cd-kpi-label">Procurement Needs</div>
+            </div>
         </div>
 
         <div class="cd-section-label">Quick Access</div>
@@ -1417,6 +1426,22 @@ function showLowStockModal() {
 function peso(n) {
     return new Intl.NumberFormat('en-PH', {style: 'currency', currency: 'PHP'}).format(n || 0);
 }
+
+// Fetch dashboard alerts (procurement, out-of-stock, etc.) on load
+(function loadDashboardAlerts() {
+    fetch('{{ route("cashier.dashboard.alerts") }}')
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('procurementCount');
+            if (el) {
+                el.textContent = data.procurementNeeds ?? 0;
+                if ((data.procurementNeeds ?? 0) > 0) {
+                    el.style.color = '#f59e0b';
+                }
+            }
+        })
+        .catch(() => {});
+})();
 
 function animateAndNavigate(event, module) {
     event.preventDefault();

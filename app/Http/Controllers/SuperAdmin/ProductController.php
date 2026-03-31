@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use App\Models\Product;
 use App\Models\Brand;
 use App\Models\Category;
-use App\Models\ProductType;
-use App\Models\UnitType;
+use App\Models\Product;
+use App\Models\ProductRepair;
 use App\Models\ProductSerial;
+use App\Models\ProductType;
+use App\Models\PurchaseItem;
+use App\Models\Refund;
+use App\Models\StockMovement;
+use App\Models\StockTransfer;
+use App\Models\UnitType;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
@@ -23,6 +27,7 @@ class ProductController extends Controller
         $name = (string) $name;
         $name = trim(mb_strtolower($name));
         $name = preg_replace('/\s+/', ' ', $name);
+
         return $name;
     }
 
@@ -81,14 +86,14 @@ class ProductController extends Controller
 
     private function computeConversionFactor(?string $unitName, ?string $baseUnitName): ?float
     {
-        if (!$unitName || !$baseUnitName) {
+        if (! $unitName || ! $baseUnitName) {
             return null;
         }
 
         $u = $this->unitScalar($unitName);
         $b = $this->unitScalar($baseUnitName);
 
-        if (!$u || !$b) {
+        if (! $u || ! $b) {
             return null;
         }
 
@@ -116,7 +121,7 @@ class ProductController extends Controller
         }
 
         $baseUnitTypeId = (int) ($request->input('base_unit_type_id') ?? 0);
-        if ($baseUnitTypeId <= 0 || !in_array($baseUnitTypeId, $unitTypeIds, true)) {
+        if ($baseUnitTypeId <= 0 || ! in_array($baseUnitTypeId, $unitTypeIds, true)) {
             $baseUnitTypeId = (int) $unitTypeIds[0];
         }
 
@@ -129,7 +134,7 @@ class ProductController extends Controller
             $unitName = $unit?->unit_name;
 
             $isBase = ((int) $unitTypeId === (int) $baseUnitTypeId);
-            $requestedFactor = $request->input('conversion_factor.' . $unitTypeId);
+            $requestedFactor = $request->input('conversion_factor.'.$unitTypeId);
 
             if ($isBase) {
                 $factor = 1.0;
@@ -151,14 +156,14 @@ class ProductController extends Controller
 
         return $syncData;
     }
-    
+
     public function index(Request $request)
     {
         $sortBy = $request->query('sort_by', 'id');
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
 
-        if (!in_array($sortBy, ['id', 'product_name', 'status'])) {
+        if (! in_array($sortBy, ['id', 'product_name', 'status'])) {
             $sortBy = 'id';
         }
         $productsQuery = Product::with(['brand', 'category', 'productType', 'unitTypes']);
@@ -166,13 +171,13 @@ class ProductController extends Controller
         if ($search) {
             $productsQuery->where(function ($query) use ($search) {
                 $query->where('product_name', 'like', "%{$search}%")
-                      ->orWhere('barcode', 'like', "%{$search}%")
-                      ->orWhereHas('brand', function ($q) use ($search) {
-                          $q->where('brand_name', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('category', function ($q) use ($search) {
-                          $q->where('category_name', 'like', "%{$search}%");
-                      });
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('brand', function ($q) use ($search) {
+                        $q->where('brand_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('category', function ($q) use ($search) {
+                        $q->where('category_name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -185,17 +190,17 @@ class ProductController extends Controller
         return view('SuperAdmin.products.productIndex', [
             'products' => $products->appends($request->query()),
             'sortBy' => $sortBy,
-            'sortDirection' => $sortDirection
+            'sortDirection' => $sortDirection,
         ]);
     }
 
-      public function create()
+    public function create()
     {
         return view('SuperAdmin.products.productList', [
-            'brands'       => Brand::where('status', 'active')->get(),
-            'categories'   => Category::where('status', 'active')->get(),
+            'brands' => Brand::where('status', 'active')->get(),
+            'categories' => Category::where('status', 'active')->get(),
             'productTypes' => ProductType::all(),
-            'unitTypes'    => UnitType::all(),
+            'unitTypes' => UnitType::all(),
         ]);
     }
 
@@ -204,7 +209,7 @@ class ProductController extends Controller
         // Log incoming request data for debugging
         Log::info('Product creation attempt', [
             'request_data' => $request->all(),
-            'files' => $request->files->all()
+            'files' => $request->files->all(),
         ]);
 
         $rules = [
@@ -231,8 +236,9 @@ class ProductController extends Controller
             Log::error('Product validation failed', [
                 'errors' => $validator->errors()->toArray(),
                 'request_data' => $request->all(),
-                'product_type' => $request->input('product_type_id')
+                'product_type' => $request->input('product_type_id'),
             ]);
+
             return response()->json(['success' => false, 'errors' => $validator->errors()]);
         }
 
@@ -240,15 +246,16 @@ class ProductController extends Controller
 
         try {
             $debugInfo = [];
-            DB::transaction(function () use ($request, $validated, &$debugInfo) {
+            $createdProductId = null;
+            DB::transaction(function () use ($request, $validated, &$debugInfo, &$createdProductId) {
                 $categoryId = $validated['category_id'] ?? null;
-                if (!empty($categoryId) && !is_numeric($categoryId)) {
+                if (! empty($categoryId) && ! is_numeric($categoryId)) {
                     $c = Category::create(['category_name' => $categoryId, 'status' => 'active']);
                     $categoryId = $c->id;
                 }
 
                 $categoryType = null;
-                if (!empty($categoryId)) {
+                if (! empty($categoryId)) {
                     $categoryType = Category::where('id', (int) $categoryId)->value('category_type');
                 }
 
@@ -273,7 +280,7 @@ class ProductController extends Controller
                         'status' => $validated['status'],
                     ];
 
-                    if (!empty($validated['brand_id']) && !is_numeric($validated['brand_id'])) {
+                    if (! empty($validated['brand_id']) && ! is_numeric($validated['brand_id'])) {
                         $b = Brand::create(['brand_name' => $validated['brand_id'], 'status' => 'active']);
                         $productData['brand_id'] = $b->id;
                     }
@@ -286,6 +293,7 @@ class ProductController extends Controller
 
                     $product = Product::create($productData);
                     $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
+                    $createdProductId = $product->id;
 
                 } else {
                     // For non-electronic products, store in products table
@@ -293,10 +301,10 @@ class ProductController extends Controller
                         'brand_id' => $validated['brand_id'] ?? 'null',
                         'category_id' => $categoryId ?? 'null',
                     ]);
-                    
+
                     // Handle brand_id - check if it's numeric or text
-                    if (!empty($validated['brand_id'])) {
-                        if (!is_numeric($validated['brand_id'])) {
+                    if (! empty($validated['brand_id'])) {
+                        if (! is_numeric($validated['brand_id'])) {
                             Log::info('Creating new brand', ['brand_name' => $validated['brand_id']]);
                             $b = Brand::create(['brand_name' => $validated['brand_id'], 'status' => 'active']);
                             $validated['brand_id'] = $b->id;
@@ -320,35 +328,37 @@ class ProductController extends Controller
                     Log::info('Product created successfully', ['product_id' => $product->id]);
                     $product->unitTypes()->sync($this->buildUnitTypeSyncData($request, $validated['unit_type_ids']));
                     Log::info('Unit types synced');
+                    $createdProductId = $product->id;
                 }
             });
 
-            return response()->json(['success' => true, 'debug' => $debugInfo]);
+            return response()->json(['success' => true, 'debug' => $debugInfo, 'product_id' => $createdProductId]);
 
         } catch (\Exception $e) {
             Log::error('Product creation failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'request_data' => $request->all(),
-                'validated_data' => $validated ?? 'none'
+                'validated_data' => $validated ?? 'none',
             ]);
-            return response()->json(['success' => false, 'message' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json(['success' => false, 'message' => 'An unexpected error occurred: '.$e->getMessage()], 500);
         }
     }
 
     private function calculateWarrantyExpiry($warrantyType, $coverageMonths)
     {
-        if ($warrantyType === 'none' || !$coverageMonths) {
+        if ($warrantyType === 'none' || ! $coverageMonths) {
             return null;
         }
-        
+
         return now()->addMonths($coverageMonths)->format('Y-m-d');
     }
-
 
     public function show(Product $product)
     {
         $product->load('brand', 'category', 'productType', 'unitTypes');
+
         return view('SuperAdmin.products.show', compact('product'));
     }
 
@@ -357,11 +367,11 @@ class ProductController extends Controller
         $product->load(['unitTypes']);
 
         return view('SuperAdmin.products.productList', [
-            'product'      => $product,
-            'brands'       => Brand::where('status', 'active')->get(),
-            'categories'   => Category::where('status', 'active')->get(),
+            'product' => $product,
+            'brands' => Brand::where('status', 'active')->get(),
+            'categories' => Category::where('status', 'active')->get(),
             'productTypes' => ProductType::all(),
-            'unitTypes'    => UnitType::all(),
+            'unitTypes' => UnitType::all(),
         ]);
     }
 
@@ -372,8 +382,8 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validator = Validator::make($request->all(), [
-            'product_name' => 'required|string|max:255|unique:products,product_name,' . $product->id,
-            'barcode' => 'required|string|unique:products,barcode,' . $product->id,
+            'product_name' => 'required|string|max:255|unique:products,product_name,'.$product->id,
+            'barcode' => 'required|string|unique:products,barcode,'.$product->id,
             'unit_type_ids' => 'required|array|min:1',
             'unit_type_ids.*' => 'exists:unit_types,id',
             'brand_id' => 'nullable',
@@ -398,12 +408,12 @@ class ProductController extends Controller
 
         try {
             DB::transaction(function () use ($request, $product, $validated) {
-                if (!empty($request->input('brand_id')) && !is_numeric($request->input('brand_id'))) {
+                if (! empty($request->input('brand_id')) && ! is_numeric($request->input('brand_id'))) {
                     $b = Brand::create(['brand_name' => $request->input('brand_id'), 'status' => 'active']);
                     $validated['brand_id'] = $b->id;
                 }
 
-                if (!empty($request->input('category_id')) && !is_numeric($request->input('category_id'))) {
+                if (! empty($request->input('category_id')) && ! is_numeric($request->input('category_id'))) {
                     $c = Category::create(['category_name' => $request->input('category_id'), 'status' => 'active']);
                     $validated['category_id'] = $c->id;
                 }
@@ -422,7 +432,7 @@ class ProductController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'An unexpected error occurred: '.$e->getMessage()], 500);
         }
     }
 
@@ -445,13 +455,13 @@ class ProductController extends Controller
 
         $referenceUnitTypeId = (int) $data['reference_unit_type_id'];
         $allowedReferenceIds = $product->unitTypes->pluck('id')->map(fn ($v) => (int) $v)->all();
-        if (!in_array($referenceUnitTypeId, $allowedReferenceIds, true)) {
+        if (! in_array($referenceUnitTypeId, $allowedReferenceIds, true)) {
             return redirect()->back()->with('error', 'Invalid reference unit selected.');
         }
 
         DB::transaction(function () use ($product, $data, $referenceUnitTypeId) {
             $unitTypeId = (int) $data['unit_type_id'];
-            $isBase = !empty($data['is_base']);
+            $isBase = ! empty($data['is_base']);
 
             $inputFactor = (float) $data['conversion_factor'];
             $referenceFactor = (float) (DB::table('product_unit_type')
@@ -479,7 +489,7 @@ class ProductController extends Controller
                     DB::table('product_unit_type')
                         ->where('product_id', $product->id)
                         ->update([
-                            'conversion_factor' => DB::raw('conversion_factor / ' . $divisor),
+                            'conversion_factor' => DB::raw('conversion_factor / '.$divisor),
                         ]);
                 }
 
@@ -513,7 +523,7 @@ class ProductController extends Controller
         $data = $validator->validated();
 
         DB::transaction(function () use ($product, $unitType, $data) {
-            $isBase = !empty($data['is_base']);
+            $isBase = ! empty($data['is_base']);
 
             if ($isBase) {
                 $divisor = (float) (DB::table('product_unit_type')
@@ -525,7 +535,7 @@ class ProductController extends Controller
                     DB::table('product_unit_type')
                         ->where('product_id', $product->id)
                         ->update([
-                            'conversion_factor' => DB::raw('conversion_factor / ' . $divisor),
+                            'conversion_factor' => DB::raw('conversion_factor / '.$divisor),
                         ]);
                 }
 
@@ -554,11 +564,12 @@ class ProductController extends Controller
             ->where('unit_type_id', $unitType->id)
             ->first();
 
-        if ($row && !empty($row->is_base)) {
+        if ($row && ! empty($row->is_base)) {
             return redirect()->back()->with('error', 'You cannot delete the base unit. Set another base unit first.');
         }
 
         $product->unitTypes()->detach($unitType->id);
+
         return redirect()->back()->with('success', 'Unit conversion deleted.');
     }
 
@@ -578,7 +589,7 @@ class ProductController extends Controller
                 if ($product->image) {
                     Storage::disk('public')->delete($product->image);
                 }
-                
+
                 // Store new image
                 $imagePath = $request->file('image')->store('products', 'public');
                 $product->image = $imagePath;
@@ -588,8 +599,208 @@ class ProductController extends Controller
             return response()->json(['success' => true, 'message' => 'Image uploaded successfully']);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'An error occurred: '.$e->getMessage()], 500);
         }
+    }
+
+    public function lifecycle(Product $product): \Illuminate\View\View
+    {
+        $product->load(['brand', 'category', 'unitTypes', 'serials.branch', 'serials.saleItem.sale.cashier', 'serials.repairs.handledBy', 'branchStocks.branch']);
+
+        $isElectronic = str_contains(strtolower((string) ($product->category?->category_type ?? '')), 'electronic');
+
+        // ── Purchase history ───────────────────────────────────────────────────
+        $purchaseItems = PurchaseItem::with(['purchase.supplier', 'purchase.branch', 'unitType'])
+            ->where('product_id', $product->id)
+            ->latest('id')
+            ->get();
+
+        // ── Stock-in records ───────────────────────────────────────────────────
+        $stockIns = \App\Models\StockIn::with(['branch', 'purchase.supplier'])
+            ->where('product_id', $product->id)
+            ->latest()
+            ->get();
+
+        // ── Stock transfers ────────────────────────────────────────────────────
+        $transfers = StockTransfer::with(['fromBranch', 'toBranch'])
+            ->where('product_id', $product->id)
+            ->latest()
+            ->get();
+
+        // ── Sales ──────────────────────────────────────────────────────────────
+        $saleItems = \App\Models\SaleItem::with(['sale.cashier', 'sale.branch', 'sale.customer', 'unitType'])
+            ->where('product_id', $product->id)
+            ->latest('id')
+            ->get();
+
+        // ── Refunds ────────────────────────────────────────────────────────────
+        $refunds = Refund::with(['cashier', 'sale.branch'])
+            ->where('product_id', $product->id)
+            ->latest()
+            ->get();
+
+        // ── Repairs (electronics) ──────────────────────────────────────────────
+        $repairs = ProductRepair::with(['handledBy', 'branch', 'productSerial'])
+            ->where('product_id', $product->id)
+            ->latest()
+            ->get();
+
+        // ── Stock movements ────────────────────────────────────────────────────
+        $movements = StockMovement::with(['branch'])
+            ->where('product_id', $product->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        // ── Build unified timeline ─────────────────────────────────────────────
+        $timeline = collect();
+
+        foreach ($purchaseItems as $pi) {
+            $timeline->push([
+                'type' => 'purchase',
+                'icon' => 'fa-shopping-cart',
+                'color' => '#1976D2',
+                'label' => 'Purchased',
+                'date' => $pi->purchase->purchase_date ?? $pi->created_at,
+                'summary' => 'Qty: '.number_format($pi->quantity, 0).' × ₱'.number_format($pi->unit_cost, 2).' = ₱'.number_format($pi->subtotal, 2),
+                'detail' => 'Supplier: '.($pi->purchase->supplier->supplier_name ?? '—').' · Branch: '.($pi->purchase->branch->branch_name ?? '—').' · Ref: '.($pi->purchase->reference_number ?? '—'),
+                'user' => null,
+                'status' => $pi->purchase->payment_status ?? null,
+                'raw' => $pi,
+            ]);
+        }
+
+        foreach ($stockIns as $si) {
+            $timeline->push([
+                'type' => 'stock_in',
+                'icon' => 'fa-arrow-down',
+                'color' => '#10b981',
+                'label' => 'Stock In',
+                'date' => $si->created_at,
+                'summary' => 'Qty: '.number_format($si->quantity, 0).' (sold: '.number_format($si->sold, 0).', remaining: '.number_format($si->quantity - $si->sold, 0).')',
+                'detail' => 'Branch: '.($si->branch->branch_name ?? '—').($si->reason ? ' · Reason: '.$si->reason : ''),
+                'user' => null,
+                'status' => null,
+                'raw' => $si,
+            ]);
+        }
+
+        foreach ($transfers as $t) {
+            $timeline->push([
+                'type' => 'transfer',
+                'icon' => 'fa-exchange-alt',
+                'color' => '#8b5cf6',
+                'label' => 'Branch Transfer',
+                'date' => $t->created_at,
+                'summary' => 'Qty: '.$t->quantity.' · '.($t->fromBranch->branch_name ?? '—').' → '.($t->toBranch->branch_name ?? '—'),
+                'detail' => $t->notes ?? '',
+                'user' => null,
+                'status' => $t->status,
+                'raw' => $t,
+            ]);
+        }
+
+        foreach ($saleItems as $si) {
+            $timeline->push([
+                'type' => 'sale',
+                'icon' => 'fa-cash-register',
+                'color' => '#f59e0b',
+                'label' => 'Sold',
+                'date' => $si->sale->created_at ?? $si->created_at,
+                'summary' => 'Qty: '.number_format($si->quantity, 2).' × ₱'.number_format($si->unit_price, 2).' = ₱'.number_format($si->subtotal, 2),
+                'detail' => 'Sale #'.($si->sale->reference_number ?? $si->sale_id).' · Branch: '.($si->sale->branch->branch_name ?? '—').' · Customer: '.($si->sale->customer->full_name ?? 'Walk-in').' · Payment: '.ucfirst($si->sale->payment_method ?? '—'),
+                'user' => $si->sale->cashier->name ?? null,
+                'status' => $si->sale->status ?? null,
+                'raw' => $si,
+            ]);
+        }
+
+        foreach ($refunds as $r) {
+            $timeline->push([
+                'type' => 'refund',
+                'icon' => 'fa-undo',
+                'color' => '#ef4444',
+                'label' => 'Refund',
+                'date' => $r->created_at,
+                'summary' => 'Qty: '.$r->quantity_refunded.' · ₱'.number_format($r->refund_amount, 2),
+                'detail' => 'Reason: '.($r->reason ?? '—').($r->notes ? ' · Notes: '.$r->notes : ''),
+                'user' => $r->cashier->name ?? null,
+                'status' => $r->status,
+                'raw' => $r,
+            ]);
+        }
+
+        foreach ($repairs as $rep) {
+            $timeline->push([
+                'type' => 'repair',
+                'icon' => 'fa-tools',
+                'color' => '#0891b2',
+                'label' => 'Repair / Warranty Claim',
+                'date' => $rep->created_at,
+                'summary' => ucfirst(str_replace('_', ' ', $rep->repair_type)).' · '.ucfirst(str_replace('_', ' ', $rep->status)).($rep->repair_cost > 0 ? ' · Cost: ₱'.number_format($rep->repair_cost, 2) : ''),
+                'detail' => 'Issue: '.$rep->issue_description.($rep->resolution_notes ? ' · Resolution: '.$rep->resolution_notes : '').($rep->serial_number ? ' · S/N: '.$rep->serial_number : ''),
+                'user' => $rep->handledBy->name ?? null,
+                'status' => $rep->status,
+                'raw' => $rep,
+            ]);
+        }
+
+        $timeline = $timeline->sortByDesc('date')->values();
+
+        // ── Serial summary for electronics ─────────────────────────────────────
+        $serialSummary = null;
+        if ($isElectronic) {
+            $serials = $product->serials()->with(['branch', 'saleItem.sale.customer', 'repairs'])->get();
+            $serialSummary = [
+                'total' => $serials->count(),
+                'in_stock' => $serials->where('status', 'in_stock')->count(),
+                'sold' => $serials->where('status', 'sold')->count(),
+                'returned' => $serials->where('status', 'returned')->count(),
+                'defective' => $serials->where('status', 'defective')->count(),
+                'warranty_active' => $serials->filter(fn ($s) => $s->warranty_expiry_date && $s->warranty_expiry_date->isFuture())->count(),
+                'warranty_expired' => $serials->filter(fn ($s) => $s->warranty_expiry_date && $s->warranty_expiry_date->isPast())->count(),
+                'items' => $serials,
+            ];
+        }
+
+        $branches = \App\Models\Branch::all();
+        $users = \App\Models\User::orderBy('name')->get();
+
+        return view('SuperAdmin.products.lifecycle', compact(
+            'product', 'isElectronic', 'timeline',
+            'serialSummary', 'repairs', 'branches', 'users'
+        ));
+    }
+
+    public function storeRepair(\Illuminate\Http\Request $request, Product $product): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'serial_number' => 'nullable|string|max:255',
+            'repair_type' => 'required|in:in_warranty,out_of_warranty,inspection',
+            'status' => 'required|in:received,in_progress,repaired,returned,unrepairable',
+            'issue_description' => 'required|string',
+            'resolution_notes' => 'nullable|string',
+            'repair_cost' => 'nullable|numeric|min:0',
+            'received_date' => 'required|date',
+            'returned_date' => 'nullable|date',
+            'branch_id' => 'nullable|exists:branches,id',
+            'handled_by' => 'nullable|exists:users,id',
+        ]);
+
+        $validated['product_id'] = $product->id;
+        $validated['repair_cost'] = $validated['repair_cost'] ?? 0;
+
+        if (! empty($validated['serial_number'])) {
+            $serial = ProductSerial::where('serial_number', $validated['serial_number'])
+                ->where('product_id', $product->id)
+                ->first();
+            if ($serial) {
+                $validated['product_serial_id'] = $serial->id;
+            }
+        }
+
+        $repair = ProductRepair::create($validated);
+
+        return response()->json(['success' => true, 'repair' => $repair->load('handledBy', 'branch')]);
     }
 
     public function destroy(Product $product)

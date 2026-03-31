@@ -177,6 +177,99 @@ class StockManagementController extends Controller
     }
 
     /**
+     * Procurement needs — items ordered but not yet fulfilled due to zero stock.
+     * Shows every product+branch combination that has pending_qty > 0 in sale_items,
+     * grouped and cross-referenced with current branch stock.
+     */
+    public function procurement(Request $request): \Illuminate\View\View
+    {
+        $search = $request->query('search');
+
+        // Aggregate pending quantities per product per branch from sale_items
+        // Supplier is resolved via the most recent purchase for each product (no supplier_id on products table)
+        $latestSupplier = DB::table('purchase_items')
+            ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+            ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
+            ->selectRaw('purchase_items.product_id, suppliers.supplier_name, MAX(purchases.id) as max_purchase_id')
+            ->groupBy('purchase_items.product_id', 'suppliers.supplier_name');
+
+        $pendingQuery = DB::table('sale_items')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+            ->leftJoinSub($latestSupplier, 'latest_supplier', 'latest_supplier.product_id', '=', 'products.id')
+            ->where('sale_items.is_for_procurement', true)
+            ->where('sale_items.pending_qty', '>', 0)
+            ->selectRaw('
+                products.id                                          AS product_id,
+                products.product_name,
+                products.barcode,
+                products.model_number,
+                COALESCE(brands.brand_name, "—")                     AS brand_name,
+                COALESCE(categories.category_name, "—")              AS category_name,
+                COALESCE(latest_supplier.supplier_name, "—")         AS supplier_name,
+                sales.branch_id,
+                COALESCE(branches.branch_name, "—")                  AS branch_name,
+                SUM(sale_items.pending_qty)                          AS total_pending_qty,
+                COUNT(DISTINCT sale_items.sale_id)                   AS order_count,
+                MIN(sales.created_at)                                AS oldest_order_date,
+                MAX(sales.created_at)                                AS latest_order_date
+            ')
+            ->groupBy(
+                'products.id', 'products.product_name', 'products.barcode',
+                'products.model_number', 'brands.brand_name', 'categories.category_name',
+                'latest_supplier.supplier_name', 'sales.branch_id', 'branches.branch_name'
+            );
+
+        if ($search) {
+            $pendingQuery->where(function ($q) use ($search) {
+                $q->where('products.product_name', 'like', "%{$search}%")
+                    ->orWhere('products.barcode', 'like', "%{$search}%")
+                    ->orWhere('branches.branch_name', 'like', "%{$search}%")
+                    ->orWhere('latest_supplier.supplier_name', 'like', "%{$search}%");
+            });
+        }
+
+        $pendingItems = $pendingQuery->orderByDesc('total_pending_qty')->get();
+
+        // Attach current stock per product+branch
+        $stockMap = DB::table('branch_stocks')
+            ->whereIn('product_id', $pendingItems->pluck('product_id')->unique())
+            ->get()
+            ->groupBy(fn ($r) => $r->product_id.'_'.$r->branch_id);
+
+        $pendingItems = $pendingItems->map(function ($row) use ($stockMap) {
+            $key = $row->product_id.'_'.$row->branch_id;
+            $row->current_stock = (float) ($stockMap[$key][0]->quantity_base ?? 0);
+            $row->still_needed = max(0, $row->total_pending_qty - $row->current_stock);
+            $row->can_fulfill = min($row->total_pending_qty, $row->current_stock);
+
+            return $row;
+        });
+
+        // Summary stats
+        $totalPendingProducts = $pendingItems->count();
+        $totalPendingUnits = $pendingItems->sum('total_pending_qty');
+        $totalStillNeeded = $pendingItems->sum('still_needed');
+        $totalOrders = $pendingItems->sum('order_count');
+        $fullyBlocked = $pendingItems->where('current_stock', '<=', 0)->count();
+        $partiallyFulfillable = $pendingItems->where('current_stock', '>', 0)
+            ->where('still_needed', '>', 0)->count();
+
+        // Stock alert stats (reused from stock management)
+        $stockStats = $this->calculateStockStatistics(null);
+
+        return view('superadmin.inventory.procurement', compact(
+            'pendingItems', 'search',
+            'totalPendingProducts', 'totalPendingUnits', 'totalStillNeeded',
+            'totalOrders', 'fullyBlocked', 'partiallyFulfillable',
+            'stockStats'
+        ));
+    }
+
+    /**
      * API endpoint for suppliers
      */
     public function getSuppliers()
@@ -612,6 +705,11 @@ class StockManagementController extends Controller
         }
 
         $query->orderBy('products.product_name', 'asc');
+    }
+
+    public function calculateStockStatisticsPublic(?int $branchId = null): array
+    {
+        return $this->calculateStockStatistics($branchId);
     }
 
     private function calculateStockStatistics(?int $branchId = null): array

@@ -305,6 +305,11 @@
                     Back to Purchases
                 </a>
 
+                <a href="{{ route('cashier.purchases.lifecycle', $purchase->id) }}" class="btn" style="background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;">
+                    <i class="fas fa-history"></i>
+                    View Lifecycle
+                </a>
+
                 @if(($purchase->payment_status ?? '') === 'pending')
                     <form method="POST" action="{{ route('cashier.purchases.mark-paid', ['purchase' => $purchase->id]) }}" class="d-inline" data-confirm-mark-paid>
                         @csrf

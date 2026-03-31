@@ -60,11 +60,11 @@ class Product extends Model
     {
         $type = null;
 
-        if (!empty($this->category?->category_type)) {
+        if (! empty($this->category?->category_type)) {
             $type = $this->category->category_type;
-        } elseif (!empty($this->product_type_id)) {
+        } elseif (! empty($this->product_type_id)) {
             $type = $this->product_type_id;
-        } elseif (!empty($this->productType?->type_name)) {
+        } elseif (! empty($this->productType?->type_name)) {
             $type = $this->productType->type_name;
         }
 
@@ -128,6 +128,11 @@ class Product extends Model
     public function serials()
     {
         return $this->hasMany(ProductSerial::class);
+    }
+
+    public function repairs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductRepair::class);
     }
 
     public function stockOuts()

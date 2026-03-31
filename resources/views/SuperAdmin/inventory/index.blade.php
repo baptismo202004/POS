@@ -1,352 +1,620 @@
 @extends('layouts.app')
-@section('title', 'Inventory')
+@section('title', 'Business Intelligence')
 
 @push('stylesDashboard')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
-    :root {
-        --navy:    #0D47A1;
-        --blue:    #1976D2;
-        --blue-lt: #42A5F5;
-        --cyan:    #00E5FF;
-        --green:   #10b981;
-        --red:     #ef4444;
-        --amber:   #f59e0b;
-        --bg:      #EBF3FB;
-        --card:    #ffffff;
-        --border:  rgba(25,118,210,0.12);
-        --text:    #1a2744;
-        --muted:   #6b84aa;
-    }
+:root{--navy:#0D47A1;--blue:#1976D2;--blue-lt:#42A5F5;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6;--bg:#EBF3FB;--card:#fff;--border:rgba(25,118,210,0.12);--text:#1a2744;--muted:#6b84aa;}
+*{box-sizing:border-box;}
+body{background:var(--bg);font-family:'Segoe UI',sans-serif;}
+.bi-wrap{padding:24px 22px 60px;max-width:1600px;margin:0 auto;}
 
-    /* Background */
-    .sp-bg { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg); }
-    .sp-bg::before {
-        content:'';position:absolute;inset:0;
-        background:
-            radial-gradient(ellipse 60% 50% at 0% 0%,    rgba(13,71,161,0.09) 0%,transparent 60%),
-            radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,176,255,0.07) 0%,transparent 55%);
-    }
-    .sp-blob { position:absolute;border-radius:50%;filter:blur(60px);opacity:.11; }
-    .sp-blob-1 { width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite; }
-    .sp-blob-2 { width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite; }
-    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
-    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+/* Header */
+.bi-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px;}
+.bi-title{font-size:26px;font-weight:900;color:var(--navy);margin:0;line-height:1.1;}
+.bi-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.bi-crumb{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);opacity:.7;margin-bottom:4px;}
 
-    /* Wrap */
-    .sp-wrap { position:relative;z-index:1;padding:28px 24px 56px;font-family:'Plus Jakarta Sans',sans-serif; }
+/* Alerts strip */
+.bi-alerts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.bi-alert{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:600;}
+.bi-alert-danger{background:rgba(239,68,68,0.1);color:#b91c1c;border:1px solid rgba(239,68,68,0.2);}
+.bi-alert-warning{background:rgba(245,158,11,0.1);color:#b45309;border:1px solid rgba(245,158,11,0.2);}
+.bi-alert-info{background:rgba(25,118,210,0.1);color:#1565c0;border:1px solid rgba(25,118,210,0.2);}
 
-    /* Page header */
-    .sp-page-head {
-        display:flex;align-items:center;justify-content:space-between;
-        margin-bottom:22px;flex-wrap:wrap;gap:14px;
-        animation:spUp .4s ease both;
-    }
-    .sp-ph-left { display:flex;align-items:center;gap:13px; }
-    .sp-ph-icon {
-        width:48px;height:48px;border-radius:14px;
-        background:linear-gradient(135deg,var(--navy),var(--blue-lt));
-        display:flex;align-items:center;justify-content:center;
-        font-size:20px;color:#fff;
-        box-shadow:0 6px 20px rgba(13,71,161,0.28);
-    }
-    .sp-ph-crumb { font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.75;margin-bottom:3px;font-family:'Nunito',sans-serif; }
-    .sp-ph-title { font-family:'Nunito',sans-serif;font-size:24px;font-weight:900;color:var(--navy);line-height:1.1; }
-    .sp-ph-sub   { font-size:12px;color:var(--muted);margin-top:2px; }
-    .sp-ph-actions { display:flex;align-items:center;gap:9px;flex-wrap:wrap; }
+/* KPI grid */
+.bi-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px;}
+.bi-kpi{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 16px;box-shadow:0 2px 10px rgba(13,71,161,0.06);position:relative;overflow:hidden;}
+.bi-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.bi-kpi.green::before{background:var(--green);}
+.bi-kpi.red::before{background:var(--red);}
+.bi-kpi.blue::before{background:var(--blue);}
+.bi-kpi.amber::before{background:var(--amber);}
+.bi-kpi.purple::before{background:var(--purple);}
+.bi-kpi.navy::before{background:var(--navy);}
+.bi-kpi-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.bi-kpi-value{font-size:19px;font-weight:900;color:var(--navy);line-height:1;}
+.bi-kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.bi-kpi-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.08;}
+.growth-up{color:var(--green);font-size:11px;font-weight:700;}
+.growth-dn{color:var(--red);font-size:11px;font-weight:700;}
 
-    /* Search */
-    .sp-search-wrap { position:relative; }
-    .sp-search-wrap i { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;z-index:2; }
-    .sp-search-input {
-        padding:9px 14px 9px 36px;
-        border-radius:11px;border:1.5px solid var(--border);
-        font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;
-        background:var(--card);color:var(--text);outline:none;
-        width:260px;transition:border-color .18s, box-shadow .18s;
-    }
-    .sp-search-input:focus { border-color:var(--blue-lt); box-shadow:0 0 0 3px rgba(66,165,245,0.12); }
+/* Two-column layout */
+.bi-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.bi-row-3{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:900px){.bi-row,.bi-row-3{grid-template-columns:1fr;}}
 
-    /* Card */
-    .sp-card {
-        background:var(--card);border-radius:20px;
-        border:1px solid var(--border);
-        box-shadow:0 4px 28px rgba(13,71,161,0.09);
-        overflow:hidden;animation:spUp .45s ease both;
-    }
-    .sp-card-head {
-        padding:15px 22px;
-        background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);
-        display:flex;align-items:center;justify-content:space-between;
-        position:relative;overflow:hidden;
-    }
-    .sp-card-head::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none; }
-    .sp-card-head::after  { content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);top:-90px;right:-50px;pointer-events:none; }
-    .sp-card-head-title { font-family:'Nunito',sans-serif;font-size:14.5px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1; }
-    .sp-card-head-title i { color:rgba(0,229,255,.85); }
-    .sp-c-badge { position:relative;z-index:1;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;font-family:'Nunito',sans-serif; }
+/* Cards */
+.bi-card{background:var(--card);border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 14px rgba(13,71,161,0.07);overflow:hidden;}
+.bi-card-head{padding:12px 18px;background:linear-gradient(135deg,var(--navy),var(--blue));display:flex;align-items:center;justify-content:space-between;}
+.bi-card-title{font-size:13px;font-weight:800;color:#fff;display:flex;align-items:center;gap:7px;}
+.bi-card-title i{color:rgba(0,229,255,.85);}
+.bi-card-badge{background:rgba(255,255,255,0.18);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;}
+.bi-card-body{padding:16px 18px;}
 
-    /* Alert */
-    .sp-alert {
-        margin:18px 22px 0;
-        border-radius:14px;
-        border:1px solid rgba(13,71,161,0.15);
-        background:rgba(13,71,161,0.04);
-        color:var(--text);
-        padding:12px 14px;
-        font-size:13px;
-    }
+/* Chart */
+.bi-chart-wrap{padding:16px 18px 10px;}
 
-    /* Table */
-    .sp-table-wrap { overflow-x:auto; }
-    .sp-table-wrap::-webkit-scrollbar{height:5px;width:5px;}
-    .sp-table-wrap::-webkit-scrollbar-thumb{background:rgba(13,71,161,0.15);border-radius:4px;}
-    .sp-table { width:100%;border-collapse:separate;border-spacing:0;font-family:'Plus Jakarta Sans',sans-serif; }
-    .sp-table thead th {
-        background:rgba(13,71,161,0.03);
-        padding:11px 16px;
-        font-size:11px;font-weight:700;color:var(--navy);
-        letter-spacing:.06em;text-transform:uppercase;
-        border-bottom:1px solid var(--border);white-space:nowrap;
-    }
-    .sp-table tbody td {
-        padding:13px 16px;font-size:13.5px;color:var(--text);
-        border-bottom:1px solid rgba(25,118,210,0.06);
-        vertical-align:middle;
-    }
-    .sp-table tbody tr:nth-child(even) td { background:rgba(240,246,255,0.55); }
-    .sp-table tbody tr:hover td { background:rgba(21,101,192,0.05); }
+/* Branch table */
+.bi-mini-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.bi-mini-tbl th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--border);}
+.bi-mini-tbl td{padding:9px 10px;border-bottom:1px solid rgba(25,118,210,0.05);color:var(--text);vertical-align:middle;}
+.bi-mini-tbl tr:last-child td{border-bottom:none;}
+.bi-mini-tbl tr:hover td{background:rgba(21,101,192,0.04);}
 
-    /* Pagination */
-    .sp-pagination {
-        padding:14px 22px;
-        background:rgba(13,71,161,0.03);
-        border-top:1px solid var(--border);
-        display:flex;align-items:center;justify-content:center;
-    }
-    .sp-pagination .pagination { margin:0; }
-    .sp-pagination .page-link {
-        border-radius:8px !important;margin:0 2px;
-        border:1.5px solid var(--border);
-        color:var(--navy);font-weight:700;font-size:13px;
-        font-family:'Nunito',sans-serif;transition:all .18s ease;
-    }
-    .sp-pagination .page-link:hover { background:rgba(13,71,161,0.08);border-color:var(--blue-lt); }
-    .sp-pagination .page-item.active .page-link {
-        background:linear-gradient(135deg,var(--navy),var(--blue));
-        border-color:var(--navy);color:#fff;
-    }
+/* Progress bar */
+.bi-bar-wrap{background:rgba(13,71,161,0.07);border-radius:6px;height:6px;overflow:hidden;margin-top:4px;}
+.bi-bar{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--blue-lt));}
 
-    @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+/* Feed */
+.bi-feed{list-style:none;margin:0;padding:0;}
+.bi-feed li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(25,118,210,0.06);}
+.bi-feed li:last-child{border-bottom:none;}
+.bi-feed-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;flex-shrink:0;margin-top:1px;}
+.bi-feed-text{font-size:12.5px;color:var(--text);font-weight:500;line-height:1.3;}
+.bi-feed-time{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* Tabs */
+.bi-tabs{display:flex;gap:3px;flex-wrap:wrap;border-bottom:2px solid var(--border);margin-bottom:0;}
+.bi-tab{padding:8px 16px;font-size:12.5px;font-weight:700;border-radius:9px 9px 0 0;border:1px solid transparent;border-bottom:none;color:var(--muted);background:transparent;text-decoration:none;transition:all .15s;}
+.bi-tab:hover{background:rgba(13,71,161,0.05);color:var(--navy);}
+.bi-tab.active{background:var(--card);border-color:var(--border);color:var(--navy);margin-bottom:-2px;border-bottom:2px solid var(--card);}
+
+/* Data panel */
+.bi-panel{background:var(--card);border-radius:0 16px 16px 16px;border:1px solid var(--border);box-shadow:0 2px 14px rgba(13,71,161,0.07);overflow:hidden;}
+.bi-panel-head{padding:12px 18px;background:linear-gradient(135deg,var(--navy),var(--blue));display:flex;align-items:center;justify-content:space-between;}
+.bi-search-bar{padding:10px 18px;border-bottom:1px solid var(--border);background:rgba(13,71,161,0.02);}
+.bi-search-bar form{display:flex;align-items:center;gap:8px;}
+.bi-search-bar input{padding:7px 12px 7px 32px;border-radius:9px;border:1.5px solid var(--border);font-size:13px;background:var(--card);color:var(--text);outline:none;width:240px;}
+.bi-search-bar input:focus{border-color:var(--blue-lt);box-shadow:0 0 0 3px rgba(66,165,245,0.1);}
+.bi-search-wrap{position:relative;display:inline-block;}
+.bi-search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+
+/* Table */
+.bi-tbl-wrap{overflow-x:auto;}
+.bi-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;}
+.bi-tbl thead th{background:rgba(13,71,161,0.03);padding:9px 14px;font-size:10.5px;font-weight:700;color:var(--navy);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+.bi-tbl tbody td{padding:11px 14px;color:var(--text);border-bottom:1px solid rgba(25,118,210,0.05);vertical-align:middle;}
+.bi-tbl tbody tr:nth-child(even) td{background:rgba(240,246,255,0.45);}
+.bi-tbl tbody tr:hover td{background:rgba(21,101,192,0.05);}
+.bi-tbl tbody tr:last-child td{border-bottom:none;}
+
+/* Badges */
+.bp{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.bp-green{background:rgba(16,185,129,0.12);color:#059669;}
+.bp-red{background:rgba(239,68,68,0.12);color:#dc2626;}
+.bp-amber{background:rgba(245,158,11,0.12);color:#d97706;}
+.bp-blue{background:rgba(25,118,210,0.12);color:#1565c0;}
+.bp-purple{background:rgba(139,92,246,0.12);color:#7c3aed;}
+.bp-gray{background:rgba(107,132,170,0.12);color:#4b5563;}
+
+.money{font-weight:700;color:var(--navy);}
+.money-g{font-weight:700;color:var(--green);}
+.money-r{font-weight:700;color:var(--red);}
+.bi-pager{padding:11px 18px;background:rgba(13,71,161,0.02);border-top:1px solid var(--border);display:flex;justify-content:center;}
+.bi-pager .pagination{margin:0;}
+.bi-pager .page-link{border-radius:7px!important;margin:0 2px;border:1.5px solid var(--border);color:var(--navy);font-weight:700;font-size:12px;}
+.bi-pager .page-item.active .page-link{background:linear-gradient(135deg,var(--navy),var(--blue));border-color:var(--navy);color:#fff;}
 </style>
 @endpush
 
 @section('content')
-<div class="d-flex min-vh-100" style="background:var(--bg);">
-    <div class="sp-bg">
-        <div class="sp-blob sp-blob-1"></div>
-        <div class="sp-blob sp-blob-2"></div>
+<div class="bi-wrap">
+
+{{-- Header --}}
+<div class="bi-header">
+    <div>
+        <div class="bi-crumb">SuperAdmin · Business Intelligence</div>
+        <h1 class="bi-title"><i class="fas fa-chart-network me-2" style="color:var(--blue);"></i>Activity Overview</h1>
+        <div class="bi-sub">Cross-module financial health · real-time feed · branch comparison · KPI correlations</div>
     </div>
-
-    <main class="flex-fill p-4" style="position:relative;z-index:1;">
-        <div class="sp-wrap">
-            <div class="sp-page-head">
-                <div class="sp-ph-left">
-                    <div class="sp-ph-icon"><i class="fas fa-warehouse"></i></div>
-                    <div>
-                        <div class="sp-ph-crumb">Inventory</div>
-                        <div class="sp-ph-title">Inventory</div>
-                        <div class="sp-ph-sub">Monitor stock, sales, and revenue</div>
-                    </div>
-                </div>
-                <div class="sp-ph-actions">
-                    <div class="sp-search-wrap">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchInput" class="sp-search-input" placeholder="Search products..." value="{{ request('search') }}">
-                    </div>
-                </div>
-            </div>
-
-            <div class="sp-card">
-                <div class="sp-card-head">
-                    <div class="sp-card-head-title"><i class="fas fa-list"></i> Stock Overview</div>
-                    <span class="sp-c-badge">{{ $products->total() }} records</span>
-                </div>
-
-                @if(request('filter') == 'out-of-stock')
-                    <div class="sp-alert" role="alert">
-                        <strong>Filter Applied:</strong> Showing only out of stock items (≤ 15 units)
-                    </div>
-                @endif
-
-                <div class="sp-table-wrap">
-                    <table class="sp-table">
-                        <thead>
-                            <tr>
-                                <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'product_name', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" style="color:inherit;text-decoration:none;">Product</a></th>
-                                <th>Brand</th>
-                                <th>Category</th>
-                                <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'current_stock', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" style="color:inherit;text-decoration:none;">Current Stock</a></th>
-                                <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_sold', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" style="color:inherit;text-decoration:none;">Total Sold</a></th>
-                                <th><a href="{{ route('superadmin.inventory.index', ['sort_by' => 'total_revenue', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" style="color:inherit;text-decoration:none;">Total Revenue</a></th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($products as $product)
-                                <tr class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'table-danger' : '' }}">
-                                    <td style="font-weight:600;"><a href="{{ route('superadmin.products.show', $product->id) }}" style="color:inherit;text-decoration:none;">{{ $product->product_name }}</a></td>
-                                    <td>{{ $product->brand->brand_name ?? 'N/A' }}</td>
-                                    <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                    <td class="{{ request('filter') == 'out-of-stock' && $product->current_stock <= 15 ? 'text-danger font-weight-bold' : '' }}">{{ number_format($product->current_stock, 0) }}</td>
-                                    <td>{{ $product->total_sold }}</td>
-                                    <td>{{ number_format($product->total_revenue, 2) }}</td>
-                                    <td>
-                                        <a href="{{ route('admin.stockin.index') }}" class="btn btn-sm btn-primary">Manage Stock</a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="text-center" style="color:var(--muted);padding:34px;">No products found.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="sp-pagination">
-                    {{ $products->links() }}
-                </div>
-            </div>
-        </div>
-    </main>
+    <div style="font-size:12px;color:var(--muted);text-align:right;padding-top:6px;">
+        <i class="fas fa-clock me-1"></i>{{ now()->format('M d, Y H:i') }} PHT
+    </div>
 </div>
 
-    
-    <!-- Bootstrap JS bundle (optional) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Function to update dashboard alerts
-            function updateDashboardAlerts(outOfStockCount) {
-                try {
-                    console.log('Updating dashboard alerts with count:', outOfStockCount);
-                    
-                    // Try multiple selectors for the alerts count element
-                    const totalAlertsElement = document.getElementById('totalAlertsCount') || 
-                                          document.querySelector('[id="totalAlertsCount"]') ||
-                                          document.querySelector('.widget-badge.alert-count');
-                    
-                    console.log('Found alerts element:', totalAlertsElement);
-                    
-                    if (totalAlertsElement) {
-                        // Get current alerts from dashboard if available
-                        fetch('/dashboard/widgets', {
-                            method: 'GET',
-                            headers: { 
-                                'X-Requested-With': 'XMLHttpRequest', 
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Dashboard data received:', data);
-                            if (data.alerts) {
-                                const totalAlerts = data.alerts.outOfStock + data.alerts.negativeProfit + data.alerts.voidedSales + data.alerts.belowCostSales + data.alerts.highDiscountUsage;
-                                totalAlertsElement.textContent = totalAlerts;
-                                console.log('Updated total alerts to:', totalAlerts);
-                                
-                                // Try to update alerts list with multiple selectors
-                                const alertsList = document.getElementById('alertsList') || 
-                                                   document.querySelector('[id="alertsList"]') ||
-                                                   document.querySelector('.alerts-list');
-                                
-                                console.log('Found alerts list element:', alertsList);
-                                
-                                if (alertsList) {
-                                    const alertItems = [];
-                                    
-                                    if (data.alerts.outOfStock > 0) {
-                                        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory?filter=out-of-stock'"><i class="fas fa-exclamation-triangle alert-icon" style="color:#E91E63"></i><div class="alert-content"><div class="alert-title">${data.alerts.outOfStock} items out of stock</div><div class="alert-description">Restock needed</div></div></div>`);
-                                    }
-                                    
-                                    alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';
-                                    console.log('Updated alerts list');
-                                } else {
-                                    console.log('Alerts list element not found');
-                                }
-                            } else {
-                                console.log('No alerts data in response');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error updating dashboard alerts:', error);
-                        });
-                    } else {
-                        console.log('Alerts count element not found - trying alternative approach');
-                        
-                        // Alternative: Try to update via parent window if in iframe
-                        if (window.parent && window.parent.document) {
-                            const parentAlertsElement = window.parent.document.getElementById('totalAlertsCount');
-                            if (parentAlertsElement) {
-                                console.log('Found alerts element in parent window');
-                                parentAlertsElement.textContent = outOfStockCount;
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error in updateDashboardAlerts:', error);
-                }
-            }
+{{-- Alerts strip --}}
+@if($alerts->isNotEmpty())
+<div class="bi-alerts">
+    @foreach($alerts as $a)
+    <div class="bi-alert bi-alert-{{ $a['type'] }}">
+        <i class="fas {{ $a['icon'] }}"></i> {{ $a['text'] }}
+    </div>
+    @endforeach
+</div>
+@endif
 
-            @if(session('success'))
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: '{{ session('success') }}',
-                showConfirmButton: true,
-                confirmButtonText: 'Great!',
-                confirmButtonColor: '#02C39A',
-                backdrop: `
-                    rgba(2, 195, 154, 0.1)
-                    left top
-                    no-repeat
-                `,
-                showClass: {
-                    popup: 'animate__animated animate__fadeInDown'
-                },
-                hideClass: {
-                    popup: 'animate__animated animate__fadeOutUp'
-                },
-                position: 'top-center',
-                toast: false,
-                timer: 4000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
+{{-- KPI row --}}
+<div class="bi-kpi-grid">
+    <div class="bi-kpi green">
+        <div class="bi-kpi-label">Net Revenue</div>
+        <div class="bi-kpi-value money-g">₱{{ number_format($netRevenue, 2) }}</div>
+        <div class="bi-kpi-sub">Sales − Expenses − Refunds</div>
+        <i class="fas fa-chart-line bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi green">
+        <div class="bi-kpi-label">Today's Sales</div>
+        <div class="bi-kpi-value money-g">₱{{ number_format($todaySales, 2) }}</div>
+        <div class="bi-kpi-sub">
+            @if($salesGrowth !== null)
+                <span class="{{ $salesGrowth >= 0 ? 'growth-up' : 'growth-dn' }}">
+                    <i class="fas fa-arrow-{{ $salesGrowth >= 0 ? 'up' : 'down' }}"></i>
+                    {{ abs($salesGrowth) }}% vs yesterday
+                </span>
+            @else
+                No data yesterday
             @endif
+        </div>
+        <i class="fas fa-cash-register bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi amber">
+        <div class="bi-kpi-label">Credit on Sales</div>
+        <div class="bi-kpi-value">{{ $creditRatio }}%</div>
+        <div class="bi-kpi-sub">of total sales on credit</div>
+        <i class="fas fa-credit-card bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi red">
+        <div class="bi-kpi-label">Refund Rate</div>
+        <div class="bi-kpi-value money-r">{{ $refundRate }}%</div>
+        <div class="bi-kpi-sub">of total sales refunded</div>
+        <i class="fas fa-undo bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi red">
+        <div class="bi-kpi-label">Expense Ratio</div>
+        <div class="bi-kpi-value money-r">{{ $expenseRatio }}%</div>
+        <div class="bi-kpi-sub">expenses as % of sales</div>
+        <i class="fas fa-receipt bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi blue">
+        <div class="bi-kpi-label">Avg Transaction</div>
+        <div class="bi-kpi-value money">₱{{ number_format($avgTransaction, 2) }}</div>
+        <div class="bi-kpi-sub">per completed sale</div>
+        <i class="fas fa-calculator bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi purple">
+        <div class="bi-kpi-label">Credit Collection</div>
+        <div class="bi-kpi-value">{{ $creditCollectionRate }}%</div>
+        <div class="bi-kpi-sub">of issued credits collected</div>
+        <i class="fas fa-hand-holding-usd bi-kpi-icon"></i>
+    </div>
+    <div class="bi-kpi red">
+        <div class="bi-kpi-label">Overdue Credits</div>
+        <div class="bi-kpi-value money-r">₱{{ number_format($overdueCredits, 2) }}</div>
+        <div class="bi-kpi-sub">past due date, still active</div>
+        <i class="fas fa-exclamation-circle bi-kpi-icon"></i>
+    </div>
+</div>
 
-            
-            const searchInput = document.getElementById('searchInput');
-            let debounceTimer;
+{{-- Chart + Feed --}}
+<div class="bi-row-3" style="margin-bottom:16px;">
+    {{-- 30-day trend chart --}}
+    <div class="bi-card">
+        <div class="bi-card-head">
+            <div class="bi-card-title"><i class="fas fa-chart-area"></i> 30-Day Financial Trend</div>
+            <div style="display:flex;gap:12px;font-size:11px;color:rgba(255,255,255,0.75);">
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:4px;"></span>Sales</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:4px;"></span>Expenses</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#42A5F5;margin-right:4px;"></span>Profit</span>
+            </div>
+        </div>
+        <div class="bi-chart-wrap">
+            <canvas id="trendChart" height="110"></canvas>
+        </div>
+    </div>
 
-            searchInput.addEventListener('input', function () {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
-                    const query = searchInput.value;
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('search', query);
-                    window.location.href = url.toString();
-                }, 500);
-            });
-        });
-    </script>
+    {{-- Live activity feed --}}
+    <div class="bi-card">
+        <div class="bi-card-head">
+            <div class="bi-card-title"><i class="fas fa-bolt"></i> Live Activity Feed</div>
+            <span class="bi-card-badge">Last 20</span>
+        </div>
+        <div class="bi-card-body" style="max-height:280px;overflow-y:auto;padding:10px 14px;">
+            <ul class="bi-feed">
+                @foreach($feed as $f)
+                <li>
+                    <div class="bi-feed-dot" style="background:{{ $f['color'] }}">
+                        <i class="fas {{ $f['icon'] }}"></i>
+                    </div>
+                    <div>
+                        <div class="bi-feed-text">{{ $f['text'] }}</div>
+                        <div class="bi-feed-time">{{ $f['time']?->diffForHumans() }}</div>
+                    </div>
+                </li>
+                @endforeach
+            </ul>
+        </div>
+    </div>
+</div>
+
+{{-- Branch comparison + Top products --}}
+<div class="bi-row" style="margin-bottom:20px;">
+    {{-- Branch comparison --}}
+    <div class="bi-card">
+        <div class="bi-card-head">
+            <div class="bi-card-title"><i class="fas fa-code-branch"></i> Branch Comparison</div>
+        </div>
+        <div style="padding:0 4px;">
+            @php $maxBranchSales = $branchStats->max('branch_sales') ?: 1; @endphp
+            <table class="bi-mini-tbl">
+                <thead><tr><th>Branch</th><th class="text-end">Sales</th><th class="text-end">Expenses</th><th class="text-end">Net</th></tr></thead>
+                <tbody>
+                    @forelse($branchStats as $b)
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;font-size:13px;">{{ $b->branch_name }}</div>
+                            <div class="bi-bar-wrap" style="width:100px;">
+                                <div class="bi-bar" style="width:{{ min(100, round($b->branch_sales / $maxBranchSales * 100)) }}%"></div>
+                            </div>
+                        </td>
+                        <td class="text-end money-g">₱{{ number_format($b->branch_sales, 0) }}</td>
+                        <td class="text-end money-r">₱{{ number_format($b->branch_expenses, 0) }}</td>
+                        <td class="text-end money">₱{{ number_format($b->branch_sales - $b->branch_expenses, 0) }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="4" class="text-center" style="padding:20px;color:var(--muted);">No branch data.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Top 5 products --}}
+    <div class="bi-card">
+        <div class="bi-card-head">
+            <div class="bi-card-title"><i class="fas fa-trophy"></i> Top 5 Products by Revenue</div>
+        </div>
+        <div style="padding:0 4px;">
+            @php $maxRev = $topProducts->max('revenue') ?: 1; @endphp
+            <table class="bi-mini-tbl">
+                <thead><tr><th>#</th><th>Product</th><th class="text-end">Qty Sold</th><th class="text-end">Revenue</th></tr></thead>
+                <tbody>
+                    @forelse($topProducts as $i => $p)
+                    <tr>
+                        <td style="color:var(--muted);font-size:12px;font-weight:700;">{{ $i + 1 }}</td>
+                        <td>
+                            <div style="font-weight:600;font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $p->product_name }}</div>
+                            <div class="bi-bar-wrap" style="width:100px;">
+                                <div class="bi-bar" style="width:{{ min(100, round($p->revenue / $maxRev * 100)) }}%;background:linear-gradient(90deg,var(--green),#34d399);"></div>
+                            </div>
+                        </td>
+                        <td class="text-end" style="color:var(--muted);">{{ number_format($p->qty_sold, 0) }}</td>
+                        <td class="text-end money-g">₱{{ number_format($p->revenue, 0) }}</td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="4" class="text-center" style="padding:20px;color:var(--muted);">No sales data.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
+{{-- DATA TABS --}}
+{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
+<div class="bi-tabs">
+    @foreach([
+        'sales'     => ['fa-cash-register',  'Sales',      $sales->total()],
+        'credits'   => ['fa-credit-card',    'Credits',    $credits->total()],
+        'expenses'  => ['fa-receipt',        'Expenses',   $expenses->total()],
+        'purchases' => ['fa-shopping-cart',  'Purchases',  $purchases->total()],
+        'refunds'   => ['fa-undo',           'Refunds',    $refunds->total()],
+        'stockins'  => ['fa-arrow-down',     'Stock Ins',  $stockIns->total()],
+        'movements' => ['fa-exchange-alt',   'Movements',  $movements->total()],
+        'stockouts' => ['fa-arrow-up',       'Stock Outs', $stockOuts->total()],
+    ] as $key => [$icon, $label, $count])
+    <a href="{{ request()->fullUrlWithQuery(['tab' => $key]) }}"
+       class="bi-tab {{ $tab === $key ? 'active' : '' }}">
+        <i class="fas {{ $icon }} me-1"></i>{{ $label }}
+        <span style="font-size:10px;opacity:.65;margin-left:3px;">({{ $count }})</span>
+    </a>
+    @endforeach
+</div>
+
+<div class="bi-panel">
+    <div class="bi-panel-head">
+        <div class="bi-card-title">
+            @php
+                $meta = ['sales'=>['fa-cash-register','Sales'],'credits'=>['fa-credit-card','Credits'],
+                    'expenses'=>['fa-receipt','Expenses'],'purchases'=>['fa-shopping-cart','Purchases'],
+                    'refunds'=>['fa-undo','Refunds'],'stockins'=>['fa-arrow-down','Stock Ins'],
+                    'movements'=>['fa-exchange-alt','Stock Movements'],'stockouts'=>['fa-arrow-up','Stock Outs']][$tab] ?? ['fa-list','Records'];
+                $currentPaginator = match($tab) {
+                    'credits'   => $credits,   'expenses'  => $expenses,
+                    'purchases' => $purchases, 'refunds'   => $refunds,
+                    'stockins'  => $stockIns,  'movements' => $movements,
+                    'stockouts' => $stockOuts, default     => $sales,
+                };
+            @endphp
+            <i class="fas {{ $meta[0] }}"></i> {{ $meta[1] }}
+        </div>
+        <span class="bi-card-badge">{{ $currentPaginator->total() }} records</span>
+    </div>
+
+    <div class="bi-search-bar">
+        <form method="GET" action="{{ route('superadmin.inventory.index') }}">
+            <input type="hidden" name="tab" value="{{ $tab }}">
+            <div class="bi-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="{{ $search }}" placeholder="Search...">
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Search</button>
+            @if($search)
+                <a href="{{ route('superadmin.inventory.index', ['tab' => $tab]) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            @endif
+        </form>
+    </div>
+
+    <div class="bi-tbl-wrap">
+
+    @if($tab === 'sales')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Reference</th><th>Branch</th><th>Customer</th><th>Cashier</th><th>Payment</th><th>Status</th><th class="text-end">Total</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($sales as $s)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $s->id }}</td>
+                <td style="font-weight:600;">{{ $s->reference_number ?? '—' }}</td>
+                <td>{{ $s->branch->branch_name ?? '—' }}</td>
+                <td>{{ $s->customer->full_name ?? '—' }}</td>
+                <td>{{ $s->cashier->name ?? '—' }}</td>
+                <td><span class="bp {{ $s->payment_method === 'cash' ? 'bp-green' : 'bp-amber' }}">{{ ucfirst($s->payment_method ?? '—') }}</span></td>
+                <td><span class="bp {{ match($s->status ?? '') { 'completed'=>'bp-green','pending'=>'bp-amber','voided'=>'bp-red',default=>'bp-gray' } }}">{{ ucfirst($s->status ?? 'completed') }}</span></td>
+                <td class="text-end money-g">₱{{ number_format($s->total_amount, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $s->created_at?->format('M d, Y H:i') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="9" class="text-center" style="padding:28px;color:var(--muted);">No sales found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'credits')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Reference</th><th>Customer</th><th>Branch</th><th>Status</th><th class="text-end">Credit</th><th class="text-end">Paid</th><th class="text-end">Balance</th><th>Due</th></tr></thead>
+        <tbody>
+            @forelse($credits as $c)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $c->id }}</td>
+                <td style="font-weight:600;">{{ $c->reference_number }}</td>
+                <td>{{ $c->customer->full_name ?? '—' }}</td>
+                <td>{{ $c->branch->branch_name ?? '—' }}</td>
+                <td><span class="bp {{ match($c->status) { 'active'=>'bp-amber','paid'=>'bp-green','overdue'=>'bp-red',default=>'bp-gray' } }}">{{ ucfirst($c->status) }}</span></td>
+                <td class="text-end money">₱{{ number_format($c->credit_amount, 2) }}</td>
+                <td class="text-end money-g">₱{{ number_format($c->paid_amount, 2) }}</td>
+                <td class="text-end money-r">₱{{ number_format($c->remaining_balance, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $c->date?->format('M d, Y') ?? '—' }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="9" class="text-center" style="padding:28px;color:var(--muted);">No credits found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'expenses')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Reference</th><th>Category</th><th>Branch</th><th>Description</th><th>Payment</th><th class="text-end">Amount</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($expenses as $e)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $e->id }}</td>
+                <td style="font-weight:600;">{{ $e->reference_number ?? '—' }}</td>
+                <td>{{ $e->category->name ?? '—' }}</td>
+                <td>{{ $e->branch->branch_name ?? '—' }}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $e->description ?? '—' }}</td>
+                <td><span class="bp {{ $e->payment_method === 'cash' ? 'bp-green' : 'bp-blue' }}">{{ ucfirst($e->payment_method ?? '—') }}</span></td>
+                <td class="text-end money-r">₱{{ number_format($e->amount, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $e->expense_date?->format('M d, Y') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="8" class="text-center" style="padding:28px;color:var(--muted);">No expenses found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'purchases')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Reference</th><th>Supplier</th><th>Branch</th><th>Payment Status</th><th class="text-end">Total Cost</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($purchases as $p)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $p->id }}</td>
+                <td style="font-weight:600;">{{ $p->reference_number ?? '—' }}</td>
+                <td>{{ $p->supplier->supplier_name ?? '—' }}</td>
+                <td>{{ $p->branch->branch_name ?? '—' }}</td>
+                <td><span class="bp {{ match($p->payment_status ?? '') { 'paid'=>'bp-green','partial'=>'bp-amber','unpaid'=>'bp-red',default=>'bp-gray' } }}">{{ ucfirst($p->payment_status ?? '—') }}</span></td>
+                <td class="text-end money">₱{{ number_format($p->total_cost, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $p->purchase_date?->format('M d, Y') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="7" class="text-center" style="padding:28px;color:var(--muted);">No purchases found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'refunds')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Sale #</th><th>Product</th><th>Cashier</th><th class="text-center">Qty</th><th>Reason</th><th>Status</th><th class="text-end">Amount</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($refunds as $r)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $r->id }}</td>
+                <td>{{ $r->sale_id ?? '—' }}</td>
+                <td>{{ $r->product->product_name ?? '—' }}</td>
+                <td>{{ $r->cashier->name ?? '—' }}</td>
+                <td class="text-center">{{ $r->quantity_refunded }}</td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $r->reason ?? '—' }}</td>
+                <td><span class="bp {{ match($r->status ?? '') { 'approved'=>'bp-green','pending'=>'bp-amber','rejected'=>'bp-red',default=>'bp-gray' } }}">{{ ucfirst($r->status ?? '—') }}</span></td>
+                <td class="text-end money-r">₱{{ number_format($r->refund_amount, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $r->created_at?->format('M d, Y H:i') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="9" class="text-center" style="padding:28px;color:var(--muted);">No refunds found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'stockins')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Product</th><th>Branch</th><th class="text-end">Qty In</th><th class="text-end">Sold</th><th class="text-end">Remaining</th><th>Reason</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($stockIns as $si)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $si->id }}</td>
+                <td style="font-weight:600;">{{ $si->product->product_name ?? '—' }}</td>
+                <td>{{ $si->branch->branch_name ?? '—' }}</td>
+                <td class="text-end">{{ number_format($si->quantity, 0) }}</td>
+                <td class="text-end" style="color:var(--muted);">{{ number_format($si->sold, 0) }}</td>
+                <td class="text-end money-g">{{ number_format($si->quantity - $si->sold, 0) }}</td>
+                <td style="color:var(--muted);font-size:11px;">{{ $si->reason ?? '—' }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $si->created_at?->format('M d, Y H:i') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="8" class="text-center" style="padding:28px;color:var(--muted);">No stock-in records.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'movements')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Product</th><th>Branch</th><th>Type</th><th>Source</th><th class="text-end">Qty (base)</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($movements as $m)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $m->id }}</td>
+                <td style="font-weight:600;">{{ $m->product->product_name ?? '—' }}</td>
+                <td>{{ $m->branch->branch_name ?? '—' }}</td>
+                <td><span class="bp {{ str_contains($m->movement_type ?? '', 'in') ? 'bp-green' : 'bp-red' }}">{{ $m->movement_type ?? '—' }}</span></td>
+                <td style="color:var(--muted);font-size:11px;">{{ $m->source_type ?? '—' }} #{{ $m->source_id ?? '' }}</td>
+                <td class="text-end {{ str_contains($m->movement_type ?? '', 'in') ? 'money-g' : 'money-r' }}">
+                    {{ str_contains($m->movement_type ?? '', 'in') ? '+' : '-' }}{{ number_format(abs($m->quantity_base), 2) }}
+                </td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $m->created_at?->format('M d, Y H:i') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="7" class="text-center" style="padding:28px;color:var(--muted);">No movements found.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    @elseif($tab === 'stockouts')
+    <table class="bi-tbl">
+        <thead><tr><th>#</th><th>Product</th><th>Branch</th><th>Sale #</th><th class="text-end">Qty Out</th><th>Reason</th><th>Date</th></tr></thead>
+        <tbody>
+            @forelse($stockOuts as $so)
+            <tr>
+                <td style="color:var(--muted);font-size:11px;">{{ $so->id }}</td>
+                <td style="font-weight:600;">{{ $so->product->product_name ?? '—' }}</td>
+                <td>{{ $so->branch->branch_name ?? '—' }}</td>
+                <td>{{ $so->sale_id ?? '—' }}</td>
+                <td class="text-end money-r">{{ number_format($so->quantity, 2) }}</td>
+                <td style="color:var(--muted);font-size:11px;">{{ $so->reason ?? '—' }}</td>
+                <td style="color:var(--muted);font-size:11px;white-space:nowrap;">{{ $so->created_at?->format('M d, Y H:i') }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="7" class="text-center" style="padding:28px;color:var(--muted);">No stock-out records.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+    @endif
+
+    </div>{{-- /.bi-tbl-wrap --}}
+    <div class="bi-pager">{{ $currentPaginator->links() }}</div>
+</div>{{-- /.bi-panel --}}
+
+</div>{{-- /.bi-wrap --}}
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const labels   = @json($chartLabels);
+    const sales    = @json($chartSales);
+    const expenses = @json($chartExpenses);
+    const profit   = @json($chartProfit);
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Sales',
+                    data: sales,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    fill: true,
+                    tension: 0.4,
+                },
+                {
+                    label: 'Expenses',
+                    data: expenses,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.06)',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    fill: true,
+                    tension: 0.4,
+                },
+                {
+                    label: 'Profit',
+                    data: profit,
+                    borderColor: '#42A5F5',
+                    backgroundColor: 'rgba(66,165,245,0.06)',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    fill: true,
+                    tension: 0.4,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' ₱' + Number(ctx.parsed.y).toLocaleString('en-PH', { minimumFractionDigits: 2 }),
+                    },
+                },
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 10 } },
+                y: {
+                    grid: { color: 'rgba(13,71,161,0.06)' },
+                    ticks: {
+                        font: { size: 10 },
+                        callback: v => '₱' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v),
+                    },
+                },
+            },
+        },
+    });
+})();
+</script>
+@endpush
 @endsection

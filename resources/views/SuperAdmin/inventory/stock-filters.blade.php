@@ -117,26 +117,7 @@
             </ul>
     </div>
     
-    <!-- Active Filters Display -->
-    <div class="card-body p-2">
-        <div id="activeFilters" class="d-flex flex-wrap gap-1 mb-2" style="display: none;">
-            <!-- Active filter tags will be displayed here -->
-        </div>
-        
-        <!-- Filter Summary -->
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <small class="text-muted">
-                    <span id="filterSummary">Showing all products</span>
-                </small>
-            </div>
-            <div class="col-md-6 text-end">
-                <small class="text-muted">
-                    <span id="resultCount">0</span> products
-                </small>
-            </div>
-        </div>
-    </div>
+
 </div>
 
 <script>

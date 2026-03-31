@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Product;
-use App\Models\Branch;
 
 class ProductSerial extends Model
 {
@@ -19,6 +17,12 @@ class ProductSerial extends Model
         'status',
         'warranty_expiry_date',
         'sale_item_id',
+        'sold_at',
+    ];
+
+    protected $casts = [
+        'warranty_expiry_date' => 'date',
+        'sold_at' => 'datetime',
     ];
 
     // Relationships
@@ -30,5 +34,15 @@ class ProductSerial extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function saleItem(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SaleItem::class);
+    }
+
+    public function repairs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductRepair::class);
     }
 }

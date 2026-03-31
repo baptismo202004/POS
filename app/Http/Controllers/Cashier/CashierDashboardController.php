@@ -257,6 +257,156 @@ class CashierDashboardController extends Controller
         }
     }
 
+    /**
+     * Dashboard alerts JSON — branch-scoped counts for the cashier's branch.
+     */
+    public function dashboardAlerts(): \Illuminate\Http\JsonResponse
+    {
+        $branchId = (int) Auth::user()->branch_id;
+        $today = Carbon::today();
+
+        $outOfStock = DB::table('branch_stocks')
+            ->where('branch_id', $branchId)
+            ->where('quantity_base', '<=', 0)
+            ->count();
+
+        $lowStock = DB::table('branch_stocks')
+            ->join('products', 'branch_stocks.product_id', '=', 'products.id')
+            ->where('branch_stocks.branch_id', $branchId)
+            ->where('branch_stocks.quantity_base', '>', 0)
+            ->whereRaw('branch_stocks.quantity_base <= COALESCE(NULLIF(products.low_stock_threshold,0), 10)')
+            ->count();
+
+        $pendingRefunds = DB::table('refunds')
+            ->where('status', 'pending')
+            ->whereExists(fn ($q) => $q->from('sales')
+                ->whereColumn('sales.id', 'refunds.sale_id')
+                ->where('sales.branch_id', $branchId))
+            ->count();
+
+        $pendingSales = DB::table('sales')
+            ->where('branch_id', $branchId)
+            ->where('status', 'pending')
+            ->count();
+
+        $procurementNeeds = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.branch_id', $branchId)
+            ->where('sale_items.is_for_procurement', true)
+            ->where('sale_items.pending_qty', '>', 0)
+            ->distinct('sale_items.product_id')
+            ->count('sale_items.product_id');
+
+        return response()->json([
+            'outOfStock' => $outOfStock,
+            'lowStock' => $lowStock,
+            'pendingRefunds' => $pendingRefunds,
+            'pendingSales' => $pendingSales,
+            'procurementNeeds' => $procurementNeeds,
+            'total' => $outOfStock + $lowStock + $pendingRefunds + $pendingSales + $procurementNeeds,
+        ]);
+    }
+
+    /**
+     * Procurement needs — items ordered but unfulfilled, scoped to cashier's branch.
+     */
+    public function procurement(Request $request): \Illuminate\View\View
+    {
+        $branchId = (int) Auth::user()->branch_id;
+        $search = $request->query('search');
+
+        $latestSupplier = DB::table('purchase_items')
+            ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+            ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
+            ->selectRaw('purchase_items.product_id, suppliers.supplier_name, MAX(purchases.id) as max_purchase_id')
+            ->groupBy('purchase_items.product_id', 'suppliers.supplier_name');
+
+        $pendingQuery = DB::table('sale_items')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+            ->leftJoinSub($latestSupplier, 'latest_supplier', 'latest_supplier.product_id', '=', 'products.id')
+            ->where('sales.branch_id', $branchId)
+            ->where('sale_items.is_for_procurement', true)
+            ->where('sale_items.pending_qty', '>', 0)
+            ->selectRaw('
+                products.id AS product_id,
+                products.product_name, products.barcode, products.model_number,
+                COALESCE(brands.brand_name,"—") AS brand_name,
+                COALESCE(categories.category_name,"—") AS category_name,
+                COALESCE(latest_supplier.supplier_name,"—") AS supplier_name,
+                sales.branch_id,
+                COALESCE(branches.branch_name,"—") AS branch_name,
+                SUM(sale_items.pending_qty) AS total_pending_qty,
+                COUNT(DISTINCT sale_items.sale_id) AS order_count,
+                MIN(sales.created_at) AS oldest_order_date,
+                MAX(sales.created_at) AS latest_order_date
+            ')
+            ->groupBy(
+                'products.id', 'products.product_name', 'products.barcode',
+                'products.model_number', 'brands.brand_name', 'categories.category_name',
+                'latest_supplier.supplier_name', 'sales.branch_id', 'branches.branch_name'
+            );
+
+        if ($search) {
+            $pendingQuery->where(fn ($q) => $q
+                ->where('products.product_name', 'like', "%{$search}%")
+                ->orWhere('products.barcode', 'like', "%{$search}%")
+                ->orWhere('latest_supplier.supplier_name', 'like', "%{$search}%"));
+        }
+
+        $pendingItems = $pendingQuery->orderByDesc('total_pending_qty')->get();
+
+        $stockMap = DB::table('branch_stocks')
+            ->where('branch_id', $branchId)
+            ->whereIn('product_id', $pendingItems->pluck('product_id')->unique())
+            ->get()->keyBy('product_id');
+
+        $pendingItems = $pendingItems->map(function ($row) use ($stockMap) {
+            $row->current_stock = (float) ($stockMap[$row->product_id]->quantity_base ?? 0);
+            $row->still_needed = max(0, $row->total_pending_qty - $row->current_stock);
+            $row->can_fulfill = min($row->total_pending_qty, $row->current_stock);
+
+            return $row;
+        });
+
+        $totalPendingProducts = $pendingItems->count();
+        $totalPendingUnits = $pendingItems->sum('total_pending_qty');
+        $totalStillNeeded = $pendingItems->sum('still_needed');
+        $totalOrders = $pendingItems->sum('order_count');
+        $fullyBlocked = $pendingItems->where('current_stock', '<=', 0)->count();
+        $partiallyFulfillable = $pendingItems->where('current_stock', '>', 0)->where('still_needed', '>', 0)->count();
+
+        // Reuse stock stats scoped to this branch
+        $stockStats = app(\App\Http\Controllers\SuperAdmin\StockManagementController::class)
+            ->calculateStockStatisticsPublic($branchId);
+
+        return view('cashier.procurement', compact(
+            'pendingItems', 'search',
+            'totalPendingProducts', 'totalPendingUnits', 'totalStillNeeded',
+            'totalOrders', 'fullyBlocked', 'partiallyFulfillable',
+            'stockStats'
+        ));
+    }
+
+    /**
+     * Product lifecycle — reuses SuperAdmin lifecycle scoped to cashier's branch.
+     */
+    public function productLifecycle(\App\Models\Product $product): \Illuminate\View\View
+    {
+        return app(\App\Http\Controllers\SuperAdmin\ProductController::class)->lifecycle($product);
+    }
+
+    /**
+     * Purchase lifecycle — reuses SuperAdmin lifecycle.
+     */
+    public function purchaseLifecycle(\App\Models\Purchase $purchase): \Illuminate\View\View
+    {
+        return app(\App\Http\Controllers\SuperAdmin\PurchaseController::class)->lifecycle($purchase);
+    }
+
     // SALES METHODS
     public function salesIndex(Request $request)
     {
@@ -738,7 +888,7 @@ class CashierDashboardController extends Controller
         $userBranch = Branch::find($branchId);
         $branches = Branch::all();
 
-        return view('cashier.products.create', compact('brands', 'categories', 'productTypes', 'unitTypes', 'userBranch', 'branches'));
+        return view('SuperAdmin.products.productList', compact('brands', 'categories', 'productTypes', 'unitTypes', 'userBranch', 'branches'));
     }
 
     public function storeProduct(Request $request)
@@ -755,83 +905,32 @@ class CashierDashboardController extends Controller
                 ->with('error', "You don't have permission to add, edit, or delete products.");
         }
 
-        // Select2 tags support: if a cashier types a new Brand/Category, Select2 will submit a string.
-        // Convert that into a real ID by creating (or finding) the record.
-        if ($request->filled('brand_id') && ! is_numeric($request->input('brand_id'))) {
-            $brandName = trim((string) $request->input('brand_id'));
-            if ($brandName !== '') {
-                $brand = Brand::firstOrCreate(
-                    ['brand_name' => $brandName],
-                    ['status' => 'active']
-                );
-                $request->merge(['brand_id' => $brand->id]);
+        // Delegate to the SuperAdmin ProductController which has the full validation
+        // and creation logic (warranty, voltage specs, unit conversions, etc.)
+        $response = app(\App\Http\Controllers\SuperAdmin\ProductController::class)->store($request);
+
+        // store() returns a JSON response — decode it and redirect accordingly
+        $data = json_decode($response->getContent(), true);
+
+        if (! empty($data['success'])) {
+            // Ensure the new product is linked to the cashier's branch
+            if (! empty($data['product_id'])) {
+                $newProduct = Product::find($data['product_id']);
+                if ($newProduct) {
+                    $newProduct->branches()->syncWithoutDetaching([$branchId]);
+                }
             }
+
+            return redirect()->route('cashier.products.index')
+                ->with('success', 'Product created successfully.');
         }
 
-        if ($request->filled('category_id') && ! is_numeric($request->input('category_id'))) {
-            $categoryName = trim((string) $request->input('category_id'));
-            if ($categoryName !== '') {
-                $category = Category::firstOrCreate(
-                    ['category_name' => $categoryName],
-                    ['status' => 'active']
-                );
-                $request->merge(['category_id' => $category->id]);
-            }
+        // Validation errors — send back with errors
+        if (! empty($data['errors'])) {
+            return back()->withInput()->withErrors($data['errors']);
         }
 
-        $rules = [
-            'product_name' => 'required|string|max:255',
-            'barcode' => 'required|string|max:255|unique:products,barcode',
-            'description' => 'nullable|string',
-            'brand_id' => 'nullable|exists:brands,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'required|string|in:electronic,non-electronic',
-            'unit_type_ids' => 'nullable|array',
-            'unit_type_ids.*' => 'integer|exists:unit_types,id',
-            'branch_ids' => 'nullable|array',
-            'branch_ids.*' => 'integer|exists:branches,id',
-            'status' => 'required|in:active,inactive',
-        ];
-
-        $categoryName = null;
-        if ($request->filled('category_id')) {
-            $categoryName = optional(Category::find($request->input('category_id')))->name;
-        }
-
-        $requiresElectronicType = $categoryName
-            && in_array(mb_strtolower($categoryName), ['electronics', 'computers', 'appliances'], true);
-
-        $validated = $request->validate($rules);
-
-        $validated['product_type_id'] = $requiresElectronicType ? 'electronic' : 'non-electronic';
-
-        $product = Product::create([
-            'product_name' => $validated['product_name'],
-            'barcode' => $validated['barcode'],
-            'description' => $validated['description'] ?? null,
-            'brand_id' => $validated['brand_id'] ?? null,
-            'category_id' => $validated['category_id'] ?? null,
-            'product_type_id' => $validated['product_type_id'],
-            'status' => $validated['status'],
-            'branch_id' => $branchId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        // Persist pivot relations so the product is visible in branch-scoped lists.
-        // Branch assignment
-        if (! empty($validated['branch_ids'])) {
-            $product->branches()->sync($validated['branch_ids']);
-        } else {
-            $product->branches()->sync([$branchId]);
-        }
-
-        // Unit types assignment
-        if (! empty($validated['unit_type_ids'])) {
-            $product->unitTypes()->sync($validated['unit_type_ids']);
-        }
-
-        return redirect()->route('cashier.products.index')->with('success', 'Product created successfully');
+        return back()->withInput()->with('error', $data['message'] ?? 'Failed to create product.');
     }
 
     public function showProduct($id)
@@ -870,7 +969,7 @@ class CashierDashboardController extends Controller
         $branches = Branch::all();
         $userBranch = Branch::find($branchId);
 
-        return view('cashier.products.edit', compact('product', 'brands', 'categories', 'productTypes', 'unitTypes', 'branches', 'userBranch'));
+        return view('SuperAdmin.products.productList', compact('product', 'brands', 'categories', 'productTypes', 'unitTypes', 'branches', 'userBranch'));
     }
 
     public function updateProduct(Request $request, $id)
@@ -889,79 +988,21 @@ class CashierDashboardController extends Controller
 
         $product = Product::findOrFail($id);
 
-        // Select2 tags support: convert typed Brand/Category to IDs
-        if ($request->filled('brand_id') && ! is_numeric($request->input('brand_id'))) {
-            $brandName = trim((string) $request->input('brand_id'));
-            if ($brandName !== '') {
-                $brand = Brand::firstOrCreate(
-                    ['brand_name' => $brandName],
-                    ['status' => 'active']
-                );
-                $request->merge(['brand_id' => $brand->id]);
-            }
+        // Delegate to the SuperAdmin ProductController which has the full update logic
+        $response = app(\App\Http\Controllers\SuperAdmin\ProductController::class)->update($request, $product);
+
+        $data = json_decode($response->getContent(), true);
+
+        if (! empty($data['success'])) {
+            return redirect()->route('cashier.products.index')
+                ->with('success', 'Product updated successfully.');
         }
 
-        if ($request->filled('category_id') && ! is_numeric($request->input('category_id'))) {
-            $categoryName = trim((string) $request->input('category_id'));
-            if ($categoryName !== '') {
-                $category = Category::firstOrCreate(
-                    ['category_name' => $categoryName],
-                    ['status' => 'active']
-                );
-                $request->merge(['category_id' => $category->id]);
-            }
+        if (! empty($data['errors'])) {
+            return back()->withInput()->withErrors($data['errors']);
         }
 
-        $rules = [
-            'product_name' => 'required|string|max:255',
-            'barcode' => 'required|string|max:255|unique:products,barcode,'.$id,
-            'description' => 'nullable|string',
-            'brand_id' => 'nullable|exists:brands,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'product_type_id' => 'required|string|in:electronic,non-electronic',
-            'unit_type_ids' => 'nullable|array',
-            'unit_type_ids.*' => 'integer|exists:unit_types,id',
-            'branch_ids' => 'nullable|array',
-            'branch_ids.*' => 'integer|exists:branches,id',
-            'status' => 'required|in:active,inactive',
-        ];
-
-        $categoryName = null;
-        if ($request->filled('category_id')) {
-            $categoryName = optional(Category::find($request->input('category_id')))->name;
-        }
-
-        $requiresElectronicType = $categoryName
-            && in_array(mb_strtolower($categoryName), ['electronics', 'computers', 'appliances'], true);
-
-        $validated = $request->validate($rules);
-
-        $validated['product_type_id'] = $requiresElectronicType ? 'electronic' : 'non-electronic';
-
-        $product->update([
-            'product_name' => $validated['product_name'],
-            'barcode' => $validated['barcode'],
-            'description' => $validated['description'] ?? null,
-            'brand_id' => $validated['brand_id'] ?? null,
-            'category_id' => $validated['category_id'] ?? null,
-            'product_type_id' => $validated['product_type_id'],
-            'status' => $validated['status'],
-            'branch_id' => $branchId,
-            'updated_at' => now(),
-        ]);
-
-        // Keep pivot relations in sync
-        if (! empty($validated['branch_ids'])) {
-            $product->branches()->sync($validated['branch_ids']);
-        } else {
-            $product->branches()->sync([$branchId]);
-        }
-
-        if (! empty($validated['unit_type_ids'])) {
-            $product->unitTypes()->sync($validated['unit_type_ids']);
-        }
-
-        return redirect()->route('cashier.products.index')->with('success', 'Product updated successfully');
+        return back()->withInput()->with('error', $data['message'] ?? 'Failed to update product.');
     }
 
     public function destroyProduct($id)
@@ -1085,11 +1126,13 @@ class CashierDashboardController extends Controller
         $validated = $request->validate([
             'category_name' => 'required|string|max:255|unique:categories,category_name',
             'status' => 'required|in:active,inactive',
+            'category_type' => 'required|in:non_electronic,electronic_without_serial,electronic_with_serial',
         ]);
 
         $category = Category::create([
             'category_name' => $validated['category_name'],
             'status' => $validated['status'],
+            'category_type' => $validated['category_type'],
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1134,11 +1177,13 @@ class CashierDashboardController extends Controller
         $validated = $request->validate([
             'category_name' => 'required|string|max:255|unique:categories,category_name,'.$id,
             'status' => 'required|in:active,inactive',
+            'category_type' => 'required|in:non_electronic,electronic_without_serial,electronic_with_serial',
         ]);
 
         $category->update([
             'category_name' => $validated['category_name'],
             'status' => $validated['status'],
+            'category_type' => $validated['category_type'],
             'updated_at' => now(),
         ]);
 

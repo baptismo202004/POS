@@ -162,6 +162,9 @@
                                 </button>
                             </form>
                         @endif
+                        <a href="{{ route('superadmin.purchases.lifecycle', $purchase) }}" class="sp-btn sp-btn-outline" style="background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border:none;">
+                            <i class="fas fa-history"></i> View Lifecycle
+                        </a>
                         <a href="{{ route('superadmin.purchases.index') }}" class="sp-btn sp-btn-outline">
                             <i class="fas fa-arrow-left"></i> Back to Purchases
                         </a>

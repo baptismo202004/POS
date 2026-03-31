@@ -2186,7 +2186,8 @@
         (alerts.belowCostSales || 0) +
         (alerts.voidedSales || 0) +
         (alerts.highDiscountUsage || 0) +
-        (alerts.refunds || 0);
+        (alerts.refunds || 0) +
+        (alerts.procurementNeeds || 0);
       totalAlertsElement.textContent = totalAlerts;
     }
     
@@ -2224,6 +2225,10 @@
       
       if (alerts.refunds > 0) {
         alertItems.push(`<div class="alert-item info clickable" onclick="window.location.href='/admin/refunds'"><i class="fas fa-undo alert-icon" style="color:#FF9800"></i><div class="alert-content"><div class="alert-title">${alerts.refunds} refunds today</div><div class="alert-description">Review returns</div></div></div>`);
+      }
+
+      if (alerts.procurementNeeds > 0) {
+        alertItems.push(`<div class="alert-item critical clickable" onclick="window.location.href='/superadmin/inventory/procurement'"><i class="fas fa-truck-loading alert-icon" style="color:#f59e0b"></i><div class="alert-content"><div class="alert-title">${alerts.procurementNeeds} product(s) need procurement</div><div class="alert-description">Ordered items with no stock — purchase required</div></div></div>`);
       }
       
       alertsList.innerHTML = alertItems.length > 0 ? alertItems.join('') : '<div class="alert-item" style="border-left-color:#43A047;background:rgba(67,160,71,0.05)"><i class="fas fa-check-circle alert-icon" style="color:#43A047"></i><div class="alert-content"><div class="alert-title">No alerts</div><div class="alert-description">All systems normal</div></div></div>';

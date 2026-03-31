@@ -4,8 +4,15 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Credit;
+use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\Refund;
+use App\Models\Sale;
+use App\Models\StockIn;
+use App\Models\StockMovement;
+use App\Models\StockOut;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,63 +23,194 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $branches = Branch::all();
-        $sortBy = $request->query('sort_by', 'product_name');
-        $sortDirection = $request->query('sort_direction', 'asc');
+        $tab = $request->query('tab', 'overview');
         $search = $request->query('search');
-        $filter = $request->query('filter', 'all');
+        $perPage = 25;
+        $now = now();
+        $today = $now->copy()->startOfDay();
+        $monthStart = $now->copy()->startOfMonth();
 
-        if (! in_array($sortBy, ['product_name', 'current_stock', 'total_sold', 'total_revenue'])) {
-            $sortBy = 'product_name';
-        }
-
-        $productsQuery = Product::with(['brand', 'category', 'saleItems', 'branchStocks']);
-
+        // ── Paginated tab data ─────────────────────────────────────────────────
+        $salesQuery = Sale::with(['cashier', 'branch', 'customer'])->latest();
         if ($search) {
-            $productsQuery->where('product_name', 'like', "%{$search}%")
-                ->orWhereHas('brand', function ($q) use ($search) {
-                    $q->where('brand_name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('category', function ($q) use ($search) {
-                    $q->where('category_name', 'like', "%{$search}%");
-                });
+            $salesQuery->where(fn ($q) => $q
+                ->where('reference_number', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($q) => $q->where('full_name', 'like', "%{$search}%"))
+                ->orWhereHas('branch', fn ($q) => $q->where('branch_name', 'like', "%{$search}%")));
+        }
+        $sales = $salesQuery->paginate($perPage, ['*'], 'sales_page')->withQueryString();
+
+        $creditsQuery = Credit::with(['customer', 'cashier', 'branch'])->latest();
+        if ($search) {
+            $creditsQuery->where(fn ($q) => $q
+                ->where('reference_number', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($q) => $q->where('full_name', 'like', "%{$search}%")));
+        }
+        $credits = $creditsQuery->paginate($perPage, ['*'], 'credits_page')->withQueryString();
+
+        $expensesQuery = Expense::with(['category', 'branch'])->latest();
+        if ($search) {
+            $expensesQuery->where(fn ($q) => $q
+                ->where('reference_number', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%"));
+        }
+        $expenses = $expensesQuery->paginate($perPage, ['*'], 'expenses_page')->withQueryString();
+
+        $purchasesQuery = Purchase::with(['supplier', 'branch'])->latest();
+        if ($search) {
+            $purchasesQuery->where(fn ($q) => $q
+                ->where('reference_number', 'like', "%{$search}%")
+                ->orWhereHas('supplier', fn ($q) => $q->where('supplier_name', 'like', "%{$search}%")));
+        }
+        $purchases = $purchasesQuery->paginate($perPage, ['*'], 'purchases_page')->withQueryString();
+
+        $refundsQuery = Refund::with(['product', 'cashier', 'sale'])->latest();
+        if ($search) {
+            $refundsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $refunds = $refundsQuery->paginate($perPage, ['*'], 'refunds_page')->withQueryString();
+
+        $stockInsQuery = StockIn::with(['product', 'branch'])->latest();
+        if ($search) {
+            $stockInsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $stockIns = $stockInsQuery->paginate($perPage, ['*'], 'stockins_page')->withQueryString();
+
+        $movementsQuery = StockMovement::with(['product', 'branch'])->orderByDesc('created_at');
+        if ($search) {
+            $movementsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $movements = $movementsQuery->paginate($perPage, ['*'], 'movements_page')->withQueryString();
+
+        $stockOutsQuery = StockOut::with(['product', 'branch', 'sale'])->latest();
+        if ($search) {
+            $stockOutsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $stockOuts = $stockOutsQuery->paginate($perPage, ['*'], 'stockouts_page')->withQueryString();
+
+        // ── KPI totals ─────────────────────────────────────────────────────────
+        $totalSales = (float) Sale::where('status', 'completed')->sum('total_amount');
+        $totalCredits = (float) Credit::sum('remaining_balance');
+        $totalExpenses = (float) Expense::sum('amount');
+        $totalPurchases = (float) Purchase::sum('total_cost');
+        $totalRefunds = (float) Refund::where('status', 'approved')->sum('refund_amount');
+        $totalSalesCount = Sale::where('status', 'completed')->count();
+
+        // ── Cross-module KPIs (unique to this page) ────────────────────────────
+        $creditRatio = $totalSales > 0 ? round(Credit::sum('credit_amount') / $totalSales * 100, 1) : 0;
+        $refundRate = $totalSales > 0 ? round($totalRefunds / $totalSales * 100, 1) : 0;
+        $expenseRatio = $totalSales > 0 ? round($totalExpenses / $totalSales * 100, 1) : 0;
+        $netRevenue = $totalSales - $totalExpenses - $totalRefunds;
+        $avgTransaction = $totalSalesCount > 0 ? round($totalSales / $totalSalesCount, 2) : 0;
+        $overdueCredits = Credit::where('status', 'active')->where('date', '<', $today)->sum('remaining_balance');
+        $creditCollectionRate = Credit::sum('credit_amount') > 0
+            ? round(Credit::sum('paid_amount') / Credit::sum('credit_amount') * 100, 1)
+            : 0;
+
+        // ── Today vs yesterday comparison ──────────────────────────────────────
+        $yesterday = $now->copy()->subDay()->startOfDay();
+        $todaySales = Sale::where('status', 'completed')->where('created_at', '>=', $today)->sum('total_amount');
+        $yesterdaySales = Sale::where('status', 'completed')
+            ->whereBetween('created_at', [$yesterday, $today])->sum('total_amount');
+        $salesGrowth = $yesterdaySales > 0 ? round(($todaySales - $yesterdaySales) / $yesterdaySales * 100, 1) : null;
+
+        // ── 30-day daily chart data ────────────────────────────────────────────
+        $chartDays = collect(range(29, 0))->map(fn ($d) => $now->copy()->subDays($d)->format('Y-m-d'));
+
+        $salesByDay = DB::table('sales')
+            ->selectRaw('DATE(created_at) as d, SUM(total_amount) as total')
+            ->where('status', 'completed')
+            ->where('created_at', '>=', $now->copy()->subDays(29)->startOfDay())
+            ->groupBy('d')->pluck('total', 'd');
+
+        $expensesByDay = DB::table('expenses')
+            ->selectRaw('expense_date as d, SUM(amount) as total')
+            ->where('expense_date', '>=', $now->copy()->subDays(29)->toDateString())
+            ->groupBy('d')->pluck('total', 'd');
+
+        $chartLabels = $chartDays->map(fn ($d) => date('M d', strtotime($d)))->values()->toArray();
+        $chartSales = $chartDays->map(fn ($d) => (float) ($salesByDay[$d] ?? 0))->values()->toArray();
+        $chartExpenses = $chartDays->map(fn ($d) => (float) ($expensesByDay[$d] ?? 0))->values()->toArray();
+        $chartProfit = $chartDays->map(fn ($d) => (float) ($salesByDay[$d] ?? 0) - (float) ($expensesByDay[$d] ?? 0))->values()->toArray();
+
+        // ── Branch comparison ──────────────────────────────────────────────────
+        $branchStats = Branch::query()
+            ->leftJoin('sales', fn ($j) => $j->on('branches.id', '=', 'sales.branch_id')->where('sales.status', 'completed'))
+            ->leftJoin('expenses', 'branches.id', '=', 'expenses.branch_id')
+            ->selectRaw('branches.id, branches.branch_name,
+                COALESCE(SUM(DISTINCT sales.total_amount), 0) as branch_sales,
+                COALESCE(SUM(DISTINCT expenses.amount), 0) as branch_expenses')
+            ->groupBy('branches.id', 'branches.branch_name')
+            ->get();
+
+        // ── Top 5 products by revenue ──────────────────────────────────────────
+        $topProducts = DB::table('sale_items')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.status', 'completed')
+            ->selectRaw('products.product_name, SUM(sale_items.subtotal) as revenue, SUM(sale_items.quantity) as qty_sold')
+            ->groupBy('products.id', 'products.product_name')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get();
+
+        // ── Alerts ─────────────────────────────────────────────────────────────
+        $alerts = collect();
+        if ($overdueCredits > 0) {
+            $alerts->push(['type' => 'danger', 'icon' => 'fa-exclamation-circle',
+                'text' => '₱'.number_format($overdueCredits, 2).' in overdue credits']);
+        }
+        $lowStockCount = Product::whereHas('branchStocks', fn ($q) => $q->where('quantity_base', '<=', 5))->count();
+        if ($lowStockCount > 0) {
+            $alerts->push(['type' => 'warning', 'icon' => 'fa-box-open',
+                'text' => "{$lowStockCount} product(s) critically low on stock"]);
+        }
+        $pendingSales = Sale::where('status', 'pending')->count();
+        if ($pendingSales > 0) {
+            $alerts->push(['type' => 'warning', 'icon' => 'fa-clock',
+                'text' => "{$pendingSales} pending sale(s) awaiting fulfillment"]);
+        }
+        $pendingRefunds = Refund::where('status', 'pending')->count();
+        if ($pendingRefunds > 0) {
+            $alerts->push(['type' => 'info', 'icon' => 'fa-undo',
+                'text' => "{$pendingRefunds} refund(s) awaiting approval"]);
         }
 
-        // Apply filter based on parameter
-        if ($filter !== 'all') {
-            switch ($filter) {
-                case 'out-of-stock':
-                    // Filter will be applied after getting results using the accessor
-                    break;
-            }
-        }
+        // ── Live activity feed (last 20 events across all modules) ─────────────
+        $feed = collect();
+        Sale::latest()->limit(5)->get()->each(fn ($s) => $feed->push([
+            'time' => $s->created_at, 'icon' => 'fa-cash-register', 'color' => '#10b981',
+            'text' => 'Sale '.($s->reference_number ?? '#'.$s->id).' — ₱'.number_format($s->total_amount, 2),
+        ]));
+        Credit::latest()->limit(4)->get()->each(fn ($c) => $feed->push([
+            'time' => $c->created_at, 'icon' => 'fa-credit-card', 'color' => '#f59e0b',
+            'text' => 'Credit '.$c->reference_number.' — ₱'.number_format($c->credit_amount, 2),
+        ]));
+        Expense::latest()->limit(4)->get()->each(fn ($e) => $feed->push([
+            'time' => $e->created_at, 'icon' => 'fa-receipt', 'color' => '#ef4444',
+            'text' => 'Expense: '.($e->description ?? 'N/A').' — ₱'.number_format($e->amount, 2),
+        ]));
+        Refund::latest()->limit(3)->get()->each(fn ($r) => $feed->push([
+            'time' => $r->created_at, 'icon' => 'fa-undo', 'color' => '#8b5cf6',
+            'text' => 'Refund on Sale #'.$r->sale_id.' — ₱'.number_format($r->refund_amount, 2),
+        ]));
+        Purchase::latest()->limit(4)->get()->each(fn ($p) => $feed->push([
+            'time' => $p->created_at, 'icon' => 'fa-shopping-cart', 'color' => '#1976D2',
+            'text' => 'Purchase '.($p->reference_number ?? '#'.$p->id).' — ₱'.number_format($p->total_cost, 2),
+        ]));
+        $feed = $feed->sortByDesc('time')->take(20)->values();
 
-        $products = $productsQuery->get();
-
-        if ($filter === 'out-of-stock') {
-            $products = $products->filter(function ($product) {
-                return $product->current_stock <= 15;
-            });
-        }
-
-        $products = $products->sortBy([
-            [$sortBy, $sortDirection],
-        ]);
-
-        $products = new \Illuminate\Pagination\LengthAwarePaginator(
-            $products->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 100),
-            $products->count(),
-            100,
-            \Illuminate\Pagination\Paginator::resolveCurrentPage(),
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
-        );
-
-        return view('SuperAdmin.inventory.index', [
-            'products' => $products->appends($request->query()),
-            'branches' => $branches,
-            'sortBy' => $sortBy,
-            'sortDirection' => $sortDirection,
-            'filter' => $filter,
-        ])->with('branchesJson', $branches->toJson());
+        return view('SuperAdmin.inventory.index', compact(
+            'branches', 'tab', 'search',
+            'sales', 'credits', 'expenses', 'purchases',
+            'refunds', 'stockIns', 'movements', 'stockOuts',
+            'totalSales', 'totalCredits', 'totalExpenses', 'totalPurchases', 'totalRefunds',
+            'creditRatio', 'refundRate', 'expenseRatio', 'netRevenue', 'avgTransaction',
+            'overdueCredits', 'creditCollectionRate',
+            'todaySales', 'yesterdaySales', 'salesGrowth',
+            'chartLabels', 'chartSales', 'chartExpenses', 'chartProfit',
+            'branchStats', 'topProducts', 'alerts', 'feed'
+        ));
     }
 
     public function stockIn(Request $request, Product $product)
@@ -94,7 +232,7 @@ class InventoryController extends Controller
             ->where('is_base', true)
             ->value('unit_type_id'));
 
-        if (!$baseUnitTypeId) {
+        if (! $baseUnitTypeId) {
             return back()->with('error', 'No base unit configured for this product.');
         }
 

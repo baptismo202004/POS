@@ -62,12 +62,21 @@
                         @csrf
                         
                         <div class="row">
-                            <div class="col-md-8 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="category_name" class="form-label">Category Name</label>
                                 <input type="text" name="category_name" id="category_name" class="form-control" required>
                             </div>
 
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label for="category_type" class="form-label">Category Type</label>
+                                <select name="category_type" id="category_type" class="form-select" required>
+                                    <option value="non_electronic">Non Electronic</option>
+                                    <option value="electronic_without_serial">Electronic without serial</option>
+                                    <option value="electronic_with_serial">Electronic with serial</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
                                 <label for="status" class="form-label">Status</label>
                                 <select name="status" id="status" class="form-select">
                                     <option value="active">Active</option>
