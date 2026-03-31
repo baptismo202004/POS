@@ -6,18 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Credit;
 use App\Models\Product;
+use App\Models\ProductSerial;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\ProductSerial;
+use App\Models\StockIn;
+use App\Services\CustomerService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
-use App\Models\StockIn;
-use Carbon\Carbon;
-use App\Services\CustomerService;
 
 class PosAdminController extends Controller
 {
@@ -37,8 +37,8 @@ class PosAdminController extends Controller
         $keyword = trim((string) $request->input('barcode', ''));
         $mode = $request->input('mode', 'list');
         $electronicsOnly = (bool) $request->boolean('electronics_only');
-        
-        Log::info("[POS_ADMIN_LOOKUP] keyword='{$keyword}', mode='{$mode}', electronics_only=" . ($electronicsOnly ? '1' : '0'));
+
+        Log::info("[POS_ADMIN_LOOKUP] keyword='{$keyword}', mode='{$mode}', electronics_only=".($electronicsOnly ? '1' : '0'));
 
         // Validate only if barcode is provided
         if (! empty($keyword)) {
@@ -92,7 +92,7 @@ class PosAdminController extends Controller
             // If keyword is empty, get all products from stock_ins table
             if (empty($keyword)) {
                 $matchesQuery = Product::query();
-                if (!$electronicsOnly) {
+                if (! $electronicsOnly) {
                     // Non-electronics POS still lists only products that are currently in stock (across any branch)
                     $matchesQuery->whereIn('products.id', $inStockProductIds);
                 }
@@ -110,10 +110,10 @@ class PosAdminController extends Controller
                 }
 
                 $matches = $matchesQuery->get();
-                Log::info("[POS_ADMIN_LOOKUP] Getting all products from stock_ins: " . count($matches) . " products found");
+                Log::info('[POS_ADMIN_LOOKUP] Getting all products from stock_ins: '.count($matches).' products found');
             } else {
                 $matchesQuery = Product::query();
-                if (!$electronicsOnly) {
+                if (! $electronicsOnly) {
                     $matchesQuery->whereIn('products.id', $inStockProductIds);
                 }
 
@@ -170,6 +170,7 @@ class PosAdminController extends Controller
                     ->pluck('conversion_factor', 'unit_type_id')
                     ->map(function ($v) {
                         $f = (float) $v;
+
                         return $f > 0 ? $f : 1.0;
                     })
                     ->toArray();
@@ -178,7 +179,7 @@ class PosAdminController extends Controller
                     $availableStock = $stock->quantity - $stock->sold;
                     $totalStock += $availableStock;
 
-                    if (!isset($branchStocks[$stock->branch_id])) {
+                    if (! isset($branchStocks[$stock->branch_id])) {
                         $branchStocks[$stock->branch_id] = [
                             'branch_id' => $stock->branch_id,
                             'branch_name' => $branchNames[$stock->branch_id] ?? null,
@@ -230,7 +231,7 @@ class PosAdminController extends Controller
                             ->toArray();
                     }
 
-                    if (empty($rows) && !empty($fallbackUnitPrices)) {
+                    if (empty($rows) && ! empty($fallbackUnitPrices)) {
                         $rows = $fallbackUnitPrices;
                     }
 
@@ -241,7 +242,7 @@ class PosAdminController extends Controller
                         if ($ut <= 0 || $price <= 0) {
                             continue;
                         }
-                        if (!array_key_exists($ut, $latestPriceByUnitType)) {
+                        if (! array_key_exists($ut, $latestPriceByUnitType)) {
                             $latestPriceByUnitType[$ut] = [
                                 'unit_type_id' => $ut,
                                 'unit_name' => $r->unit_name ?? null,
@@ -253,7 +254,7 @@ class PosAdminController extends Controller
                     $units = [];
                     foreach ($latestPriceByUnitType as $ut => $payload) {
                         $factor = isset($unitFactors[$ut]) ? (float) $unitFactors[$ut] : 1.0;
-                        if (!is_finite($factor) || $factor <= 0) {
+                        if (! is_finite($factor) || $factor <= 0) {
                             $factor = 1.0;
                         }
 
@@ -344,6 +345,7 @@ class PosAdminController extends Controller
             ->pluck('conversion_factor', 'unit_type_id')
             ->map(function ($v) {
                 $f = (float) $v;
+
                 return $f > 0 ? $f : 1.0;
             })
             ->toArray();
@@ -414,7 +416,7 @@ class PosAdminController extends Controller
                     ->toArray();
             }
 
-            if (empty($rows) && !empty($fallbackUnitPrices)) {
+            if (empty($rows) && ! empty($fallbackUnitPrices)) {
                 $rows = $fallbackUnitPrices;
             }
 
@@ -425,7 +427,7 @@ class PosAdminController extends Controller
                 if ($ut <= 0 || $price <= 0) {
                     continue;
                 }
-                if (!array_key_exists($ut, $latestPriceByUnitType)) {
+                if (! array_key_exists($ut, $latestPriceByUnitType)) {
                     $latestPriceByUnitType[$ut] = [
                         'unit_type_id' => $ut,
                         'unit_name' => $r->unit_name ?? null,
@@ -437,7 +439,7 @@ class PosAdminController extends Controller
             $units = [];
             foreach ($latestPriceByUnitType as $ut => $payload) {
                 $factor = isset($unitFactors[$ut]) ? (float) $unitFactors[$ut] : 1.0;
-                if (!is_finite($factor) || $factor <= 0) {
+                if (! is_finite($factor) || $factor <= 0) {
                     $factor = 1.0;
                 }
 
@@ -504,6 +506,8 @@ class PosAdminController extends Controller
             $customerName = ! empty($data['customer_name']) ? trim($data['customer_name']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
+            $cashTendered = isset($data['cash_tendered']) && is_numeric($data['cash_tendered']) ? (float) $data['cash_tendered'] : null;
+            $changeDue = isset($data['change_due']) && is_numeric($data['change_due']) ? (float) $data['change_due'] : null;
 
             Log::info('[POS_STORE] Processing order with '.count($items)." items, total: ₱{$total}");
             Log::info("[POS_STORE] Customer ID: '{$customerId}'");
@@ -524,6 +528,8 @@ class PosAdminController extends Controller
                 'employee_id' => Auth::id(), // Use the numeric user ID
                 'branch_id' => $branchId,
                 'total_amount' => $total,
+                'cash_tendered' => $cashTendered,
+                'change_due' => $changeDue,
                 'tax' => 0, // No tax for now
                 'payment_method' => $paymentMethod, // Use payment method from request
             ];
@@ -565,8 +571,9 @@ class PosAdminController extends Controller
                 }
 
                 $requestedBaseQty = (float) $quantity * $factor;
-                if (!is_finite($requestedBaseQty) || $requestedBaseQty <= 0) {
+                if (! is_finite($requestedBaseQty) || $requestedBaseQty <= 0) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Invalid quantity for the selected unit type.',
@@ -584,7 +591,9 @@ class PosAdminController extends Controller
                 $remainingBaseQuantity = $requestedBaseQty;
 
                 foreach ($stockRecords as $stock) {
-                    if ($remainingBaseQuantity <= 0) break;
+                    if ($remainingBaseQuantity <= 0) {
+                        break;
+                    }
 
                     $availableStock = $stock->quantity - $stock->sold;
                     $toDeduct = min($remainingBaseQuantity, $availableStock);
@@ -605,7 +614,7 @@ class PosAdminController extends Controller
 
                     Log::info("[POS_STORE] Updated stock record {$stock->id}: +{$toDeduct} sold (base units), remaining base qty to deduct: {$remainingBaseQuantity}");
                 }
-                
+
                 if ($remainingBaseQuantity > 0) {
                     DB::rollBack();
                     Log::error("[POS_STORE] Insufficient stock for product {$productId}");
@@ -721,22 +730,22 @@ class PosAdminController extends Controller
             $paymentMethod = $data['payment_method'] ?? 'cash';
             $requestedOrderStatus = $data['order_status'] ?? 'completed';
             $notes = isset($data['notes']) ? trim((string) $data['notes']) : null;
-            $customerId = !empty($data['customer_id']) ? $data['customer_id'] : null;
-            $customerName = !empty($data['customer_name']) ? trim($data['customer_name']) : null;
-            $customerCompanySchoolName = !empty($data['customer_company_school_name']) ? trim($data['customer_company_school_name']) : null;
-            $customerPhone = !empty($data['customer_phone']) ? trim($data['customer_phone']) : null;
-            $customerEmail = !empty($data['customer_email']) ? trim($data['customer_email']) : null;
-            $customerFacebook = !empty($data['customer_facebook']) ? trim($data['customer_facebook']) : null;
-            $customerAddress = !empty($data['customer_address']) ? trim($data['customer_address']) : null;
+            $customerId = ! empty($data['customer_id']) ? $data['customer_id'] : null;
+            $customerName = ! empty($data['customer_name']) ? trim($data['customer_name']) : null;
+            $customerCompanySchoolName = ! empty($data['customer_company_school_name']) ? trim($data['customer_company_school_name']) : null;
+            $customerPhone = ! empty($data['customer_phone']) ? trim($data['customer_phone']) : null;
+            $customerEmail = ! empty($data['customer_email']) ? trim($data['customer_email']) : null;
+            $customerFacebook = ! empty($data['customer_facebook']) ? trim($data['customer_facebook']) : null;
+            $customerAddress = ! empty($data['customer_address']) ? trim($data['customer_address']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
-            Log::info("[POS_ELECTRONICS_STORE] Processing order with " . count($items) . " items, total: ₱{$total}");
+            Log::info('[POS_ELECTRONICS_STORE] Processing order with '.count($items)." items, total: ₱{$total}");
 
             DB::beginTransaction();
 
             $branchId = Auth::user()->branch_id;
-            if (!empty($items)) {
+            if (! empty($items)) {
                 $firstItem = reset($items);
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
@@ -745,12 +754,14 @@ class PosAdminController extends Controller
             $shouldBePending = ($requestedOrderStatus === 'pending');
 
             // COMPLETED mode: also force pending if any item has zero available stock
-            if (!$shouldBePending) {
+            if (! $shouldBePending) {
                 foreach ($items as $item) {
-                    $productId  = $item['product_id'] ?? null;
+                    $productId = $item['product_id'] ?? null;
                     $itemBranchId = $item['branch_id'] ?? null;
                     $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
-                    if (empty($productId) || empty($itemBranchId) || empty($unitTypeId)) continue;
+                    if (empty($productId) || empty($itemBranchId) || empty($unitTypeId)) {
+                        continue;
+                    }
 
                     $availableQty = (float) (StockIn::where('product_id', (int) $productId)
                         ->where('branch_id', (int) $itemBranchId)
@@ -819,14 +830,15 @@ class PosAdminController extends Controller
             // Items with zero available stock are recorded as sale items but skipped for
             // stock deduction and serial validation.
             foreach ($items as $item) {
-                $productId  = $item['product_id'] ?? null;
-                $branchId   = $item['branch_id'] ?? null;
+                $productId = $item['product_id'] ?? null;
+                $branchId = $item['branch_id'] ?? null;
                 $unitTypeId = isset($item['unit_type_id']) ? (int) $item['unit_type_id'] : null;
-                $entries    = $item['entries'] ?? [];   // each entry = 1 unit with its own serial/warranty
-                $price      = $item['price'] ?? null;
+                $entries = $item['entries'] ?? [];   // each entry = 1 unit with its own serial/warranty
+                $price = $item['price'] ?? null;
 
                 if (empty($productId) || empty($branchId) || empty($unitTypeId)) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Product, branch, and unit type are required for each item.',
@@ -835,6 +847,7 @@ class PosAdminController extends Controller
 
                 if (empty($entries)) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
                         'message' => 'Each item must have at least one entry.',
@@ -868,16 +881,16 @@ class PosAdminController extends Controller
                     foreach ($entries as $entry) {
                         $warrantyMonths = isset($entry['warranty_months']) ? max(0, (int) $entry['warranty_months']) : 0;
                         $saleItemPayload = [
-                            'sale_id'                 => $sale->id,
-                            'product_id'              => $productId,
-                            'quantity'                => 1,
-                            'unit_price'              => $price,
-                            'subtotal'                => $price,
-                            'fulfilled_qty'           => 0,
-                            'pending_qty'             => 1,
+                            'sale_id' => $sale->id,
+                            'product_id' => $productId,
+                            'quantity' => 1,
+                            'unit_price' => $price,
+                            'subtotal' => $price,
+                            'fulfilled_qty' => 0,
+                            'pending_qty' => 1,
                             'available_stock_at_sale' => $availableBaseQty,
-                            'fulfillment_status'      => 'pending',
-                            'is_for_procurement'      => true,
+                            'fulfillment_status' => 'pending',
+                            'is_for_procurement' => true,
                         ];
                         if (Schema::hasColumn('sale_items', 'warranty_months')) {
                             $saleItemPayload['warranty_months'] = $warrantyMonths;
@@ -887,21 +900,23 @@ class PosAdminController extends Controller
                         }
                         SaleItem::create($saleItemPayload);
                     }
+
                     continue;
                 }
 
                 // COMPLETED mode — validate serials only for fulfillable entries
                 for ($i = 0; $i < count($entries); $i++) {
-                    $entry        = $entries[$i];
+                    $entry = $entries[$i];
                     $isFulfillable = $i < $fulfillableCount;
                     $serialNumber = isset($entry['serial_number']) ? trim((string) $entry['serial_number']) : '';
                     $warrantyMonths = isset($entry['warranty_months']) ? max(0, (int) $entry['warranty_months']) : 0;
 
                     if ($isFulfillable && $serialNumber === '') {
                         DB::rollBack();
+
                         return response()->json([
                             'success' => false,
-                            'message' => 'Serial number is required for in-stock item "' . ($item['name'] ?? 'Unknown') . '" (unit ' . ($i + 1) . ').',
+                            'message' => 'Serial number is required for in-stock item "'.($item['name'] ?? 'Unknown').'" (unit '.($i + 1).').',
                         ], 422);
                     }
 
@@ -916,18 +931,20 @@ class PosAdminController extends Controller
 
                         $remaining = $requestedBaseQty;
                         foreach ($stockRecords as $stock) {
-                            if ($remaining <= 0) break;
+                            if ($remaining <= 0) {
+                                break;
+                            }
                             $available = $stock->quantity - $stock->sold;
-                            $toDeduct  = min($remaining, $available);
+                            $toDeduct = min($remaining, $available);
                             $stock->sold += $toDeduct;
                             $stock->save();
                             $remaining -= $toDeduct;
                             \App\Models\StockOut::create([
                                 'stock_in_id' => $stock->id,
-                                'product_id'  => $productId,
-                                'sale_id'     => $sale->id,
-                                'quantity'    => $toDeduct,
-                                'branch_id'   => $branchId,
+                                'product_id' => $productId,
+                                'sale_id' => $sale->id,
+                                'quantity' => $toDeduct,
+                                'branch_id' => $branchId,
                             ]);
                         }
                     }
@@ -936,20 +953,20 @@ class PosAdminController extends Controller
                     // fulfilled_qty = 1 if this entry is fulfillable, else 0
                     // pending_qty   = 0 if fulfillable, else 1 (needs procurement)
                     $entryFulfilledQty = $isFulfillable ? 1 : 0;
-                    $entryPendingQty   = $isFulfillable ? 0 : 1;
-                    $entryStatus       = $isFulfillable ? 'fulfilled' : 'pending';
+                    $entryPendingQty = $isFulfillable ? 0 : 1;
+                    $entryStatus = $isFulfillable ? 'fulfilled' : 'pending';
 
                     $saleItemPayload = [
-                        'sale_id'                 => $sale->id,
-                        'product_id'              => $productId,
-                        'quantity'                => 1,
-                        'unit_price'              => $price,
-                        'subtotal'                => $price,
-                        'fulfilled_qty'           => $entryFulfilledQty,
-                        'pending_qty'             => $entryPendingQty,
+                        'sale_id' => $sale->id,
+                        'product_id' => $productId,
+                        'quantity' => 1,
+                        'unit_price' => $price,
+                        'subtotal' => $price,
+                        'fulfilled_qty' => $entryFulfilledQty,
+                        'pending_qty' => $entryPendingQty,
                         'available_stock_at_sale' => $availableBaseQty,
-                        'fulfillment_status'      => $entryStatus,
-                        'is_for_procurement'      => !$isFulfillable,
+                        'fulfillment_status' => $entryStatus,
+                        'is_for_procurement' => ! $isFulfillable,
                     ];
                     if (Schema::hasColumn('sale_items', 'warranty_months')) {
                         $saleItemPayload['warranty_months'] = $warrantyMonths;
@@ -959,60 +976,65 @@ class PosAdminController extends Controller
                     }
                     $saleItem = SaleItem::create($saleItemPayload);
 
-                $warrantyExpiry = null;
-                if ($warrantyMonths > 0) {
-                    $warrantyExpiry = Carbon::now()->addMonths($warrantyMonths)->toDateString();
-                }
-
-                if (!$shouldBePending) {
-                    $serial = ProductSerial::where('serial_number', $serialNumber)->first();
-                    if (!$serial) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Invalid serial number (not found in inventory).',
-                        ], 422);
+                    $warrantyExpiry = null;
+                    if ($warrantyMonths > 0) {
+                        $warrantyExpiry = Carbon::now()->addMonths($warrantyMonths)->toDateString();
                     }
 
-                    if ((int) $serial->product_id !== (int) $productId) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Serial number does not match the selected product.',
-                        ], 422);
-                    }
+                    if (! $shouldBePending) {
+                        $serial = ProductSerial::where('serial_number', $serialNumber)->first();
+                        if (! $serial) {
+                            DB::rollBack();
 
-                    if ((int) $serial->branch_id !== (int) $branchId) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Serial number does not belong to the selected branch.',
-                        ], 422);
-                    }
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Invalid serial number (not found in inventory).',
+                            ], 422);
+                        }
 
-                    if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Serial number is not available (already sold/invalid).',
-                        ], 422);
-                    }
+                        if ((int) $serial->product_id !== (int) $productId) {
+                            DB::rollBack();
 
-                    $serial->status = 'sold';
-                    $serial->sold_at = now();
-                    $serial->sale_item_id = $saleItem->id;
-                    $serial->warranty_expiry_date = $warrantyExpiry;
-                    $serial->save();
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Serial number does not match the selected product.',
+                            ], 422);
+                        }
+
+                        if ((int) $serial->branch_id !== (int) $branchId) {
+                            DB::rollBack();
+
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Serial number does not belong to the selected branch.',
+                            ], 422);
+                        }
+
+                        if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
+                            DB::rollBack();
+
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Serial number is not available (already sold/invalid).',
+                            ], 422);
+                        }
+
+                        $serial->status = 'sold';
+                        $serial->sold_at = now();
+                        $serial->sale_item_id = $saleItem->id;
+                        $serial->warranty_expiry_date = $warrantyExpiry;
+                        $serial->save();
+                    }
                 }
             }
 
             if ($paymentMethod === 'credit' && $creditDueDate) {
                 $lastCredit = Credit::orderBy('id', 'desc')->first();
                 $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
-                $referenceNumber = 'CR-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+                $referenceNumber = 'CR-'.date('Y').'-'.str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
                 $creditCustomerId = $customerId;
-                if (!$creditCustomerId && $customerName) {
+                if (! $creditCustomerId && $customerName) {
                     $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
                     if ($existingCustomer) {
                         $creditCustomerId = $existingCustomer->id;
@@ -1055,7 +1077,7 @@ class PosAdminController extends Controller
 
             $response['receipt_pdf_url'] = route('admin.sales.receipt.pdf', $sale);
 
-            if (!$shouldBePending && $paymentMethod === 'cash') {
+            if (! $shouldBePending && $paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);
                 $response['auto_receipt'] = true;
             }
@@ -1067,11 +1089,11 @@ class PosAdminController extends Controller
             return response()->json($response);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("[POS_ELECTRONICS_STORE] Order processing failed: " . $e->getMessage());
+            Log::error('[POS_ELECTRONICS_STORE] Order processing failed: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Order processing failed: ' . $e->getMessage(),
+                'message' => 'Order processing failed: '.$e->getMessage(),
             ], 500);
         }
     }

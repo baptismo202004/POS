@@ -407,24 +407,7 @@
             reverseButtons: false,
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'Stocking in...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                fetch('{{ route('cashier.purchases.auto-stockin', $purchase->id) }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                }).then(r => r.json()).then(data => {
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Done!', text: data.message, confirmButtonColor: '#0D47A1' });
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#0D47A1' });
-                    }
-                }).catch(() => {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong.', confirmButtonColor: '#0D47A1' });
-                });
+                initiateAutoStockIn();
             }
         });
         @elseif(session('success'))
@@ -464,6 +447,143 @@
             });
         });
     });
+
+    function initiateAutoStockIn() {
+        Swal.fire({ title: 'Checking items...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        fetch('{{ route('cashier.purchases.auto-stockin-check', $purchase->id) }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#0D47A1' });
+                return;
+            }
+
+            showPricingModal(data.pricing_items);
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong.', confirmButtonColor: '#0D47A1' });
+        });
+    }
+
+    function showPricingModal(items) {
+        let rows = items.map(item => {
+            const badge = item.is_new
+                ? `<span style="font-size:10px;font-weight:700;background:rgba(245,158,11,0.15);color:#92400e;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:20px;">New</span>`
+                : `<span style="font-size:10px;font-weight:700;background:rgba(16,185,129,0.12);color:#047857;border:1px solid rgba(16,185,129,0.25);padding:2px 7px;border-radius:20px;">Existing</span>`;
+
+            const currentVal = item.existing_price !== null ? item.existing_price.toFixed(2) : '';
+            const placeholder = item.is_new ? '0.00' : item.existing_price.toFixed(2);
+
+            return `
+                <tr>
+                    <td style="padding:10px 8px;font-size:13px;font-weight:600;color:#1a2744;">${item.product_name} ${badge}</td>
+                    <td style="padding:10px 8px;font-size:12px;color:#6b84aa;">${item.unit_name}</td>
+                    <td style="padding:10px 8px;font-size:13px;color:#6b84aa;">₱${item.unit_cost.toFixed(2)}</td>
+                    <td style="padding:10px 8px;">
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="selling-price-input"
+                            data-key="${item.product_id}_${item.unit_type_id}"
+                            data-is-new="${item.is_new ? '1' : '0'}"
+                            value="${currentVal}"
+                            placeholder="${placeholder}"
+                            style="width:110px;padding:7px 10px;border:1.5px solid rgba(25,118,210,0.25);border-radius:9px;font-size:13px;font-weight:700;color:#0D47A1;outline:none;"
+                        >
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        Swal.fire({
+            title: '<span style="font-family:Nunito,sans-serif;font-weight:900;color:#0D47A1;">Set Selling Prices</span>',
+            html: `
+                <p style="font-size:13px;color:#6b84aa;margin-bottom:14px;">
+                    Review and set selling prices. New products require a price. Existing products will update to the new price if changed.
+                </p>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:linear-gradient(135deg,#0D47A1,#1976D2);">
+                                <th style="padding:9px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:left;">Product</th>
+                                <th style="padding:9px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:left;">Unit</th>
+                                <th style="padding:9px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:left;">Cost</th>
+                                <th style="padding:9px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:left;">Selling Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-boxes-stacked"></i> Stock In',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0D47A1',
+            cancelButtonColor: '#6b84aa',
+            width: '680px',
+            preConfirm: () => {
+                const inputs = Swal.getPopup().querySelectorAll('.selling-price-input');
+                const prices = {};
+                let valid = true;
+
+                inputs.forEach(input => {
+                    const isNew = input.dataset.isNew === '1';
+                    const val = input.value.trim();
+
+                    if (isNew && (val === '' || isNaN(parseFloat(val)) || parseFloat(val) < 0)) {
+                        input.style.borderColor = '#ef4444';
+                        valid = false;
+                    } else {
+                        input.style.borderColor = 'rgba(25,118,210,0.25)';
+                        // Only include in payload if a value was entered
+                        if (val !== '' && !isNaN(parseFloat(val))) {
+                            prices[input.dataset.key] = parseFloat(val);
+                        }
+                    }
+                });
+
+                if (!valid) {
+                    Swal.showValidationMessage('Please enter a selling price for all new products.');
+                    return false;
+                }
+
+                return prices;
+            }
+        }).then(result => {
+            if (result.isConfirmed) {
+                doAutoStockIn(result.value);
+            }
+        });
+    }
+
+    function doAutoStockIn(sellingPrices) {
+        Swal.fire({ title: 'Stocking in...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        fetch('{{ route('cashier.purchases.auto-stockin', $purchase->id) }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ selling_prices: sellingPrices }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Done!', text: data.message, confirmButtonColor: '#0D47A1' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#0D47A1' });
+            }
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong.', confirmButtonColor: '#0D47A1' });
+        });
+    }
 </script>
 @endpush
 

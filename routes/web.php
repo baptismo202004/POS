@@ -161,6 +161,7 @@ Route::post('/cashier/stockin', [CashierDashboardController::class, 'stockInStor
 Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboardController::class, 'stockInProductsByPurchase'])->middleware('auth')->name('cashier.stockin.products-by-purchase');
 Route::get('/cashier/stockin/products-by-purchase/{purchase}/serials/{product}', [CashierDashboardController::class, 'stockInPurchaseProductSerials'])->middleware('auth')->name('cashier.stockin.purchase-product-serials');
 Route::post('/cashier/purchases/{purchase}/auto-stockin', [CashierDashboardController::class, 'autoStockIn'])->middleware('auth')->name('cashier.purchases.auto-stockin');
+Route::get('/cashier/purchases/{purchase}/auto-stockin-check', [CashierDashboardController::class, 'autoStockInCheck'])->middleware('auth')->name('cashier.purchases.auto-stockin-check');
 
 // Cashier Refunds
 Route::get('/cashier/refunds', [CashierDashboardController::class, 'refundsIndex'])->middleware('auth')->name('cashier.refunds.index');

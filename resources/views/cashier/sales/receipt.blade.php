@@ -217,6 +217,27 @@
             <span>PHP {{ number_format($sale->total_amount, 2) }}</span>
         </div>
 
+        @if($sale->payment_method === 'cash')
+        @php
+            $displayCash = $sale->cash_tendered ?? $sale->total_amount;
+            $displayChange = $sale->change_due ?? 0;
+        @endphp
+        <div style="border-top: 1px dashed #000; padding-top: 5px; font-size: 13px;">
+            <div style="display:flex; justify-content:space-between;">
+                <span>Cash:</span>
+                <span>PHP {{ number_format($displayCash, 2) }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>Change:</span>
+                <span>PHP {{ number_format($displayChange, 2) }}</span>
+            </div>
+        </div>
+        @endif
+
+        <div style="border-top: 1px dashed #000; padding-top: 5px; font-size: 12px; text-align: center; margin-bottom: 10px;">
+            {{ $sale->saleItems->sum('quantity') }} item(s) purchased
+        </div>
+
         <div class="footer">
             <p style="text-align:center;">Thank you for your shopping!</p>
         </div>

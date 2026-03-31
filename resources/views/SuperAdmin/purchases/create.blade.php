@@ -262,7 +262,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Phone Number</label>
-                        <input type="text" name="phone_number" class="form-control">
+                        <input type="text" name="phone" class="form-control">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Address</label>
@@ -579,23 +579,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const $supplierNameInput = $supplierForm.find('[name="supplier_name"]');
     const $saveSupplierBtn   = $('#saveSupplierBtn');
 
-    $supplierSelect.select2({ width: '100%' }).on('select2:open', function () {
-        setTimeout(() => {
-            const results = document.querySelector('.select2-results__options');
-            if (!results || document.querySelector('.select2-add-supplier')) return;
-            const term = document.querySelector('.select2-search__field')?.value || '';
-            const li = document.createElement('li');
-            li.className = 'select2-results__option select2-add-supplier';
-            li.innerHTML = '➕ Add new supplier';
-            li.addEventListener('mousedown', function (e) {
-                e.preventDefault(); e.stopPropagation();
-                $supplierSelect.select2('close');
-                $supplierNameInput.val(term);
-                $('#addSupplierModal').modal('show');
-            });
-            results.appendChild(li);
-        }, 0);
-    });
+    function initSupplierSelect2() {
+        $supplierSelect.select2({ width: '100%' }).off('select2:open').on('select2:open', function () {
+            setTimeout(() => {
+                const results = document.querySelector('.select2-results__options');
+                if (!results || document.querySelector('.select2-add-supplier')) return;
+                const term = document.querySelector('.select2-search__field')?.value || '';
+                const li = document.createElement('li');
+                li.className = 'select2-results__option select2-add-supplier';
+                li.innerHTML = '➕ Add new supplier';
+                li.addEventListener('mousedown', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    $supplierSelect.select2('close');
+                    $supplierNameInput.val(term);
+                    $('#addSupplierModal').modal('show');
+                });
+                results.appendChild(li);
+            }, 0);
+        });
+    }
+
+    initSupplierSelect2();
 
     $saveSupplierBtn.on('click', function () {
         const name = $supplierNameInput.val().trim();
@@ -605,7 +609,16 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             data: $supplierForm.serialize(),
             success: function (response) {
-                $supplierSelect.append(new Option(response.supplier_name, response.id, true, true)).trigger('change');
+                if (!response.success || !response.supplier) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Unexpected response from server.' });
+                    return;
+                }
+                const supplier = response.supplier;
+                // Destroy Select2, append option to raw <select>, reinitialize
+                $supplierSelect.select2('destroy');
+                $supplierSelect.append(new Option(supplier.supplier_name, supplier.id, false, false));
+                initSupplierSelect2();
+                $supplierSelect.val(supplier.id).trigger('change');
                 $('#addSupplierModal').modal('hide');
                 $supplierForm[0].reset();
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Supplier saved!', showConfirmButton: false, timer: 2000, timerProgressBar: true });

@@ -2165,6 +2165,61 @@ class CashierDashboardController extends Controller
         ]);
     }
 
+    public function autoStockInCheck($purchase): \Illuminate\Http\JsonResponse
+    {
+        $user = Auth::user();
+        $branchId = $user->branch_id;
+
+        if (! $branchId) {
+            return response()->json(['success' => false, 'message' => 'No branch assigned.'], 403);
+        }
+
+        $purchaseModel = \App\Models\Purchase::with(['items.product', 'items.unitType'])
+            ->where('id', $purchase)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (! $purchaseModel) {
+            return response()->json(['success' => false, 'message' => 'Purchase not found.'], 404);
+        }
+
+        $pricingItems = [];
+
+        foreach ($purchaseModel->items as $item) {
+            $productId = (int) $item->product_id;
+            $unitTypeId = (int) ($item->unit_type_id ?? 0);
+
+            if ($unitTypeId <= 0) {
+                continue;
+            }
+
+            // Get the latest existing selling price for this product+unit+branch
+            $existingPrice = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', $productId)
+                ->where('stock_ins.branch_id', $branchId)
+                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->value('stock_in_unit_prices.price');
+
+            $pricingItems[] = [
+                'purchase_item_id' => $item->id,
+                'product_id' => $productId,
+                'unit_type_id' => $unitTypeId,
+                'product_name' => $item->product->product_name ?? 'Unknown',
+                'unit_name' => $item->unitType->unit_name ?? 'Unknown',
+                'unit_cost' => (float) ($item->unit_cost ?? 0),
+                'existing_price' => $existingPrice !== null ? (float) $existingPrice : null,
+                'is_new' => $existingPrice === null,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'pricing_items' => $pricingItems,
+        ]);
+    }
+
     public function autoStockIn($purchase): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
@@ -2183,10 +2238,13 @@ class CashierDashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Purchase not found.'], 404);
         }
 
+        // selling_prices keyed by "productId_unitTypeId" => price
+        $sellingPrices = request()->input('selling_prices', []);
+
         $inventory = app(InventoryService::class);
 
         try {
-            DB::transaction(function () use ($purchaseModel, $branchId, $inventory) {
+            DB::transaction(function () use ($purchaseModel, $branchId, $inventory, $sellingPrices) {
                 foreach ($purchaseModel->items as $item) {
                     $productId = (int) $item->product_id;
                     $unitTypeId = (int) ($item->unit_type_id ?? 0);
@@ -2218,20 +2276,30 @@ class CashierDashboardController extends Controller
                     $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
 
                     if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
-                        DB::table('stock_in_unit_prices')->insert([
-                            'stock_in_id' => $stockInId,
-                            'unit_type_id' => $unitTypeId,
-                            'price' => $unitCost,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
+                        $key = $productId.'_'.$unitTypeId;
+                        $sellingPrice = $sellingPrices[$key] ?? null;
 
-                    if (Schema::hasTable('product_unit_type') && Schema::hasColumn('product_unit_type', 'price') && $unitTypeId) {
-                        DB::table('product_unit_type')
-                            ->where('product_id', $productId)
-                            ->where('unit_type_id', $unitTypeId)
-                            ->update(['price' => $unitCost, 'updated_at' => now()]);
+                        // If no new price submitted, fall back to the existing price
+                        if ($sellingPrice === null) {
+                            $sellingPrice = DB::table('stock_in_unit_prices')
+                                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                                ->where('stock_ins.product_id', $productId)
+                                ->where('stock_ins.branch_id', $branchId)
+                                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                                ->where('stock_ins.id', '!=', $stockInId)
+                                ->orderByDesc('stock_in_unit_prices.id')
+                                ->value('stock_in_unit_prices.price');
+                        }
+
+                        if ($sellingPrice !== null) {
+                            DB::table('stock_in_unit_prices')->insert([
+                                'stock_in_id' => $stockInId,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => (float) $sellingPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
                     }
                 }
             });

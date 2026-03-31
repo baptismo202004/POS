@@ -846,12 +846,55 @@
                 width: '500px'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    processOrder();
+                    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+                    if (paymentMethod === 'cash') {
+                        Swal.fire({
+                            title: 'Cash Payment',
+                            html: `
+                                <div class="text-start">
+                                    <div class="mb-2"><strong>Total:</strong> ₱${total.toFixed(2)}</div>
+                                    <label class="form-label">Cash Tendered</label>
+                                    <input id="amount_paid" type="number" min="${total.toFixed(2)}" step="0.01" class="form-control" placeholder="Enter cash amount">
+                                    <div class="mt-2" id="change_display" style="font-weight:700; color:#2563eb;">Change: ₱0.00</div>
+                                </div>
+                            `,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonColor: '#10b981',
+                            cancelButtonColor: '#6b7280',
+                            confirmButtonText: 'Confirm & Process',
+                            didOpen: () => {
+                                const input = document.getElementById('amount_paid');
+                                const changeEl = document.getElementById('change_display');
+                                const compute = () => {
+                                    const paid = parseFloat(input.value || '0') || 0;
+                                    const change = paid - total;
+                                    changeEl.textContent = `Change: ₱${(change > 0 ? change : 0).toFixed(2)}`;
+                                };
+                                input.addEventListener('input', compute);
+                                input.focus();
+                            },
+                            preConfirm: () => {
+                                const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
+                                if (paid < total) {
+                                    Swal.showValidationMessage('Cash tendered is less than total.');
+                                    return false;
+                                }
+                                return { paid };
+                            }
+                        }).then((cashResult) => {
+                            if (cashResult.isConfirmed) {
+                                processOrder(cashResult.value.paid);
+                            }
+                        });
+                    } else {
+                        processOrder(null);
+                    }
                 }
             });
         };
         
-        function processOrder() {
+        function processOrder(cashTendered) {
             // Show loading
             Swal.fire({
                 title: 'Processing Order...',
@@ -884,7 +927,9 @@
                     payment_method: document.querySelector('input[name="payment_method"]:checked').value,
                     customer_name: document.getElementById('customer_name').value,
                     credit_due_date: document.getElementById('credit_due_date').value,
-                    credit_notes: document.getElementById('credit_notes').value
+                    credit_notes: document.getElementById('credit_notes').value,
+                    cash_tendered: cashTendered,
+                    change_due: cashTendered !== null ? Math.max(0, cashTendered - cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)) : null
                 })
             })
             .then(response => response.json())
@@ -898,57 +943,18 @@
                     
                     // Check if this is a cash payment and auto-receipt is enabled
                     if (data.auto_receipt && receiptUrl) {
-
+                        cart = [];
+                        updateCartDisplay();
+                        search('list');
                         Swal.fire({
                             icon: 'success',
-                            title: 'Payment Confirmation',
-                            html: `
-                                <div class="text-start">
-                                    <div class="mb-2"><strong>Total:</strong> ₱${Number(total || 0).toFixed(2)}</div>
-                                    <label class="form-label">Amount Paid</label>
-                                    <input id="amount_paid" type="number" min="0" step="0.01" class="form-control" placeholder="Enter amount paid">
-                                    <div class="mt-2" id="change_display" style="font-weight:700; color:#2563eb;">Change: ₱0.00</div>
-                                </div>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'Confirm & Open Receipt',
-                            cancelButtonText: 'Cancel',
+                            title: 'Order Completed!',
+                            text: 'Opening receipt...',
                             confirmButtonColor: '#10b981',
-                            cancelButtonColor: '#6b7280',
-                            didOpen: () => {
-                                const input = document.getElementById('amount_paid');
-                                const changeEl = document.getElementById('change_display');
-                                const compute = () => {
-                                    const paid = parseFloat(input.value || '0') || 0;
-                                    const change = paid - (parseFloat(total || 0) || 0);
-                                    changeEl.textContent = `Change: ₱${(change > 0 ? change : 0).toFixed(2)}`;
-                                };
-                                input.addEventListener('input', compute);
-                                input.focus();
-                                compute();
-                            },
-                            preConfirm: () => {
-                                const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
-                                if (paid < (parseFloat(total || 0) || 0)) {
-                                    Swal.showValidationMessage('Amount paid is less than total.');
-                                    return false;
-                                }
-                                return { paid };
-                            }
-                        }).then((result) => {
-                            if (!result.isConfirmed) {
-                                return;
-                            }
-
-                            cart = [];
-                            updateCartDisplay();
-
-                            // Refresh products to show updated stock
-                            search('list');
-
-                            // Open receipt in new window
-                            window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                            timer: 1500,
+                            timerProgressBar: true
                         });
+                        window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                     } else {
                         cart = [];
                         updateCartDisplay();

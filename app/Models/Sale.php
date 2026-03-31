@@ -12,6 +12,8 @@ class Sale extends Model
         'customer_id',
         'branch_id',
         'total_amount',
+        'cash_tendered',
+        'change_due',
         'subtotal',
         'discount_amount',
         'tax',
@@ -60,7 +62,7 @@ class Sale extends Model
     public function receiptGroupSales()
     {
         return $this->hasMany(Sale::class, 'receipt_group_id', 'receipt_group_id')
-                    ->where('receipt_group_id', '!=', null);
+            ->where('receipt_group_id', '!=', null);
     }
 
     public function scopeFromSameReceipt($query, $receiptGroupId)

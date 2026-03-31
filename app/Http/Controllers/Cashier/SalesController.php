@@ -382,32 +382,18 @@ class SalesController extends Controller
         $branchId = $request->query('branch_id', Auth::user()->branch_id);
 
         if ($unitTypeId) {
-            // Get price from product_unit_type table for specific unit type
-            try {
-                $price = DB::table('product_unit_type')
-                    ->where('product_id', $productId)
-                    ->where('unit_type_id', $unitTypeId)
-                    ->value('price');
+            // Get the latest selling price from stock_in_unit_prices for this product+unit+branch
+            $price = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', (int) $productId)
+                ->where('stock_ins.branch_id', (int) $branchId)
+                ->where('stock_in_unit_prices.unit_type_id', (int) $unitTypeId)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->value('stock_in_unit_prices.price');
 
-                if ($price !== null) {
-                    return response()->json(['success' => true, 'price' => $price]);
-                }
-            } catch (\Exception $e) {
-                // Fall through to stock-based pricing
+            if ($price !== null) {
+                return response()->json(['success' => true, 'price' => (float) $price]);
             }
-        }
-
-        // Fallback: latest purchase unit cost for this product (not branch-specific)
-        $latestCost = (float) (DB::table('purchase_items')
-            ->where('product_id', (int) $productId)
-            ->orderByDesc('id')
-            ->value('unit_cost') ?? 0);
-
-        if ($latestCost > 0) {
-            return response()->json([
-                'success' => true,
-                'price' => $latestCost,
-            ]);
         }
 
         // Final fallback to product default price

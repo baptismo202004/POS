@@ -717,30 +717,30 @@
             @canAccess('sales','view')
             <div class="section-label">SALES</div>
             
-            <a href="{{ route('cashier.sales.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
+            <a href="#" class="d-flex align-items-center rounded-lg text-decoration-none sales-toggle" data-submenu="sales-submenu" aria-expanded="false">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <i class="fas fa-shopping-cart sidebar-icon"></i>
                 </span>
                 <span>Sales</span>
+                <svg class="submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
-            
-            @canAccess('sales_report','view')
-            <a href="{{ route('cashier.sales.reports') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
-                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
-                    <i class="fas fa-file-invoice-dollar sidebar-icon"></i>
-                </span>
-                <span>Sales Reports</span>
-            </a>
-            @endcanAccess
-            
-            @canAccess('refund_return','view')
-            <a href="{{ route('cashier.refunds.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none">
-                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
-                    <i class="fas fa-undo sidebar-icon"></i>
-                </span>
-                <span>Refund/Return</span>
-            </a>
-            @endcanAccess
+            <div class="submenu" id="sales-submenu">
+                <a href="{{ route('cashier.sales.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none {{ request()->routeIs('cashier.sales.index', 'cashier.sales.show', 'cashier.sales.create') ? 'active' : '' }}">
+                    <span>Sales List</span>
+                </a>
+
+                @canAccess('sales_report','view')
+                <a href="{{ route('cashier.sales.reports') }}" class="d-flex align-items-center rounded-lg text-decoration-none {{ request()->routeIs('cashier.sales.reports') ? 'active' : '' }}">
+                    <span>Sales Reports</span>
+                </a>
+                @endcanAccess
+
+                @canAccess('refund_return','view')
+                <a href="{{ route('cashier.refunds.index') }}" class="d-flex align-items-center rounded-lg text-decoration-none {{ request()->routeIs('cashier.refunds.*') ? 'active' : '' }}">
+                    <span>Refund/Return</span>
+                </a>
+                @endcanAccess
+            </div>
             @endcanAccess
 
             <!-- Finance Section -->
@@ -874,7 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            if (this.classList.contains('inventory-toggle')) {
+            if (this.classList.contains('inventory-toggle') || this.classList.contains('sales-toggle')) {
                 e.preventDefault();
 
                 const submenuId = this.getAttribute('data-submenu');
@@ -950,5 +950,24 @@ document.addEventListener('DOMContentLoaded', function() {
             display: 'dynamic'
         });
     }
+
+    // Auto-open submenus if a child link is active
+    [
+        { toggleClass: 'inventory-toggle', submenuId: 'inventory-submenu' },
+        { toggleClass: 'sales-toggle',     submenuId: 'sales-submenu'     },
+    ].forEach(({ toggleClass, submenuId }) => {
+        const submenu = document.getElementById(submenuId);
+        if (!submenu) { return; }
+
+        const hasActive = submenu.querySelector('a.active');
+        if (hasActive) {
+            submenu.style.display = 'block';
+            const toggle = document.querySelector('.' + toggleClass);
+            if (toggle) {
+                toggle.classList.add('is-open');
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        }
+    });
 });
 </script>
