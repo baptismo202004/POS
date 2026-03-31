@@ -57,7 +57,7 @@
     @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
     @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
 
-    .sp-wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:28px 24px 56px;font-family:'Plus Jakarta Sans',sans-serif;}
+    .sp-wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:28px 24px 56px;font-family:'Plus Jakarta Sans',sans-serif;}
 
     .sp-page-head {
         display: flex; align-items: center; justify-content: space-between;
@@ -325,7 +325,7 @@
             });
 
             $('#categorySelect').select2({
-                tags: false,
+                tags: true,
                 placeholder: '-- Select Category --',
                 allowClear: true,
                 width: 'resolve'

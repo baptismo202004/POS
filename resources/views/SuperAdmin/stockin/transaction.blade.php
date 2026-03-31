@@ -218,16 +218,6 @@
     <main class="flex-fill p-4" style="position:relative;z-index:1;">
         <div class="sp-wrap">
 
-            {{-- Success Message --}}
-            <div class="sp-success-message">
-                <div class="sp-success-icon">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div class="sp-success-text">
-                    <div class="sp-success-title">Stock In Successfully Added!</div>
-                    <div class="sp-success-desc">Transaction completed with reference {{ $stockInHead->reference_number }}</div>
-                </div>
-            </div>
 
             {{-- ── Page header ── --}}
             <div class="sp-page-head">

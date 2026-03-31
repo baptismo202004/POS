@@ -516,7 +516,9 @@
                                         <select class="form-control" id="adjustmentType" name="adjustment_type" required>
                                             <option value="">-- Select Adjustment Type --</option>
                                             <option value="purchase">Add from Purchase</option>
+                                            @if(auth()->user()?->userType?->name !== 'Cashier')
                                             <option value="transfer">Create Stock Transfer</option>
+                                            @endif
                                         </select>
                                     </div>
 

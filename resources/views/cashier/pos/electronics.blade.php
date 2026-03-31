@@ -46,17 +46,19 @@
         .order-summary {
             position: sticky;
             top: 20px;
-            height: fit-content;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .order-summary .card {
-            position: sticky;
-            top: 20px;
+            position: static;
         }
 
         #order-items {
-            max-height: 260px !important;
+            max-height: 260px;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 14px 18px;
         }
         #order-items::-webkit-scrollbar { width: 3px; }
