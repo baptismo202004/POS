@@ -506,8 +506,6 @@ class PosAdminController extends Controller
             $customerName = ! empty($data['customer_name']) ? trim($data['customer_name']) : null;
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
-            $cashTendered = isset($data['cash_tendered']) && is_numeric($data['cash_tendered']) ? (float) $data['cash_tendered'] : null;
-            $changeDue = isset($data['change_due']) && is_numeric($data['change_due']) ? (float) $data['change_due'] : null;
 
             Log::info('[POS_STORE] Processing order with '.count($items)." items, total: ₱{$total}");
             Log::info("[POS_STORE] Customer ID: '{$customerId}'");
@@ -528,8 +526,6 @@ class PosAdminController extends Controller
                 'employee_id' => Auth::id(), // Use the numeric user ID
                 'branch_id' => $branchId,
                 'total_amount' => $total,
-                'cash_tendered' => $cashTendered,
-                'change_due' => $changeDue,
                 'tax' => 0, // No tax for now
                 'payment_method' => $paymentMethod, // Use payment method from request
             ];
@@ -976,49 +972,44 @@ class PosAdminController extends Controller
                     }
                     $saleItem = SaleItem::create($saleItemPayload);
 
-                    $warrantyExpiry = null;
-                    if ($warrantyMonths > 0) {
-                        $warrantyExpiry = Carbon::now()->addMonths($warrantyMonths)->toDateString();
-                    }
-
-                    if (! $shouldBePending) {
+                    // Validate and mark serial as sold — only for fulfillable entries
+                    if ($isFulfillable && $serialNumber !== '') {
                         $serial = ProductSerial::where('serial_number', $serialNumber)->first();
                         if (! $serial) {
                             DB::rollBack();
 
                             return response()->json([
                                 'success' => false,
-                                'message' => 'Invalid serial number (not found in inventory).',
+                                'message' => "Serial number '{$serialNumber}' not found in inventory.",
                             ], 422);
                         }
-
                         if ((int) $serial->product_id !== (int) $productId) {
                             DB::rollBack();
 
                             return response()->json([
                                 'success' => false,
-                                'message' => 'Serial number does not match the selected product.',
+                                'message' => "Serial number '{$serialNumber}' does not match the selected product.",
                             ], 422);
                         }
-
                         if ((int) $serial->branch_id !== (int) $branchId) {
                             DB::rollBack();
 
                             return response()->json([
                                 'success' => false,
-                                'message' => 'Serial number does not belong to the selected branch.',
+                                'message' => "Serial number '{$serialNumber}' does not belong to the selected branch.",
                             ], 422);
                         }
-
                         if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                             DB::rollBack();
 
                             return response()->json([
                                 'success' => false,
-                                'message' => 'Serial number is not available (already sold/invalid).',
+                                'message' => "Serial number '{$serialNumber}' is not available (already sold or invalid).",
                             ], 422);
                         }
-
+                        $warrantyExpiry = $warrantyMonths > 0
+                            ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
+                            : null;
                         $serial->status = 'sold';
                         $serial->sold_at = now();
                         $serial->sale_item_id = $saleItem->id;
