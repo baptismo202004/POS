@@ -57,7 +57,7 @@
                         <div class="sp-ph-sub">Manage branch locations and assignments</div>
                     </div>
                 </div>
-                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#branchModal" onclick="openBranchModal()">
+                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal">
                     <i class="fas fa-plus"></i> Add Branch
                 </button>
             </div>
@@ -75,7 +75,6 @@
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Address</th>
-                                    <th>Assigned To</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -89,34 +88,19 @@
                                         </td>
                                         <td>{{ $branch->address ?? 'N/A' }}</td>
                                         <td>
-                                            @if($branch->assignedUser)
-                                                <div class="d-flex align-items-center">
-                                                    <div class="user-avatar me-2">
-                                                        {{ strtoupper(substr($branch->assignedUser->name, 0, 1)) }}
-                                                    </div>
-                                                    <div>
-                                                        <div class="fw-semibold">{{ $branch->assignedUser->name }}</div>
-                                                        <small class="text-muted">ID: {{ $branch->assignedUser->id }}</small>
-                                                    </div>
-                                                </div>
-                                            @else
-                                                <span class="text-muted">Not Assigned</span>
-                                            @endif
-                                        </td>
-                                        <td>
                                             <span class="badge {{ $branch->status === 'active' ? 'badge-success' : 'badge-secondary' }}">
                                                 {{ ucfirst($branch->status) }}
                                             </span>
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#branchModal" onclick="editBranch({{ $branch->id }}, '{{ $branch->branch_name }}', '{{ $branch->address ?? '' }}', '{{ $branch->status }}')">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="editBranch({{ $branch->id }}, '{{ addslashes($branch->branch_name) }}', '{{ addslashes($branch->address ?? '') }}', '{{ $branch->status }}')">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
-                                                <form method="POST" action="{{ route('superadmin.branches.destroy', $branch) }}" class="d-inline">
+                                                <form method="POST" action="{{ route('superadmin.branches.destroy', $branch) }}" class="d-inline js-delete-form">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this branch?')">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm js-delete-btn" data-name="{{ $branch->branch_name }}">
                                                         <i class="fas fa-trash"></i> Delete
                                                     </button>
                                                 </form>
@@ -143,28 +127,30 @@
     </div>
 </div>
 
-<!-- Branch Modal -->
-<div class="modal fade" id="branchModal" tabindex="-1" aria-labelledby="branchModalLabel" aria-hidden="true">
+<!-- Add Branch Modal -->
+<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="branchModalLabel">Add Branch</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background:linear-gradient(135deg,#0D47A1,#1976D2);">
+                <h5 class="modal-title text-white" id="addBranchModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Add Branch
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="branchForm" method="POST" data-update-base="{{ url('branches') }}">
+            <form id="addBranchForm">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="branch_name" class="form-label">Branch Name</label>
-                        <input type="text" class="form-control" id="branch_name" name="branch_name" required>
+                        <label class="form-label fw-semibold">Branch Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add_branch_name" name="branch_name" placeholder="e.g. Main Branch" required>
                     </div>
                     <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
-                        <input type="text" class="form-control" id="address" name="address">
+                        <label class="form-label fw-semibold">Address</label>
+                        <input type="text" class="form-control" id="add_address" name="address" placeholder="e.g. 123 Street, City">
                     </div>
                     <div class="mb-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-control" id="status" name="status" required>
+                        <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                        <select class="form-control" id="add_status" name="status" required>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
@@ -172,7 +158,50 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Branch</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Branch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Branch Modal -->
+<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1565C0,#42A5F5);">
+                <h5 class="modal-title text-white" id="editBranchModalLabel">
+                    <i class="fas fa-edit me-2"></i>Edit Branch
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editBranchForm">
+                @csrf
+                <input type="hidden" id="edit_branch_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Branch Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_branch_name" name="branch_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Address</label>
+                        <input type="text" class="form-control" id="edit_address" name="address">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                        <select class="form-control" id="edit_status" name="status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
                 </div>
             </form>
         </div>
@@ -180,53 +209,21 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 const storeUrl   = '{{ route("superadmin.branches.store") }}';
 const updateBase = '{{ url("branches") }}';
 const csrfToken  = '{{ csrf_token() }}';
 
-// Default to store mode
-const form = document.getElementById('branchForm');
-form.dataset.mode = 'store';
-form.dataset.id   = '';
-
-function openBranchModal() {
-    form.dataset.mode = 'store';
-    form.dataset.id   = '';
-    document.getElementById('branchModalLabel').textContent = 'Add Branch';
-    document.getElementById('branch_name').value = '';
-    document.getElementById('address').value     = '';
-    document.getElementById('status').value      = 'active';
-}
-
 function editBranch(id, name, address, status) {
-    form.dataset.mode = 'update';
-    form.dataset.id   = id;
-    document.getElementById('branchModalLabel').textContent = 'Edit Branch';
-    document.getElementById('branch_name').value = name;
-    document.getElementById('address').value     = address || '';
-    document.getElementById('status').value      = status;
+    document.getElementById('edit_branch_id').value   = id;
+    document.getElementById('edit_branch_name').value = name;
+    document.getElementById('edit_address').value     = address || '';
+    document.getElementById('edit_status').value      = status;
+    new bootstrap.Modal(document.getElementById('editBranchModal')).show();
 }
 
-form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    const isUpdate = this.dataset.mode === 'update';
-    const id       = this.dataset.id;
-    const url      = isUpdate ? updateBase + '/' + id : storeUrl;
-
-    const body = new URLSearchParams({
-        _token:      csrfToken,
-        branch_name: document.getElementById('branch_name').value.trim(),
-        address:     document.getElementById('address').value.trim(),
-        status:      document.getElementById('status').value,
-    });
-
-    if (isUpdate) {
-        body.append('_method', 'PUT');
-    }
-
+async function submitForm(url, body, modalId, isUpdate) {
     try {
         const res  = await fetch(url, {
             method: 'POST',
@@ -236,10 +233,10 @@ form.addEventListener('submit', async function (e) {
         const data = await res.json();
 
         if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('branchModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById(modalId)).hide();
             await Swal.fire({
                 icon: 'success',
-                title: isUpdate ? 'Updated!' : 'Added!',
+                title: isUpdate ? 'Updated!' : 'Branch Added!',
                 text: data.message,
                 confirmButtonColor: '#0D47A1',
                 timer: 2000,
@@ -248,21 +245,51 @@ form.addEventListener('submit', async function (e) {
             location.reload();
         } else {
             const msgs = Object.values(data.errors || {}).flat().join('\n');
-            Swal.fire({
-                icon: 'error',
-                title: 'Validation Error',
-                text: msgs || 'Something went wrong.',
-                confirmButtonColor: '#0D47A1',
-            });
+            Swal.fire({ icon: 'error', title: 'Validation Error', text: msgs, confirmButtonColor: '#0D47A1' });
         }
-    } catch (err) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Request failed. Please try again.',
-            confirmButtonColor: '#0D47A1',
-        });
+    } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#0D47A1' });
     }
+}
+
+document.getElementById('addBranchForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const body = new URLSearchParams({
+        _token:      csrfToken,
+        branch_name: document.getElementById('add_branch_name').value.trim(),
+        address:     document.getElementById('add_address').value.trim(),
+        status:      document.getElementById('add_status').value,
+    });
+    submitForm(storeUrl, body, 'addBranchModal', false);
+});
+
+document.getElementById('editBranchForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id   = document.getElementById('edit_branch_id').value;
+    const body = new URLSearchParams({
+        _token:      csrfToken,
+        _method:     'PUT',
+        branch_name: document.getElementById('edit_branch_name').value.trim(),
+        address:     document.getElementById('edit_address').value.trim(),
+        status:      document.getElementById('edit_status').value,
+    });
+    submitForm(updateBase + '/' + id, body, 'editBranchModal', true);
+});
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-delete-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const form = btn.closest('.js-delete-form');
+    const name = btn.dataset.name || '';
+    Swal.fire({
+        icon: 'warning',
+        title: 'Delete this branch?',
+        text: name,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#E63946',
+    }).then(r => { if (r.isConfirmed) form.submit(); });
 });
 </script>
-@endsection
+@endpush

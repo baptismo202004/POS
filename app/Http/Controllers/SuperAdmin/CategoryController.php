@@ -11,6 +11,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::orderBy('id', 'asc')->get();
+
         return view('SuperAdmin.categories.index', compact('categories'));
     }
 
@@ -19,7 +20,7 @@ class CategoryController extends Controller
         $request->validate([
             'category_name' => 'required|unique:categories,category_name',
             'category_type' => 'nullable|in:non_electronic,electronic_without_serial,electronic_with_serial',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
         Category::create([
@@ -48,9 +49,9 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $request->validate([
-            'category_name' => 'required|unique:categories,category_name,' . $category->id,
+            'category_name' => 'required|unique:categories,category_name,'.$category->id,
             'category_type' => 'nullable|in:non_electronic,electronic_without_serial,electronic_with_serial',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
         $category->update([
@@ -69,6 +70,11 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Category deleted successfully.']);
+        }
+
         return back()->with('success', 'Category deleted successfully');
     }
 

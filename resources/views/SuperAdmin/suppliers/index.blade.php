@@ -1,578 +1,375 @@
 @extends('layouts.app')
+@section('title', 'Suppliers')
 
 @include('layouts.theme-base')
 
+@push('stylesDashboard')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    :root{--navy:#0D47A1;--blue:#1976D2;--blue-lt:#42A5F5;--bg:#EBF3FB;--card:#fff;--border:rgba(25,118,210,0.12);--text:#1a2744;--muted:#6b84aa;}
+    .sp-page{position:relative;}
+    .sp-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg);}
+    .sp-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 0% 0%,rgba(13,71,161,0.09) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 100% 100%,rgba(0,176,255,0.07) 0%,transparent 55%);}
+    .sp-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.11;}
+    .sp-blob-1{width:420px;height:420px;background:#1976D2;top:-130px;left:-130px;animation:spb1 9s ease-in-out infinite;}
+    .sp-blob-2{width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite;}
+    @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
+    @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
+    .sp-wrap{position:relative;z-index:1;padding:18px 10px 42px;}
+    @media(min-width:992px){.sp-wrap{padding:24px 18px 54px;}}
+    .sp-page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
+    .sp-ph-left{display:flex;align-items:center;gap:13px;}
+    .sp-ph-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--navy),var(--blue-lt));display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;box-shadow:0 6px 20px rgba(13,71,161,0.28);}
+    .sp-ph-crumb{font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);opacity:.75;margin-bottom:3px;}
+    .sp-ph-title{font-size:24px;font-weight:900;color:var(--navy);line-height:1.1;}
+    .sp-ph-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+    .sp-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;transition:all .2s ease;text-decoration:none;white-space:nowrap;}
+    .sp-btn-primary{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;box-shadow:0 4px 14px rgba(13,71,161,0.26);}
+    .sp-btn-primary:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(13,71,161,0.36);color:#fff;}
+    .sp-card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:0 4px 28px rgba(13,71,161,0.09);overflow:hidden;}
+    .sp-card-head{padding:15px 22px;background:linear-gradient(135deg,var(--navy) 0%,var(--blue) 100%);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;}
+    .sp-card-head::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 120% at 85% 50%,rgba(0,229,255,0.14),transparent);pointer-events:none;}
+    .sp-card-head-title{font-size:14.5px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+    .sp-card-head-title i{color:rgba(0,229,255,.85);}
+    .sp-card-body{padding:18px 22px;}
+    .sp-search-bar{padding:12px 22px;border-bottom:1px solid var(--border);background:rgba(13,71,161,0.02);display:flex;align-items:center;gap:8px;}
+    .sp-search-bar input{padding:7px 12px 7px 32px;border-radius:9px;border:1.5px solid var(--border);font-size:13px;background:var(--card);color:var(--text);outline:none;width:260px;}
+    .sp-search-bar input:focus{border-color:var(--blue-lt);box-shadow:0 0 0 3px rgba(66,165,245,0.1);}
+    .sp-search-wrap{position:relative;display:inline-block;}
+    .sp-search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+    .sp-table-wrap{overflow-x:auto;}
+    .sp-table{width:100%;border-collapse:separate;border-spacing:0;}
+    .sp-table thead th{background:rgba(13,71,161,0.03);padding:11px 14px;font-size:10.5px;font-weight:900;color:var(--navy);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+    .sp-table tbody td{padding:12px 14px;font-size:13px;color:var(--text);border-bottom:1px solid rgba(25,118,210,0.06);vertical-align:middle;}
+    .sp-table tbody tr:nth-child(even) td{background:rgba(240,246,255,0.55);}
+    .sp-table tbody tr:hover td{background:rgba(21,101,192,0.05);}
+</style>
+@endpush
+
 @section('content')
-<!-- SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card-base">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="page-header">
-                        <h3 class="m-0">Suppliers</h3>
-                        <p class="text-muted mb-0">Manage supplier information and contacts</p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <!-- Search and Filter -->
-                        <div class="input-group" style="max-width: 300px;">
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search suppliers...">
-                            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierModal" onclick="(function(){console.log('=== OPEN SUPPLIER MODAL DEBUG ===');console.log('openSupplierModal function called');const form=document.getElementById('supplierForm');const modalLabel=document.getElementById('supplierModalLabel');console.log('Form element found:',!!form);console.log('Modal label element found:',!!modalLabel);console.log('Current form action before setting:',form.action);const actionUrl='/superadmin/suppliers';form.action=actionUrl;console.log('Form action set to:',form.action);const methodField=form.querySelector('input[name=_method]');if(methodField){methodField.remove();console.log('Removed existing _method field');}modalLabel.textContent='Add Supplier';form.reset();const statusField=document.getElementById('status');if(statusField){statusField.value='active';console.log('Status set to active');}console.log('=== OPEN SUPPLIER MODAL COMPLETED ===');})()">
-                            <i class="fas fa-plus me-2"></i> Add Supplier
-                        </button>
-                      
+<div class="sp-page">
+    <div class="sp-bg"><div class="sp-blob sp-blob-1"></div><div class="sp-blob sp-blob-2"></div></div>
+    <div class="container-fluid">
+        <div class="sp-wrap">
+            <div class="sp-page-head">
+                <div class="sp-ph-left">
+                    <div class="sp-ph-icon"><i class="fas fa-truck"></i></div>
+                    <div>
+                        <div class="sp-ph-crumb">Management</div>
+                        <div class="sp-ph-title">Suppliers</div>
+                        <div class="sp-ph-sub">Manage supplier information and contacts</div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="table-base" style="max-height: calc(100vh - 280px); overflow: auto;">
-                        <table class="table" id="suppliersTable">
-                            <thead>
+                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                    <i class="fas fa-plus"></i> Add Supplier
+                </button>
+            </div>
+
+            <div class="sp-card">
+                <div class="sp-card-head">
+                    <div class="sp-card-head-title"><i class="fas fa-list"></i> Supplier List</div>
+                    <div style="position:relative;z-index:1;background:rgba(255,255,255,0.15);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">
+                        {{ $suppliers->total() }} suppliers
+                    </div>
+                </div>
+
+                <div class="sp-search-bar">
+                    <div class="sp-search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Search suppliers...">
+                    </div>
+                </div>
+
+                <div class="sp-table-wrap">
+                    <table class="sp-table" id="suppliersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Supplier Name</th>
+                                <th>Contact Person</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($suppliers as $supplier)
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Supplier Name</th>
-                                    <th>Contact Person</th>
-                                    <th>Phone Number</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <td><span class="badge badge-secondary">#{{ $supplier->id }}</span></td>
+                                    <td><div class="fw-semibold" style="color:var(--navy);">{{ $supplier->supplier_name }}</div></td>
+                                    <td>{{ $supplier->contact_person ?? '—' }}</td>
+                                    <td>{{ $supplier->phone ?? '—' }}</td>
+                                    <td>{{ $supplier->email ?? '—' }}</td>
+                                    <td>
+                                        <span class="badge {{ $supplier->status === 'active' ? 'badge-success' : 'badge-secondary' }}">
+                                            {{ ucfirst($supplier->status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary btn-sm js-edit-btn"
+                                                    data-id="{{ $supplier->id }}">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <a href="{{ route('suppliers.show', $supplier) }}" class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger btn-sm js-delete-btn"
+                                                    data-id="{{ $supplier->id }}"
+                                                    data-name="{{ $supplier->supplier_name }}">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($suppliers as $supplier)
-                                    <tr>
-                                        <td><span class="badge badge-secondary">#{{ $supplier->id }}</span></td>
-                                        <td>
-                                            <div class="fw-semibold" style="color: var(--electric-blue);">{{ $supplier->supplier_name }}</div>
-                                        </td>
-                                        <td>{{ $supplier->contact_person ?? '-' }}</td>
-                                        <td>{{ $supplier->phone ?? '-' }}</td>
-                                        <td>{{ $supplier->email ?? '-' }}</td>
-                                        <td>
-                                            <span class="badge {{ $supplier->status === 'active' ? 'badge-success' : 'badge-secondary' }}">
-                                                {{ ucfirst($supplier->status) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#supplierModal" onclick="(function(id){console.log('=== EDIT SUPPLIER ===');console.log('Editing supplier ID:',id);fetch('/superadmin/suppliers/'+id+'/edit').then(response=>response.json()).then(data=>{if(data.success){const supplier=data.supplier;document.getElementById('supplierForm').action='/superadmin/suppliers/'+id;let methodInput=document.getElementById('supplierForm').querySelector('input[name=_method]');if(!methodInput){methodInput=document.createElement('input');methodInput.type='hidden';methodInput.name='_method';methodInput.value='PUT';document.getElementById('supplierForm').appendChild(methodInput);}document.getElementById('supplierModalLabel').textContent='Edit Supplier';document.getElementById('supplier_name').value=supplier.supplier_name||'';document.getElementById('contact_person').value=supplier.contact_person||'';document.getElementById('email').value=supplier.email||'';document.getElementById('phone').value=supplier.phone||'';document.getElementById('address').value=supplier.address||'';document.getElementById('status').value=supplier.status||'active';const modal=new bootstrap.Modal(document.getElementById('supplierModal'));modal.show();}else{Swal.fire({icon:'error',title:'Error',text:'Error loading supplier data',confirmButtonColor:'#0D47A1'});}}).catch(error=>{console.error('Error:',error);Swal.fire({icon:'error',title:'Error',text:'Error loading supplier data',confirmButtonColor:'#0D47A1'});});})({{ $supplier->id }})">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
-                                                <button type="button" class="btn btn-outline-info btn-sm" onclick="(function(id){console.log('=== VIEW SUPPLIER ===');console.log('Viewing supplier ID:',id);window.location.href='/superadmin/suppliers/'+id;})({{ $supplier->id }})">
-                                                    <i class="fas fa-eye"></i> View
-                                                </button>
-                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="(function(id,name){console.log('=== CONFIRM DELETE ===');console.log('Deleting supplier ID:',id,'Name:',name);currentDeleteId=id;Swal.fire({title:'Confirm Delete',html:'Are you sure you want to delete the supplier <strong>'+name+'</strong>?<br><small style=&quot;color:#dc3545&quot;>This action cannot be undone.</small>',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc3545',cancelButtonColor:'#6c757d',confirmButtonText:'Yes, delete it!',cancelButtonText:'Cancel'}).then(result=>{if(result.isConfirmed){console.log('=== DELETE SUPPLIER ===');console.log('Deleting supplier ID:',currentDeleteId);if(!currentDeleteId)return;const formData=new FormData();formData.append('_method','DELETE');formData.append('_token',document.querySelector('meta[name=csrf-token]').getAttribute('content'));fetch('/superadmin/suppliers/'+currentDeleteId,{method:'POST',body:formData,headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}}).then(response=>response.json()).then(data=>{console.log('Delete response:',data);if(data.success){Swal.fire({icon:'success',title:'Deleted!',text:'Supplier deleted successfully!',confirmButtonColor:'#0D47A1',timer:2000,showConfirmButton:false}).then(()=>{location.reload();});}else{Swal.fire({icon:'error',title:'Error',text:'Error deleting supplier',confirmButtonColor:'#0D47A1'});}}).catch(error=>{console.error('Error:',error);Swal.fire({icon:'error',title:'Error',text:'Error deleting supplier',confirmButtonColor:'#0D47A1'});});}});})({{ $supplier->id }},'{{ $supplier->supplier_name }}')">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="empty-state">
-                                                <i class="fas fa-truck fa-3x mb-3"></i>
-                                                <div class="fw-semibold">No suppliers found</div>
-                                                <small>Start by adding your first supplier</small>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-
-                        @if($suppliers->hasPages())
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div class="text-muted">
-                                    Showing {{ $suppliers->firstItem() }} to {{ $suppliers->lastItem() }} of {{ $suppliers->total() }} entries
-                                </div>
-                                {{ $suppliers->links() }}
-                            </div>
-                        @endif
-                    </div>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="fas fa-truck fa-3x mb-3 text-muted d-block"></i>
+                                        <div class="fw-semibold">No suppliers found</div>
+                                        <small class="text-muted">Start by adding your first supplier</small>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
+
+                @if($suppliers->hasPages())
+                <div class="p-3 border-top d-flex justify-content-center">
+                    {{ $suppliers->links() }}
+                </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
 
-<!-- Supplier Modal -->
-<div class="modal fade" id="supplierModal" tabindex="-1" aria-labelledby="supplierModalLabel" aria-hidden="true">
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="supplierModalLabel">Add Supplier</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background:linear-gradient(135deg,#0D47A1,#1976D2);">
+                <h5 class="modal-title text-white"><i class="fas fa-plus-circle me-2"></i>Add Supplier</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="supplierForm" method="POST">
+            <form id="addSupplierForm">
                 @csrf
                 <div class="modal-body">
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="supplier_name" class="form-label">Supplier Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="supplier_name" name="supplier_name" required>
-                            </div>
+                            <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="add_supplier_name" name="supplier_name" required>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="contact_person" class="form-label">Contact Person</label>
-                                <input type="text" class="form-control" id="contact_person" name="contact_person">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email">
-                            </div>
+                            <label class="form-label fw-semibold">Contact Person</label>
+                            <input type="text" class="form-control" id="add_contact_person" name="contact_person">
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone Number</label>
-                                <input type="text" class="form-control" id="phone" name="phone">
-                            </div>
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control" id="add_email" name="email">
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
-                        <textarea class="form-control" id="address" name="address" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-select" id="status" name="status" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone Number</label>
+                            <input type="text" class="form-control" id="add_phone" name="phone">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Address</label>
+                            <textarea class="form-control" id="add_address" name="address" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="add_status" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Supplier</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Supplier</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<!-- Edit Supplier Modal -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1565C0,#42A5F5);">
+                <h5 class="modal-title text-white"><i class="fas fa-edit me-2"></i>Edit Supplier</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editSupplierForm">
+                @csrf
+                <input type="hidden" id="edit_supplier_id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_supplier_name" name="supplier_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Contact Person</label>
+                            <input type="text" class="form-control" id="edit_contact_person" name="contact_person">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control" id="edit_email" name="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone Number</label>
+                            <input type="text" class="form-control" id="edit_phone" name="phone">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Address</label>
+                            <textarea class="form-control" id="edit_address" name="address" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_status" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
-let currentDeleteId = null;
+const supStoreUrl   = '{{ route("suppliers.store") }}';
+const supUpdateBase = '{{ url("suppliers") }}';
+const supCsrf       = '{{ csrf_token() }}';
 
-// Define all functions globally to ensure they're available
-window.openSupplierModal = function() {
-    console.log('=== OPEN SUPPLIER MODAL DEBUG ===');
-    console.log('openSupplierModal function called');
-    
-    const form = document.getElementById('supplierForm');
-    const modalLabel = document.getElementById('supplierModalLabel');
-    
-    console.log('Form element found:', !!form);
-    console.log('Modal label element found:', !!modalLabel);
-    console.log('Current form action before setting:', form.action);
-    
-    // Set the form action
-    const actionUrl = '{{ route("suppliers.store") }}';
-    form.action = actionUrl;
-    console.log('Form action set to:', form.action);
-    
-    // Remove any existing method field
-    const methodField = form.querySelector('input[name="_method"]');
-    if (methodField) {
-        methodField.remove();
-        console.log('Removed existing _method field');
-    }
-    
-    // Set modal title
-    modalLabel.textContent = 'Add Supplier';
-    
-    // Reset form
-    form.reset();
-    
-    // Set default status
-    const statusField = document.getElementById('status');
-    if (statusField) {
-        statusField.value = 'active';
-        console.log('Status set to active');
-    }
-    
-    console.log('=== OPEN SUPPLIER MODAL COMPLETED ===');
-};
-
-window.editSupplier = function(id) {
-    console.log('=== EDIT SUPPLIER ===');
-    console.log('Editing supplier ID:', id);
-    
-    fetch(`/superadmin/suppliers/${id}/edit`)
-        .then(response => response.json())
-        .then(data => {
-            console.log('Edit response:', data);
-            if (data.success) {
-                const supplier = data.supplier;
-                document.getElementById('supplierForm').action = `/superadmin/suppliers/${id}`;
-                
-                // Add or update method field
-                let methodInput = document.getElementById('supplierForm').querySelector('input[name="_method"]');
-                if (!methodInput) {
-                    methodInput = document.createElement('input');
-                    methodInput.type = 'hidden';
-                    methodInput.name = '_method';
-                    methodInput.value = 'PUT';
-                    document.getElementById('supplierForm').appendChild(methodInput);
-                }
-                
-                document.getElementById('supplierModalLabel').textContent = 'Edit Supplier';
-                document.getElementById('supplier_name').value = supplier.supplier_name || '';
-                document.getElementById('contact_person').value = supplier.contact_person || '';
-                document.getElementById('email').value = supplier.email || '';
-                document.getElementById('phone').value = supplier.phone || '';
-                document.getElementById('address').value = supplier.address || '';
-                document.getElementById('status').value = supplier.status || 'active';
-                
-                // Show modal
-                const modal = new bootstrap.Modal(document.getElementById('supplierModal'));
-                modal.show();
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error loading supplier data',
-                    confirmButtonColor: '#0D47A1'
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error loading supplier data',
-                confirmButtonColor: '#0D47A1'
-            });
+async function submitSupplierForm(url, body, modalId, isUpdate) {
+    try {
+        const res  = await fetch(url, {
+            method: 'POST', body,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         });
-};
-
-window.viewSupplier = function(id) {
-    console.log('=== VIEW SUPPLIER ===');
-    console.log('Viewing supplier ID:', id);
-    window.location.href = `/superadmin/suppliers/${id}`;
-};
-
-window.confirmDelete = function(id, name) {
-    console.log('=== CONFIRM DELETE ===');
-    console.log('Deleting supplier ID:', id, 'Name:', name);
-    currentDeleteId = id;
-    
-    Swal.fire({
-        title: 'Confirm Delete',
-        html: `Are you sure you want to delete the supplier "<strong>${name}</strong>"?<br><small style="color: #dc3545;">This action cannot be undone.</small>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.deleteSupplier();
-        }
-    });
-};
-
-window.deleteSupplier = function() {
-    console.log('=== DELETE SUPPLIER ===');
-    console.log('Deleting supplier ID:', currentDeleteId);
-    
-    if (!currentDeleteId) return;
-    
-    fetch(`/superadmin/suppliers/${currentDeleteId}`, {
-        method: 'DELETE',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Delete response:', data);
+        const data = await res.json();
         if (data.success) {
-            Swal.fire({
+            bootstrap.Modal.getInstance(document.getElementById(modalId)).hide();
+            await Swal.fire({
                 icon: 'success',
-                title: 'Deleted!',
-                text: 'Supplier deleted successfully!',
-                confirmButtonColor: '#0D47A1',
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => {
-                location.reload();
+                title: isUpdate ? 'Updated!' : 'Added!',
+                text: isUpdate ? 'Supplier updated successfully.' : 'Supplier added successfully.',
+                confirmButtonColor: '#0D47A1', timer: 2000, showConfirmButton: false,
             });
+            location.reload();
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error deleting supplier',
-                confirmButtonColor: '#0D47A1'
-            });
+            const msgs = Object.values(data.errors || {}).flat().join('\n') || data.message || 'Something went wrong.';
+            Swal.fire({ icon: 'error', title: 'Validation Error', text: msgs, confirmButtonColor: '#0D47A1' });
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Error deleting supplier',
-            confirmButtonColor: '#0D47A1'
-        });
-    });
-};
-
-window.testFunctions = function() {
-    console.log('=== TESTING FUNCTIONS ===');
-    
-    const tests = [
-        { name: 'openSupplierModal', func: window.openSupplierModal },
-        { name: 'editSupplier', func: window.editSupplier },
-        { name: 'viewSupplier', func: window.viewSupplier },
-        { name: 'confirmDelete', func: window.confirmDelete },
-        { name: 'deleteSupplier', func: window.deleteSupplier }
-    ];
-    
-    tests.forEach(test => {
-        console.log(`${test.name}: ${typeof test.func === 'function' ? '✅ Defined' : '❌ Not defined'}`);
-    });
-    
-    alert('Function test complete! Check console for results.');
-};
-
-// Show success message if it exists
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOM CONTENT LOADED ===');
-    console.log('Checking for essential elements...');
-    
-    // Test if functions are defined
-    console.log('Function check:');
-    console.log('  openSupplierModal:', typeof window.openSupplierModal);
-    console.log('  editSupplier:', typeof window.editSupplier);
-    console.log('  viewSupplier:', typeof window.viewSupplier);
-    console.log('  confirmDelete:', typeof window.confirmDelete);
-    console.log('  deleteSupplier:', typeof window.deleteSupplier);
-    
-    // Check if all required elements exist
-    const supplierForm = document.getElementById('supplierForm');
-    const supplierModal = document.getElementById('supplierModal');
-    const addSupplierBtn = document.querySelector('[onclick="window.openSupplierModal()"]');
-    
-    console.log('Supplier form found:', !!supplierForm);
-    console.log('Supplier modal found:', !!supplierModal);
-    console.log('Add supplier button found:', !!addSupplierBtn);
-    console.log('openSupplierModal function exists:', typeof window.openSupplierModal);
-    
-    if (!supplierForm) {
-        console.error('❌ Supplier form not found!');
+    } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#0D47A1' });
     }
-    if (!supplierModal) {
-        console.error('❌ Supplier modal not found!');
-    }
-    if (!addSupplierBtn) {
-        console.error('❌ Add supplier button not found!');
-    }
-    if (typeof window.openSupplierModal !== 'function') {
-        console.error('❌ openSupplierModal function not defined!');
-    }
-    
-    console.log('DOM ready check completed');
-    
-    @if(session('success'))
-        Swal.fire({
-            icon: 'success',
-            title: 'Success!',
-            text: '{{ session('success') }}',
-            confirmButtonColor: '#0D47A1',
-            timer: 3000,
-            showConfirmButton: false
-        });
-    @endif
-    
-    @if(session('error'))
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: '{{ session('error') }}',
-            confirmButtonColor: '#0D47A1'
-        });
-    @endif
-});
-
-// Search functionality
-document.getElementById('searchInput').addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
-    const rows = document.querySelectorAll('#suppliersTable tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-    });
-});
-
-document.getElementById('clearSearch').addEventListener('click', function() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('searchInput').dispatchEvent(new Event('input'));
-});
-
-// Form submission
-document.getElementById('supplierForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    console.log('=== FORM SUBMISSION DEBUG ===');
-    console.log('Form submission intercepted');
-    
-    const form = this;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    const isEdit = document.getElementById('supplierModalLabel').textContent.includes('Edit');
-    
-    // Debug: Log form details
-    console.log('Form element:', form);
-    console.log('Form action:', form.action);
-    console.log('Form method:', form.method);
-    console.log('Is edit mode:', isEdit);
-    console.log('Submit button found:', !!submitBtn);
-    
-    // Debug: Log form data
-    console.log('Form data submitted:');
-    for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value);
-    }
-    
-    // Check if form action is set
-    if (!form.action || form.action === window.location.href + '#') {
-        console.error('❌ Form action is not properly set!');
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Form action is not set. Please refresh the page and try again.',
-            confirmButtonColor: '#0D47A1'
-        });
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-    
-    console.log('Sending request to:', form.action);
-    
-    // Add request timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-    
-    fetch(form.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        },
-        signal: controller.signal
-    })
-    .then(response => {
-        clearTimeout(timeoutId);
-        console.log('Response received:', response);
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        if (!response.ok) {
-            console.error('❌ Response not OK:', response.status, response.statusText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        return response.json();
-    })
-    .then(data => {
-        console.log('✅ Response data:', data);
-        console.log('Success status:', data.success);
-        
-        if (data.success) {
-            console.log('✅ Supplier operation successful!');
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: isEdit ? 'Supplier updated successfully!' : 'Supplier created successfully!',
-                confirmButtonColor: '#0D47A1',
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => {
-                console.log('Closing modal and reloading page...');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('supplierModal'));
-                if (modal) {
-                    modal.hide();
-                }
-                location.reload();
-            });
-        } else {
-            console.log('❌ Supplier operation failed');
-            console.log('Error details:', data.errors);
-            
-            let errorMessage = 'Error saving supplier';
-            if (data.errors) {
-                errorMessage = Object.values(data.errors).flat().join(', ');
-                console.log('Formatted error message:', errorMessage);
-            }
-            
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: errorMessage,
-                confirmButtonColor: '#0D47A1'
-            });
-        }
-    })
-    .catch(error => {
-        clearTimeout(timeoutId);
-        console.error('❌ Fetch error occurred:');
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        
-        // Check if it's an abort error (timeout)
-        if (error.name === 'AbortError') {
-            Swal.fire({
-                icon: 'error',
-                title: 'Timeout',
-                text: 'Request timed out. Please try again.',
-                confirmButtonColor: '#0D47A1'
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error saving supplier: ' + error.message,
-                confirmButtonColor: '#0D47A1'
-            });
-        }
-    })
-    .finally(() => {
-        console.log('=== FORM SUBMISSION COMPLETED ===');
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-    });
-});
-
-    tests.forEach(test => {
-        console.log(`${test.name}: ${typeof test.func === 'function' ? '✅ Defined' : '❌ Not defined'}`);
-    });
-    
-    alert('Function test complete! Check console for results.');
 }
 
+document.getElementById('addSupplierForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const body = new URLSearchParams({
+        _token:         supCsrf,
+        supplier_name:  document.getElementById('add_supplier_name').value.trim(),
+        contact_person: document.getElementById('add_contact_person').value.trim(),
+        email:          document.getElementById('add_email').value.trim(),
+        phone:          document.getElementById('add_phone').value.trim(),
+        address:        document.getElementById('add_address').value.trim(),
+        status:         document.getElementById('add_status').value,
+    });
+    submitSupplierForm(supStoreUrl, body, 'addSupplierModal', false);
+});
+
+document.getElementById('editSupplierForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id   = document.getElementById('edit_supplier_id').value;
+    const body = new URLSearchParams({
+        _token:         supCsrf,
+        _method:        'PUT',
+        supplier_name:  document.getElementById('edit_supplier_name').value.trim(),
+        contact_person: document.getElementById('edit_contact_person').value.trim(),
+        email:          document.getElementById('edit_email').value.trim(),
+        phone:          document.getElementById('edit_phone').value.trim(),
+        address:        document.getElementById('edit_address').value.trim(),
+        status:         document.getElementById('edit_status').value,
+    });
+    submitSupplierForm(supUpdateBase + '/' + id, body, 'editSupplierModal', true);
+});
+
+document.addEventListener('click', async function (e) {
+    const editBtn = e.target.closest('.js-edit-btn');
+    if (editBtn) {
+        const id = editBtn.dataset.id;
+        try {
+            const res  = await fetch(supUpdateBase + '/' + id + '/edit', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const s = data.supplier;
+                document.getElementById('edit_supplier_id').value    = s.id;
+                document.getElementById('edit_supplier_name').value  = s.supplier_name || '';
+                document.getElementById('edit_contact_person').value = s.contact_person || '';
+                document.getElementById('edit_email').value          = s.email || '';
+                document.getElementById('edit_phone').value          = s.phone || '';
+                document.getElementById('edit_address').value        = s.address || '';
+                document.getElementById('edit_status').value         = s.status || 'active';
+                new bootstrap.Modal(document.getElementById('editSupplierModal')).show();
+            }
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Could not load supplier data.', confirmButtonColor: '#0D47A1' });
+        }
+        return;
+    }
+
+    const delBtn = e.target.closest('.js-delete-btn');
+    if (delBtn) {
+        const id   = delBtn.dataset.id;
+        const name = delBtn.dataset.name;
+        const r = await Swal.fire({
+            icon: 'warning', title: 'Delete this supplier?', text: name,
+            showCancelButton: true, confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel', confirmButtonColor: '#E63946',
+        });
+        if (!r.isConfirmed) return;
+        try {
+            const body = new URLSearchParams({ _token: supCsrf, _method: 'DELETE' });
+            const res  = await fetch(supUpdateBase + '/' + id, {
+                method: 'POST', body,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                await Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 2000, showConfirmButton: false, confirmButtonColor: '#0D47A1' });
+                location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not delete.', confirmButtonColor: '#0D47A1' });
+            }
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.', confirmButtonColor: '#0D47A1' });
+        }
+    }
+});
+
+// Search
+document.getElementById('searchInput').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#suppliersTable tbody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
 </script>
-@endsection
+@endpush

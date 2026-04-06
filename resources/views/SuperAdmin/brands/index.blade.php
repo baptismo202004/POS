@@ -57,7 +57,7 @@
                         <div class="sp-ph-sub">Manage product brands and manufacturers</div>
                     </div>
                 </div>
-                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#brandModal" onclick="openBrandModal()">
+                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#addBrandModal">
                     <i class="fas fa-plus"></i> Add Brand
                 </button>
             </div>
@@ -92,7 +92,7 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#brandModal" onclick="editBrand({{ $brand->id }}, '{{ $brand->brand_name }}', '{{ $brand->status }}')">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="editBrand({{ $brand->id }}, '{{ addslashes($brand->brand_name) }}', '{{ $brand->status }}')">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <form method="POST" action="{{ route('superadmin.brands.destroy', $brand) }}" class="d-inline">
@@ -125,24 +125,24 @@
     </div>
 </div>
 
-<!-- Brand Modal -->
-<div class="modal fade" id="brandModal" tabindex="-1" aria-labelledby="brandModalLabel" aria-hidden="true">
+<!-- Add Brand Modal -->
+<div class="modal fade" id="addBrandModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="brandModalLabel">Add Brand</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background:linear-gradient(135deg,#0D47A1,#1976D2);">
+                <h5 class="modal-title text-white"><i class="fas fa-plus-circle me-2"></i>Add Brand</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="brandForm" method="POST">
+            <form id="addBrandForm">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="brand_name" class="form-label">Brand Name</label>
-                        <input type="text" class="form-control" id="brand_name" name="brand_name" required>
+                        <label class="form-label fw-semibold">Brand Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add_brand_name" name="brand_name" placeholder="e.g. Samsung" required>
                     </div>
                     <div class="mb-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-select" id="status" name="status" required>
+                        <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add_status" name="status" required>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
@@ -150,7 +150,40 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Brand</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Brand</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Brand Modal -->
+<div class="modal fade" id="editBrandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1565C0,#42A5F5);">
+                <h5 class="modal-title text-white"><i class="fas fa-edit me-2"></i>Edit Brand</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editBrandForm">
+                @csrf
+                <input type="hidden" id="edit_brand_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Brand Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_brand_name" name="brand_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_status" name="status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
                 </div>
             </form>
         </div>
@@ -159,59 +192,83 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-function openBrandModal() {
-    document.getElementById('brandForm').action = '{{ route("superadmin.brands.store") }}';
-    document.getElementById('brandForm').querySelector('input[name="_method"]')?.remove();
-    document.getElementById('brandModalLabel').textContent = 'Add Brand';
-    document.getElementById('brand_name').value = '';
-    document.getElementById('status').value = 'active';
-}
+const brandStoreUrl   = '{{ route("superadmin.brands.store") }}';
+const brandUpdateBase = '{{ url("brands") }}';
+const brandCsrf       = '{{ csrf_token() }}';
 
 function editBrand(id, name, status) {
-    document.getElementById('brandForm').action = '/superadmin/brands/' + id;
-    if (!document.getElementById('brandForm').querySelector('input[name="_method"]')) {
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'PUT';
-        document.getElementById('brandForm').appendChild(methodInput);
-    }
-    document.getElementById('brandModalLabel').textContent = 'Edit Brand';
-    document.getElementById('brand_name').value = name;
-    document.getElementById('status').value = status;
+    document.getElementById('edit_brand_id').value   = id;
+    document.getElementById('edit_brand_name').value = name;
+    document.getElementById('edit_status').value     = status;
+    new bootstrap.Modal(document.getElementById('editBrandModal')).show();
 }
 
-document.addEventListener('click', function(e) {
+async function submitBrandForm(url, body, modalId, isUpdate) {
+    try {
+        const res  = await fetch(url, {
+            method: 'POST',
+            body,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById(modalId)).hide();
+            await Swal.fire({
+                icon: 'success',
+                title: isUpdate ? 'Updated!' : 'Brand Added!',
+                text: data.message,
+                confirmButtonColor: '#0D47A1',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            location.reload();
+        } else {
+            const msgs = Object.values(data.errors || {}).flat().join('\n');
+            Swal.fire({ icon: 'error', title: 'Validation Error', text: msgs, confirmButtonColor: '#0D47A1' });
+        }
+    } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#0D47A1' });
+    }
+}
+
+document.getElementById('addBrandForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const body = new URLSearchParams({
+        _token:     brandCsrf,
+        brand_name: document.getElementById('add_brand_name').value.trim(),
+        status:     document.getElementById('add_status').value,
+    });
+    submitBrandForm(brandStoreUrl, body, 'addBrandModal', false);
+});
+
+document.getElementById('editBrandForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id   = document.getElementById('edit_brand_id').value;
+    const body = new URLSearchParams({
+        _token:     brandCsrf,
+        _method:    'PUT',
+        brand_name: document.getElementById('edit_brand_name').value.trim(),
+        status:     document.getElementById('edit_status').value,
+    });
+    submitBrandForm(brandUpdateBase + '/' + id, body, 'editBrandModal', true);
+});
+
+document.addEventListener('click', function (e) {
     const btn = e.target.closest('.js-brand-delete');
     if (!btn) return;
     e.preventDefault();
-
     const form = btn.closest('form');
-    if (!form) return;
-
-    const brandName = btn.getAttribute('data-brand-name') || '';
-    const title = 'Are you sure you want to delete this brand?';
-
-    if (typeof Swal === 'undefined') {
-        form.submit();
-        return;
-    }
-
     Swal.fire({
         icon: 'warning',
-        title: title,
-        text: brandName ? `Brand: ${brandName}` : undefined,
+        title: 'Delete this brand?',
+        text: btn.getAttribute('data-brand-name') || '',
         showCancelButton: true,
         confirmButtonText: 'Yes, delete',
         cancelButtonText: 'Cancel',
-        confirmButtonColor: '#E63946'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            form.submit();
-        }
-    });
+        confirmButtonColor: '#E63946',
+    }).then(r => { if (r.isConfirmed) form.submit(); });
 });
 </script>
 @endpush

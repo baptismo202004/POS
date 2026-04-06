@@ -11,22 +11,27 @@ class BrandController extends Controller
     public function index()
     {
         $brands = Brand::latest()->get();
+
         return view('SuperAdmin.brands.index', compact('brands'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'brand_name' => 'required|unique:brands,brand_name',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
-        Brand::create([
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $brand = Brand::create([
             'brand_name' => $request->brand_name,
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
-        return back()->with('success', 'Brand added successfully');
+        return response()->json(['success' => true, 'message' => 'Brand added successfully.', 'brand' => $brand]);
     }
 
     public function create()
@@ -41,22 +46,27 @@ class BrandController extends Controller
 
     public function update(Request $request, Brand $brand)
     {
-        $request->validate([
-            'brand_name' => 'required|unique:brands,brand_name,' . $brand->id,
-            'status' => 'required|in:active,inactive'
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'brand_name' => 'required|unique:brands,brand_name,'.$brand->id,
+            'status' => 'required|in:active,inactive',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
 
         $brand->update([
             'brand_name' => $request->brand_name,
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
-        return redirect()->route('superadmin.brands.index')->with('success', 'Brand updated successfully');
+        return response()->json(['success' => true, 'message' => 'Brand updated successfully.', 'brand' => $brand->fresh()]);
     }
 
     public function destroy(Brand $brand)
     {
         $brand->delete();
+
         return back()->with('success', 'Brand deleted successfully');
     }
 }

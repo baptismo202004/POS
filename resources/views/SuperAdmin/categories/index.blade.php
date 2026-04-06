@@ -235,12 +235,6 @@
                     </div>
                 </div>
                 <div class="sp-ph-actions">
-                    <button type="button" id="editBtn" class="sp-btn sp-btn-amber" disabled>
-                        <i class="fas fa-pen"></i> Edit
-                    </button>
-                    <button type="button" id="deleteBtn" class="sp-btn sp-btn-danger" disabled>
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
                     <button type="button" class="sp-btn sp-btn-primary"
                             data-bs-toggle="modal" data-bs-target="#categoryModal"
                             onclick="openCategoryModal()">
@@ -265,10 +259,11 @@
                     <table class="sp-table">
                         <thead>
                             <tr>
-                                <th style="width:50px;"></th>
                                 <th style="width:70px;">ID</th>
                                 <th>Name</th>
+                                <th>Type</th>
                                 <th style="width:110px;">Status</th>
+                                <th style="width:130px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -277,9 +272,17 @@
                                     data-name="{{ $category->category_name }}"
                                     data-category-type="{{ $category->category_type ?? 'non_electronic' }}"
                                     data-status="{{ $category->status }}">
-                                    <td><input type="checkbox" class="row-checkbox"></td>
-                                    <td style="font-weight:700;color:var(--navy);">{{ $category->id }}</td>
+                                    <td style="font-weight:700;color:var(--navy);">#{{ $category->id }}</td>
                                     <td style="font-weight:500;">{{ $category->category_name }}</td>
+                                    <td>
+                                        <span class="sp-badge sp-badge-muted" style="font-size:10px;">
+                                            {{ match($category->category_type ?? 'non_electronic') {
+                                                'electronic_with_serial'    => 'Electronic (serial)',
+                                                'electronic_without_serial' => 'Electronic',
+                                                default                     => 'Non-Electronic',
+                                            } }}
+                                        </span>
+                                    </td>
                                     <td>
                                         @if($category->status === 'active')
                                             <span class="sp-badge sp-badge-green">
@@ -291,9 +294,23 @@
                                             </span>
                                         @endif
                                     </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                    onclick="editCategory({{ $category->id }}, '{{ addslashes($category->category_name) }}', '{{ $category->category_type ?? 'non_electronic' }}', '{{ $category->status }}')"
+                                                    data-bs-toggle="modal" data-bs-target="#categoryModal">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm js-cat-delete-btn"
+                                                    data-id="{{ $category->id }}"
+                                                    data-name="{{ $category->category_name }}">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="empty-row"><i class="fas fa-inbox me-2"></i>No categories found.</td></tr>
+                                <tr><td colspan="5" class="empty-row"><i class="fas fa-inbox me-2"></i>No categories found.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -351,258 +368,98 @@
     </div>
 </div>
 
-<!-- Bulk Edit Modal -->
-<div class="modal fade sp-modal" id="bulkEditModal" tabindex="-1" aria-labelledby="bulkEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="bulkEditModalLabel">Bulk Edit Categories</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="bulk_status" class="form-label">Status</label>
-                    <select class="form-select" id="bulk_status" name="status" required>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="sp-modal-btn sp-modal-btn-cancel" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="bulkUpdateBtn" class="sp-modal-btn sp-modal-btn-primary">
-                    <i class="fas fa-check"></i> Update Status
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// ── ALL JAVASCRIPT PRESERVED EXACTLY FROM ORIGINAL ──
-
-document.addEventListener('DOMContentLoaded', function () {
-    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
-    const editBtn       = document.getElementById('editBtn');
-    const deleteBtn     = document.getElementById('deleteBtn');
-    const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
-
-    function updateButtonStates() {
-        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-        editBtn.disabled   = selectedCheckboxes.length === 0;
-        deleteBtn.disabled = selectedCheckboxes.length === 0;
-    }
-
-    rowCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-            updateButtonStates();
-        });
-    });
-
-    editBtn.addEventListener('click', function () {
-        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-        if (selectedCheckboxes.length === 1) {
-            const selectedRow = selectedCheckboxes[0].closest('tr');
-            const id     = selectedRow.dataset.id;
-            const name   = selectedRow.dataset.name;
-            const categoryType = selectedRow.dataset.categoryType;
-            const status = selectedRow.dataset.status;
-            editCategory(id, name, categoryType, status);
-            new bootstrap.Modal(document.getElementById('categoryModal')).show();
-        } else if (selectedCheckboxes.length > 1) {
-            new bootstrap.Modal(document.getElementById('bulkEditModal')).show();
-        }
-    });
-
-    bulkUpdateBtn.addEventListener('click', function () {
-        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-        const status = document.getElementById('bulk_status').value;
-        const ids    = Array.from(selectedCheckboxes).map(cb => cb.closest('tr').dataset.id);
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("superadmin.categories.bulkUpdate") }}';
-
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden'; methodInput.name = '_method'; methodInput.value = 'PUT';
-        form.appendChild(methodInput);
-
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = '{{ csrf_token() }}';
-        form.appendChild(csrfInput);
-
-        ids.forEach(id => {
-            const idInput = document.createElement('input');
-            idInput.type = 'hidden'; idInput.name = 'ids[]'; idInput.value = id;
-            form.appendChild(idInput);
-        });
-
-        const statusInput = document.createElement('input');
-        statusInput.type = 'hidden'; statusInput.name = 'status'; statusInput.value = status;
-        form.appendChild(statusInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    });
-
-    deleteBtn.addEventListener('click', function () {
-        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-        if (selectedCheckboxes.length > 0) {
-            const categoryCount = selectedCheckboxes.length;
-            const message = categoryCount === 1
-                ? 'Are you sure you want to delete this category?'
-                : `Are you sure you want to delete the selected ${categoryCount} categories?`;
-
-            Swal.fire({
-                title: 'Confirm Delete',
-                text: message,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#0D47A1',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const ids = Array.from(selectedCheckboxes).map(cb => cb.closest('tr').dataset.id);
-
-                    Swal.fire({
-                        title: 'Deleting…',
-                        html: 'Please wait while we delete the selected categories.',
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading(); }
-                    });
-
-                    const formData = new FormData();
-                    formData.append('_method', 'DELETE');
-                    formData.append('_token',  '{{ csrf_token() }}');
-                    ids.forEach(id => formData.append('ids[]', id));
-
-                    fetch('{{ route("superadmin.categories.bulkDestroy") }}', {
-                        method: 'POST',
-                        body: formData,
-                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                    })
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        console.log('Response headers:', response.headers);
-                        if (!response.ok) {
-                            if (response.status === 403) {
-                                throw new Error('Permission denied. You may not have the required permissions to delete categories.');
-                            }
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Response data:', data);
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success', title: 'Deleted!', text: 'Categories deleted successfully!',
-                                timer: 2000, showConfirmButton: false, position: 'top-end', toast: true
-                            }).then(() => { location.reload(); });
-                        } else {
-                            Swal.fire({ icon: 'error', title: 'Error!', text: data.message || 'Something went wrong. Please try again.', confirmButtonColor: '#ef4444' });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        // Fallback to form submission
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '{{ route("superadmin.categories.bulkDestroy") }}';
-
-                        const methodInput = document.createElement('input');
-                        methodInput.type = 'hidden'; methodInput.name = '_method'; methodInput.value = 'DELETE';
-                        form.appendChild(methodInput);
-
-                        const csrfInput = document.createElement('input');
-                        csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = '{{ csrf_token() }}';
-                        form.appendChild(csrfInput);
-
-                        ids.forEach(id => {
-                            const idInput = document.createElement('input');
-                            idInput.type = 'hidden'; idInput.name = 'ids[]'; idInput.value = id;
-                            form.appendChild(idInput);
-                        });
-
-                        document.body.appendChild(form);
-                        form.submit();
-                    });
-                }
-            });
-        }
-    });
-
-    updateButtonStates();
-});
-
-// Handle category form submission with AJAX and SweetAlert
-document.getElementById('categoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const form     = this;
-    const formData = new FormData(form);
-    const isEdit   = form.querySelector('input[name="_method"]')?.value === 'PUT';
-
-    Swal.fire({
-        title: 'Processing…',
-        html: 'Please wait while we save the category.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    fetch(form.action, {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: isEdit ? 'Category updated successfully!' : 'Category added successfully!',
-                timer: 2000, showConfirmButton: false, position: 'top-end', toast: true
-            }).then(() => {
-                bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
-                location.reload();
-            });
-        } else {
-            Swal.fire({ icon: 'error', title: 'Error!', text: data.message || 'Something went wrong. Please try again.', confirmButtonColor: '#ef4444' });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({ icon: 'error', title: 'Error!', text: 'Network error. Please try again.', confirmButtonColor: '#ef4444' });
-    });
-});
+const catStoreUrl   = '{{ route("superadmin.categories.store") }}';
+const catUpdateBase = '{{ url("superadmin/categories") }}';
+const catCsrf       = '{{ csrf_token() }}';
 
 function openCategoryModal() {
-    document.getElementById('categoryForm').action = '{{ route("superadmin.categories.store") }}';
+    document.getElementById('categoryForm').action = catStoreUrl;
     document.getElementById('categoryForm').querySelector('input[name="_method"]')?.remove();
     document.getElementById('categoryModalLabel').textContent = 'Add Category';
-    document.getElementById('category_name').value = '';
-    document.getElementById('status').value = 'active';
-    document.getElementById('category_type').value = 'non_electronic';
+    document.getElementById('category_name').value  = '';
+    document.getElementById('status').value         = 'active';
+    document.getElementById('category_type').value  = 'non_electronic';
 }
 
 function editCategory(id, name, categoryType, status) {
-    document.getElementById('categoryForm').action = '/superadmin/categories/' + id;
+    document.getElementById('categoryForm').action = catUpdateBase + '/' + id;
     if (!document.getElementById('categoryForm').querySelector('input[name="_method"]')) {
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden'; methodInput.name = '_method'; methodInput.value = 'PUT';
-        document.getElementById('categoryForm').appendChild(methodInput);
-    }   
+        const m = document.createElement('input');
+        m.type = 'hidden'; m.name = '_method'; m.value = 'PUT';
+        document.getElementById('categoryForm').appendChild(m);
+    }
     document.getElementById('categoryModalLabel').textContent = 'Edit Category';
     document.getElementById('category_name').value = name;
-    document.getElementById('status').value = status;
+    document.getElementById('status').value        = status;
     document.getElementById('category_type').value = categoryType || 'non_electronic';
 }
+
+document.getElementById('categoryForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const form   = this;
+    const isEdit = form.querySelector('input[name="_method"]')?.value === 'PUT';
+    const body   = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST', body,
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+            Swal.fire({
+                icon: 'success',
+                title: isEdit ? 'Updated!' : 'Added!',
+                text: isEdit ? 'Category updated successfully.' : 'Category added successfully.',
+                timer: 2000, showConfirmButton: false,
+                confirmButtonColor: '#0D47A1',
+            }).then(() => location.reload());
+        } else {
+            const msgs = Object.values(data.errors || {}).flat().join('\n') || data.message || 'Something went wrong.';
+            Swal.fire({ icon: 'error', title: 'Error', text: msgs, confirmButtonColor: '#ef4444' });
+        }
+    })
+    .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#ef4444' }));
+});
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-cat-delete-btn');
+    if (!btn) return;
+    const id   = btn.dataset.id;
+    const name = btn.dataset.name;
+    Swal.fire({
+        icon: 'warning',
+        title: 'Delete this category?',
+        text: name,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#ef4444',
+    }).then(async r => {
+        if (!r.isConfirmed) return;
+        try {
+            const body = new URLSearchParams({ _token: catCsrf, _method: 'DELETE' });
+            const res  = await fetch(catUpdateBase + '/' + id, {
+                method: 'POST', body,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                await Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 2000, showConfirmButton: false, confirmButtonColor: '#0D47A1' });
+                location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not delete.', confirmButtonColor: '#ef4444' });
+            }
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#ef4444' });
+        }
+    });
+});
 </script>
 
 @endsection

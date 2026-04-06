@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@include('layouts.theme-base')
+
 @section('content')
 <style>
     :root{
@@ -72,7 +74,7 @@
                         <div class="sp-ph-sub">Manage measurement unit types</div>
                     </div>
                 </div>
-                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#unitTypeModal" onclick="openUnitTypeModal()">
+                <button type="button" class="sp-btn sp-btn-primary" data-bs-toggle="modal" data-bs-target="#addUnitTypeModal">
                     <i class="fas fa-plus"></i> Add Unit Type
                 </button>
             </div>
@@ -95,24 +97,34 @@
                         <tbody>
                             @forelse($unitTypes as $unitType)
                                 <tr>
-                                    <td>{{ $unitType->id }}</td>
-                                    <td>{{ $unitType->unit_name }}</td>
+                                    <td><span class="badge badge-secondary">#{{ $unitType->id }}</span></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#unitTypeModal" onclick="editUnitType({{ $unitType->id }}, '{{ $unitType->unit_name }}')">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </button>
-                                        <form method="POST" action="{{ route('superadmin.unit-types.destroy', $unitType) }}" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">
-                                                <i class="fas fa-trash"></i> Delete
+                                        <div class="fw-semibold" style="color:var(--navy);">{{ $unitType->unit_name }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="editUnitType({{ $unitType->id }}, '{{ addslashes($unitType->unit_name) }}')">
+                                                <i class="fas fa-edit"></i> Edit
                                             </button>
-                                        </form>
+                                            <form method="POST" action="{{ route('superadmin.unit-types.destroy', $unitType) }}" class="d-inline js-delete-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="button" class="btn btn-outline-danger btn-sm js-delete-btn" data-name="{{ $unitType->unit_name }}">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3">No unit types found.</td>
+                                    <td colspan="3" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-ruler fa-3x mb-3"></i>
+                                            <div class="fw-semibold">No unit types found</div>
+                                            <small>Start by adding your first unit type</small>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -124,25 +136,51 @@
     </div>
 </div>
 
-<!-- Unit Type Modal -->
-<div class="modal fade" id="unitTypeModal" tabindex="-1" aria-labelledby="unitTypeModalLabel" aria-hidden="true">
+<!-- Add Unit Type Modal -->
+<div class="modal fade sp-modal" id="addUnitTypeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content sp-modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="unitTypeModalLabel"><i class="fas fa-ruler"></i> Add Unit Type</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Add Unit Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="unitTypeForm" method="POST">
+            <form id="addUnitTypeForm">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="unit_name" class="sp-label">Unit Type Name</label>
-                        <input type="text" class="sp-input" id="unit_name" name="unit_name" required>
+                        <label class="sp-label">Unit Type Name</label>
+                        <input type="text" class="sp-input" id="add_unit_name" name="unit_name" placeholder="e.g. Kilogram" required>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="sp-btn sp-btn-ghost" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="sp-btn sp-btn-primary">Save Unit Type</button>
+                    <button type="submit" class="sp-btn sp-btn-primary"><i class="fas fa-plus me-1"></i>Add Unit Type</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Unit Type Modal -->
+<div class="modal fade sp-modal" id="editUnitTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Unit Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editUnitTypeForm">
+                @csrf
+                <input type="hidden" id="edit_unit_type_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="sp-label">Unit Type Name</label>
+                        <input type="text" class="sp-input" id="edit_unit_name" name="unit_name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="sp-btn sp-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="sp-btn sp-btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
                 </div>
             </form>
         </div>
@@ -152,31 +190,79 @@
 
 @push('scripts')
 <script>
-function setUnitTypeModalTitle(mode) {
-    const el = document.getElementById('unitTypeModalLabel');
-    if (!el) return;
-    const title = mode === 'edit' ? 'Edit Unit Type' : 'Add Unit Type';
-    el.innerHTML = `<i class="fas fa-ruler"></i> ${title}`;
-}
-
-function openUnitTypeModal() {
-    document.getElementById('unitTypeForm').action = '{{ route("superadmin.unit-types.store") }}';
-    document.getElementById('unitTypeForm').querySelector('input[name="_method"]')?.remove();
-    setUnitTypeModalTitle('add');
-    document.getElementById('unit_name').value = '';
-}
+const utStoreUrl   = '{{ route("superadmin.unit-types.store") }}';
+const utUpdateBase = '{{ url("unit-types") }}';
+const utCsrf       = '{{ csrf_token() }}';
 
 function editUnitType(id, name) {
-    document.getElementById('unitTypeForm').action = '/superadmin/unit-types/' + id;
-    if (!document.getElementById('unitTypeForm').querySelector('input[name="_method"]')) {
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'PUT';
-        document.getElementById('unitTypeForm').appendChild(methodInput);
-    }
-    setUnitTypeModalTitle('edit');
-    document.getElementById('unit_name').value = name;
+    document.getElementById('edit_unit_type_id').value = id;
+    document.getElementById('edit_unit_name').value    = name;
+    new bootstrap.Modal(document.getElementById('editUnitTypeModal')).show();
 }
+
+async function submitUnitTypeForm(url, body, modalId, isUpdate) {
+    try {
+        const res  = await fetch(url, {
+            method: 'POST',
+            body,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById(modalId)).hide();
+            await Swal.fire({
+                icon: 'success',
+                title: isUpdate ? 'Updated!' : 'Added!',
+                text: data.message,
+                confirmButtonColor: '#0D47A1',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            location.reload();
+        } else {
+            const msgs = Object.values(data.errors || {}).flat().join('\n');
+            Swal.fire({ icon: 'error', title: 'Validation Error', text: msgs, confirmButtonColor: '#0D47A1' });
+        }
+    } catch {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed. Please try again.', confirmButtonColor: '#0D47A1' });
+    }
+}
+
+document.getElementById('addUnitTypeForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const body = new URLSearchParams({
+        _token:    utCsrf,
+        unit_name: document.getElementById('add_unit_name').value.trim(),
+    });
+    submitUnitTypeForm(utStoreUrl, body, 'addUnitTypeModal', false);
+});
+
+document.getElementById('editUnitTypeForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id   = document.getElementById('edit_unit_type_id').value;
+    const body = new URLSearchParams({
+        _token:    utCsrf,
+        _method:   'PUT',
+        unit_name: document.getElementById('edit_unit_name').value.trim(),
+    });
+    submitUnitTypeForm(utUpdateBase + '/' + id, body, 'editUnitTypeModal', true);
+});
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-delete-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const form = btn.closest('.js-delete-form');
+    const name = btn.dataset.name || '';
+    Swal.fire({
+        icon: 'warning',
+        title: 'Delete this unit type?',
+        text: name,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#E63946',
+    }).then(r => { if (r.isConfirmed) form.submit(); });
+});
 </script>
 @endpush

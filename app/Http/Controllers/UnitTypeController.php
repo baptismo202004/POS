@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\UnitType;
 use Illuminate\Http\Request;
 
@@ -11,18 +10,23 @@ class UnitTypeController extends Controller
     public function index()
     {
         $unitTypes = UnitType::latest()->get();
+
         return view('SuperAdmin.unitTypes.index', compact('unitTypes'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'unit_name' => 'required|unique:unit_types,unit_name'
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'unit_name' => 'required|unique:unit_types,unit_name',
         ]);
 
-        UnitType::create(['unit_name' => $request->unit_name]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
 
-        return back()->with('success', 'Unit type added');
+        $unitType = UnitType::create(['unit_name' => $request->unit_name]);
+
+        return response()->json(['success' => true, 'message' => 'Unit type added successfully.', 'unitType' => $unitType]);
     }
 
     public function create()
@@ -37,18 +41,23 @@ class UnitTypeController extends Controller
 
     public function update(Request $request, UnitType $unitType)
     {
-        $request->validate([
-            'unit_name' => 'required|unique:unit_types,unit_name,' . $unitType->id
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'unit_name' => 'required|unique:unit_types,unit_name,'.$unitType->id,
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
 
         $unitType->update(['unit_name' => $request->unit_name]);
 
-        return redirect()->route('superadmin.unit-types.index')->with('success', 'Unit type updated successfully');
+        return response()->json(['success' => true, 'message' => 'Unit type updated successfully.', 'unitType' => $unitType->fresh()]);
     }
 
     public function destroy(UnitType $unitType)
     {
         $unitType->delete();
+
         return back()->with('success', 'Unit type deleted successfully');
     }
 }
