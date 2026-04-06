@@ -151,7 +151,7 @@
                 <h5 class="modal-title" id="branchModalLabel">Add Branch</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="branchForm" method="POST">
+            <form id="branchForm" method="POST" data-update-base="{{ url('branches') }}">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -182,28 +182,87 @@
 
 @section('scripts')
 <script>
+const storeUrl   = '{{ route("superadmin.branches.store") }}';
+const updateBase = '{{ url("branches") }}';
+const csrfToken  = '{{ csrf_token() }}';
+
+// Default to store mode
+const form = document.getElementById('branchForm');
+form.dataset.mode = 'store';
+form.dataset.id   = '';
+
 function openBranchModal() {
-    document.getElementById('branchForm').action = '{{ route("superadmin.branches.store") }}';
-    document.getElementById('branchForm').querySelector('input[name="_method"]')?.remove();
+    form.dataset.mode = 'store';
+    form.dataset.id   = '';
     document.getElementById('branchModalLabel').textContent = 'Add Branch';
     document.getElementById('branch_name').value = '';
-    document.getElementById('address').value = '';
-    document.getElementById('status').value = 'active';
+    document.getElementById('address').value     = '';
+    document.getElementById('status').value      = 'active';
 }
 
 function editBranch(id, name, address, status) {
-    document.getElementById('branchForm').action = '/superadmin/branches/' + id;
-    if (!document.getElementById('branchForm').querySelector('input[name="_method"]')) {
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'PUT';
-        document.getElementById('branchForm').appendChild(methodInput);
-    }
+    form.dataset.mode = 'update';
+    form.dataset.id   = id;
     document.getElementById('branchModalLabel').textContent = 'Edit Branch';
     document.getElementById('branch_name').value = name;
-    document.getElementById('address').value = address;
-    document.getElementById('status').value = status;
+    document.getElementById('address').value     = address || '';
+    document.getElementById('status').value      = status;
 }
+
+form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const isUpdate = this.dataset.mode === 'update';
+    const id       = this.dataset.id;
+    const url      = isUpdate ? updateBase + '/' + id : storeUrl;
+
+    const body = new URLSearchParams({
+        _token:      csrfToken,
+        branch_name: document.getElementById('branch_name').value.trim(),
+        address:     document.getElementById('address').value.trim(),
+        status:      document.getElementById('status').value,
+    });
+
+    if (isUpdate) {
+        body.append('_method', 'PUT');
+    }
+
+    try {
+        const res  = await fetch(url, {
+            method: 'POST',
+            body,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('branchModal')).hide();
+            await Swal.fire({
+                icon: 'success',
+                title: isUpdate ? 'Updated!' : 'Added!',
+                text: data.message,
+                confirmButtonColor: '#0D47A1',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            location.reload();
+        } else {
+            const msgs = Object.values(data.errors || {}).flat().join('\n');
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: msgs || 'Something went wrong.',
+                confirmButtonColor: '#0D47A1',
+            });
+        }
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Request failed. Please try again.',
+            confirmButtonColor: '#0D47A1',
+        });
+    }
+});
 </script>
 @endsection

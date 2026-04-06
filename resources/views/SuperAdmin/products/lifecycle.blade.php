@@ -98,15 +98,15 @@ body{background:var(--bg);font-family:'Segoe UI',sans-serif;}
 <div class="lc-header">
     <div>
         <div class="lc-crumb">
-            <a href="{{ route('superadmin.products.index') }}" style="color:inherit;text-decoration:none;">Products</a>
+            <a href="{{ $backIndexRoute ?? route('superadmin.products.index') }}" style="color:inherit;text-decoration:none;">Products</a>
             &rsaquo;
-            <a href="{{ route('superadmin.products.show', $product) }}" style="color:inherit;text-decoration:none;">{{ $product->product_name }}</a>
+            <a href="{{ $backShowRoute ?? route('superadmin.products.show', $product) }}" style="color:inherit;text-decoration:none;">{{ $product->product_name }}</a>
             &rsaquo; Lifecycle
         </div>
         <h1 class="lc-title"><i class="fas fa-history me-2" style="color:var(--blue);"></i>Product Lifecycle</h1>
         <div class="lc-sub">Full history: purchases · stock-ins · transfers · sales · refunds{{ $isElectronic ? ' · serials · warranty · repairs' : '' }}</div>
     </div>
-    <a href="{{ route('superadmin.products.show', $product) }}" class="btn btn-outline-secondary btn-sm">
+    <a href="{{ $backShowRoute ?? route('superadmin.products.show', $product) }}" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-arrow-left me-1"></i> Back to Product
     </a>
 </div>

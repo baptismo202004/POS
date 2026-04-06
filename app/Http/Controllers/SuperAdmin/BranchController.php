@@ -14,6 +14,7 @@ class BranchController extends Controller
     {
         $branches = Branch::with('assignedUser')->orderBy('id', 'asc')->get();
         $users = User::all();
+
         return view('SuperAdmin.branches.index', compact('branches', 'users'));
     }
 
@@ -21,6 +22,7 @@ class BranchController extends Controller
     {
         try {
             $branches = Branch::orderBy('id', 'asc')->get();
+
             return response()->json($branches);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch branches'], 500);
@@ -29,21 +31,25 @@ class BranchController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'branch_name' => 'required|unique:branches,branch_name',
             'address' => 'nullable|string',
             'assign_to' => 'nullable|exists:users,id',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
-        Branch::create([
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $branch = Branch::create([
             'branch_name' => $request->branch_name,
             'address' => $request->address,
             'assign_to' => $request->assign_to,
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
-        return back()->with('success', 'Branch added successfully');
+        return response()->json(['success' => true, 'message' => 'Branch added successfully.', 'branch' => $branch]);
     }
 
     public function create()
@@ -58,16 +64,16 @@ class BranchController extends Controller
             ->where('branch_id', $branch->id)
             ->whereDate('created_at', \Carbon\Carbon::today())
             ->sum('total_amount') ?? 0;
-            
+
         $monthlySales = DB::table('sales')
             ->where('branch_id', $branch->id)
             ->whereBetween('created_at', [\Carbon\Carbon::now()->startOfMonth(), \Carbon\Carbon::now()->endOfMonth()])
             ->sum('total_amount') ?? 0;
-            
+
         $totalTransactions = DB::table('sales')
             ->where('branch_id', $branch->id)
             ->count() ?? 0;
-            
+
         // Get today's sales for this branch
         $todaySalesData = DB::table('sales')
             ->join('users', 'sales.cashier_id', '=', 'users.id')
@@ -76,7 +82,7 @@ class BranchController extends Controller
             ->select('sales.*', 'users.name as cashier_name')
             ->orderBy('sales.created_at', 'desc')
             ->get();
-            
+
         // Get all sales for this branch (last 30 days)
         $allSalesData = DB::table('sales')
             ->join('users', 'sales.cashier_id', '=', 'users.id')
@@ -85,7 +91,7 @@ class BranchController extends Controller
             ->select('sales.*', 'users.name as cashier_name')
             ->orderBy('sales.created_at', 'desc')
             ->get();
-            
+
         return view('SuperAdmin.branches.show', compact('branch', 'todaySales', 'monthlySales', 'totalTransactions', 'todaySalesData', 'allSalesData'));
     }
 
@@ -96,26 +102,31 @@ class BranchController extends Controller
 
     public function update(Request $request, Branch $branch)
     {
-        $request->validate([
-            'branch_name' => 'required|unique:branches,branch_name,' . $branch->id,
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'branch_name' => 'required|unique:branches,branch_name,'.$branch->id,
             'address' => 'nullable|string',
             'assign_to' => 'nullable|exists:users,id',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
 
         $branch->update([
             'branch_name' => $request->branch_name,
             'address' => $request->address,
             'assign_to' => $request->assign_to,
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
-        return redirect()->route('superadmin.branches.index')->with('success', 'Branch updated successfully');
+        return response()->json(['success' => true, 'message' => 'Branch updated successfully.', 'branch' => $branch->fresh()]);
     }
 
     public function destroy(Branch $branch)
     {
         $branch->delete();
+
         return back()->with('success', 'Branch deleted successfully');
     }
 }

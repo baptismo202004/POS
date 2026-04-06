@@ -355,15 +355,6 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-3 product-type-field">
-                                <label class="form-label">Product Type</label>
-                                <select name="product_type_id" id="productType" class="form-control select2-tags" style="width:100%">
-                                    <option value="">-- Select Type --</option>
-                                    <option value="electronic" data-electronic="1">Electronic</option>
-                                    <option value="non-electronic" data-electronic="0" selected>Non-Electronic</option>
-                                </select>
-                            </div>
-
                             <div class="col-md-3">
                                 <label class="form-label">Unit Types</label>
                                 <select name="unit_type_ids[]" id="unitTypeSelect" class="form-control" style="width:100%" multiple>
@@ -440,26 +431,14 @@
     </div>
 </div>
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@push('scripts')
 <script>
     $(document).ready(function() {
-        console.log('jQuery and Select2 loaded successfully');
-        
-        // Initialize all select2 dropdowns
         $('#brandSelect, #categorySelect').select2({
             tags: true,
             placeholder: '-- Select or create --',
             allowClear: true,
             width: 'resolve'
-        });
-
-        $('#productType').select2({
-            placeholder: '-- Select --',
-            allowClear: true,
-            width: 'resolve',
-            minimumResultsForSearch: Infinity
         });
 
         $('#unitTypeSelect, #branchSelect').select2({
@@ -468,80 +447,38 @@
             width: 'resolve'
         });
 
-        // --- Conditional Visibility Logic ---
-        const productType = $('#productType');
-        const productTypeField = $('.product-type-field');
+        const categoriesMeta = {};
+        @foreach($categories ?? [] as $cat)
+            categoriesMeta["{{ $cat->id }}"] = {
+                category_type: "{{ $cat->category_type ?? 'non_electronic' }}"
+            };
+        @endforeach
+
         const electronicFields = $('.electronic-field');
         const nonElectronicFields = $('.non-electronic-field');
         const categorySelect = $('#categorySelect');
 
-        function requiresElectronicCategory(categoryName) {
-            if (!categoryName) return false;
-            const n = String(categoryName).trim().toLowerCase();
-            return n === 'electronics' || n === 'computers' || n === 'appliances';
+        function isElectronicCategoryType(categoryType) {
+            return categoryType === 'electronic_with_serial' || categoryType === 'electronic_without_serial';
         }
 
-        function toggleProductTypeField() {
-            const categoryName = categorySelect.find('option:selected').text();
-            const required = requiresElectronicCategory(categoryName);
+        function toggleFieldsByCategory() {
+            const raw = categorySelect.val();
+            const meta = categoriesMeta[String(raw)] || { category_type: 'non_electronic' };
+            const isElectronic = isElectronicCategoryType(meta.category_type);
 
-            productTypeField.toggleClass('d-none', false);
-            productType.prop('required', true);
-
-            if (required) {
-                productType.val('electronic').trigger('change');
+            if (isElectronic) {
+                electronicFields.removeClass('d-none');
+                nonElectronicFields.addClass('d-none');
             } else {
-                productType.val('non-electronic').trigger('change');
+                electronicFields.addClass('d-none');
+                nonElectronicFields.removeClass('d-none');
             }
         }
 
-        function toggleElectronicFields() {
-            const selectedOption = productType.find('option:selected');
-            const isElectronic = selectedOption.data('electronic') === 1 || selectedOption.val() === 'electronic';
-            
-            console.log('Product type changed:', {
-                value: productType.val(),
-                isElectronic: isElectronic,
-                selectedOption: selectedOption.text()
-            });
-            
-            // Show electronic fields for electronic products
-            electronicFields.toggleClass('d-none', !isElectronic);
-            
-            // Show non-electronic fields (Branches) for non-electronic products only
-            nonElectronicFields.toggleClass('d-none', isElectronic);
-            
-            // Log field visibility for debugging
-            electronicFields.each(function() {
-                console.log('Electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-            });
-            nonElectronicFields.each(function() {
-                console.log('Non-electronic field visibility:', $(this).find('label').text(), $(this).hasClass('d-none') ? 'hidden' : 'visible');
-            });
-        }
-
-        // Attach event listener to select2's change event
-        productType.on('change', function() {
-            console.log('Select2 change event triggered');
-            toggleElectronicFields();
-        });
-
-        // Also listen for select2:select event
-        productType.on('select2:select', function(e) {
-            console.log('Select2 select event triggered:', e.params.data);
-            toggleElectronicFields();
-        });
-
-        // Initial call to set the correct visibility on page load
-        setTimeout(function() {
-            toggleProductTypeField();
-            toggleElectronicFields();
-        }, 100);
-
-        categorySelect.on('change', function() {
-            toggleProductTypeField();
-            toggleElectronicFields();
-        });
+        categorySelect.on('change', toggleFieldsByCategory);
+        toggleFieldsByCategory();
     });
 </script>
+@endpush
 @endsection

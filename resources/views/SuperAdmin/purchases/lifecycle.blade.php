@@ -101,15 +101,15 @@ body{background:var(--bg);font-family:'Segoe UI',sans-serif;}
 <div class="pl-header">
     <div>
         <div class="pl-crumb">
-            <a href="{{ route('superadmin.purchases.index') }}" style="color:inherit;text-decoration:none;">Purchases</a>
+            <a href="{{ $backIndexRoute ?? route('superadmin.purchases.index') }}" style="color:inherit;text-decoration:none;">Purchases</a>
             &rsaquo;
-            <a href="{{ route('superadmin.purchases.show', $purchase) }}" style="color:inherit;text-decoration:none;">{{ $purchase->reference_number ?? '#'.$purchase->id }}</a>
+            <a href="{{ $backShowRoute ?? route('superadmin.purchases.show', $purchase) }}" style="color:inherit;text-decoration:none;">{{ $purchase->reference_number ?? '#'.$purchase->id }}</a>
             &rsaquo; Lifecycle
         </div>
         <h1 class="pl-title"><i class="fas fa-history me-2" style="color:var(--blue);"></i>Purchase Lifecycle</h1>
         <div class="pl-sub">Full journey: purchase → stock-in → sales → refunds · per-item fulfillment tracking</div>
     </div>
-    <a href="{{ route('superadmin.purchases.show', $purchase) }}" class="btn btn-outline-secondary btn-sm">
+    <a href="{{ $backShowRoute ?? route('superadmin.purchases.show', $purchase) }}" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-arrow-left me-1"></i> Back to Purchase
     </a>
 </div>

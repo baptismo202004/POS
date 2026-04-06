@@ -202,7 +202,13 @@
             word-break: break-word;
         }
 
-        .stockin-theme .empty-row {
+        .stockin-theme .tbl-action {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:30px;height:30px;border-radius:8px;
+            text-decoration:none;border:none;transition:all .18s ease;
+        }
+        .stockin-theme .tbl-view { color:var(--navy);background:rgba(13,71,161,0.08); }
+        .stockin-theme .tbl-view:hover { background:rgba(13,71,161,0.16); }
             padding: 52px 24px;
             text-align: center;
             color: var(--muted);
@@ -277,6 +283,7 @@
                             <th>Quantity</th>
                             <th>Price</th>
                             <th>Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -308,10 +315,23 @@
                                     @endphp
                                     {{ $dateDisplay }}
                                 </td>
+                                <td>
+                                    @if($stock->stock_in_head_id)
+                                        <a href="{{ route('cashier.stockin.transaction', $stock->stock_in_head_id) }}" class="tbl-action tbl-view" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    @elseif($stock->source_id)
+                                        <a href="{{ route('cashier.purchases.show', $stock->source_id) }}" class="tbl-action tbl-view" title="View Purchase">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    @else
+                                        <span style="color:var(--muted);font-size:12px;">—</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="empty-row">No stock records found.</td>
+                                <td colspan="6" class="empty-row">No stock records found.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -14,9 +14,12 @@ use App\Models\ExpenseCategory;
 use App\Models\Product;
 use App\Models\ProductSerial;
 use App\Models\ProductType;
+use App\Models\Purchase;
 use App\Models\Refund;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StockIn;
+use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\UnitType;
 use App\Services\InventoryService;
@@ -396,6 +399,9 @@ class CashierDashboardController extends Controller
      */
     public function productLifecycle(\App\Models\Product $product): \Illuminate\View\View
     {
+        view()->share('backIndexRoute', route('cashier.products.index'));
+        view()->share('backShowRoute', route('cashier.products.show', $product));
+
         return app(\App\Http\Controllers\SuperAdmin\ProductController::class)->lifecycle($product);
     }
 
@@ -404,6 +410,9 @@ class CashierDashboardController extends Controller
      */
     public function purchaseLifecycle(\App\Models\Purchase $purchase): \Illuminate\View\View
     {
+        view()->share('backIndexRoute', route('cashier.purchases.index'));
+        view()->share('backShowRoute', route('cashier.purchases.show', $purchase));
+
         return app(\App\Http\Controllers\SuperAdmin\PurchaseController::class)->lifecycle($purchase);
     }
 
@@ -888,7 +897,7 @@ class CashierDashboardController extends Controller
         $userBranch = Branch::find($branchId);
         $branches = Branch::all();
 
-        return view('SuperAdmin.products.productList', compact('brands', 'categories', 'productTypes', 'unitTypes', 'userBranch', 'branches'));
+        return view('cashier.products.create', compact('brands', 'categories', 'productTypes', 'unitTypes', 'userBranch', 'branches'));
     }
 
     public function storeProduct(Request $request)
@@ -942,9 +951,36 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        $product = Product::findOrFail($id);
+        $product = Product::with(['brand', 'category', 'unitTypes'])->findOrFail($id);
 
         return view('cashier.products.show', compact('product'));
+    }
+
+    public function updateProductImage(Request $request, Product $product): \Illuminate\Http\JsonResponse
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'image' => 'required|image|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()]);
+        }
+
+        try {
+            if ($request->hasFile('image')) {
+                if ($product->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image);
+                }
+
+                $imagePath = $request->file('image')->store('products', 'public');
+                $product->image = $imagePath;
+                $product->save();
+            }
+
+            return response()->json(['success' => true, 'message' => 'Image uploaded successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'An error occurred: '.$e->getMessage()], 500);
+        }
     }
 
     public function editProduct($id)
@@ -1685,56 +1721,137 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
+        $tab = $request->query('tab', 'stock');
+        $search = $request->query('search');
         $sortBy = $request->query('sort_by', 'product_name');
         $sortDirection = $request->query('sort_direction', 'asc');
-        $search = $request->query('search');
+        $perPage = 25;
+        $now = now();
+        $today = $now->copy()->startOfDay();
 
-        $query = Product::query();
-
-        // Apply search
-        if ($search) {
-            $query->where('product_name', 'like', '%'.$search.'%');
-        }
-
-        $query->whereExists(function ($exists) use ($branchId) {
-            $exists->select(DB::raw(1))
+        // ── Stock table ────────────────────────────────────────────────────────
+        $inventory = app(InventoryService::class);
+        $stockQuery = Product::with(['brand', 'category'])
+            ->whereExists(fn ($q) => $q->select(DB::raw(1))
                 ->from('branch_stocks')
                 ->whereColumn('branch_stocks.product_id', 'products.id')
-                ->where('branch_stocks.branch_id', (int) $branchId);
+                ->where('branch_stocks.branch_id', (int) $branchId));
+
+        if ($search) {
+            $stockQuery->where('product_name', 'like', '%'.$search.'%');
+        }
+
+        $allProducts = $stockQuery->get()->map(function ($product) use ($branchId, $inventory) {
+            $currentStock = (float) $inventory->availableStockBase((int) $product->id, (int) $branchId);
+            $totalSold = Schema::hasTable('stock_ins')
+                ? (float) DB::table('stock_ins')->where('product_id', $product->id)->where('branch_id', $branchId)->sum('sold')
+                : 0;
+
+            return (object) [
+                'id' => $product->id,
+                'product_name' => $product->product_name,
+                'brand' => $product->brand->brand_name ?? 'N/A',
+                'category' => $product->category->category_name ?? 'N/A',
+                'current_stock' => $currentStock,
+                'total_sold' => $totalSold,
+            ];
         });
 
-        // Get stock data for each product
-        $inventory = app(InventoryService::class);
-        $products = $query->with(['brand', 'category'])
-            ->get()
-            ->map(function ($product) use ($branchId, $inventory) {
-                $currentStock = (float) $inventory->availableStockBase((int) $product->id, (int) $branchId);
+        $sortedProducts = $allProducts->sortBy($sortBy, SORT_REGULAR, $sortDirection === 'desc');
 
-                // Compute total sold from stock_ins for this product and branch
-                $totalSold = 0;
-                if (Schema::hasTable('stock_ins')) {
-                    $totalSold = DB::table('stock_ins')
-                        ->where('product_id', $product->id)
-                        ->where('branch_id', $branchId)
-                        ->sum('sold');
-                }
+        // ── Paginated tabs ─────────────────────────────────────────────────────
+        $stockInsQuery = StockIn::with(['product', 'branch'])
+            ->where('branch_id', $branchId)->latest();
+        if ($search) {
+            $stockInsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $stockIns = $stockInsQuery->paginate($perPage, ['*'], 'stockins_page')->withQueryString();
 
-                return (object) [
-                    'id' => $product->id,
-                    'product_name' => $product->product_name,
-                    'brand' => $product->brand->brand_name ?? 'N/A',
-                    'category' => $product->category->category_name ?? 'N/A',
-                    'current_stock' => $currentStock,
-                    'total_sold' => (float) $totalSold,
-                    'selling_price' => $product->selling_price,
-                    'total_revenue' => 0,
-                ];
-            });
+        $movementsQuery = StockMovement::with(['product', 'branch'])
+            ->where('branch_id', $branchId)->orderByDesc('created_at');
+        if ($search) {
+            $movementsQuery->whereHas('product', fn ($q) => $q->where('product_name', 'like', "%{$search}%"));
+        }
+        $movements = $movementsQuery->paginate($perPage, ['*'], 'movements_page')->withQueryString();
 
-        // Apply sorting
-        $sortedProducts = $search ? $products : $products->sortBy([$sortBy => $sortDirection]);
+        // ── KPIs ───────────────────────────────────────────────────────────────
+        $todaySales = (float) Sale::where('branch_id', $branchId)
+            ->where('status', 'completed')->where('created_at', '>=', $today)->sum('total_amount');
+        $totalStockValue = $allProducts->sum(fn ($p) => $p->current_stock);
+        $lowStockCount = $allProducts->filter(fn ($p) => $p->current_stock < 10)->count();
+        $totalStockIns = $stockIns->total();
+        $totalMovements = $movements->total();
 
-        return view('cashier.inventory.index', compact('sortedProducts', 'sortBy', 'sortDirection'));
+        // ── Top 5 products by sold ─────────────────────────────────────────────
+        $topProducts = $allProducts->sortByDesc('total_sold')->take(5)->values();
+
+        // ── 30-day chart (sales, purchases, stock-ins) ────────────────────────
+        $chartDays = collect(range(29, 0))->map(fn ($d) => $now->copy()->subDays($d)->format('Y-m-d'));
+
+        $salesByDay = DB::table('sales')
+            ->selectRaw('DATE(created_at) as d, SUM(total_amount) as total')
+            ->where('branch_id', $branchId)->where('status', 'completed')
+            ->where('created_at', '>=', $now->copy()->subDays(29)->startOfDay())
+            ->groupBy('d')->pluck('total', 'd');
+
+        $purchasesByDay = DB::table('purchases')
+            ->selectRaw('DATE(purchase_date) as d, SUM(total_cost) as total')
+            ->where('branch_id', $branchId)
+            ->where('purchase_date', '>=', $now->copy()->subDays(29)->toDateString())
+            ->groupBy('d')->pluck('total', 'd');
+
+        $stockInsByDay = DB::table('stock_ins')
+            ->selectRaw('DATE(created_at) as d, SUM(quantity) as total')
+            ->where('branch_id', $branchId)
+            ->where('created_at', '>=', $now->copy()->subDays(29)->startOfDay())
+            ->groupBy('d')->pluck('total', 'd');
+
+        $chartLabels = $chartDays->map(fn ($d) => date('M d', strtotime($d)))->values()->toArray();
+        $chartSales = $chartDays->map(fn ($d) => (float) ($salesByDay[$d] ?? 0))->values()->toArray();
+        $chartPurchases = $chartDays->map(fn ($d) => (float) ($purchasesByDay[$d] ?? 0))->values()->toArray();
+        $chartStockIns = $chartDays->map(fn ($d) => (float) ($stockInsByDay[$d] ?? 0))->values()->toArray();
+
+        // ── Live activity feed ─────────────────────────────────────────────────
+        $feed = collect();
+        Sale::where('branch_id', $branchId)->latest()->limit(5)->get()->each(fn ($s) => $feed->push([
+            'time' => $s->created_at, 'icon' => 'fa-cash-register', 'color' => '#10b981',
+            'text' => 'Sale '.($s->reference_number ?? '#'.$s->id).' — ₱'.number_format($s->total_amount, 2),
+        ]));
+        Purchase::where('branch_id', $branchId)->latest()->limit(5)->get()->each(fn ($p) => $feed->push([
+            'time' => $p->created_at, 'icon' => 'fa-shopping-cart', 'color' => '#1976D2',
+            'text' => 'Purchase '.($p->reference_number ?? '#'.$p->id).' — ₱'.number_format($p->total_cost, 2),
+        ]));
+        Expense::where('branch_id', $branchId)->latest()->limit(4)->get()->each(fn ($e) => $feed->push([
+            'time' => $e->created_at, 'icon' => 'fa-receipt', 'color' => '#ef4444',
+            'text' => 'Expense: '.($e->description ?? 'N/A').' — ₱'.number_format($e->amount, 2),
+        ]));
+        Refund::whereHas('sale', fn ($q) => $q->where('branch_id', $branchId))->latest()->limit(3)->get()->each(fn ($r) => $feed->push([
+            'time' => $r->created_at, 'icon' => 'fa-undo', 'color' => '#8b5cf6',
+            'text' => 'Refund on Sale #'.$r->sale_id.' — ₱'.number_format($r->refund_amount, 2),
+        ]));
+        $feed = $feed->sortByDesc('time')->take(20)->values();
+
+        // ── Alerts ─────────────────────────────────────────────────────────────
+        $alerts = collect();
+        if ($lowStockCount > 0) {
+            $alerts->push(['type' => 'warning', 'icon' => 'fa-box-open',
+                'text' => "{$lowStockCount} product(s) critically low on stock (< 10)"]);
+        }
+        $pendingSales = Sale::where('branch_id', $branchId)->where('status', 'pending')->count();
+        if ($pendingSales > 0) {
+            $alerts->push(['type' => 'warning', 'icon' => 'fa-clock',
+                'text' => "{$pendingSales} pending sale(s) awaiting fulfillment"]);
+        }
+
+        return view('cashier.inventory.index', compact(
+            'sortedProducts', 'sortBy', 'sortDirection', 'search', 'tab',
+            'stockIns', 'movements',
+            'todaySales', 'totalStockValue', 'lowStockCount',
+            'totalStockIns', 'totalMovements',
+            'topProducts', 'alerts',
+            'chartLabels', 'chartSales', 'chartPurchases', 'chartStockIns',
+            'feed'
+        ));
     }
 
     // STOCK IN METHODS
@@ -1783,10 +1900,60 @@ class CashierDashboardController extends Controller
                 'purchases.reference_number as purchase_reference_number',
                 DB::raw('COALESCE(purchase_items.unit_cost, 0) as price'),
                 DB::raw('COALESCE(NULLIF(stock_movements.quantity, 0), stock_movements.quantity_base, 0) as display_quantity'),
+                DB::raw('(SELECT sih.id FROM stock_ins_head sih WHERE sih.purchase_id = stock_movements.source_id AND sih.branch_id = stock_movements.branch_id LIMIT 1) as stock_in_head_id'),
             ])
             ->paginate(20);
 
         return view('cashier.stockin.index', compact('stockIns'));
+    }
+
+    public function stockInTransaction(int $stockInHeadId): \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+    {
+        try {
+            $stockInHead = \App\Models\StockInsHead::with([
+                'branch',
+                'purchase.supplier',
+                'creator',
+            ])->findOrFail($stockInHeadId);
+
+            $stockItems = DB::table('stock_ins')
+                ->join('products', 'stock_ins.product_id', '=', 'products.id')
+                ->leftJoin('stock_in_unit_prices', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->leftJoin('unit_types', 'stock_in_unit_prices.unit_type_id', '=', 'unit_types.id')
+                ->where('stock_ins.purchase_id', $stockInHead->purchase_id)
+                ->where('stock_ins.branch_id', $stockInHead->branch_id)
+                ->select([
+                    'stock_ins.id',
+                    'stock_ins.product_id',
+                    'stock_ins.quantity',
+                    'stock_ins.price',
+                    'stock_ins.created_at',
+                    'products.product_name',
+                    'unit_types.unit_name',
+                    'stock_in_unit_prices.price as unit_price',
+                ])
+                ->orderBy('stock_ins.created_at', 'desc')
+                ->get();
+
+            $formattedMovements = $stockItems->groupBy('product_id')->map(function ($items) {
+                $firstItem = $items->first();
+                $unitPrices = $items->filter(fn ($i) => ! is_null($i->unit_name) && ! is_null($i->unit_price))
+                    ->mapWithKeys(fn ($i) => [$i->unit_name => number_format($i->unit_price, 2)]);
+
+                return [
+                    'id' => $firstItem->id,
+                    'product_name' => $firstItem->product_name,
+                    'quantity' => $items->sum('quantity'),
+                    'unit_prices' => $unitPrices,
+                    'created_at' => $firstItem->created_at,
+                ];
+            });
+
+            return view('cashier.stockin.transaction', compact('stockInHead', 'stockItems', 'formattedMovements'));
+        } catch (\Exception $e) {
+            return redirect()->route('cashier.stockin.index')
+                ->with('error', 'Error loading transaction details: '.$e->getMessage());
+        }
     }
 
     public function stockInCreate(Request $request)

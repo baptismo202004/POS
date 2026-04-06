@@ -10,6 +10,15 @@
             <div class="product-name">{{ $product->product_name }}</div>
         </td>
         <td>
+            <div style="width:36px;height:36px;border-radius:6px;border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f8faff;">
+                @if($product->image)
+                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->product_name }}" style="width:100%;height:100%;object-fit:cover;">
+                @else
+                    <i class="fas fa-image" style="color:var(--muted);font-size:13px;"></i>
+                @endif
+            </div>
+        </td>
+        <td>
             <small style="color: #6b84aa; font-family: monospace;">{{ $product->barcode ?? 'N/A' }}</small>
         </td>
         <td style="color: #34495e;">
@@ -17,18 +26,6 @@
         </td>
         <td style="color: #34495e;">
             {{ $product->category->name ?? 'N/A' }}
-        </td>
-        <td style="color: #34495e;">
-            {{ $product->product_type_id ?? 'N/A' }}
-        </td>
-        <td>
-            @if($product->unitTypes->isNotEmpty())
-                @foreach($product->unitTypes as $unitType)
-                    <span class="badge-unit me-1">{{ $unitType->name }}</span>
-                @endforeach
-            @else
-                <span style="color: #6b84aa;">N/A</span>
-            @endif
         </td>
         <td>
             @if($product->status === 'active')
@@ -42,6 +39,11 @@
                     {{ ucfirst($product->status) }}
                 </span>
             @endif
+        </td>
+        <td>
+            <a href="{{ route('cashier.products.show', $product->id) }}" class="tbl-action tbl-view" title="View">
+                <i class="fas fa-eye"></i>
+            </a>
         </td>
     </tr>
 @empty

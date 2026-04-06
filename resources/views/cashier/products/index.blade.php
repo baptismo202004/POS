@@ -291,6 +291,15 @@
         .products-page .badge-status-active { background:rgba(16,185,129,0.11); color:#047857; border-color:rgba(16,185,129,0.2); }
         .products-page .badge-status-inactive { background:rgba(239,68,68,0.10); color:#b91c1c; border-color:rgba(239,68,68,0.18); }
 
+        .products-page .tbl-action {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:30px;height:30px;border-radius:8px;
+            text-decoration:none;
+            border:none;transition:all .18s ease;
+        }
+        .products-page .tbl-view { color:var(--navy);background:rgba(13,71,161,0.08); }
+        .products-page .tbl-view:hover { background:rgba(13,71,161,0.16); }
+
         .products-page .status-dot {
             width: 7px;
             height: 7px;
@@ -429,12 +438,12 @@
                                 </a>
                             </th>
                             <th>Product Name</th>
+                            <th>Image</th>
                             <th>Barcode</th>
                             <th>Brand</th>
                             <th>Category</th>
-                            <th>Product Type</th>
-                            <th>Unit Type</th>
                             <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="product-table-body">

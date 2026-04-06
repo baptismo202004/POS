@@ -121,7 +121,7 @@ Route::post('/cashier/products', [CashierDashboardController::class, 'storeProdu
 Route::get('/cashier/products/{product}', [CashierDashboardController::class, 'showProduct'])->middleware('auth')->name('cashier.products.show');
 Route::get('/cashier/products/{product}/edit', [CashierDashboardController::class, 'editProduct'])->middleware('auth')->name('cashier.products.edit');
 Route::put('/cashier/products/{product}', [CashierDashboardController::class, 'updateProduct'])->middleware('auth')->name('cashier.products.update');
-Route::delete('/cashier/products/{product}', [CashierDashboardController::class, 'destroyProduct'])->middleware('auth')->name('cashier.products.destroy');
+Route::post('/cashier/products/{product}/update-image', [CashierDashboardController::class, 'updateProductImage'])->middleware('auth')->name('cashier.products.updateImage');
 
 // Cashier Product Categories
 Route::get('/cashier/categories', [CashierDashboardController::class, 'categories'])->middleware('auth')->name('cashier.categories.index');
@@ -170,6 +170,7 @@ Route::get('/cashier/purchases/{purchase}/lifecycle', [CashierDashboardControlle
 Route::get('/cashier/stockin', [CashierDashboardController::class, 'stockInIndex'])->middleware('auth')->name('cashier.stockin.index');
 Route::get('/cashier/stockin/create', [CashierDashboardController::class, 'stockInCreate'])->middleware('auth')->name('cashier.stockin.create');
 Route::post('/cashier/stockin', [CashierDashboardController::class, 'stockInStore'])->middleware('auth')->name('cashier.stockin.store');
+Route::get('/cashier/stockin/transaction/{stockInHeadId}', [CashierDashboardController::class, 'stockInTransaction'])->middleware('auth')->name('cashier.stockin.transaction');
 Route::get('/cashier/stockin/products-by-purchase/{purchase}', [CashierDashboardController::class, 'stockInProductsByPurchase'])->middleware('auth')->name('cashier.stockin.products-by-purchase');
 Route::get('/cashier/stockin/products-by-purchase/{purchase}/serials/{product}', [CashierDashboardController::class, 'stockInPurchaseProductSerials'])->middleware('auth')->name('cashier.stockin.purchase-product-serials');
 Route::post('/cashier/purchases/{purchase}/auto-stockin', [CashierDashboardController::class, 'autoStockIn'])->middleware('auth')->name('cashier.purchases.auto-stockin');
