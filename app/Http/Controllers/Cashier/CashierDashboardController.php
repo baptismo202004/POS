@@ -3557,7 +3557,7 @@ class CashierDashboardController extends Controller
                             ->where('branch_stocks.quantity_base', '>', 0);
                     });
                 })
-                ->with(['unitTypes'])
+                ->with(['unitTypes', 'category'])
                 ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number'])
                 ->map(function ($product) use ($posBranchId, $inventory) {
                     $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
@@ -3669,6 +3669,9 @@ class CashierDashboardController extends Controller
                         'selling_price' => $defaultPrice,
                         'total_stock' => $totalStock,
                         'branches' => $branches,
+                        'warranty_coverage_months' => (int) ($product->warranty_coverage_months ?? 0),
+                        'warranty_type' => $product->warranty_type ?? 'none',
+                        'category_type' => $product->category?->category_type ?? 'non_electronic',
                     ];
                 });
 
@@ -3722,7 +3725,7 @@ class CashierDashboardController extends Controller
                         ->where('branch_stocks.quantity_base', '>', 0);
                 });
             })
-            ->with(['unitTypes'])
+            ->with(['unitTypes', 'category'])
             ->get();
 
         if ($products->isEmpty()) {
@@ -3845,6 +3848,9 @@ class CashierDashboardController extends Controller
                 'selling_price' => $price, // Use price from StockIn
                 'total_stock' => $totalStock,
                 'branches' => $branches,
+                'warranty_coverage_months' => (int) ($product->warranty_coverage_months ?? 0),
+                'warranty_type' => $product->warranty_type ?? 'none',
+                'category_type' => $product->category?->category_type ?? 'non_electronic',
             ]],
         ]);
     }
@@ -4038,6 +4044,14 @@ class CashierDashboardController extends Controller
                         ? Carbon::now()->addMonths($warrantyMonths)->toDateString()
                         : null;
                     $serial->save();
+
+                    // Activate warranty record for this serial
+                    $customerId = $sale->customer_id ?? null;
+                    app(\App\Services\WarrantyService::class)->activateForSale($saleItem, (int) $branchId, $customerId, $serial);
+                } elseif ($fulfillBase > 0) {
+                    // Non-serial item with stock fulfilled — create warranty record at sale time
+                    $customerId = $sale->customer_id ?? null;
+                    app(\App\Services\WarrantyService::class)->activateForSale($saleItem, (int) $branchId, $customerId, null);
                 }
             }
 

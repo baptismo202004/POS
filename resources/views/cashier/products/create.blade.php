@@ -378,7 +378,6 @@
                             <div class="col-md-4 electronic-field d-none">
                                 <label class="form-label">Warranty Type</label>
                                 <select name="warranty_type" class="form-control">
-                                    <option value="none">None</option>
                                     <option value="shop">Shop</option>
                                     <option value="manufacturer">Manufacturer</option>
                                 </select>

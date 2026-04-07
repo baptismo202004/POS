@@ -240,12 +240,17 @@ class PurchaseController extends Controller
             ]);
 
             $purchaseId = $purchase->id;
+            $purchaseDate = $validated['purchase_date'] ?? now()->toDateString();
 
             $createdItems = $purchase->items()->createMany($purchaseItemsData);
+
+            $warrantyService = app(\App\Services\WarrantyService::class);
 
             foreach ($createdItems as $index => $purchaseItem) {
                 $serials = $serialsByIndex[$index] ?? [];
                 if (empty($serials)) {
+                    // Non-serial item — create warranty record at purchase time
+                    $warrantyService->createForPurchase($purchaseItem, [], $purchaseDate);
                     continue;
                 }
 
@@ -265,6 +270,9 @@ class PurchaseController extends Controller
 
                     ProductSerial::create($serialPayload);
                 }
+
+                // Serial items — create one warranty record per serial
+                $warrantyService->createForPurchase($purchaseItem, $serials, $purchaseDate);
             }
         });
 

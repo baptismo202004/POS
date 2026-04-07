@@ -811,6 +811,10 @@ class ProductController extends Controller
 
         $product->delete();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Product deleted successfully.']);
+        }
+
         return redirect()
             ->route('superadmin.products.index')
             ->with('success', 'Product deleted successfully.');

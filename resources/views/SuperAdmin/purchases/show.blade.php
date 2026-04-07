@@ -250,17 +250,39 @@
                                                                 <tr>
                                                                     <th style="font-size:10px;">Serial Number / IMEI</th>
                                                                     <th style="font-size:10px;">Warranty Expiry</th>
+                                                                    <th style="font-size:10px;">Warranty Status</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
                                                                 @foreach($serials as $s)
+                                                                    @php
+                                                                        $hasExpiry   = !empty($s->warranty_expiry_date);
+                                                                        $isExpired   = $hasExpiry && \Illuminate\Support\Carbon::parse($s->warranty_expiry_date)->isPast();
+                                                                        $daysLeft    = $hasExpiry ? (int) now()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($s->warranty_expiry_date), false) : null;
+                                                                    @endphp
                                                                     <tr>
                                                                         <td style="font-weight:700;">{{ $s->serial_number }}</td>
                                                                         <td>
-                                                                            @if(!empty($s->warranty_expiry_date))
+                                                                            @if($hasExpiry)
                                                                                 {{ \Illuminate\Support\Carbon::parse($s->warranty_expiry_date)->format('M d, Y') }}
                                                                             @else
                                                                                 <span style="color:var(--muted);">N/A</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td>
+                                                                            @if(!$hasExpiry)
+                                                                                <span style="color:var(--muted);font-size:11px;">—</span>
+                                                                            @elseif($isExpired)
+                                                                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(239,68,68,0.12);color:#b91c1c;">
+                                                                                    <i class="fas fa-circle" style="font-size:6px;"></i> Expired
+                                                                                </span>
+                                                                            @else
+                                                                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(16,185,129,0.12);color:#047857;">
+                                                                                    <i class="fas fa-circle" style="font-size:6px;"></i> Active
+                                                                                </span>
+                                                                                @if($daysLeft !== null && $daysLeft <= 30)
+                                                                                    <span style="font-size:10px;color:#d97706;margin-left:4px;">{{ $daysLeft }}d left</span>
+                                                                                @endif
                                                                             @endif
                                                                         </td>
                                                                     </tr>

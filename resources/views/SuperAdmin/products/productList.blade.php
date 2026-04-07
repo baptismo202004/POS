@@ -267,7 +267,6 @@
                                     <div class="col-md-4 electronic-field d-none">
                                         <label class="form-label">Warranty Type</label>
                                         <select name="warranty_type" class="form-control">
-                                            <option value="none" {{ $isEdit && $product->warranty_type == 'none' ? 'selected' : '' }}>None</option>
                                             <option value="shop" {{ $isEdit && $product->warranty_type == 'shop' ? 'selected' : '' }}>Shop</option>
                                             <option value="manufacturer" {{ $isEdit && $product->warranty_type == 'manufacturer' ? 'selected' : '' }}>Manufacturer</option>
                                         </select>

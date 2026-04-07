@@ -230,7 +230,7 @@
             <label class="form-label">Serial Number / IMEI</label>
             <input type="text" name="serial_number" class="form-control" placeholder="Enter serial number" required>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 js-per-serial-expiry-wrap">
             <label class="form-label">Warranty Expiry</label>
             <input type="date" name="warranty_expiry" class="form-control">
         </div>
@@ -416,19 +416,38 @@ document.addEventListener('DOMContentLoaded', function () {
         const host = row.querySelector('.electronics-panel-host');
         if (!host || host.dataset.loaded !== '1') return;
 
-        const sameToggle  = host.querySelector('.js-same-expiry-toggle');
-        const sharedWrap  = host.querySelector('.js-shared-expiry-wrap');
-        const sharedInput = host.querySelector('.js-shared-expiry-input');
-        const dateInputs  = host.querySelectorAll('input[type="date"][name$="[warranty_expiry]"]');
+        const sameToggle      = host.querySelector('.js-same-expiry-toggle');
+        const sharedWrap      = host.querySelector('.js-shared-expiry-wrap');
+        const sharedInput     = host.querySelector('.js-shared-expiry-input');
+        const dateInputs      = host.querySelectorAll('input[type="date"][name$="[warranty_expiry]"]');
+        const perSerialWraps  = host.querySelectorAll('.js-per-serial-expiry-wrap');
+        const coverageHint    = host.querySelector('.js-warranty-coverage-hint');
+
+        // Show warranty coverage hint
+        if (coverageHint) {
+            const months = parseInt(meta.warranty_coverage_months || 0, 10);
+            if (months > 0) {
+                coverageHint.textContent = `(Warranty: ${months} month${months !== 1 ? 's' : ''})`;
+                coverageHint.style.display = '';
+            } else {
+                coverageHint.style.display = 'none';
+            }
+        }
 
         if (sharedInput && !sharedInput.value && computed) { sharedInput.value = computed; }
 
-        if (sameToggle && sameToggle.checked) {
+        const isSame = sameToggle && sameToggle.checked;
+
+        if (isSame) {
             if (sharedWrap) sharedWrap.classList.remove('d-none');
+            // Hide per-serial expiry fields
+            perSerialWraps.forEach(w => w.classList.add('d-none'));
             const val = (sharedInput && sharedInput.value) ? sharedInput.value : computed;
             dateInputs.forEach(inp => { inp.value = val || ''; });
         } else {
             if (sharedWrap) sharedWrap.classList.add('d-none');
+            // Show per-serial expiry fields
+            perSerialWraps.forEach(w => w.classList.remove('d-none'));
             dateInputs.forEach(inp => { if (!inp.value && computed) { inp.value = computed; } });
         }
     }
@@ -472,14 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const sc = row.querySelector('.serials-container');
         if (!sc) return;
 
-        if (isElectronic(row.dataset.categoryType)) {
+        if (requiresSerials(row.dataset.categoryType)) {
             sc.classList.remove('d-none');
             ensureElectronicsPanelLoaded(row);
-            const host = sc.querySelector('.electronics-panel-host');
-            if (host) {
-                const body = host.querySelector('.electronics-panel-body');
-                if (body) { body.classList.toggle('d-none', !requiresSerials(row.dataset.categoryType)); }
-            }
         } else {
             sc.classList.add('d-none');
             const host = sc.querySelector('.electronics-panel-host');

@@ -864,6 +864,13 @@ class PosAdminController extends Controller
                     ->selectRaw('COALESCE(SUM(quantity - sold), 0) AS available')
                     ->value('available') ?? 0);
 
+                // Determine if this product requires serial numbers
+                $categoryType = DB::table('products')
+                    ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                    ->where('products.id', (int) $productId)
+                    ->value('categories.category_type') ?? 'non_electronic';
+                $requiresSerial = strtolower(trim((string) $categoryType)) === 'electronic_with_serial';
+
                 // Fulfillable entries = entries that can actually be deducted from stock
                 // (capped by available stock; each entry = 1 base unit * factor)
                 $fulfillableCount = 0;
@@ -907,7 +914,7 @@ class PosAdminController extends Controller
                     $serialNumber = isset($entry['serial_number']) ? trim((string) $entry['serial_number']) : '';
                     $warrantyMonths = isset($entry['warranty_months']) ? max(0, (int) $entry['warranty_months']) : 0;
 
-                    if ($isFulfillable && $serialNumber === '') {
+                    if ($isFulfillable && $requiresSerial && $serialNumber === '') {
                         DB::rollBack();
 
                         return response()->json([
@@ -1015,6 +1022,22 @@ class PosAdminController extends Controller
                         $serial->sale_item_id = $saleItem->id;
                         $serial->warranty_expiry_date = $warrantyExpiry;
                         $serial->save();
+
+                        // Create / activate warranty record for this serial unit
+                        app(\App\Services\WarrantyService::class)->activateForSale(
+                            $saleItem,
+                            (int) $branchId,
+                            $sale->customer_id ?? null,
+                            $serial
+                        );
+                    } elseif ($isFulfillable && in_array(strtolower(trim((string) $categoryType)), ['electronic_with_serial', 'electronic_without_serial'], true)) {
+                        // Electronic without serial — create warranty record at sale time
+                        app(\App\Services\WarrantyService::class)->activateForSale(
+                            $saleItem,
+                            (int) $branchId,
+                            $sale->customer_id ?? null,
+                            null
+                        );
                     }
                 }
             }

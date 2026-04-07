@@ -387,7 +387,6 @@
                             <div class="col-md-4 electronic-field d-none">
                                 <label class="form-label">Warranty Type</label>
                                 <select name="warranty_type" class="form-control">
-                                    <option value="none" @selected(old('warranty_type', $product->warranty_type) === 'none')>None</option>
                                     <option value="shop" @selected(old('warranty_type', $product->warranty_type) === 'shop')>Shop</option>
                                     <option value="manufacturer" @selected(old('warranty_type', $product->warranty_type) === 'manufacturer')>Manufacturer</option>
                                 </select>

@@ -615,32 +615,46 @@
 
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             let deletedCount = 0;
-            
+            let failedCount  = 0;
+
             for (const id of ids){
                 try{
-                    await fetch('/superadmin/products/' + id, {
+                    const res = await fetch('/superadmin/products/' + id, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                             'X-CSRF-TOKEN': token,
-                            'Accept': 'text/html,application/json'
+                            'Accept': 'application/json'
                         },
                         body: new URLSearchParams({ _method: 'DELETE', _token: token })
                     });
-                    deletedCount++;
-                }catch(e){ 
+                    if (res.ok) {
+                        deletedCount++;
+                    } else {
+                        failedCount++;
+                        console.error('Failed to delete product ' + id + ': HTTP ' + res.status);
+                    }
+                }catch(e){
+                    failedCount++;
                     console.error('Error deleting product:', e);
                 }
             }
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Deleted!',
-                text: `${deletedCount} product(s) have been deleted.`,
-                confirmButtonColor: '#2196F3'
-            }).then(() => {
-                window.location.reload();
-            });
+
+            if (deletedCount > 0) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: `${deletedCount} product(s) deleted successfully.` + (failedCount > 0 ? ` ${failedCount} failed.` : ''),
+                    confirmButtonColor: '#2196F3'
+                }).then(() => { window.location.reload(); });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Could not delete the selected product(s). You may not have permission.',
+                    confirmButtonColor: '#2196F3'
+                });
+            }
         });
     });
 

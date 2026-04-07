@@ -1083,7 +1083,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/products/{product}/unit-conversions/{unitType}', [SuperAdminProductController::class, 'updateUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.update');
         Route::delete('/products/{product}/unit-conversions/{unitType}', [SuperAdminProductController::class, 'destroyUnitConversion'])->middleware('ability:products,edit')->name('products.unit-conversions.destroy');
         Route::post('/products/{product}/update-image', [SuperAdminProductController::class, 'updateImage'])->middleware('ability:products,edit')->name('products.updateImage');
-        Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,full')->name('products.destroy');
+        Route::delete('/products/{product}', [SuperAdminProductController::class, 'destroy'])->middleware('ability:products,edit')->name('products.destroy');
 
         // Categories routes (part of products module)
         Route::get('/categories', [\App\Http\Controllers\SuperAdmin\CategoryController::class, 'index'])->middleware('ability:products,view')->name('categories.index');

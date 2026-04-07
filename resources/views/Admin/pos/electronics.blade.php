@@ -731,7 +731,7 @@
                         <td>${branchesHtml}</td>
                         <td class="text-end price-display" data-product-id="${it.product_id}"><span class="text-muted">Select branch</span></td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'")}', ${it.warranty_coverage_months || 0})" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'").replace(/"/g, '&quot;')}', ${it.warranty_coverage_months || 0}, '${it.category_type || 'non_electronic'}')" ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -845,7 +845,9 @@
             priceCell.textContent = `₱${branchPrice.toFixed(2)}`;
         }
 
-        window.addToOrder = function(button, productId, name, warrantyCoverageMonths) {
+        window.addToOrder = function(button, productId, name, warrantyCoverageMonths, categoryType) {
+            categoryType = categoryType || 'non_electronic';
+            const requiresSerial = categoryType === 'electronic_with_serial';
             const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
             if (!branchSel || !branchSel.value) {
                 Swal.fire('Error', 'Please select a branch.', 'error');
@@ -889,7 +891,8 @@
                 const newEntry = {
                     serial_number: '',
                     warranty_months: warrantyCoverageMonths || 0,
-                    in_stock: stock > 0
+                    in_stock: stock > 0,
+                    requires_serial: requiresSerial,
                 };
                 existingProduct.entries.push(newEntry);
                 existingProduct.quantity = existingProduct.entries.length;
@@ -907,10 +910,12 @@
                     price,
                     quantity: 1,
                     stock,
+                    category_type: categoryType,
                     entries: [{
                         serial_number: '',
                         warranty_months: warrantyCoverageMonths || 0,
-                        in_stock: stock > 0
+                        in_stock: stock > 0,
+                        requires_serial: requiresSerial,
                     }]
                 });
             }
@@ -1056,12 +1061,12 @@
                 return;
             }
 
-            // 5. Serial validation — only for in-stock entries
+            // 5. Serial validation — only for entries that require a serial (electronic_with_serial)
             for (let i = 0; i < cart.length; i++) {
                 const item = cart[i];
                 for (let j = 0; j < item.entries.length; j++) {
                     const entry = item.entries[j];
-                    if (entry.in_stock && !entry.serial_number) {
+                    if (entry.in_stock && entry.requires_serial && !entry.serial_number) {
                         Swal.fire({ icon: 'warning', title: 'Missing Serial Number', text: `Please enter serial number for "${item.name}" — Unit ${j + 1}.`});
                         return;
                     }
@@ -1316,19 +1321,20 @@
                             </button>
                         </div>
                         <div class="row g-2">
-                            <!-- Left Column: Serial Number -->
+                            ${entry.requires_serial ? `
+                            <!-- Serial Number — only for electronic_with_serial -->
                             <div class="col-md-6">
-                                <label class="form-label mb-1 small">Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}" 
-                                    value="${entry.serial_number || ''}" 
-                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)" 
+                                <label class="form-label mb-1 small">Serial Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}"
+                                    value="${entry.serial_number || ''}"
+                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)"
                                     ${entry.in_stock ? '' : 'disabled'}>
                             </div>
-                            <!-- Right Column: Warranty -->
                             <div class="col-md-6">
+                            ` : `<div class="col-md-12">`}
                                 <label class="form-label mb-1 small">Warranty (months)</label>
-                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0" 
-                                    value="${entry.warranty_months || 0}" 
+                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0"
+                                    value="${entry.warranty_months || 0}"
                                     onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
                             </div>
                         </div>
