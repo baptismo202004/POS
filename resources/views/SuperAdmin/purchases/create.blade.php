@@ -372,7 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
     @foreach($products as $p)
         productsMeta["{{ $p->id }}"] = {
             category_type: "{{ $p->category?->category_type ?? 'non_electronic' }}",
-            warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }}
+            warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }},
+            purchase_price: {{ $p->purchase_price !== null ? $p->purchase_price : 'null' }}
         };
     @endforeach
 
@@ -530,6 +531,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const row = e.target.closest('.item-row');
             applyCategoryTypeUI(row, e.target.value);
             loadProductUnits(row, e.target.value);
+
+            // Auto-fill cost from product's purchase price
+            const meta = productsMeta[String(e.target.value)];
+            const costInput = row.querySelector('.item-cost');
+            if (costInput && meta && meta.purchase_price !== null) {
+                costInput.value = parseFloat(meta.purchase_price).toFixed(2);
+                updateTotals();
+            }
         }
         if (e.target.classList.contains('unit-type-select')) {
             updateRowConversionFactor(e.target.closest('.item-row'));

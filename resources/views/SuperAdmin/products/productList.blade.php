@@ -288,6 +288,11 @@
                                     </div>
 
                                     <div class="col-md-3">
+                                        <label class="form-label">Purchase Price (₱)</label>
+                                        <input type="number" name="purchase_price" step="0.01" min="0" class="form-control" placeholder="0.00" value="{{ $isEdit ? $product->purchase_price : '' }}">
+                                    </div>
+
+                                    <div class="col-md-3">
                                         <label class="form-label">Status</label>
                                         <select name="status" class="form-control">
                                             <option value="active" {{ $isEdit && $product->status == 'active' ? 'selected' : '' }}>Active</option>

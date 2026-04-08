@@ -1141,11 +1141,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'index'])->name('purchases.index');
         Route::get('/purchases/create', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'create'])->name('purchases.create');
         Route::post('/purchases', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'store'])->name('purchases.store');
+        Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
+        Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::get('/purchases/{purchase}/lifecycle', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'lifecycle'])->name('purchases.lifecycle');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
-        Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
-        Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
+        Route::get('/purchases/{purchase}/auto-stockin-check', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'autoStockInCheck'])->name('purchases.auto-stockin-check');
+        Route::post('/purchases/{purchase}/auto-stockin', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'autoStockIn'])->name('purchases.auto-stockin');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
 
         Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjust'])->middleware('ability:inventory,edit')->name('inventory.adjust');

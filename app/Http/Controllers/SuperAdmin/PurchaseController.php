@@ -251,6 +251,7 @@ class PurchaseController extends Controller
                 if (empty($serials)) {
                     // Non-serial item — create warranty record at purchase time
                     $warrantyService->createForPurchase($purchaseItem, [], $purchaseDate);
+
                     continue;
                 }
 
@@ -277,7 +278,8 @@ class PurchaseController extends Controller
         });
 
         return redirect()->route('superadmin.purchases.show', ['purchase' => $purchaseId])
-            ->with('success', 'Purchase created successfully.');
+            ->with('success', 'Purchase created successfully.')
+            ->with('prompt_stockin', true);
     }
 
     public function show(Purchase $purchase)
@@ -500,5 +502,119 @@ class PurchaseController extends Controller
             'total_checked' => count($serialNumbers),
             'duplicates_found' => count($allDuplicates),
         ]);
+    }
+
+    public function autoStockInCheck(Purchase $purchase): \Illuminate\Http\JsonResponse
+    {
+        $purchase->load(['items.product', 'items.unitType']);
+
+        $pricingItems = [];
+
+        foreach ($purchase->items as $item) {
+            $productId = (int) $item->product_id;
+            $unitTypeId = (int) ($item->unit_type_id ?? 0);
+
+            if ($unitTypeId <= 0) {
+                continue;
+            }
+
+            $existingPrice = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', $productId)
+                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->value('stock_in_unit_prices.price');
+
+            $pricingItems[] = [
+                'purchase_item_id' => $item->id,
+                'product_id' => $productId,
+                'unit_type_id' => $unitTypeId,
+                'product_name' => $item->product->product_name ?? 'Unknown',
+                'unit_name' => $item->unitType->unit_name ?? 'Unknown',
+                'unit_cost' => (float) ($item->unit_cost ?? 0),
+                'existing_price' => $existingPrice !== null ? (float) $existingPrice : null,
+                'is_new' => $existingPrice === null,
+            ];
+        }
+
+        return response()->json(['success' => true, 'pricing_items' => $pricingItems]);
+    }
+
+    public function autoStockIn(Purchase $purchase): \Illuminate\Http\JsonResponse
+    {
+        $purchase->load(['items.unitType']);
+
+        $sellingPrices = request()->input('selling_prices', []);
+        $inventory = app(\App\Services\InventoryService::class);
+
+        try {
+            DB::transaction(function () use ($purchase, $inventory, $sellingPrices) {
+                foreach ($purchase->items as $item) {
+                    $productId = (int) $item->product_id;
+                    $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                    $qty = (float) ($item->quantity ?? 0);
+                    $unitCost = (float) ($item->unit_cost ?? 0);
+
+                    if ($qty <= 0) {
+                        continue;
+                    }
+
+                    // SuperAdmin purchases are not branch-specific; use branch_id = null or first branch
+                    $branchId = $purchase->branch_id ?? null;
+
+                    $qtyBase = $inventory->convertToBaseQuantity($productId, $unitTypeId, $qty);
+
+                    if ($branchId) {
+                        $inventory->increaseStock($branchId, $productId, $qtyBase, 'purchase', 'purchases', (int) $purchase->id, now());
+                    }
+
+                    $stockInPayload = [
+                        'product_id' => $productId,
+                        'branch_id' => $branchId,
+                        'purchase_id' => (int) $purchase->id,
+                        'unit_type_id' => $unitTypeId ?: null,
+                        'quantity' => (int) round($qty),
+                        'price' => $unitCost,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    if (Schema::hasColumn('stock_ins', 'initial_quantity')) {
+                        $stockInPayload['initial_quantity'] = (int) round($qty);
+                    }
+
+                    $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                    if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
+                        $key = $productId.'_'.$unitTypeId;
+                        $sellingPrice = $sellingPrices[$key] ?? null;
+
+                        if ($sellingPrice === null) {
+                            $sellingPrice = DB::table('stock_in_unit_prices')
+                                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                                ->where('stock_ins.product_id', $productId)
+                                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                                ->where('stock_ins.id', '!=', $stockInId)
+                                ->orderByDesc('stock_in_unit_prices.id')
+                                ->value('stock_in_unit_prices.price');
+                        }
+
+                        if ($sellingPrice !== null) {
+                            DB::table('stock_in_unit_prices')->insert([
+                                'stock_in_id' => $stockInId,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => (float) $sellingPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            });
+
+            return response()->json(['success' => true, 'message' => 'All items stocked in successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

@@ -983,31 +983,6 @@ class CashierDashboardController extends Controller
         }
     }
 
-    public function destroyProduct(Product $product): \Illuminate\Http\JsonResponse
-    {
-        $user = Auth::user();
-
-        if (! Access::can($user, 'products', 'delete')) {
-            return response()->json(['success' => false, 'message' => 'You do not have permission to delete products.'], 403);
-        }
-
-        // Only allow deletion if the product has zero stock across all branches
-        $totalStock = \App\Models\StockIn::where('product_id', $product->id)
-            ->selectRaw('COALESCE(SUM(quantity - sold), 0) as total')
-            ->value('total');
-
-        if ((float) $totalStock > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete product with existing stock. Remove all stock first.',
-            ], 422);
-        }
-
-        $product->delete();
-
-        return response()->json(['success' => true, 'message' => 'Product deleted successfully.']);
-    }
-
     public function editProduct($id)
     {
         $user = Auth::user();
