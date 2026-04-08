@@ -22,6 +22,7 @@ class Product extends Model
         'warranty_coverage_months',
         'voltage_specs',
         'status',
+        'selling_price',
         'supplier_id',
         'min_stock_level',
         'low_stock_threshold',

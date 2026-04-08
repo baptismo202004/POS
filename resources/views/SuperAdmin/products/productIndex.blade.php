@@ -507,6 +507,7 @@
                                     <th style="width:110px;">Product Type</th>
                                     <th style="width:120px;">Unit Type</th>
                                     <th style="width:80px;">Status</th>
+                                    <th style="width:100px;">Price (₱)</th>
                                     <th style="width:90px;">Action</th>
                                 </tr>
                             </thead>
