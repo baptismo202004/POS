@@ -223,7 +223,7 @@
 
                                 <div class="mb-3">
                                     <label for="expense_category_id" class="sp-label">Expense Category <span class="req">*</span></label>
-                                    <select class="sp-select" name="expense_category_id" id="expense_category_id" required>
+                                    <select class="sp-select" name="expense_category_id" id="expense_category_id">
                                         <option value="" disabled selected>Select a category...</option>
                                         @foreach($categories as $category)
                                             <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -265,11 +265,11 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="supplier_name" class="sp-label">Supplier</label>
-                                    <select class="sp-select" name="supplier_name" id="supplier_name">
+                                    <label for="supplier_id" class="sp-label">Supplier</label>
+                                    <select class="sp-select" name="supplier_id" id="supplier_id">
                                         <option value="">Select a supplier or type new name (optional)</option>
                                         @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->supplier_name }}">{{ $supplier->supplier_name }}</option>
+                                            <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
                                         @endforeach
                                     </select>
                                     <div class="sp-hint"><i class="fas fa-info-circle me-1"></i>Select existing supplier or type to create new one</div>
@@ -322,11 +322,26 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    $('#expense_category_id').select2();
-    $('#supplier_name').select2({
+    $('#expense_category_id').select2({
+        placeholder: 'Select a category...',
+        allowClear: false,
         tags: true,
         createTag: function (params) {
-            // Don't create empty tags
+            if ($.trim(params.term) === '') {
+                return null;
+            }
+            return {
+                id: 'new:' + params.term,
+                text: params.term + ' (new)',
+                newOption: true,
+                newName: params.term
+            };
+        }
+    });
+    $('#supplier_id').select2({
+        tags: true,
+        placeholder: 'Select a supplier or type new name (optional)',
+        createTag: function (params) {
             if ($.trim(params.term) === '') {
                 return null;
             }
@@ -335,6 +350,16 @@ $(document).ready(function() {
                 text: params.term,
                 newOption: true
             };
+        }
+    });
+
+    // Validate category on submit since select2 hides the native required element
+    $('form').on('submit', function(e) {
+        if (!$('#expense_category_id').val()) {
+            e.preventDefault();
+            $('#expense_category_id').next('.select2-container').css('border', '1.5px solid red');
+            alert('Please select an expense category.');
+            return false;
         }
     });
 

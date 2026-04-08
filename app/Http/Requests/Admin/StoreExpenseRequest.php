@@ -22,17 +22,27 @@ class StoreExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'expense_category_id' => ['required', 'exists:expense_categories,id', function ($attribute, $value, $fail) {
-                $category = \App\Models\ExpenseCategory::find($value);
-                if ($category && $category->name === 'Purchases') {
-                    $fail('The selected category is invalid for manual expense entry.');
+            'expense_category_id' => ['required', function ($attribute, $value, $fail) {
+                // Allow "new:Name" for auto-creation, otherwise must exist
+                if (str_starts_with((string) $value, 'new:')) {
+                    $name = trim(substr($value, 4));
+                    if ($name === '' || strtolower($name) === 'purchases') {
+                        $fail('The category name is invalid.');
+                    }
+                } elseif (! \App\Models\ExpenseCategory::where('id', $value)->exists()) {
+                    $fail('The selected category is invalid.');
+                } else {
+                    $category = \App\Models\ExpenseCategory::find($value);
+                    if ($category && $category->name === 'Purchases') {
+                        $fail('The selected category is invalid for manual expense entry.');
+                    }
                 }
             }],
             'expense_date' => 'required|date',
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'supplier_name' => 'nullable|string|max:255|unique:suppliers,supplier_name',
+            'supplier_id' => 'nullable|string|max:255',
+            'supplier_name' => 'prohibited',
             'reference_number' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',

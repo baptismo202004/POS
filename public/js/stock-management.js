@@ -1091,7 +1091,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        let html = '<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Date</th><th>Type</th><th>Quantity</th><th>Price</th><th>Branch</th><th>Reason</th><th>Notes</th></tr></thead><tbody>';
+        let html = '<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Date</th><th>Type</th><th>Quantity</th><th>Price</th><th>Branch</th><th>Reason</th></tr></thead><tbody>';
 
         filtered.forEach(record => {
             const date = new Date(record.created_at).toLocaleString();
@@ -1101,7 +1101,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const price = record.price ? '₱' + parseFloat(record.price).toFixed(2) : 'N/A';
             const branch = record.branch_name || 'N/A';
             const reason = record.reason || '-';
-            const notes = record.notes || '-';
 
             html += `
                 <tr>
@@ -1111,7 +1110,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td>${price}</td>
                     <td>${branch}</td>
                     <td>${reason}</td>
-                    <td>${notes}</td>
                 </tr>
             `;
         });

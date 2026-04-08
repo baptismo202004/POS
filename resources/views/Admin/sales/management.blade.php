@@ -288,6 +288,9 @@
                                                 <a class="btn btn-sm btn-info" href="{{ route('admin.main.sales.show', $sale) }}" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                <button class="btn btn-sm btn-warning" onclick="showRefundModal({{ $sale->id }})" title="Return / Refund" @if(strtolower($sale->payment_method) === 'credit') disabled style="opacity:.4;cursor:not-allowed;" title="Credit sales cannot be refunded" @endif>
+                                                    <i class="fas fa-undo-alt"></i>
+                                                </button>
                                                 <button class="btn btn-sm btn-secondary" onclick="showSaleHistory({{ $sale->id }})" title="View History">
                                                     <i class="fas fa-history"></i>
                                                 </button>
@@ -402,6 +405,85 @@
             <div class="modal-footer">
                 <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="sp-btn sp-btn-primary" onclick="confirmDeleteSale()">Delete Sale</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Modal -->
+<div class="modal fade sp-modal" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="refundModalLabel"><i class="fas fa-undo-alt me-2"></i>Return / Refund</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="refundLoading" class="text-center py-4">
+                    <div class="spinner-border text-warning" role="status"></div>
+                    <p class="mt-2">Loading sale items...</p>
+                </div>
+                <div id="refundContent" style="display:none;">
+                    <div id="refundSaleInfo" class="mb-3 p-3 rounded" style="background:rgba(13,71,161,0.05);border:1px solid var(--border);font-size:13px;"></div>
+
+                    {{-- Refund Type Toggle --}}
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Return Type</label>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="typeCashBtn" onclick="setRefundType('cash')"
+                                class="sp-btn sp-btn-primary" style="font-size:12px;padding:7px 16px;">
+                                <i class="fas fa-money-bill-wave me-1"></i> Cash Refund
+                            </button>
+                            <button type="button" id="typeReplaceBtn" onclick="setRefundType('replacement')"
+                                class="sp-btn sp-btn-outline" style="font-size:12px;padding:7px 16px;">
+                                <i class="fas fa-exchange-alt me-1"></i> Item Replacement
+                            </button>
+                        </div>
+                    </div>
+
+                    <h6 class="mb-2" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Select Item to Return</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm sp-table" id="refundItemsTable">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Sold Qty</th>
+                                    <th>Already Refunded</th>
+                                    <th>Available</th>
+                                    <th>Unit Price</th>
+                                    <th>Return Qty</th>
+                                    <th id="refundAmountHeader">Refund Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="refundItemsBody"></tbody>
+                        </table>
+                    </div>
+
+                    {{-- Replacement item field (shown only for replacement type) --}}
+                    <div id="replacementItemRow" class="mt-3 p-3 rounded" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);display:none;">
+                        <label class="form-label" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Replacement Item Description</label>
+                        <input type="text" id="replacementItem" class="form-control" placeholder="e.g. Same product (new unit), Different color..." maxlength="255">
+                        <small class="text-muted mt-1 d-block"><i class="fas fa-info-circle me-1"></i>No money is returned — item is swapped for a replacement.</small>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Reason</label>
+                        <input type="text" id="refundReason" class="form-control" placeholder="e.g. Defective, Wrong item..." maxlength="255">
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Notes (optional)</label>
+                        <textarea id="refundNotes" class="form-control" rows="2" placeholder="Additional notes..."></textarea>
+                    </div>
+                    <div id="refundTotalRow" class="mt-3 p-3 rounded text-end" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);display:none;">
+                        <strong id="refundTotalLabel">Total Refund Amount: <span id="refundTotalDisplay" style="color:var(--red);">₱0.00</span></strong>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="sp-btn sp-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="sp-btn sp-btn-primary" id="confirmRefundBtn" onclick="submitRefund()" style="background:linear-gradient(135deg,#d97706,#f59e0b);" disabled>
+                    <i class="fas fa-undo-alt me-1"></i> <span id="confirmRefundBtnLabel">Process Refund</span>
+                </button>
             </div>
         </div>
     </div>
@@ -697,6 +779,237 @@ function printSaleReceipt() {
             text: 'Please allow pop-ups for this site to print receipts.'
         });
     }
+}
+
+// ── Refund Modal ──────────────────────────────────────────────────────────────
+let refundSaleId = null;
+let refundItems = [];
+let refundType = 'cash'; // 'cash' or 'replacement'
+
+function setRefundType(type) {
+    refundType = type;
+    const cashBtn = document.getElementById('typeCashBtn');
+    const replaceBtn = document.getElementById('typeReplaceBtn');
+    const replacementRow = document.getElementById('replacementItemRow');
+    const amountHeader = document.getElementById('refundAmountHeader');
+    const totalLabel = document.getElementById('refundTotalLabel');
+    const confirmLabel = document.getElementById('confirmRefundBtnLabel');
+
+    if (type === 'replacement') {
+        cashBtn.className = 'sp-btn sp-btn-outline';
+        replaceBtn.className = 'sp-btn sp-btn-primary';
+        replacementRow.style.display = 'block';
+        amountHeader.textContent = 'Value';
+        confirmLabel.textContent = 'Process Replacement';
+    } else {
+        cashBtn.className = 'sp-btn sp-btn-primary';
+        replaceBtn.className = 'sp-btn sp-btn-outline';
+        replacementRow.style.display = 'none';
+        amountHeader.textContent = 'Refund Amount';
+        confirmLabel.textContent = 'Process Refund';
+    }
+    updateRefundTotal();
+}
+
+function showRefundModal(saleId) {
+    refundSaleId = saleId;
+    refundItems = [];
+    refundType = 'cash';
+
+    document.getElementById('refundLoading').style.display = 'block';
+    document.getElementById('refundContent').style.display = 'none';
+    document.getElementById('confirmRefundBtn').disabled = true;
+    document.getElementById('confirmRefundBtn').style.opacity = '0.5';
+    document.getElementById('refundTotalRow').style.display = 'none';
+    document.getElementById('refundReason').value = '';
+    document.getElementById('refundNotes').value = '';
+    document.getElementById('replacementItem').value = '';
+    document.getElementById('replacementItemRow').style.display = 'none';
+    document.getElementById('typeCashBtn').className = 'sp-btn sp-btn-primary';
+    document.getElementById('typeReplaceBtn').className = 'sp-btn sp-btn-outline';
+    document.getElementById('confirmRefundBtnLabel').textContent = 'Process Refund';
+
+    const modal = new bootstrap.Modal(document.getElementById('refundModal'));
+    modal.show();
+
+    fetch(`/admin/sales/${saleId}/items`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('refundLoading').style.display = 'none';
+            document.getElementById('refundContent').style.display = 'block';
+
+            const sale = data.sale || {};
+            document.getElementById('refundSaleInfo').innerHTML =
+                `<strong>Sale #${sale.id}</strong> &nbsp;·&nbsp; Ref: ${sale.reference_number || '—'} &nbsp;·&nbsp; Total: ₱${parseFloat(sale.total_amount || 0).toFixed(2)} &nbsp;·&nbsp; ${sale.cashier_name || ''}`;
+
+            const tbody = document.getElementById('refundItemsBody');
+            tbody.innerHTML = '';
+            refundItems = data.items || [];
+
+            if (refundItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No items found.</td></tr>';
+                return;
+            }
+
+            refundItems.forEach((item, idx) => {
+                const avail = item.available_for_refund || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.product_name}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.refunded || 0}</td>
+                    <td><strong>${avail}</strong></td>
+                    <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm refund-qty-input"
+                            data-idx="${idx}" min="0" max="${avail}" value="0"
+                            style="width:75px;" ${avail <= 0 ? 'disabled' : ''}>
+                    </td>
+                    <td class="refund-item-amount" data-idx="${idx}">₱0.00</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Use event delegation on tbody for reliability
+            tbody.addEventListener('input', function(e) {
+                if (e.target.classList.contains('refund-qty-input')) {
+                    updateRefundTotal();
+                }
+            });
+        })
+        .catch(() => {
+            document.getElementById('refundLoading').style.display = 'none';
+            document.getElementById('refundContent').innerHTML = '<div class="alert alert-danger">Error loading sale items.</div>';
+            document.getElementById('refundContent').style.display = 'block';
+        });
+}
+
+function updateRefundTotal() {
+    let total = 0;
+    document.querySelectorAll('.refund-qty-input').forEach(input => {
+        const idx = parseInt(input.dataset.idx);
+        const maxVal = parseInt(input.max);
+        const rawQty = parseInt(input.value) || 0;
+        const qty = isNaN(maxVal) ? Math.max(0, rawQty) : Math.min(Math.max(0, rawQty), maxVal);
+        input.value = qty;
+        const amount = qty * parseFloat(refundItems[idx].unit_price);
+        total += amount;
+        document.querySelector(`.refund-item-amount[data-idx="${idx}"]`).textContent =
+            refundType === 'replacement' ? qty + ' unit(s)' : '₱' + amount.toFixed(2);
+    });
+
+    const totalRow = document.getElementById('refundTotalRow');
+    const confirmBtn = document.getElementById('confirmRefundBtn');
+
+    const hasQty = [...document.querySelectorAll('.refund-qty-input')].some(i => parseInt(i.value) > 0);
+
+    if (refundType === 'replacement') {
+        document.getElementById('refundTotalDisplay').textContent = 'Item swap — no cash returned';
+        document.getElementById('refundTotalDisplay').style.color = 'var(--green)';
+        totalRow.style.background = 'rgba(16,185,129,0.06)';
+        totalRow.style.border = '1px solid rgba(16,185,129,0.2)';
+    } else {
+        document.getElementById('refundTotalDisplay').textContent = '₱' + total.toFixed(2);
+        document.getElementById('refundTotalDisplay').style.color = 'var(--red)';
+        totalRow.style.background = 'rgba(239,68,68,0.06)';
+        totalRow.style.border = '1px solid rgba(239,68,68,0.15)';
+    }
+
+    if (hasQty) {
+        totalRow.style.display = 'block';
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+    } else {
+        totalRow.style.display = 'none';
+        confirmBtn.disabled = true;
+        confirmBtn.style.opacity = '0.5';
+    }
+}
+
+function submitRefund() {
+    const reason = document.getElementById('refundReason').value.trim();
+    const notes = document.getElementById('refundNotes').value.trim();
+    const replacementItem = document.getElementById('replacementItem').value.trim();
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    const inputs = document.querySelectorAll('.refund-qty-input');
+    const refundLines = [];
+
+    inputs.forEach(input => {
+        const qty = parseInt(input.value) || 0;
+        if (qty > 0) {
+            const idx = parseInt(input.dataset.idx);
+            const item = refundItems[idx];
+            refundLines.push({
+                sale_item_id: item.id,
+                product_id: item.product_id,
+                quantity_refunded: qty,
+                // For replacement, refund_amount is 0 — no money returned
+                refund_amount: refundType === 'replacement' ? '0.00' : (qty * parseFloat(item.unit_price)).toFixed(2),
+            });
+        }
+    });
+
+    if (refundLines.length === 0) {
+        Swal.fire('No items selected', 'Please enter a quantity to return.', 'warning');
+        return;
+    }
+
+    if (refundType === 'replacement' && replacementItem === '') {
+        Swal.fire('Missing Info', 'Please describe the replacement item.', 'warning');
+        return;
+    }
+
+    const confirmBtn = document.getElementById('confirmRefundBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
+
+    const notesWithType = refundType === 'replacement'
+        ? `[REPLACEMENT] Replacement: ${replacementItem}${notes ? ' | ' + notes : ''}`
+        : notes;
+
+    const promises = refundLines.map(line =>
+        fetch('{{ route("admin.refunds.store") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                sale_id: refundSaleId,
+                sale_item_id: line.sale_item_id,
+                product_id: line.product_id,
+                quantity_refunded: line.quantity_refunded,
+                refund_amount: line.refund_amount,
+                reason: reason || (refundType === 'replacement' ? 'Item Replacement' : null),
+                notes: notesWithType || null,
+                refund_type: refundType,
+            }),
+        }).then(r => r.json())
+    );
+
+    Promise.all(promises)
+        .then(results => {
+            const failed = results.filter(r => !r.success);
+            bootstrap.Modal.getInstance(document.getElementById('refundModal')).hide();
+            const successMsg = refundType === 'replacement'
+                ? 'The item has been marked for replacement. No cash was refunded.'
+                : 'The refund has been recorded and inventory restored.';
+            if (failed.length === 0) {
+                Swal.fire({ icon: 'success', title: refundType === 'replacement' ? 'Replacement Processed' : 'Refund Processed', text: successMsg, confirmButtonColor: '#10b981' })
+                    .then(() => location.reload());
+            } else {
+                Swal.fire('Partial Error', failed.map(r => r.message).join('\n'), 'warning')
+                    .then(() => location.reload());
+            }
+        })
+        .catch(() => {
+            confirmBtn.disabled = false;
+            confirmBtn.style.opacity = '1';
+            confirmBtn.innerHTML = '<i class="fas fa-undo-alt me-1"></i> <span id="confirmRefundBtnLabel">' + (refundType === 'replacement' ? 'Process Replacement' : 'Process Refund') + '</span>';
+            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+        });
 }
 
 </script>

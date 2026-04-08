@@ -108,6 +108,12 @@ class RefundController extends Controller
                     throw new \Exception('Sale item not found');
                 }
 
+                // Block refunds for credit sales
+                $sale = Sale::find($request->sale_id);
+                if ($sale && strtolower($sale->payment_method) === 'credit') {
+                    throw new \Exception('Refunds are not allowed for credit sales.');
+                }
+
                 \Log::info('Sale item found, checking existing refunds');
                 // Validate that refund quantity doesn't exceed sold quantity
                 $totalRefunded = Refund::where('sale_item_id', $request->sale_item_id)
@@ -136,9 +142,9 @@ class RefundController extends Controller
 
                 \Log::info('Refund created with ID: '.$refund->id);
 
-                // Update sale total amount by deducting refund amount
+                // Update sale total amount by deducting refund amount (only for cash refunds)
                 $sale = \App\Models\Sale::find($request->sale_id);
-                if ($sale) {
+                if ($sale && $request->input('refund_type') !== 'replacement') {
                     $currentTotal = $sale->total_amount;
                     $newTotal = $currentTotal - $request->refund_amount;
 

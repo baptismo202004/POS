@@ -44,6 +44,21 @@
             <a href="{{ route('cashier.products.show', $product->id) }}" class="tbl-action tbl-view" title="View">
                 <i class="fas fa-eye"></i>
             </a>
+            @php
+                $productStock = \App\Models\StockIn::where('product_id', $product->id)
+                    ->selectRaw('COALESCE(SUM(quantity - sold), 0) as total')
+                    ->value('total');
+            @endphp
+            @if((float) $productStock == 0)
+                <button type="button"
+                    class="tbl-action tbl-delete delete-product-btn"
+                    data-id="{{ $product->id }}"
+                    data-name="{{ $product->product_name }}"
+                    title="Delete (no stock)"
+                    style="background:none;border:none;cursor:pointer;color:#ef4444;padding:4px 6px;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            @endif
         </td>
     </tr>
 @empty

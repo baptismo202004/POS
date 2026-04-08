@@ -668,6 +668,43 @@
                 showNoPermission();
             }
         });
+
+        // Per-row delete button (only visible for zero-stock products)
+        $(document).on('click', '.delete-product-btn', async function() {
+            if (!canDeleteProducts) {
+                showNoDeletePermission();
+                return;
+            }
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+            const result = await Swal.fire({
+                title: 'Delete Product?',
+                text: `"${name}" has no stock and will be permanently deleted.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#2196F3',
+                confirmButtonText: 'Yes, delete it!',
+            });
+            if (!result.isConfirmed) return;
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            try {
+                const res = await fetch('/cashier/products/' + id, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                    body: new URLSearchParams({ _method: 'DELETE', _token: token })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, confirmButtonColor: '#2196F3', timer: 2000, showConfirmButton: false })
+                        .then(() => window.location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Cannot Delete', text: data.message, confirmButtonColor: '#2196F3' });
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'An unexpected error occurred.', confirmButtonColor: '#2196F3' });
+            }
+        });
     });
 
     // Use standard CashierSidebar from layouts

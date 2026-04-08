@@ -93,8 +93,12 @@ class PosAdminController extends Controller
             if (empty($keyword)) {
                 $matchesQuery = Product::query();
                 if (! $electronicsOnly) {
-                    // Non-electronics POS still lists only products that are currently in stock (across any branch)
-                    $matchesQuery->whereIn('products.id', $inStockProductIds);
+                    // Non-electronics POS: only in-stock, non-electronic products
+                    $matchesQuery
+                        ->whereIn('products.id', $inStockProductIds)
+                        ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                        ->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
+                        ->select('products.*');
                 }
 
                 if ($electronicsOnly) {
@@ -114,7 +118,11 @@ class PosAdminController extends Controller
             } else {
                 $matchesQuery = Product::query();
                 if (! $electronicsOnly) {
-                    $matchesQuery->whereIn('products.id', $inStockProductIds);
+                    $matchesQuery
+                        ->whereIn('products.id', $inStockProductIds)
+                        ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                        ->whereRaw("LOWER(TRIM(categories.category_type)) NOT LIKE 'electronic%'")
+                        ->select('products.*');
                 }
 
                 if ($electronicsOnly) {
@@ -529,6 +537,12 @@ class PosAdminController extends Controller
                 'tax' => 0, // No tax for now
                 'payment_method' => $paymentMethod, // Use payment method from request
             ];
+
+            if ($paymentMethod === 'cash') {
+                $cashTendered = isset($data['cash_tendered']) ? (float) $data['cash_tendered'] : $total;
+                $saleData['cash_tendered'] = $cashTendered;
+                $saleData['change_due'] = max(0, $cashTendered - $total);
+            }
 
             // Only include customer_id if it's not null
             if ($customerId !== null) {
