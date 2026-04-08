@@ -651,6 +651,14 @@
                 }
                 resultsCount.textContent = `${items.length} products`;
 
+                // Normalize: ensure product_id, category_type, warranty_coverage_months are always set
+                items = items.map(it => ({
+                    ...it,
+                    product_id: it.product_id ?? it.id,
+                    category_type: it.category_type ?? 'non_electronic',
+                    warranty_coverage_months: it.warranty_coverage_months ?? 0,
+                }));
+
                 if(items.length === 0){
                     tableBody.innerHTML = `
                         <tr>
@@ -731,7 +739,13 @@
                         <td>${branchesHtml}</td>
                         <td class="text-end price-display" data-product-id="${it.product_id}"><span class="text-muted">Select branch</span></td>
                         <td class="text-end">
-                            <button class="btn add-btn" onclick="addToOrder(this, ${it.product_id}, '${String(displayName).replace(/'/g, "\\'").replace(/"/g, '&quot;')}', ${it.warranty_coverage_months || 0}, '${it.category_type || 'non_electronic'}')" ${!canBeAdded ? 'disabled' : ''}>
+                            <button class="btn add-btn"
+                                data-product-id="${it.product_id}"
+                                data-name="${String(displayName).replace(/"/g, '&quot;')}"
+                                data-warranty="${it.warranty_coverage_months || 0}"
+                                data-category-type="${it.category_type || 'non_electronic'}"
+                                onclick="addToOrder(this, this.dataset.productId, this.dataset.name, parseInt(this.dataset.warranty)||0, this.dataset.categoryType)"
+                                ${!canBeAdded ? 'disabled' : ''}>
                                 <i class="fas fa-plus me-1"></i>Add
                             </button>
                         </td>
@@ -846,8 +860,10 @@
         }
 
         window.addToOrder = function(button, productId, name, warrantyCoverageMonths, categoryType) {
-            categoryType = categoryType || 'non_electronic';
+            productId = parseInt(productId) || 0;
+            categoryType = (categoryType || 'non_electronic').trim();
             const requiresSerial = categoryType === 'electronic_with_serial';
+            console.log('[addToOrder]', { productId, name, warrantyCoverageMonths, categoryType, requiresSerial });
             const branchSel = document.querySelector(`select.js-branch-select[data-product-id="${productId}"]`);
             if (!branchSel || !branchSel.value) {
                 Swal.fire('Error', 'Please select a branch.', 'error');
@@ -956,6 +972,7 @@
             const item = cart.find(i => i.cartIdentifier === cartIdentifier);
             if (!item || !item.entries || !item.entries[entryIndex]) return;
             item.entries[entryIndex].serial_number = String(value || '').trim();
+            updateCartDisplay();
         };
 
         window.setWarrantyMonths = function(cartIdentifier, entryIndex, value) {
@@ -1312,53 +1329,60 @@
                 const itemTotal = item.price * item.entries.length;
                 total += itemTotal;
 
-                const entriesHtml = item.entries.map((entry, index) => `
-                    <div class="entry-item border rounded p-2 mb-2 bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-primary">Unit ${index + 1}</span>
-                            <button class="btn btn-sm btn-outline-danger" onclick="removeEntry('${item.cartIdentifier}', ${index})" title="Remove this unit">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="row g-2">
-                            ${entry.requires_serial ? `
-                            <!-- Serial Number — only for electronic_with_serial -->
-                            <div class="col-md-6">
-                                <label class="form-label mb-1 small">Serial Number <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" placeholder="${entry.in_stock ? 'Enter serial' : 'Not required (out of stock)'}"
-                                    value="${entry.serial_number || ''}"
-                                    onchange="setSerial('${item.cartIdentifier}', ${index}, this.value)"
-                                    ${entry.in_stock ? '' : 'disabled'}>
-                            </div>
-                            <div class="col-md-6">
-                            ` : `<div class="col-md-12">`}
-                                <label class="form-label mb-1 small">Warranty (months)</label>
-                                <input type="number" min="0" class="form-control form-control-sm" placeholder="0"
-                                    value="${entry.warranty_months || 0}"
-                                    onchange="setWarrantyMonths('${item.cartIdentifier}', ${index}, this.value)">
-                            </div>
-                        </div>
-                        <!-- Warranty Activation and Subtotal -->
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="warranty_activate_${item.cartIdentifier}_${index}" 
-                                        ${entry.in_stock ? 'checked' : ''}
-                                        onchange="toggleWarrantyActivation('${item.cartIdentifier}', ${index}, this.checked)">
-                                    <label class="form-check-label small" for="warranty_activate_${item.cartIdentifier}_${index}">
-                                        <i class="fas fa-shield-alt me-1"></i>Activate Warranty Coverage
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <div class="mb-0">
-                                    <label class="form-label mb-1 small fw-bold">Subtotal:</label>
-                                    <h5 class="text-primary mb-0">₱${item.price.toFixed(2)}</h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                const entriesHtml = item.entries.map((entry, index) => {
+                    const serialMissing = entry.requires_serial && entry.in_stock && !entry.serial_number;
+
+                    const serialBadge = serialMissing
+                        ? '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Serial required</span>'
+                        : '';
+
+                    let serialField = '';
+                    if (entry.requires_serial) {
+                        const inputClass = 'form-control form-control-sm' + (serialMissing ? ' border-danger' : '');
+                        const placeholder = entry.in_stock ? 'Enter serial number' : 'Not required (out of stock)';
+                        const disabledAttr = entry.in_stock ? '' : 'disabled';
+                        const hint = serialMissing ? '<div class="text-danger" style="font-size:11px;margin-top:3px;"><i class="fas fa-exclamation-circle me-1"></i>Required for in-stock item</div>' : '';
+                        serialField = '<div class="col-md-6">'
+                            + '<label class="form-label mb-1 small">Serial Number <span class="text-danger">*</span></label>'
+                            + '<input type="text" class="' + inputClass + '" placeholder="' + placeholder + '" value="' + (entry.serial_number || '') + '" onchange="setSerial(\'' + item.cartIdentifier + '\', ' + index + ', this.value)" ' + disabledAttr + '>'
+                            + hint
+                            + '</div>'
+                            + '<div class="col-md-6">';
+                    } else {
+                        serialField = '<div class="col-md-12">';
+                    }
+
+                    const warrantyCol = serialField
+                        + '<label class="form-label mb-1 small">Warranty (months)</label>'
+                        + '<input type="number" min="0" class="form-control form-control-sm" placeholder="0" value="' + (entry.warranty_months || 0) + '" onchange="setWarrantyMonths(\'' + item.cartIdentifier + '\', ' + index + ', this.value)">'
+                        + '</div>';
+
+                    const checkedAttr = entry.in_stock ? 'checked' : '';
+                    const entryBorderClass = serialMissing ? 'border-danger' : 'bg-light';
+
+                    return '<div class="entry-item border rounded p-2 mb-2 ' + entryBorderClass + '">'
+                        + '<div class="d-flex justify-content-between align-items-center mb-2">'
+                        +   '<div class="d-flex align-items-center gap-2">'
+                        +     '<span class="badge bg-primary">Unit ' + (index + 1) + '</span>'
+                        +     serialBadge
+                        +   '</div>'
+                        +   '<button class="btn btn-sm btn-outline-danger" onclick="removeEntry(\'' + item.cartIdentifier + '\', ' + index + ')" title="Remove this unit"><i class="fas fa-times"></i></button>'
+                        + '</div>'
+                        + '<div class="row g-2">' + warrantyCol + '</div>'
+                        + '<div class="row g-2 mt-2">'
+                        +   '<div class="col-md-6">'
+                        +     '<div class="form-check">'
+                        +       '<input class="form-check-input" type="checkbox" id="warranty_activate_' + item.cartIdentifier + '_' + index + '" ' + checkedAttr + ' onchange="toggleWarrantyActivation(\'' + item.cartIdentifier + '\', ' + index + ', this.checked)">'
+                        +       '<label class="form-check-label small" for="warranty_activate_' + item.cartIdentifier + '_' + index + '"><i class="fas fa-shield-alt me-1"></i>Activate Warranty Coverage</label>'
+                        +     '</div>'
+                        +   '</div>'
+                        +   '<div class="col-md-6 text-end">'
+                        +     '<label class="form-label mb-1 small fw-bold">Subtotal:</label>'
+                        +     '<h5 class="text-primary mb-0">₱' + item.price.toFixed(2) + '</h5>'
+                        +   '</div>'
+                        + '</div>'
+                        + '</div>';
+                }).join('');
 
                 return `
                     <div class="cart-item mb-3 p-3 border rounded bg-white">
