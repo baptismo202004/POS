@@ -34,6 +34,7 @@ class BranchController extends Controller
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'branch_name' => 'required|unique:branches,branch_name',
             'address' => 'nullable|string',
+            'branch_type' => 'required|in:grocery,electronics',
             'assign_to' => 'nullable|exists:users,id',
             'status' => 'required|in:active,inactive',
         ]);
@@ -45,6 +46,7 @@ class BranchController extends Controller
         $branch = Branch::create([
             'branch_name' => $request->branch_name,
             'address' => $request->address,
+            'branch_type' => $request->branch_type,
             'assign_to' => $request->assign_to,
             'status' => $request->status,
         ]);
@@ -105,6 +107,7 @@ class BranchController extends Controller
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'branch_name' => 'required|unique:branches,branch_name,'.$branch->id,
             'address' => 'nullable|string',
+            'branch_type' => 'required|in:grocery,electronics',
             'assign_to' => 'nullable|exists:users,id',
             'status' => 'required|in:active,inactive',
         ]);
@@ -116,6 +119,7 @@ class BranchController extends Controller
         $branch->update([
             'branch_name' => $request->branch_name,
             'address' => $request->address,
+            'branch_type' => $request->branch_type,
             'assign_to' => $request->assign_to,
             'status' => $request->status,
         ]);

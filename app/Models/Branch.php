@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
 
 class Branch extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['branch_name', 'address', 'assign_to', 'status'];
+    protected $fillable = ['branch_name', 'address', 'branch_type', 'assign_to', 'status'];
 
     public function products()
     {
