@@ -545,6 +545,9 @@
     $(document).ready(function () {
         let searchTimeout;
 
+        // Ensure X-Requested-With header is always sent with jQuery AJAX
+        $.ajaxSetup({ headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
         $('#product-search-input').on('keyup', function () {
             clearTimeout(searchTimeout);
             const query = $(this).val();
@@ -554,6 +557,7 @@
                     url: "{{ route('superadmin.products.index') }}",
                     type: "GET",
                     data: { 'search': query },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     success: function(data) {
                         $('#product-table-body').html(data);
                     }

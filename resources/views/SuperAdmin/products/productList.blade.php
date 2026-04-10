@@ -12,19 +12,6 @@
     $isCashierContext = request()->is('cashier/*');
 @endphp
 
-@if($isCashierContext)
-@push('stylesDashboard')
-    <style>
-        .sidebar-fixed {
-            display: none !important;
-        }
-        .main-content {
-            margin-left: 0 !important;
-        }
-    </style>
-@endpush
-@endif
-
 @push('stylesDashboard')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -613,7 +600,7 @@
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
-                                window.location.href = '{{ route('superadmin.products.index') }}';
+                                window.location.href = '{{ $isCashierContext ? route('cashier.products.index') : route('superadmin.products.index') }}';
                             });
                         } else if (data.errors) {
                             console.error('Validation errors:', data.errors);

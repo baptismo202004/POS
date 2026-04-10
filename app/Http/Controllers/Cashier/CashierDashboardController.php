@@ -1022,18 +1022,8 @@ class CashierDashboardController extends Controller
         // Delegate to the SuperAdmin ProductController which has the full update logic
         $response = app(\App\Http\Controllers\SuperAdmin\ProductController::class)->update($request, $product);
 
-        $data = json_decode($response->getContent(), true);
-
-        if (! empty($data['success'])) {
-            return redirect()->route('cashier.products.index')
-                ->with('success', 'Product updated successfully.');
-        }
-
-        if (! empty($data['errors'])) {
-            return back()->withInput()->withErrors($data['errors']);
-        }
-
-        return back()->withInput()->with('error', $data['message'] ?? 'Failed to update product.');
+        // Return the JSON response directly — the view's fetch handler processes it
+        return $response;
     }
 
     public function destroyProduct($id)
@@ -1059,7 +1049,36 @@ class CashierDashboardController extends Controller
 
         $product = Product::findOrFail($id);
 
+        // Block only if active stock exists
+        $activeStock = DB::table('branch_stocks')
+            ->where('product_id', $product->id)
+            ->where('quantity_base', '>', 0)
+            ->exists();
+
+        if ($activeStock) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Cannot delete product with existing stock. Remove all stock first.'], 422);
+            }
+
+            return redirect()->route('cashier.products.index')->with('error', 'Cannot delete product with existing stock. Remove all stock first.');
+        }
+
         try {
+            // Cascade-delete related records
+            DB::table('stock_in_unit_prices')
+                ->whereIn('stock_in_id', DB::table('stock_ins')->where('product_id', $product->id)->pluck('id'))
+                ->delete();
+            DB::table('stock_ins')->where('product_id', $product->id)->delete();
+            DB::table('stock_movements')->where('product_id', $product->id)->delete();
+            DB::table('stock_outs')->where('product_id', $product->id)->delete();
+            DB::table('branch_stocks')->where('product_id', $product->id)->delete();
+            DB::table('product_unit_type')->where('product_id', $product->id)->delete();
+            DB::table('product_serials')->where('product_id', $product->id)->delete();
+            DB::table('warranty_records')->where('product_id', $product->id)->delete();
+            DB::table('purchase_items')->where('product_id', $product->id)->delete();
+            DB::table('sale_items')->where('product_id', $product->id)->delete();
+            DB::table('refunds')->where('product_id', $product->id)->delete();
+
             $product->delete();
 
             if (request()->expectsJson()) {
@@ -1068,23 +1087,11 @@ class CashierDashboardController extends Controller
 
             return redirect()->route('cashier.products.index')->with('success', 'Product deleted successfully');
         } catch (\Throwable $e) {
-            $message = 'Failed to delete product.';
-
-            if ($e instanceof \Illuminate\Database\QueryException) {
-                $sqlState = $e->errorInfo[0] ?? null;
-                if ($sqlState === '23000') {
-                    $message = 'Cannot delete this product because it has related records (sales/stock/etc.).';
-                }
-            }
-
             if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $message,
-                ], 409);
+                return response()->json(['success' => false, 'message' => 'Failed to delete product: ' . $e->getMessage()], 409);
             }
 
-            return redirect()->route('cashier.products.index')->with('error', $message);
+            return redirect()->route('cashier.products.index')->with('error', 'Failed to delete product.');
         }
     }
 
@@ -2845,7 +2852,7 @@ class CashierDashboardController extends Controller
                 if ($typedName !== '') {
                     // Avoid double customer records: reuse existing customer if name matches.
                     $customer = Customer::query()
-                        ->whereRaw('LOWER(TRIM(COALESCE(full_name, name))) = ?', [mb_strtolower($typedName)])
+                        ->whereRaw('LOWER(TRIM(full_name)) = ?', [mb_strtolower($typedName)])
                         ->first();
                 } else {
                     $customer = null;
@@ -3352,7 +3359,7 @@ class CashierDashboardController extends Controller
                 'customers.max_credit_limit',
                 'customers.status',
                 'customers.created_at',
-                DB::raw('COALESCE(users.name, "Cashier") as created_by'),
+                DB::raw('COALESCE(users.name, "N/A") as created_by'),
                 DB::raw('COUNT(credits.id) as total_credits'),
                 DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                 DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),
