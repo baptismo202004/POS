@@ -280,6 +280,8 @@ class ProductController extends Controller
                         'warranty_coverage_months' => $validated['warranty_coverage_months'] ?? null,
                         'voltage_specs' => $validated['voltage_specs'] ?? null,
                         'status' => $validated['status'],
+                        'selling_price' => $validated['selling_price'] ?? null,
+                        'purchase_price' => $validated['purchase_price'] ?? null,
                     ];
 
                     if (! empty($validated['brand_id']) && ! is_numeric($validated['brand_id'])) {

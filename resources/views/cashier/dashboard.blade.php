@@ -825,6 +825,11 @@
                 </div>
             </div>
 
+            <a href="{{ route('cashier.sales.create') }}" class="cd-user-pill" style="text-decoration:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;gap:7px;padding:8px 16px;">
+                <i class="fas fa-cash-register" style="font-size:14px;"></i>
+                <span style="font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;">POS</span>
+            </a>
+
             <div class="dropdown">
                 <button class="cd-user-pill" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <div class="cd-avatar">

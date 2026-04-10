@@ -744,11 +744,6 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        // Check if the user has only 'view' permission for the 'products' module
-        if (Access::hasViewOnlyPermission($user, 'products')) {
-            return redirect()->route('cashier.products.index')->with('error', 'You do not have permission to add new products.');
-        }
-
         return view('cashier.sales.create', compact('branchId'));
     }
 
@@ -3599,13 +3594,13 @@ class CashierDashboardController extends Controller
                     }
 
                     if (Schema::hasTable('stock_ins')) {
-                        $stockInPrices = DB::table('stock_ins')
-                            ->where('product_id', (int) $product->id)
-                            ->where('branch_id', (int) $posBranchId)
-                            ->whereNotNull('unit_type_id')
-                            ->where('price', '>', 0)
-                            ->orderByDesc('id')
-                            ->get(['unit_type_id', 'price']);
+                        $stockInPrices = DB::table('stock_in_unit_prices')
+                            ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                            ->where('stock_ins.product_id', (int) $product->id)
+                            ->where('stock_ins.branch_id', (int) $posBranchId)
+                            ->where('stock_in_unit_prices.price', '>', 0)
+                            ->orderByDesc('stock_in_unit_prices.id')
+                            ->get(['stock_in_unit_prices.unit_type_id', 'stock_in_unit_prices.price']);
 
                         foreach ($stockInPrices as $r) {
                             $ut = (int) $r->unit_type_id;
@@ -3615,6 +3610,19 @@ class CashierDashboardController extends Controller
                             }
                             if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
                                 $unitPriceById[$ut] = $p;
+                            }
+                        }
+
+                        // Fallback to products.selling_price if no stock-in selling price exists
+                        if (empty(array_filter($unitPriceById))) {
+                            $sellingPrice = (float) (DB::table('products')->where('id', (int) $product->id)->value('selling_price') ?? 0);
+                            if ($sellingPrice > 0) {
+                                foreach ($unitRows as $row) {
+                                    $ut = (int) $row->unit_type_id;
+                                    if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
+                                        $unitPriceById[$ut] = $sellingPrice;
+                                    }
+                                }
                             }
                         }
                     }
@@ -3777,13 +3785,13 @@ class CashierDashboardController extends Controller
         }
 
         if (Schema::hasTable('stock_ins')) {
-            $stockInPrices = DB::table('stock_ins')
-                ->where('product_id', (int) $product->id)
-                ->where('branch_id', (int) $posBranchId)
-                ->whereNotNull('unit_type_id')
-                ->where('price', '>', 0)
-                ->orderByDesc('id')
-                ->get(['unit_type_id', 'price']);
+            $stockInPrices = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', (int) $product->id)
+                ->where('stock_ins.branch_id', (int) $posBranchId)
+                ->where('stock_in_unit_prices.price', '>', 0)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->get(['stock_in_unit_prices.unit_type_id', 'stock_in_unit_prices.price']);
 
             foreach ($stockInPrices as $r) {
                 $ut = (int) $r->unit_type_id;
@@ -3793,6 +3801,19 @@ class CashierDashboardController extends Controller
                 }
                 if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
                     $unitPriceById[$ut] = $p;
+                }
+            }
+
+            // Fallback to products.selling_price if no stock-in selling price exists
+            if (empty(array_filter($unitPriceById))) {
+                $sellingPrice = (float) ($product->selling_price ?? 0);
+                if ($sellingPrice > 0) {
+                    foreach ($unitRows as $row) {
+                        $ut = (int) $row->unit_type_id;
+                        if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
+                            $unitPriceById[$ut] = $sellingPrice;
+                        }
+                    }
                 }
             }
         }
@@ -3876,6 +3897,8 @@ class CashierDashboardController extends Controller
             $notes = $request->filled('notes') ? trim((string) $request->input('notes')) : null;
             $creditDueDate = $request->input('credit_due_date');
             $creditNotes = $request->input('credit_notes');
+            $cashTendered = $request->filled('cash_tendered') ? (float) $request->input('cash_tendered') : null;
+            $changeDue = $request->filled('change_due') ? (float) $request->input('change_due') : null;
             $items = $request->input('products');
 
             if (empty($items) || ! is_array($items)) {
@@ -3895,6 +3918,11 @@ class CashierDashboardController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+
+            if ($cashTendered !== null && Schema::hasColumn('sales', 'cash_tendered')) {
+                $salePayload['cash_tendered'] = $cashTendered;
+                $salePayload['change_due'] = $changeDue ?? 0;
+            }
 
             if ($notes !== null && $notes !== '' && Schema::hasColumn('sales', 'notes')) {
                 $salePayload['notes'] = $notes;
