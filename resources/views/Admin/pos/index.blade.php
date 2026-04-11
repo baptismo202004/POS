@@ -422,8 +422,9 @@
                                                         <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
                                                     </h6>
                                                     <div class="mb-2">
-                                                        <label class="form-label">Customer Name:</label>
-                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
+                                                        <label class="form-label">Customer Name: <span class="text-danger">*</span></label>
+                                                        <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name" required>
+                                                        <div class="invalid-feedback">Customer name is required for credit payments.</div>
                                                     </div>
                                                     <div class="mb-2">
                                                         <label class="form-label">Date:</label>
@@ -828,6 +829,25 @@
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const itemsList = cart.map(item => `${item.name} x${item.quantity} = ₱${(item.price * item.quantity).toFixed(2)}`).join('\n');
+
+            // Validate customer name for credit payments
+            const paymentMethodSelected = document.querySelector('input[name="payment_method"]:checked').value;
+            if (paymentMethodSelected === 'credit') {
+                const customerNameVal = document.getElementById('customer_name').value.trim();
+                if (!customerNameVal) {
+                    const nameInput = document.getElementById('customer_name');
+                    nameInput.classList.add('is-invalid');
+                    nameInput.focus();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Customer Name Required',
+                        text: 'Please enter the customer name for credit payments.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                    return;
+                }
+                document.getElementById('customer_name').classList.remove('is-invalid');
+            }
             
             Swal.fire({
                 title: 'Process Order?',
@@ -960,6 +980,20 @@
                             timerProgressBar: true
                         });
                         window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                    } else if (data.redirect_url) {
+                        // Credit payment — redirect to credits management
+                        cart = [];
+                        updateCartDisplay();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Credit Sale Recorded!',
+                            text: data.message || 'Redirecting to credits...',
+                            confirmButtonColor: '#10b981',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            window.location.href = data.redirect_url;
+                        });
                     } else {
                         cart = [];
                         updateCartDisplay();

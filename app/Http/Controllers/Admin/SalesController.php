@@ -330,8 +330,9 @@ class SalesController extends Controller
         // Get date from request or default to today
         $selectedDate = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
         
-        // Get sales data for selected date
+        // Get sales data for selected date (exclude credit payments)
         $todaySales = Sale::whereDate('created_at', $selectedDate)
+            ->where('payment_method', '!=', 'credit')
             ->where(function ($q) {
                 $q->whereNull('voided')->orWhere('voided', false);
             })
@@ -387,19 +388,26 @@ class SalesController extends Controller
                 return $sale;
             });
         
-        // Get all branches today's sales
+        // Get all branches today's sales (exclude credit payments)
         $allBranchesTodaySales = Sale::whereDate('created_at', Carbon::today())
+            ->where('payment_method', '!=', 'credit')
             ->where(function ($q) {
                 $q->whereNull('voided')->orWhere('voided', false);
             })
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
-        
+
+        // Get today's credits
+        $todayCredits = \App\Models\Credit::whereDate('created_at', Carbon::today())
+            ->selectRaw('COUNT(*) as total_credits, COALESCE(SUM(credit_amount), 0) as total_amount')
+            ->first();
+
         return view('Admin.sales.management', compact(
             'todaySales',
-            'todayItems', 
+            'todayItems',
             'monthlySales',
             'allBranchesTodaySales',
+            'todayCredits',
             'recentSales',
             'selectedDate'
         ));

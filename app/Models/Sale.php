@@ -21,7 +21,6 @@ class Sale extends Model
         'status',
         'reference_number',
         'receipt_group_id',
-        'notes',
     ];
 
     public function saleItems()

@@ -263,7 +263,7 @@ body{background:var(--bg);font-family:'Segoe UI',sans-serif;}
                         <td>
                             <div style="font-weight:600;font-size:13px;">{{ $b->branch_name }}</div>
                             <div class="bi-bar-wrap" style="width:100px;">
-                                <div class="bi-bar" style="width:{{ min(100, round($b->branch_sales / $maxBranchSales * 100)) }}%"></div>
+                                <div class="bi-bar" style="width:{{ $maxBranchSales > 0 ? min(100, round($b->branch_sales / $maxBranchSales * 100)) : 0 }}%"></div>
                             </div>
                         </td>
                         <td class="text-end money-g">₱{{ number_format($b->branch_sales, 0) }}</td>

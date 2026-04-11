@@ -521,6 +521,14 @@ class PosAdminController extends Controller
             $creditDueDate = $data['credit_due_date'] ?? null;
             $creditNotes = $data['credit_notes'] ?? null;
 
+            // Customer name is required for credit payments
+            if ($paymentMethod === 'credit' && empty($customerName)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer name is required for credit payments.',
+                ], 422);
+            }
+
             Log::info('[POS_STORE] Processing order with '.count($items)." items, total: ₱{$total}");
             Log::info("[POS_STORE] Customer ID: '{$customerId}'");
             Log::info("[POS_STORE] Customer name: '{$customerName}'");
@@ -534,14 +542,36 @@ class PosAdminController extends Controller
                 $branchId = $firstItem['branch_id'] ?? $branchId;
             }
 
+            // For credit payments, resolve or create the customer BEFORE creating the sale
+            if ($paymentMethod === 'credit' && $customerId === null && $customerName) {
+                $existingCustomer = \App\Models\Customer::whereRaw('LOWER(TRIM(full_name)) = ?', [mb_strtolower(trim($customerName))])->first();
+                if ($existingCustomer) {
+                    $customerId = $existingCustomer->id;
+                } else {
+                    $customerId = DB::table('customers')->insertGetId([
+                        'full_name' => $customerName,
+                        'email' => null,
+                        'phone' => null,
+                        'address' => null,
+                        'max_credit_limit' => 0,
+                        'status' => 'active',
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
             // Create sale record with all required fields
+            $referenceNumber = 'SA-'.date('Y').'-'.str_pad(Sale::max('id') + 1, 6, '0', STR_PAD_LEFT);
             $saleData = [
                 'cashier_id' => Auth::id(),
-                'employee_id' => Auth::id(), // Use the numeric user ID
+                'employee_id' => Auth::id(),
                 'branch_id' => $branchId,
                 'total_amount' => $total,
-                'tax' => 0, // No tax for now
-                'payment_method' => $paymentMethod, // Use payment method from request
+                'tax' => 0,
+                'payment_method' => $paymentMethod,
+                'reference_number' => $referenceNumber,
             ];
 
             if ($paymentMethod === 'cash') {
@@ -556,6 +586,10 @@ class PosAdminController extends Controller
             }
 
             $sale = Sale::create($saleData);
+
+            // Set receipt_group_id to the sale's own id for single-transaction grouping
+            $sale->receipt_group_id = $sale->id;
+            $sale->save();
 
             Log::info("[POS_STORE] Created sale record: {$sale->id}");
 
@@ -667,31 +701,15 @@ class PosAdminController extends Controller
                 $nextNumber = $lastCredit ? $lastCredit->id + 1 : 1;
                 $referenceNumber = 'CR-'.date('Y').'-'.str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
-                // Determine customer_id for credit
-                $creditCustomerId = $customerId;
-                if (! $creditCustomerId && $customerName) {
-                    // Try to find existing customer by name
-                    $existingCustomer = DB::table('customers')->where('full_name', $customerName)->first();
-                    if ($existingCustomer) {
-                        $creditCustomerId = $existingCustomer->id;
-                    } else {
-                        // Create new customer record
-                        $creditCustomerId = DB::table('customers')->insertGetId([
-                            'full_name' => $customerName,
-                            'email' => null,
-                            'phone' => null,
-                            'address' => null,
-                            'max_credit_limit' => 0,
-                            'status' => 'active',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
+                // customer_id already resolved above — update sale record to ensure it's set
+                if ($customerId && ! $sale->customer_id) {
+                    $sale->customer_id = $customerId;
+                    $sale->save();
                 }
 
                 Credit::create([
                     'reference_number' => $referenceNumber,
-                    'customer_id' => $creditCustomerId,
+                    'customer_id' => $customerId,
                     'sale_id' => $sale->id,
                     'cashier_id' => Auth::id(),
                     'branch_id' => $branchId,
@@ -722,6 +740,12 @@ class PosAdminController extends Controller
             if ($paymentMethod === 'cash') {
                 $response['receipt_url'] = route('admin.sales.receipt', $sale);
                 $response['auto_receipt'] = true;
+            }
+
+            // For credit payments, redirect to credits management
+            if ($paymentMethod === 'credit') {
+                $response['redirect_url'] = route('admin.credits.index');
+                $response['message'] = 'Credit sale recorded successfully.';
             }
 
             return response()->json($response);
@@ -791,6 +815,7 @@ class PosAdminController extends Controller
                 }
             }
 
+            $referenceNumber = 'SA-'.date('Y').'-'.str_pad(Sale::max('id') + 1, 6, '0', STR_PAD_LEFT);
             $saleData = [
                 'cashier_id' => Auth::id(),
                 'employee_id' => Auth::id(),
@@ -798,6 +823,7 @@ class PosAdminController extends Controller
                 'total_amount' => $total,
                 'tax' => 0,
                 'payment_method' => $paymentMethod,
+                'reference_number' => $referenceNumber,
             ];
 
             if ($notes !== null && $notes !== '' && \Illuminate\Support\Facades\Schema::hasColumn('sales', 'notes')) {
@@ -831,6 +857,10 @@ class PosAdminController extends Controller
             }
 
             $sale = Sale::create($saleData);
+
+            // Set receipt_group_id to the sale's own id for single-transaction grouping
+            $sale->receipt_group_id = $sale->id;
+            $sale->save();
 
             if ($shouldBePending) {
                 $sale->status = 'pending';

@@ -239,6 +239,23 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="col-xl-4 col-md-6 mb-4">
+                                <div class="card border-left-danger shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Credits Today</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">₱{{ number_format($todayCredits->total_amount ?? 0, 2) }}</div>
+                                                <div class="text-xs text-muted mt-1">{{ $todayCredits->total_credits ?? 0 }} credit transaction(s)</div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-credit-card fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -309,7 +326,7 @@
                             <tfoot>
                                 <tr class="table-primary">
                                     <th colspan="4" class="text-right">Grand Total:</th>
-                                    <th>₱{{ number_format($recentSales->sum('total_amount'), 2) }}</th>
+                                    <th>₱{{ number_format($recentSales->where('payment_method', '!=', 'credit')->sum('total_amount'), 2) }}</th>
                                     <th colspan="2">{{ $recentSales->count() }} Sales</th>
                                     <th></th>
                                 </tr>
