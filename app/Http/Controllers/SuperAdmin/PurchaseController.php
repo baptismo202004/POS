@@ -545,6 +545,20 @@ class PurchaseController extends Controller
 
                     $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
 
+                    // Update branch_id on product_serials linked to this purchase item's product
+                    // for products that have serial tracking
+                    $categoryType = DB::table('categories')
+                        ->join('products', 'products.category_id', '=', 'categories.id')
+                        ->where('products.id', $productId)
+                        ->value('categories.category_type');
+
+                    if ($categoryType === 'electronic_with_serial') {
+                        \App\Models\ProductSerial::where('product_id', $productId)
+                            ->where('purchase_id', $purchase->id)
+                            ->whereNull('branch_id')
+                            ->update(['branch_id' => $branchId]);
+                    }
+
                     if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
                         $key = $productId.'_'.$unitTypeId;
                         $sellingPrice = isset($sellingPrices[$key]) ? (float) $sellingPrices[$key] : null;
@@ -648,5 +662,4 @@ class PurchaseController extends Controller
 
         return response()->json(['success' => true, 'pricing_items' => $pricingItems]);
     }
-
 }

@@ -695,9 +695,11 @@
             <p class="text-muted mb-0">Fast sales processing with barcode scanning support</p>
         </div>
         <div class="d-flex gap-2">
+            @if(($branchType ?? 'grocery') !== 'grocery')
             <a href="{{ route('cashier.pos.electronics') }}" class="btn btn-outline-primary">
                 <i class="fas fa-plug me-2"></i>Electronic Devices
             </a>
+            @endif
             <a href="{{ route('cashier.sales.index') }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Sales
             </a>

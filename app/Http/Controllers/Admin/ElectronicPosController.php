@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Log;
 
 class ElectronicPosController extends Controller
 {
-    public function index()
+    public function index(): \Illuminate\View\View
     {
-        return view('Admin.pos.electronics');
+        $branchType = optional(\Illuminate\Support\Facades\Auth::user()->branch)->branch_type ?? 'electronics';
+
+        return view('Admin.pos.electronics', compact('branchType'));
     }
 
     public function lookup(Request $request)
@@ -27,7 +29,7 @@ class ElectronicPosController extends Controller
 
         Log::info("[POS_ELECTRONICS_LOOKUP] keyword='{$keyword}', mode='{$mode}'");
 
-        if (!empty($keyword)) {
+        if (! empty($keyword)) {
             $request->validate(['barcode' => 'required|string']);
         }
 
@@ -52,7 +54,7 @@ class ElectronicPosController extends Controller
                 ->select('products.*');
         }
 
-        if (!empty($keyword)) {
+        if (! empty($keyword)) {
             $matchesQuery->where(function ($q) use ($keyword) {
                 $q->where('products.product_name', 'LIKE', "%{$keyword}%")
                     ->orWhere('products.barcode', 'LIKE', "%{$keyword}%")
@@ -61,6 +63,7 @@ class ElectronicPosController extends Controller
         }
 
         $matches = $matchesQuery
+            ->with('category')
             ->orderBy('products.product_name')
             ->limit(100)
             ->get();
@@ -90,6 +93,7 @@ class ElectronicPosController extends Controller
                 ->pluck('conversion_factor', 'unit_type_id')
                 ->map(function ($v) {
                     $f = (float) $v;
+
                     return $f > 0 ? $f : 1.0;
                 })
                 ->toArray();
@@ -124,7 +128,7 @@ class ElectronicPosController extends Controller
                         }
 
                         $factor = isset($unitFactors[$unitTypeId]) ? (float) $unitFactors[$unitTypeId] : 1.0;
-                        if (!is_finite($factor) || $factor <= 0) {
+                        if (! is_finite($factor) || $factor <= 0) {
                             $factor = 1.0;
                         }
 
@@ -179,6 +183,8 @@ class ElectronicPosController extends Controller
                 'price' => $defaultPrice,
                 'total_stock' => (int) $totalStock,
                 'branches' => $branches,
+                'category_type' => $p->category?->category_type ?? 'non_electronic',
+                'warranty_coverage_months' => (int) ($p->warranty_coverage_months ?? 0),
             ];
         })->values();
 

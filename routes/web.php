@@ -1147,6 +1147,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}/lifecycle', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'lifecycle'])->name('purchases.lifecycle');
         Route::post('/purchases/{purchase}/mark-paid', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'markPaid'])->name('purchases.mark-paid');
         Route::post('/purchases/{purchase}/auto-stockin', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'autoStockIn'])->name('purchases.auto-stockin');
+        Route::get('/purchases/{purchase}/auto-stockin-check', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'autoStockInCheck'])->name('purchases.auto-stockin-check');
         Route::post('/purchases/check-serials', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'checkSerials'])->name('purchases.check-serials');
         Route::get('/purchases/electronics/panel', [\App\Http\Controllers\SuperAdmin\PurchaseElectronicsController::class, 'panel'])->name('purchases.electronics.panel');
         Route::get('/products/{product}/unit-types', [\App\Http\Controllers\SuperAdmin\PurchaseController::class, 'getProductUnitTypes'])->name('products.unit-types');
@@ -1305,18 +1306,16 @@ Route::middleware('auth')->group(function () {
         // Customer routes
         Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
-        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-        Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
-        Route::put('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
         Route::post('customers/make-payment', [CustomerController::class, 'makePayment'])->name('customers.make-payment');
         Route::get('customers/credit-limits', [CustomerController::class, 'creditLimits'])->name('customers.credit-limits');
         Route::get('customers/payment-history', [CustomerController::class, 'paymentHistory'])->name('customers.payment-history');
-
-        // Customer Sales route (scoped under customers to avoid conflicting with admin sales routes)
         Route::get('customers/sales', [\App\Http\Controllers\Admin\SalesController::class, 'index'])->name('customers.sales.index');
         Route::get('customers/sales/{sale}', [\App\Http\Controllers\Admin\SaleController::class, 'show'])->name('customers.sales.show');
         Route::get('customers/sales/{sale}/receipt', [\App\Http\Controllers\Admin\SaleController::class, 'receipt'])->name('customers.sales.receipt');
         Route::get('customers/sales/{sale}/items', [\App\Http\Controllers\Admin\SalesController::class, 'getSaleItems'])->name('customers.sales.items');
+        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+        Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::put('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
 
         // Expenses routes
         Route::resource('expenses', \App\Http\Controllers\Admin\ExpenseController::class);

@@ -735,7 +735,7 @@ class CashierDashboardController extends Controller
         }
     }
 
-    public function salesCreate()
+    public function salesCreate(): \Illuminate\View\View
     {
         $user = Auth::user();
         $branchId = $user->branch_id;
@@ -744,7 +744,9 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        return view('cashier.sales.create', compact('branchId'));
+        $branchType = optional($user->branch)->branch_type ?? 'grocery';
+
+        return view('cashier.sales.create', compact('branchId', 'branchType'));
     }
 
     public function salesReports(Request $request)
@@ -1088,7 +1090,7 @@ class CashierDashboardController extends Controller
             return redirect()->route('cashier.products.index')->with('success', 'Product deleted successfully');
         } catch (\Throwable $e) {
             if (request()->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Failed to delete product: ' . $e->getMessage()], 409);
+                return response()->json(['success' => false, 'message' => 'Failed to delete product: '.$e->getMessage()], 409);
             }
 
             return redirect()->route('cashier.products.index')->with('error', 'Failed to delete product.');
@@ -3477,9 +3479,11 @@ class CashierDashboardController extends Controller
     }
 
     // POS Methods for Cashier
-    public function posElectronics()
+    public function posElectronics(): \Illuminate\View\View
     {
-        return view('cashier.pos.electronics');
+        $branchType = optional(Auth::user()->branch)->branch_type ?? 'electronics';
+
+        return view('cashier.pos.electronics', compact('branchType'));
     }
 
     public function posLookup(Request $request)
@@ -3560,7 +3564,7 @@ class CashierDashboardController extends Controller
                     });
                 })
                 ->with(['unitTypes', 'category'])
-                ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number'])
+                ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number', 'products.category_id', 'products.warranty_coverage_months', 'products.warranty_type'])
                 ->map(function ($product) use ($posBranchId, $inventory) {
                     $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 

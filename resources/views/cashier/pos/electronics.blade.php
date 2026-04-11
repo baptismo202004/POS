@@ -46,9 +46,7 @@
         .order-summary {
             position: sticky;
             top: 20px;
-            max-height: calc(100vh - 60px);
-            overflow-y: auto;
-            overflow-x: hidden;
+            height: fit-content;
         }
 
         .order-summary .card {
@@ -56,13 +54,9 @@
         }
 
         #order-items {
-            max-height: 260px;
-            overflow-y: auto;
-            overflow-x: hidden;
             padding: 14px 18px;
         }
-        #order-items::-webkit-scrollbar { width: 3px; }
-        #order-items::-webkit-scrollbar-thumb { background: rgba(13,71,161,0.15); border-radius: 4px; }
+        #order-items::-webkit-scrollbar { display: none; }
 
         #total-amount {
             font-family: 'Nunito', sans-serif;
@@ -301,9 +295,11 @@
                 <button class="btn btn-outline-primary" onclick="toggleSidebar()" id="header-sidebar-toggle">
                     <i class="fas fa-chevron-left me-2" id="header-toggle-icon"></i>Toggle Sidebar
                 </button>
+                @if(($branchType ?? 'electronics') !== 'electronics')
                 <a href="{{ route('cashier.sales.create') }}" class="btn btn-outline-primary">
                     <i class="fas fa-cash-register me-2"></i>Standard POS
                 </a>
+                @endif
                 <a href="{{ route('cashier.sales.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>
@@ -596,6 +592,19 @@
                 }
                 resultsCount.textContent = `${items.length} products`;
 
+                // Normalize items — ensure warranty_coverage_months and category_type are always set
+                items = items.map(it => ({
+                    ...it,
+                    product_id: it.product_id ?? it.id,
+                    category_type: it.category_type ?? 'non_electronic',
+                    warranty_coverage_months: parseInt(it.warranty_coverage_months) || 0,
+                }));
+
+                // Validation log — confirm warranty_coverage_months was fetched for each product
+                items.forEach(it => {
+                    console.log(`[POS] Product fetched: "${it.product_name || it.name}" | category_type: ${it.category_type} | warranty_coverage_months: ${it.warranty_coverage_months}`);
+                });
+
                 if(items.length === 0){
                     tableBody.innerHTML = `
                         <tr>
@@ -751,9 +760,11 @@
 
             const newEntry = {
                 serial_number: '',
-                warranty_months: 0,
+                warranty_months: parseInt(it && it.warranty_coverage_months) || 0,
                 in_stock: inStock,
             };
+
+            console.log(`[POS] Added to cart: "${name}" | warranty_months set to: ${newEntry.warranty_months} (from product warranty_coverage_months: ${it ? it.warranty_coverage_months : 'product not found in cache'})`);
 
             if (sameGroup) {
                 sameGroup.entries = Array.isArray(sameGroup.entries) ? sameGroup.entries : [];
@@ -1129,7 +1140,9 @@
             if (!item || !item.entries || !item.entries[entryIndex]) return;
             item.entries[entryIndex].warranty_activated = isChecked;
             if (isChecked && !item.entries[entryIndex].warranty_months) {
-                item.entries[entryIndex].warranty_months = 12;
+                // Use the product's warranty_coverage_months from lookup data, fallback to 12
+                const productData = window.__electronicsItemsById && window.__electronicsItemsById[item.product_id];
+                item.entries[entryIndex].warranty_months = parseInt(productData && productData.warranty_coverage_months) || 12;
                 updateCartDisplay();
             }
         };

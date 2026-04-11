@@ -314,7 +314,12 @@
                 </h1>
                 <p class="text-muted mb-0">Fast sales processing with barcode scanning support</p>
             </div>
-            <div>
+            <div class="d-flex gap-2">
+                @if(($branchType ?? 'grocery') !== 'grocery')
+                <a href="{{ route('pos.electronics.index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-plug me-2"></i>Electronics POS
+                </a>
+                @endif
                 <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-primary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>

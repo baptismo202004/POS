@@ -417,9 +417,20 @@
                     </tr>`;
             }).join('');
 
+            const branchOptions = @json(\App\Models\Branch::select('id','branch_name')->get());
+            const branchSelectHtml = `
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0D47A1;display:block;margin-bottom:6px;">Destination Branch <span style="color:#ef4444;">*</span></label>
+                    <select id="stockin-branch-select" style="width:100%;padding:9px 12px;border:1.5px solid rgba(25,118,210,0.25);border-radius:9px;font-size:13px;font-weight:700;color:#0D47A1;outline:none;">
+                        <option value="">— Select Branch —</option>
+                        ${branchOptions.map(b => `<option value="${b.id}">${b.branch_name}</option>`).join('')}
+                    </select>
+                </div>`;
+
             Swal.fire({
                 title: '<span style="font-family:Nunito,sans-serif;font-weight:900;color:#0D47A1;">Set Selling Prices</span>',
                 html: `
+                    ${branchSelectHtml}
                     <p style="font-size:13px;color:#6b84aa;margin-bottom:14px;">
                         Review and set selling prices. New products require a price. Existing products will update if changed.
                     </p>
@@ -443,6 +454,12 @@
                 cancelButtonColor: '#6b84aa',
                 width: '680px',
                 preConfirm: () => {
+                    const branchId = document.getElementById('stockin-branch-select').value;
+                    if (!branchId) {
+                        Swal.showValidationMessage('Please select a destination branch.');
+                        return false;
+                    }
+
                     const inputs = Swal.getPopup().querySelectorAll('.selling-price-input');
                     const prices = {};
                     let valid = true;
@@ -467,16 +484,16 @@
                         return false;
                     }
 
-                    return prices;
+                    return { branch_id: parseInt(branchId), selling_prices: prices };
                 }
             }).then(result => {
                 if (result.isConfirmed) {
-                    doAutoStockIn(result.value);
+                    doAutoStockIn(result.value.branch_id, result.value.selling_prices);
                 }
             });
         }
 
-        function doAutoStockIn(sellingPrices) {
+        function doAutoStockIn(branchId, sellingPrices) {
             Swal.fire({ title: 'Stocking in...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             fetch('{{ route('superadmin.purchases.auto-stockin', $purchase->id) }}', {
@@ -486,7 +503,7 @@
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ selling_prices: sellingPrices }),
+                body: JSON.stringify({ branch_id: branchId, selling_prices: sellingPrices }),
             })
             .then(r => r.json())
             .then(data => {

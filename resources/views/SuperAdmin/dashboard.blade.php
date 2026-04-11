@@ -1518,6 +1518,9 @@
             <div class="dash-header mb-1">Good Morning, {{ auth()->user()->name ?? 'User' }}</div>
             <div class="text-muted small">Your performance overview for today</div>
         </div>
+        <a href="{{ route('pos.index') }}" class="btn btn-primary d-inline-flex align-items-center gap-2" style="border-radius:10px;font-weight:700;padding:9px 18px;background:linear-gradient(135deg,#0D47A1,#1976D2);border:none;box-shadow:0 4px 14px rgba(13,71,161,0.28);">
+            <i class="fas fa-cash-register"></i> POS Grocery
+        </a>
     </div>
 
     <!-- Static Dashboard Layout -->

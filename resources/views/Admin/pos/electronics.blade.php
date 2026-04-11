@@ -352,9 +352,11 @@
                 <button class="btn btn-outline-primary" onclick="toggleSidebar()" id="header-sidebar-toggle">
                     <i class="fas fa-chevron-left me-2" id="header-toggle-icon"></i>Toggle Sidebar
                 </button>
+                @if(($branchType ?? 'electronics') !== 'electronics')
                 <a href="{{ route('pos.index') }}" class="btn btn-outline-primary">
                     <i class="fas fa-cash-register me-2"></i>Standard POS
                 </a>
+                @endif
                 <a href="{{ route('admin.sales.management.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Sales
                 </a>
