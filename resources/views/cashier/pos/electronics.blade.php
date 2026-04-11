@@ -936,78 +936,42 @@
             })
             .then(r => r.json())
             .then(data => {
+                console.log('[RECEIPT] Raw response data:', data);
+                console.log('[RECEIPT] data.success:', data.success);
+                console.log('[RECEIPT] data.receipt_pdf_url:', data.receipt_pdf_url);
+                console.log('[RECEIPT] data.receipt_url:', data.receipt_url);
+
                 if (data.success) {
-                    const receiptUrl = data.receipt_url;
                     const receiptPdfUrl = data.receipt_pdf_url;
-                    const total = cart.reduce((sum, item) => sum + (item.price * ((item.entries || []).length || 0)), 0);
+                    const receiptUrl = data.receipt_url;
 
-                    if (receiptPdfUrl) {
-                        cart = [];
-                        clearCustomerDetails();
-                        updateCartDisplay();
-                        search('list');
-                        Swal.fire({ icon: 'success', title: 'Order Saved!', text: 'Opening receipt PDF...', timer: 1500, showConfirmButton: false })
-                            .then(() => window.open(receiptPdfUrl, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes'));
-                        return;
-                    }
+                    console.log('[RECEIPT] Order successful. Clearing cart...');
+                    cart = [];
+                    clearCustomerDetails();
+                    updateCartDisplay();
+                    search('list');
 
-                    if (data.auto_receipt && receiptUrl) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Payment Confirmation',
-                            html: `
-                                <div class="text-start">
-                                    <div class="mb-2"><strong>Total:</strong> ₱${Number(total || 0).toFixed(2)}</div>
-                                    <label class="form-label">Amount Paid</label>
-                                    <input id="amount_paid" type="number" min="0" step="0.01" class="form-control" placeholder="Enter amount paid">
-                                    <div class="mt-2" id="change_display" style="font-weight:700; color:#2563eb;">Change: ₱0.00</div>
-                                </div>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'Confirm & Open Receipt',
-                            cancelButtonText: 'Cancel',
-                            confirmButtonColor: '#10b981',
-                            cancelButtonColor: '#6b7280',
-                            didOpen: () => {
-                                const input = document.getElementById('amount_paid');
-                                const changeEl = document.getElementById('change_display');
-                                const compute = () => {
-                                    const paid = parseFloat(input.value || '0') || 0;
-                                    const change = paid - (parseFloat(total || 0) || 0);
-                                    changeEl.textContent = `Change: ₱${(change > 0 ? change : 0).toFixed(2)}`;
-                                };
-                                input.addEventListener('input', compute);
-                                input.focus();
-                                compute();
-                            },
-                            preConfirm: () => {
-                                const paid = parseFloat(document.getElementById('amount_paid').value || '0') || 0;
-                                if (paid < (parseFloat(total || 0) || 0)) {
-                                    Swal.showValidationMessage('Amount paid is less than total.');
-                                    return false;
-                                }
-                                return { paid };
+                    console.log('[RECEIPT] Showing success Swal. Will navigate after dismiss...');
+                    Swal.fire({ icon: 'success', title: 'Order Saved!', text: data.message || 'Order has been processed successfully.', timer: 1500, showConfirmButton: false })
+                        .then(() => {
+                            console.log('[RECEIPT] Swal dismissed. Attempting to open receipt...');
+                            if (receiptPdfUrl) {
+                                console.log('[RECEIPT] Navigating to receipt_pdf_url:', receiptPdfUrl);
+                                window.location.href = receiptPdfUrl;
+                            } else if (receiptUrl) {
+                                console.log('[RECEIPT] Navigating to receipt_url:', receiptUrl);
+                                window.location.href = receiptUrl;
+                            } else {
+                                console.warn('[RECEIPT] No receipt URL returned from server. Receipt cannot be opened.');
                             }
-                        }).then((result) => {
-                            if (!result.isConfirmed) return;
-                            cart = [];
-                            clearCustomerDetails();
-                            updateCartDisplay();
-                            search('list');
-                            window.open(receiptUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                         });
-                    } else {
-                        cart = [];
-                        clearCustomerDetails();
-                        updateCartDisplay();
-                        search('list');
-                        Swal.fire({ icon: 'success', title: 'Order Completed!', text: 'Order has been processed successfully.'});
-                    }
                 } else {
+                    console.error('[RECEIPT] Order failed:', data.message);
                     Swal.fire({ icon: 'error', title: 'Order Failed', text: data.message || 'There was an error processing your order.'});
                 }
             })
-            .catch(() => {
+            .catch((err) => {
+                console.error('[RECEIPT] Fetch/parse error:', err);
                 Swal.fire({ icon: 'error', title: 'Order Failed', text: 'Network error. Please try again.'});
             });
         }

@@ -4119,10 +4119,10 @@ class CashierDashboardController extends Controller
             $receiptUrl = null;
             $autoReceipt = $paymentMethod === 'cash';
 
-            $receiptPdfUrl = route('cashier.pos.receipt.pdf', $sale->id);
+            $receiptPdfUrl = route('admin.sales.receipt.pdf', $sale->id);
 
             if ($autoReceipt) {
-                $receiptUrl = route('cashier.pos.receipt', $sale->id);
+                $receiptUrl = route('admin.sales.receipt', $sale->id);
             }
 
             return response()->json([

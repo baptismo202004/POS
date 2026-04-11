@@ -1240,9 +1240,6 @@
                 console.log('Response data:', data);
                 
                 if (data.success) {
-                    // TODO: Update serial numbers as sold once route is created
-                    // For now, serial numbers will be updated by backend during order processing
-                    
                     cart = [];
                     clearCustomerDetails();
                     updateCartDisplay();
@@ -1251,7 +1248,11 @@
                         : data.message || 'Electronic items purchase completed successfully.';
                     const successTitle = isOrderMode ? 'Sales Order Created!' : 'Order Saved!';
                     
-                    Swal.fire({ icon: 'success', title: successTitle, text: successMessage});
+                    Swal.fire({ icon: 'success', title: successTitle, text: successMessage }).then(() => {
+                        if (!isOrderMode && data.receipt_pdf_url) {
+                            window.open(data.receipt_pdf_url, '_blank');
+                        }
+                    });
                     search('list');
                 } else {
                     console.log('Order failed:', data);

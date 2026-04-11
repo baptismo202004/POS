@@ -1019,12 +1019,15 @@ class PosAdminController extends Controller
                             ], 422);
                         }
                         if ((int) $serial->branch_id !== (int) $branchId) {
-                            DB::rollBack();
+                            // Allow serials with null branch_id (stocked in before branch tracking was added)
+                            if ($serial->branch_id !== null) {
+                                DB::rollBack();
 
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Serial number '{$serialNumber}' does not belong to the selected branch.",
-                            ], 422);
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => "Serial number '{$serialNumber}' does not belong to the selected branch.",
+                                ], 422);
+                            }
                         }
                         if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                             DB::rollBack();
