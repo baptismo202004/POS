@@ -833,7 +833,13 @@ class InventoryController extends Controller
 
             $movements = DB::table('stock_movements')
                 ->leftJoin('branches', 'stock_movements.branch_id', '=', 'branches.id')
+                ->leftJoin('stock_ins', function ($join) {
+                    $join->on('stock_ins.purchase_id', '=', 'stock_movements.source_id')
+                        ->on('stock_ins.product_id', '=', 'stock_movements.product_id')
+                        ->where('stock_movements.source_type', '=', 'purchases');
+                })
                 ->where('stock_movements.product_id', $productId)
+                ->whereNotIn('stock_movements.movement_type', ['sale'])
                 ->select([
                     'stock_movements.movement_type',
                     'stock_movements.quantity_base',
@@ -841,12 +847,13 @@ class InventoryController extends Controller
                     'stock_movements.source_id',
                     'stock_movements.created_at',
                     'branches.branch_name',
+                    'stock_ins.price as stock_in_price',
                 ])
                 ->orderByDesc('stock_movements.created_at')
                 ->limit(200)
                 ->get()
                 ->map(function ($row) {
-                    $type = in_array($row->movement_type, ['sale', 'transfer_out']) ? 'out' : 'in';
+                    $type = in_array($row->movement_type, ['transfer_out']) ? 'out' : 'in';
 
                     $reason = $row->movement_type;
                     if ($row->source_type === 'purchases' && $row->source_id) {
@@ -855,14 +862,12 @@ class InventoryController extends Controller
                         $reason = 'Manual Adjustment';
                     } elseif ($row->movement_type === 'transfer_in' || $row->movement_type === 'transfer_out') {
                         $reason = 'Transfer';
-                    } elseif ($row->movement_type === 'sale') {
-                        $reason = 'Sale';
                     }
 
                     return [
                         'type' => $type,
-                        'quantity' => (float) $row->quantity_base,
-                        'price' => null,
+                        'quantity' => (float) abs((float) $row->quantity_base),
+                        'price' => $row->stock_in_price,
                         'branch_name' => $row->branch_name ?? 'N/A',
                         'reason' => $reason,
                         'notes' => null,
@@ -877,6 +882,7 @@ class InventoryController extends Controller
                 ->where('sale_items.product_id', $productId)
                 ->select([
                     'sale_items.quantity',
+                    'sale_items.unit_price',
                     'sales.created_at',
                     'branches.branch_name',
                 ])
@@ -887,7 +893,7 @@ class InventoryController extends Controller
                     return [
                         'type' => 'out',
                         'quantity' => (int) $row->quantity,
-                        'price' => null,
+                        'price' => $row->unit_price,
                         'branch_name' => $row->branch_name ?? 'N/A',
                         'reason' => 'Sale',
                         'notes' => null,

@@ -122,6 +122,7 @@ Route::get('/cashier/products/{product}', [CashierDashboardController::class, 's
 Route::get('/cashier/products/{product}/edit', [CashierDashboardController::class, 'editProduct'])->middleware('auth')->name('cashier.products.edit');
 Route::put('/cashier/products/{product}', [CashierDashboardController::class, 'updateProduct'])->middleware('auth')->name('cashier.products.update');
 Route::post('/cashier/products/{product}/update-image', [CashierDashboardController::class, 'updateProductImage'])->middleware('auth')->name('cashier.products.updateImage');
+Route::delete('/cashier/products/{product}', [CashierDashboardController::class, 'destroyProduct'])->middleware('auth')->name('cashier.products.destroy');
 
 // Cashier Product Categories
 Route::get('/cashier/categories', [CashierDashboardController::class, 'categories'])->middleware('auth')->name('cashier.categories.index');

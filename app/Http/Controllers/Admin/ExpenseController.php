@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Expense;
-use App\Models\ExpenseCategory;
 use App\Http\Requests\Admin\StoreExpenseRequest;
 use App\Http\Requests\Admin\UpdateExpenseRequest;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
 
 class ExpenseController extends Controller
 {
@@ -38,7 +38,7 @@ class ExpenseController extends Controller
             $search = $request->search_input;
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('reference_number', 'like', "%{$search}%");
+                    ->orWhere('reference_number', 'like', "%{$search}%");
             });
         }
 
@@ -48,8 +48,8 @@ class ExpenseController extends Controller
         // Calculate summary data
         $todayExpenses = Expense::whereDate('expense_date', now()->today())->sum('amount');
         $monthlyExpenses = Expense::whereMonth('expense_date', now()->month)
-                                 ->whereYear('expense_date', now()->year)
-                                 ->sum('amount');
+            ->whereYear('expense_date', now()->year)
+            ->sum('amount');
         $totalExpenses = Expense::sum('amount');
 
         return view('Admin.expenses.index', compact('expenses', 'categories', 'todayExpenses', 'monthlyExpenses', 'totalExpenses'));
@@ -62,17 +62,7 @@ class ExpenseController extends Controller
     {
         $categories = ExpenseCategory::where('name', '!=', 'Purchases')->get();
         $suppliers = \App\Models\Supplier::all();
-        
-        // Debug: Check if suppliers exist
-        if ($suppliers->isEmpty()) {
-            \Log::info('No suppliers found in database');
-        } else {
-            \Log::info('Suppliers found: ' . $suppliers->count());
-            foreach ($suppliers as $supplier) {
-                \Log::info('Supplier: ' . $supplier->supplier_name);
-            }
-        }
-        
+
         return view('Admin.expenses.create', compact('categories', 'suppliers'));
     }
 
@@ -83,13 +73,25 @@ class ExpenseController extends Controller
     {
         $data = $request->validated();
 
-        // Handle new supplier creation
-        if (!empty($request->supplier_name)) {
-            // Check if supplier already exists
-            $supplier = \App\Models\Supplier::firstOrCreate([
-                'supplier_name' => trim($request->supplier_name)
-            ]);
-            $data['supplier_id'] = $supplier->id;
+        // Auto-create category if a new name was typed (value starts with "new:")
+        if (str_starts_with((string) $data['expense_category_id'], 'new:')) {
+            $newName = trim(substr($data['expense_category_id'], 4));
+            $category = \App\Models\ExpenseCategory::firstOrCreate(['name' => $newName]);
+            $data['expense_category_id'] = $category->id;
+        }
+
+        // supplier_id can be a numeric ID (existing) or a typed name string (new via select2 tags)
+        if (! empty($data['supplier_id'])) {
+            if (! is_numeric($data['supplier_id'])) {
+                $supplier = \App\Models\Supplier::firstOrCreate([
+                    'supplier_name' => trim($data['supplier_id']),
+                ]);
+                $data['supplier_id'] = $supplier->id;
+            } else {
+                $data['supplier_id'] = (int) $data['supplier_id'];
+            }
+        } else {
+            $data['supplier_id'] = null;
         }
 
         if ($request->hasFile('receipt')) {
@@ -107,6 +109,7 @@ class ExpenseController extends Controller
     public function show(Expense $expense)
     {
         $expense->load('category', 'supplier');
+
         return view('Admin.expenses.show', compact('expense'));
     }
 
@@ -118,6 +121,7 @@ class ExpenseController extends Controller
         $this->authorize('update-expense', $expense);
         $categories = ExpenseCategory::where('name', '!=', 'Purchases')->get();
         $suppliers = \App\Models\Supplier::all();
+
         return view('Admin.expenses.edit', compact('expense', 'categories', 'suppliers'));
     }
 
@@ -157,49 +161,49 @@ class ExpenseController extends Controller
 
         return redirect()->route('superadmin.admin.expenses.index')->with('success', 'Expense deleted successfully.');
     }
-    
+
     public function getTodaysExpenses()
     {
         $today = Carbon::today();
-        
+
         $expenses = Expense::with(['category'])
             ->whereDate('expense_date', $today)
             ->orderBy('expense_date', 'desc')
             ->get();
-        
+
         $expensesData = $expenses->map(function ($expense) {
             return [
                 'id' => $expense->id,
                 'created_at' => $expense->created_at,
                 'description' => $expense->description,
                 'amount' => $expense->amount,
-                'category' => $expense->category ? $expense->category->name : 'N/A'
+                'category' => $expense->category ? $expense->category->name : 'N/A',
             ];
         });
-        
+
         return response()->json(['expenses' => $expensesData]);
     }
-    
+
     public function getThisMonthExpenses()
     {
         $thisMonth = Carbon::now()->startOfMonth();
         $thisMonthEnd = Carbon::now()->endOfMonth();
-        
+
         $expenses = Expense::with(['category'])
             ->whereBetween('expense_date', [$thisMonth, $thisMonthEnd])
             ->orderBy('expense_date', 'desc')
             ->get();
-        
+
         $expensesData = $expenses->map(function ($expense) {
             return [
                 'id' => $expense->id,
                 'created_at' => $expense->created_at,
                 'description' => $expense->description,
                 'amount' => $expense->amount,
-                'category' => $expense->category ? $expense->category->name : 'N/A'
+                'category' => $expense->category ? $expense->category->name : 'N/A',
             ];
         });
-        
+
         return response()->json(['expenses' => $expensesData]);
     }
 }

@@ -637,7 +637,7 @@
                 <!-- Minimal filters for history (kept compact for modal) -->
                 <div class="row g-2 mb-3">
                     <div class="col-md-4">
-                        <input type="text" id="historySearchInput" class="form-control" placeholder="Search branch, reason or notes">
+                        <input type="text" id="historySearchInput" class="form-control" placeholder="Search branch or reason">
                     </div>
                     <div class="col-md-3">
                         <input type="date" id="historyDateInput" class="form-control">

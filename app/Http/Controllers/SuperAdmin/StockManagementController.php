@@ -410,6 +410,11 @@ class StockManagementController extends Controller
 
         $stockIns = DB::table('stock_movements')
             ->leftJoin('branches', 'stock_movements.branch_id', '=', 'branches.id')
+            ->leftJoin('stock_ins', function ($join) {
+                $join->on('stock_ins.purchase_id', '=', 'stock_movements.source_id')
+                    ->on('stock_ins.product_id', '=', 'stock_movements.product_id')
+                    ->where('stock_movements.source_type', '=', 'purchases');
+            })
             ->where('stock_movements.product_id', $productId)
             ->where('stock_movements.branch_id', $branchId)
             ->whereIn('stock_movements.movement_type', ['purchase', 'adjustment', 'transfer'])
@@ -420,6 +425,7 @@ class StockManagementController extends Controller
                 'stock_movements.source_id',
                 'stock_movements.created_at',
                 'branches.branch_name',
+                'stock_ins.price as stock_in_price',
             ])
             ->orderByDesc('stock_movements.created_at')
             ->limit(200)
@@ -434,7 +440,7 @@ class StockManagementController extends Controller
                 return [
                     'type' => $type,
                     'quantity' => (float) abs((float) $row->quantity),
-                    'price' => null,
+                    'price' => $row->stock_in_price,
                     'branch_name' => $row->branch_name ?? 'N/A',
                     'reason' => $reason,
                     'notes' => null,
@@ -443,7 +449,6 @@ class StockManagementController extends Controller
             });
 
         // 2) Sales stock-outs for this product and branch
-        // Keep this query minimal and avoid relying on optional columns
         $sales = DB::table('sales')
             ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
             ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
@@ -451,6 +456,7 @@ class StockManagementController extends Controller
             ->where('sales.branch_id', $branchId)
             ->select([
                 'sale_items.quantity',
+                'sale_items.unit_price',
                 'sales.created_at',
                 'branches.branch_name',
             ])
@@ -461,7 +467,7 @@ class StockManagementController extends Controller
                 return [
                     'type' => 'out',
                     'quantity' => (int) $row->quantity,
-                    'price' => null,
+                    'price' => $row->unit_price,
                     'branch_name' => $row->branch_name ?? 'N/A',
                     'reason' => 'Sale',
                     'notes' => null,

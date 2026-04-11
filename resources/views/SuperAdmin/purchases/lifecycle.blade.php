@@ -210,9 +210,14 @@ body{background:var(--bg);font-family:'Segoe UI',sans-serif;}
                     Purchased: {{ number_format($s['item']->quantity, 0) }} {{ $s['item']->unitType->unit_name ?? '' }}
                     · Unit Cost: ₱{{ number_format($s['item']->unit_cost, 2) }}
                     · Subtotal: ₱{{ number_format($s['item']->subtotal, 2) }}
-                    @php $catType = $s['item']->product->category->category_type ?? ''; @endphp
-                    @if(str_contains(strtolower($catType), 'electronic'))
+                    @php
+                        $catType = $s['item']->product->category->category_type ?? '';
+                        $catName = $s['item']->product->category->category_name ?? '';
+                    @endphp
+                    @if($catType === 'electronic_with_serial' || $catType === 'electronic_without_serial')
                         · <span class="bp bp-blue">Electronic</span>
+                    @elseif($catType === 'non_electronic' && $catName)
+                        · <span class="bp bp-gray">{{ $catName }}</span>
                     @endif
                 </div>
                 <div class="pl-item-stats">
