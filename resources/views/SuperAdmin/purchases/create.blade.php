@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             savedPurchaseId = data.purchase_id;
             savedPurchaseItems = data.items || [];
-            showStockInModal();
+            showStockInModal(data.branch_id || null);
         })
         .catch(() => {
             Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to save purchase. Please try again.' });
@@ -719,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function showStockInModal() {
+    function showStockInModal(preselectedBranchId) {
         const rows = document.getElementById('stockInPricingRows');
         rows.innerHTML = '';
 
@@ -727,6 +727,12 @@ document.addEventListener('DOMContentLoaded', function () {
             // No items info — skip straight to redirect
             redirectToPurchase();
             return;
+        }
+
+        // Pre-select branch from the purchase
+        if (preselectedBranchId) {
+            const branchSelect = document.getElementById('stockInBranchSelect');
+            if (branchSelect) { branchSelect.value = preselectedBranchId; }
         }
 
         savedPurchaseItems.forEach(item => {

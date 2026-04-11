@@ -234,6 +234,7 @@ class PurchaseController extends Controller
             $purchase = Purchase::create([
                 'purchase_date' => $validated['purchase_date'],
                 'supplier_id' => $validated['supplier_id'],
+                'cashier_id' => auth()->id(),
                 'total_cost' => $totalCost,
                 'payment_status' => $validated['payment_status'],
                 'reference_number' => ! empty($validated['reference_number']) ? $validated['reference_number'] : null,
@@ -292,6 +293,7 @@ class PurchaseController extends Controller
             return response()->json([
                 'success' => true,
                 'purchase_id' => $purchaseId,
+                'branch_id' => $validated['branch_id'] ?? null,
                 'items' => $items,
             ]);
         }
@@ -493,6 +495,11 @@ class PurchaseController extends Controller
     {
         $branchId = (int) request()->input('branch_id');
 
+        // Fall back to the branch already on the purchase record
+        if (! $branchId && $purchase->branch_id) {
+            $branchId = (int) $purchase->branch_id;
+        }
+
         if (! $branchId) {
             return response()->json(['success' => false, 'message' => 'Branch is required.'], 422);
         }
@@ -503,6 +510,10 @@ class PurchaseController extends Controller
 
         try {
             DB::transaction(function () use ($purchase, $branchId, $sellingPrices) {
+                // Save branch_id onto the purchase if not already set
+                if (! $purchase->branch_id) {
+                    $purchase->update(['branch_id' => $branchId]);
+                }
                 foreach ($purchase->items as $item) {
                     $productId = (int) $item->product_id;
                     $unitTypeId = (int) ($item->unit_type_id ?? 0);
