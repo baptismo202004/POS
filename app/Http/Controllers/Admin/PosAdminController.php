@@ -21,14 +21,18 @@ use Illuminate\Validation\Rule;
 
 class PosAdminController extends Controller
 {
-    public function index()
+    public function index(): \Illuminate\View\View
     {
-        return view('Admin.pos.index');
+        $branchType = optional(Auth::user()->branch)->branch_type ?? 'grocery';
+
+        return view('Admin.pos.index', compact('branchType'));
     }
 
-    public function electronicsIndex()
+    public function electronicsIndex(): \Illuminate\View\View
     {
-        return view('Admin.pos.electronics');
+        $branchType = optional(Auth::user()->branch)->branch_type ?? 'electronics';
+
+        return view('Admin.pos.electronics', compact('branchType'));
     }
 
     public function lookup(Request $request)
@@ -113,7 +117,7 @@ class PosAdminController extends Controller
                         ->select('products.*');
                 }
 
-                $matches = $matchesQuery->get();
+                $matches = $matchesQuery->with('category')->get();
                 Log::info('[POS_ADMIN_LOOKUP] Getting all products from stock_ins: '.count($matches).' products found');
             } else {
                 $matchesQuery = Product::query();
@@ -144,6 +148,7 @@ class PosAdminController extends Controller
                             ->orWhere('model_number', 'LIKE', "%{$keyword}%");
                     })
                     ->limit(20)
+                    ->with('category')
                     ->get();
                 Log::info('[POS_ADMIN_LOOKUP] Found '.count($matches)." products matching keyword: '{$keyword}'");
             }
@@ -321,6 +326,7 @@ class PosAdminController extends Controller
                     'price' => $defaultPrice,
                     'total_stock' => (int) $totalStock,
                     'warranty_coverage_months' => (int) ($p->warranty_coverage_months ?? 0),
+                    'category_type' => $p->category?->category_type ?? 'non_electronic',
                     'branches' => $branches,
                 ];
             })->values();
@@ -1013,12 +1019,15 @@ class PosAdminController extends Controller
                             ], 422);
                         }
                         if ((int) $serial->branch_id !== (int) $branchId) {
-                            DB::rollBack();
+                            // Allow serials with null branch_id (stocked in before branch tracking was added)
+                            if ($serial->branch_id !== null) {
+                                DB::rollBack();
 
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Serial number '{$serialNumber}' does not belong to the selected branch.",
-                            ], 422);
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => "Serial number '{$serialNumber}' does not belong to the selected branch.",
+                                ], 422);
+                            }
                         }
                         if (! in_array($serial->status, ['in_stock', 'purchased'], true)) {
                             DB::rollBack();

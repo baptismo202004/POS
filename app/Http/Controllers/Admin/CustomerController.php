@@ -26,7 +26,7 @@ class CustomerController extends Controller
                     'customers.full_name',
                     'customers.status',
                     'customers.created_at',
-                    DB::raw('COALESCE(users.name, "Admin") as created_by'),
+                    DB::raw('COALESCE(users.name, "N/A") as created_by'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                     DB::raw('COALESCE(SUM(credits.remaining_balance), 0) as outstanding_balance')
                 ])
@@ -66,7 +66,7 @@ class CustomerController extends Controller
                     'customers.max_credit_limit',
                     'customers.status',
                     'customers.created_at',
-                    DB::raw('COALESCE(users.name, "Admin") as created_by'),
+                    DB::raw('COALESCE(users.name, "N/A") as created_by'),
                     DB::raw('COUNT(credits.id) as total_credits'),
                     DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                     DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),

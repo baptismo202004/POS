@@ -735,7 +735,7 @@ class CashierDashboardController extends Controller
         }
     }
 
-    public function salesCreate()
+    public function salesCreate(): \Illuminate\View\View
     {
         $user = Auth::user();
         $branchId = $user->branch_id;
@@ -744,12 +744,9 @@ class CashierDashboardController extends Controller
             abort(403, 'No branch assigned to this cashier');
         }
 
-        // Check if the user has only 'view' permission for the 'products' module
-        if (Access::hasViewOnlyPermission($user, 'products')) {
-            return redirect()->route('cashier.products.index')->with('error', 'You do not have permission to add new products.');
-        }
+        $branchType = optional($user->branch)->branch_type ?? 'grocery';
 
-        return view('cashier.sales.create', compact('branchId'));
+        return view('cashier.sales.create', compact('branchId', 'branchType'));
     }
 
     public function salesReports(Request $request)
@@ -1052,18 +1049,8 @@ class CashierDashboardController extends Controller
         // Delegate to the SuperAdmin ProductController which has the full update logic
         $response = app(\App\Http\Controllers\SuperAdmin\ProductController::class)->update($request, $product);
 
-        $data = json_decode($response->getContent(), true);
-
-        if (! empty($data['success'])) {
-            return redirect()->route('cashier.products.index')
-                ->with('success', 'Product updated successfully.');
-        }
-
-        if (! empty($data['errors'])) {
-            return back()->withInput()->withErrors($data['errors']);
-        }
-
-        return back()->withInput()->with('error', $data['message'] ?? 'Failed to update product.');
+        // Return the JSON response directly — the view's fetch handler processes it
+        return $response;
     }
 
     public function destroyProduct($id)
@@ -1089,7 +1076,36 @@ class CashierDashboardController extends Controller
 
         $product = Product::findOrFail($id);
 
+        // Block only if active stock exists
+        $activeStock = DB::table('branch_stocks')
+            ->where('product_id', $product->id)
+            ->where('quantity_base', '>', 0)
+            ->exists();
+
+        if ($activeStock) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Cannot delete product with existing stock. Remove all stock first.'], 422);
+            }
+
+            return redirect()->route('cashier.products.index')->with('error', 'Cannot delete product with existing stock. Remove all stock first.');
+        }
+
         try {
+            // Cascade-delete related records
+            DB::table('stock_in_unit_prices')
+                ->whereIn('stock_in_id', DB::table('stock_ins')->where('product_id', $product->id)->pluck('id'))
+                ->delete();
+            DB::table('stock_ins')->where('product_id', $product->id)->delete();
+            DB::table('stock_movements')->where('product_id', $product->id)->delete();
+            DB::table('stock_outs')->where('product_id', $product->id)->delete();
+            DB::table('branch_stocks')->where('product_id', $product->id)->delete();
+            DB::table('product_unit_type')->where('product_id', $product->id)->delete();
+            DB::table('product_serials')->where('product_id', $product->id)->delete();
+            DB::table('warranty_records')->where('product_id', $product->id)->delete();
+            DB::table('purchase_items')->where('product_id', $product->id)->delete();
+            DB::table('sale_items')->where('product_id', $product->id)->delete();
+            DB::table('refunds')->where('product_id', $product->id)->delete();
+
             $product->delete();
 
             if (request()->expectsJson()) {
@@ -1098,23 +1114,11 @@ class CashierDashboardController extends Controller
 
             return redirect()->route('cashier.products.index')->with('success', 'Product deleted successfully');
         } catch (\Throwable $e) {
-            $message = 'Failed to delete product.';
-
-            if ($e instanceof \Illuminate\Database\QueryException) {
-                $sqlState = $e->errorInfo[0] ?? null;
-                if ($sqlState === '23000') {
-                    $message = 'Cannot delete this product because it has related records (sales/stock/etc.).';
-                }
-            }
-
             if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $message,
-                ], 409);
+                return response()->json(['success' => false, 'message' => 'Failed to delete product: '.$e->getMessage()], 409);
             }
 
-            return redirect()->route('cashier.products.index')->with('error', $message);
+            return redirect()->route('cashier.products.index')->with('error', 'Failed to delete product.');
         }
     }
 
@@ -2875,7 +2879,7 @@ class CashierDashboardController extends Controller
                 if ($typedName !== '') {
                     // Avoid double customer records: reuse existing customer if name matches.
                     $customer = Customer::query()
-                        ->whereRaw('LOWER(TRIM(COALESCE(full_name, name))) = ?', [mb_strtolower($typedName)])
+                        ->whereRaw('LOWER(TRIM(full_name)) = ?', [mb_strtolower($typedName)])
                         ->first();
                 } else {
                     $customer = null;
@@ -3382,7 +3386,7 @@ class CashierDashboardController extends Controller
                 'customers.max_credit_limit',
                 'customers.status',
                 'customers.created_at',
-                DB::raw('COALESCE(users.name, "Cashier") as created_by'),
+                DB::raw('COALESCE(users.name, "N/A") as created_by'),
                 DB::raw('COUNT(credits.id) as total_credits'),
                 DB::raw('COALESCE(SUM(credits.credit_amount), 0) as total_credit'),
                 DB::raw('COALESCE(SUM(credits.paid_amount), 0) as total_paid'),
@@ -3500,9 +3504,11 @@ class CashierDashboardController extends Controller
     }
 
     // POS Methods for Cashier
-    public function posElectronics()
+    public function posElectronics(): \Illuminate\View\View
     {
-        return view('cashier.pos.electronics');
+        $branchType = optional(Auth::user()->branch)->branch_type ?? 'electronics';
+
+        return view('cashier.pos.electronics', compact('branchType'));
     }
 
     public function posLookup(Request $request)
@@ -3583,7 +3589,7 @@ class CashierDashboardController extends Controller
                     });
                 })
                 ->with(['unitTypes', 'category'])
-                ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number'])
+                ->get(['products.id', 'products.product_name', 'products.barcode', 'products.model_number', 'products.category_id', 'products.warranty_coverage_months', 'products.warranty_type'])
                 ->map(function ($product) use ($posBranchId, $inventory) {
                     $totalStock = (float) $inventory->availableStockBase((int) $product->id, (int) $posBranchId);
 
@@ -3624,13 +3630,13 @@ class CashierDashboardController extends Controller
                     }
 
                     if (Schema::hasTable('stock_ins')) {
-                        $stockInPrices = DB::table('stock_ins')
-                            ->where('product_id', (int) $product->id)
-                            ->where('branch_id', (int) $posBranchId)
-                            ->whereNotNull('unit_type_id')
-                            ->where('price', '>', 0)
-                            ->orderByDesc('id')
-                            ->get(['unit_type_id', 'price']);
+                        $stockInPrices = DB::table('stock_in_unit_prices')
+                            ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                            ->where('stock_ins.product_id', (int) $product->id)
+                            ->where('stock_ins.branch_id', (int) $posBranchId)
+                            ->where('stock_in_unit_prices.price', '>', 0)
+                            ->orderByDesc('stock_in_unit_prices.id')
+                            ->get(['stock_in_unit_prices.unit_type_id', 'stock_in_unit_prices.price']);
 
                         foreach ($stockInPrices as $r) {
                             $ut = (int) $r->unit_type_id;
@@ -3640,6 +3646,19 @@ class CashierDashboardController extends Controller
                             }
                             if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
                                 $unitPriceById[$ut] = $p;
+                            }
+                        }
+
+                        // Fallback to products.selling_price if no stock-in selling price exists
+                        if (empty(array_filter($unitPriceById))) {
+                            $sellingPrice = (float) (DB::table('products')->where('id', (int) $product->id)->value('selling_price') ?? 0);
+                            if ($sellingPrice > 0) {
+                                foreach ($unitRows as $row) {
+                                    $ut = (int) $row->unit_type_id;
+                                    if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
+                                        $unitPriceById[$ut] = $sellingPrice;
+                                    }
+                                }
                             }
                         }
                     }
@@ -3802,13 +3821,13 @@ class CashierDashboardController extends Controller
         }
 
         if (Schema::hasTable('stock_ins')) {
-            $stockInPrices = DB::table('stock_ins')
-                ->where('product_id', (int) $product->id)
-                ->where('branch_id', (int) $posBranchId)
-                ->whereNotNull('unit_type_id')
-                ->where('price', '>', 0)
-                ->orderByDesc('id')
-                ->get(['unit_type_id', 'price']);
+            $stockInPrices = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', (int) $product->id)
+                ->where('stock_ins.branch_id', (int) $posBranchId)
+                ->where('stock_in_unit_prices.price', '>', 0)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->get(['stock_in_unit_prices.unit_type_id', 'stock_in_unit_prices.price']);
 
             foreach ($stockInPrices as $r) {
                 $ut = (int) $r->unit_type_id;
@@ -3818,6 +3837,19 @@ class CashierDashboardController extends Controller
                 }
                 if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
                     $unitPriceById[$ut] = $p;
+                }
+            }
+
+            // Fallback to products.selling_price if no stock-in selling price exists
+            if (empty(array_filter($unitPriceById))) {
+                $sellingPrice = (float) ($product->selling_price ?? 0);
+                if ($sellingPrice > 0) {
+                    foreach ($unitRows as $row) {
+                        $ut = (int) $row->unit_type_id;
+                        if (! isset($unitPriceById[$ut]) || (float) $unitPriceById[$ut] <= 0) {
+                            $unitPriceById[$ut] = $sellingPrice;
+                        }
+                    }
                 }
             }
         }
@@ -3901,6 +3933,8 @@ class CashierDashboardController extends Controller
             $notes = $request->filled('notes') ? trim((string) $request->input('notes')) : null;
             $creditDueDate = $request->input('credit_due_date');
             $creditNotes = $request->input('credit_notes');
+            $cashTendered = $request->filled('cash_tendered') ? (float) $request->input('cash_tendered') : null;
+            $changeDue = $request->filled('change_due') ? (float) $request->input('change_due') : null;
             $items = $request->input('products');
 
             if (empty($items) || ! is_array($items)) {
@@ -3920,6 +3954,11 @@ class CashierDashboardController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+
+            if ($cashTendered !== null && Schema::hasColumn('sales', 'cash_tendered')) {
+                $salePayload['cash_tendered'] = $cashTendered;
+                $salePayload['change_due'] = $changeDue ?? 0;
+            }
 
             if ($notes !== null && $notes !== '' && Schema::hasColumn('sales', 'notes')) {
                 $salePayload['notes'] = $notes;
@@ -4105,10 +4144,10 @@ class CashierDashboardController extends Controller
             $receiptUrl = null;
             $autoReceipt = $paymentMethod === 'cash';
 
-            $receiptPdfUrl = route('cashier.pos.receipt.pdf', $sale->id);
+            $receiptPdfUrl = route('admin.sales.receipt.pdf', $sale->id);
 
             if ($autoReceipt) {
-                $receiptUrl = route('cashier.pos.receipt', $sale->id);
+                $receiptUrl = route('admin.sales.receipt', $sale->id);
             }
 
             return response()->json([

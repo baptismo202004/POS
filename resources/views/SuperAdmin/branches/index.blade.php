@@ -75,6 +75,7 @@
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Address</th>
+                                    <th>Type</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -88,13 +89,19 @@
                                         </td>
                                         <td>{{ $branch->address ?? 'N/A' }}</td>
                                         <td>
+                                            <span class="badge {{ $branch->branch_type === 'electronics' ? 'badge-info' : 'badge-warning' }}">
+                                                <i class="fas {{ $branch->branch_type === 'electronics' ? 'fa-microchip' : 'fa-shopping-cart' }} me-1"></i>
+                                                {{ ucfirst($branch->branch_type) }}
+                                            </span>
+                                        </td>
+                                        <td>
                                             <span class="badge {{ $branch->status === 'active' ? 'badge-success' : 'badge-secondary' }}">
                                                 {{ ucfirst($branch->status) }}
                                             </span>
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="editBranch({{ $branch->id }}, '{{ addslashes($branch->branch_name) }}', '{{ addslashes($branch->address ?? '') }}', '{{ $branch->status }}')">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="editBranch({{ $branch->id }}, '{{ addslashes($branch->branch_name) }}', '{{ addslashes($branch->address ?? '') }}', '{{ $branch->branch_type }}', '{{ $branch->status }}')">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <form method="POST" action="{{ route('superadmin.branches.destroy', $branch) }}" class="d-inline js-delete-form">
@@ -149,6 +156,13 @@
                         <input type="text" class="form-control" id="add_address" name="address" placeholder="e.g. 123 Street, City">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Branch Type <span class="text-danger">*</span></label>
+                        <select class="form-control" id="add_branch_type" name="branch_type" required>
+                            <option value="grocery">Grocery</option>
+                            <option value="electronics">Electronics</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                         <select class="form-control" id="add_status" name="status" required>
                             <option value="active">Active</option>
@@ -190,6 +204,13 @@
                         <input type="text" class="form-control" id="edit_address" name="address">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Branch Type <span class="text-danger">*</span></label>
+                        <select class="form-control" id="edit_branch_type" name="branch_type" required>
+                            <option value="grocery">Grocery</option>
+                            <option value="electronics">Electronics</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                         <select class="form-control" id="edit_status" name="status" required>
                             <option value="active">Active</option>
@@ -215,11 +236,12 @@ const storeUrl   = '{{ route("superadmin.branches.store") }}';
 const updateBase = '{{ url("branches") }}';
 const csrfToken  = '{{ csrf_token() }}';
 
-function editBranch(id, name, address, status) {
-    document.getElementById('edit_branch_id').value   = id;
-    document.getElementById('edit_branch_name').value = name;
-    document.getElementById('edit_address').value     = address || '';
-    document.getElementById('edit_status').value      = status;
+function editBranch(id, name, address, branchType, status) {
+    document.getElementById('edit_branch_id').value        = id;
+    document.getElementById('edit_branch_name').value      = name;
+    document.getElementById('edit_address').value          = address || '';
+    document.getElementById('edit_branch_type').value      = branchType;
+    document.getElementById('edit_status').value           = status;
     new bootstrap.Modal(document.getElementById('editBranchModal')).show();
 }
 
@@ -258,6 +280,7 @@ document.getElementById('addBranchForm').addEventListener('submit', function (e)
         _token:      csrfToken,
         branch_name: document.getElementById('add_branch_name').value.trim(),
         address:     document.getElementById('add_address').value.trim(),
+        branch_type: document.getElementById('add_branch_type').value,
         status:      document.getElementById('add_status').value,
     });
     submitForm(storeUrl, body, 'addBranchModal', false);
@@ -271,6 +294,7 @@ document.getElementById('editBranchForm').addEventListener('submit', function (e
         _method:     'PUT',
         branch_name: document.getElementById('edit_branch_name').value.trim(),
         address:     document.getElementById('edit_address').value.trim(),
+        branch_type: document.getElementById('edit_branch_type').value,
         status:      document.getElementById('edit_status').value,
     });
     submitForm(updateBase + '/' + id, body, 'editBranchModal', true);

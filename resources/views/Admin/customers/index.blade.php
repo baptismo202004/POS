@@ -150,7 +150,7 @@
                                                 @endif
                                             </td>
                                             <td>{{ \Carbon\Carbon::parse($customer->created_at)->format('M d, Y') }}</td>
-                                            <td>{{ $customer->user->name ?? $customer->created_by ?? 'System' }}</td>
+                                            <td>{{ $customer->user->name ?? 'N/A' }}</td>
                                             <td>Main Branch</td>
                                             <td>
                                                 @if($customer->status == 'active')

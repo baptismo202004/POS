@@ -526,7 +526,7 @@
                     </thead>
                     <tbody>
                         @forelse($categories as $category)
-                            <tr data-id="{{ $category->id }}" data-name="{{ $category->category_name }}" data-status="{{ $category->status }}">
+                            <tr data-id="{{ $category->id }}" data-name="{{ $category->category_name }}" data-status="{{ $category->status }}" data-category-type="{{ $category->category_type ?? 'non_electronic' }}">
                                 <td><input type="checkbox" class="row-checkbox"></td>
                                 <td>{{ $category->id }}</td>
                                 <td>{{ $category->category_name }}</td>
@@ -558,7 +558,7 @@
 
 <!-- Edit Category Modal -->
 <div class="modal fade categories-modal" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editCategoryModalLabel">Edit Category</h5>
@@ -578,13 +578,19 @@
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label for="edit_category_type" class="form-label">Category Type</label>
+                        <select name="category_type" id="edit_category_type" class="form-select">
+                            <option value="non_electronic">Non Electronic</option>
+                            <option value="electronic_without_serial">Electronic without serial</option>
+                            <option value="electronic_with_serial">Electronic with serial</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save Changes
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancel
+                        <i class="fas fa-save me-1"></i> Save Changes
                     </button>
                 </div>
             </form>
@@ -594,18 +600,18 @@
 
 <!-- Category Modal -->
 <div class="modal fade categories-modal" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="categoryModalLabel">Add Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <form id="categoryForm" action="{{ route('cashier.categories.store') }}" method="POST">
-                    @csrf
+            <form id="categoryForm" action="{{ route('cashier.categories.store') }}" method="POST">
+                @csrf
+                <div class="modal-body">
                     <div class="mb-3">
                         <label for="category_name" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="category_name" name="category_name" required>
+                        <input type="text" class="form-control" id="category_name" name="category_name" placeholder="Enter category name" required>
                     </div>
                     <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
@@ -614,16 +620,22 @@
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i> Save Category
-                        </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-2"></i> Cancel
-                        </button>
+                    <div class="mb-3">
+                        <label for="category_type" class="form-label">Category Type</label>
+                        <select class="form-select" id="category_type" name="category_type" required>
+                            <option value="non_electronic">Non Electronic</option>
+                            <option value="electronic_without_serial">Electronic without serial</option>
+                            <option value="electronic_with_serial">Electronic with serial</option>
+                        </select>
                     </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Category
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -704,6 +716,7 @@
             // Populate modal with category data
             document.getElementById('edit_category_name').value = row.dataset.name || name;
             document.getElementById('edit_status').value = row.dataset.status || status;
+            document.getElementById('edit_category_type').value = row.dataset.categoryType || 'non_electronic';
             
             // Set form action for update
             const form = document.getElementById('editCategoryForm');

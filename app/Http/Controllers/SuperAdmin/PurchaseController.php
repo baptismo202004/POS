@@ -234,6 +234,7 @@ class PurchaseController extends Controller
             $purchase = Purchase::create([
                 'purchase_date' => $validated['purchase_date'],
                 'supplier_id' => $validated['supplier_id'],
+                'cashier_id' => auth()->id(),
                 'total_cost' => $totalCost,
                 'payment_status' => $validated['payment_status'],
                 'reference_number' => ! empty($validated['reference_number']) ? $validated['reference_number'] : null,
@@ -251,6 +252,7 @@ class PurchaseController extends Controller
                 if (empty($serials)) {
                     // Non-serial item — create warranty record at purchase time
                     $warrantyService->createForPurchase($purchaseItem, [], $purchaseDate);
+
                     continue;
                 }
 
@@ -276,8 +278,29 @@ class PurchaseController extends Controller
             }
         });
 
+        // If AJAX request, return JSON with purchase data for the stock-in modal
+        if (request()->expectsJson() || request()->ajax()) {
+            $purchase = Purchase::with(['items.product', 'items.unitType'])->find($purchaseId);
+            $items = $purchase->items->map(fn ($item) => [
+                'product_id' => $item->product_id,
+                'unit_type_id' => $item->unit_type_id,
+                'product_name' => $item->product->product_name ?? 'Unknown',
+                'unit_name' => $item->unitType->unit_name ?? 'pcs',
+                'unit_cost' => (float) ($item->unit_cost ?? 0),
+                'selling_price' => (float) ($item->product->selling_price ?? 0),
+            ])->values();
+
+            return response()->json([
+                'success' => true,
+                'purchase_id' => $purchaseId,
+                'branch_id' => $validated['branch_id'] ?? null,
+                'items' => $items,
+            ]);
+        }
+
         return redirect()->route('superadmin.purchases.show', ['purchase' => $purchaseId])
-            ->with('success', 'Purchase created successfully.');
+            ->with('success', 'Purchase created successfully.')
+            ->with('prompt_stockin', true);
     }
 
     public function show(Purchase $purchase)
@@ -468,6 +491,119 @@ class PurchaseController extends Controller
             ->with('success', 'Purchase marked as paid successfully.');
     }
 
+    public function autoStockIn(Purchase $purchase): \Illuminate\Http\JsonResponse
+    {
+        $branchId = (int) request()->input('branch_id');
+
+        // Fall back to the branch already on the purchase record
+        if (! $branchId && $purchase->branch_id) {
+            $branchId = (int) $purchase->branch_id;
+        }
+
+        if (! $branchId) {
+            return response()->json(['success' => false, 'message' => 'Branch is required.'], 422);
+        }
+
+        $purchase->loadMissing(['items.product', 'items.unitType']);
+
+        $sellingPrices = request()->input('selling_prices', []);
+
+        try {
+            DB::transaction(function () use ($purchase, $branchId, $sellingPrices) {
+                // Save branch_id onto the purchase if not already set
+                if (! $purchase->branch_id) {
+                    $purchase->update(['branch_id' => $branchId]);
+                }
+                foreach ($purchase->items as $item) {
+                    $productId = (int) $item->product_id;
+                    $unitTypeId = (int) ($item->unit_type_id ?? 0);
+                    $qty = (float) ($item->quantity ?? 0);
+                    $unitCost = (float) ($item->unit_cost ?? 0);
+
+                    if ($qty <= 0) {
+                        continue;
+                    }
+
+                    $factor = (float) (DB::table('product_unit_type')
+                        ->where('product_id', $productId)
+                        ->where('unit_type_id', $unitTypeId)
+                        ->value('conversion_factor') ?? 1);
+                    $factor = $factor > 0 ? $factor : 1;
+                    $qtyBase = (int) round($qty * $factor);
+
+                    // Increase branch stock
+                    \App\Models\BranchStock::query()
+                        ->firstOrCreate(
+                            ['branch_id' => $branchId, 'product_id' => $productId],
+                            ['quantity_base' => 0]
+                        )
+                        ->increment('quantity_base', $qtyBase);
+
+                    $stockInPayload = [
+                        'product_id' => $productId,
+                        'branch_id' => $branchId,
+                        'purchase_id' => $purchase->id,
+                        'unit_type_id' => $unitTypeId ?: null,
+                        'quantity' => $qtyBase,
+                        'price' => $unitCost,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    if (Schema::hasColumn('stock_ins', 'initial_quantity')) {
+                        $stockInPayload['initial_quantity'] = $qtyBase;
+                    }
+
+                    $stockInId = DB::table('stock_ins')->insertGetId($stockInPayload);
+
+                    // Update branch_id on product_serials linked to this purchase item's product
+                    // for products that have serial tracking
+                    $categoryType = DB::table('categories')
+                        ->join('products', 'products.category_id', '=', 'categories.id')
+                        ->where('products.id', $productId)
+                        ->value('categories.category_type');
+
+                    if ($categoryType === 'electronic_with_serial') {
+                        \App\Models\ProductSerial::where('product_id', $productId)
+                            ->where('purchase_id', $purchase->id)
+                            ->whereNull('branch_id')
+                            ->update(['branch_id' => $branchId]);
+                    }
+
+                    if (Schema::hasTable('stock_in_unit_prices') && $unitTypeId) {
+                        $key = $productId.'_'.$unitTypeId;
+                        $sellingPrice = isset($sellingPrices[$key]) ? (float) $sellingPrices[$key] : null;
+
+                        if ($sellingPrice === null) {
+                            $sellingPrice = DB::table('stock_in_unit_prices')
+                                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                                ->where('stock_ins.product_id', $productId)
+                                ->where('stock_ins.branch_id', $branchId)
+                                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                                ->where('stock_ins.id', '!=', $stockInId)
+                                ->orderByDesc('stock_in_unit_prices.id')
+                                ->value('stock_in_unit_prices.price');
+                        }
+
+                        if ($sellingPrice !== null) {
+                            DB::table('stock_in_unit_prices')->insert([
+                                'stock_in_id' => $stockInId,
+                                'unit_type_id' => $unitTypeId,
+                                'price' => $sellingPrice,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            });
+
+            return response()->json(['success' => true, 'message' => 'All items stocked in successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Check serial numbers for duplicates in database
      * Used for AJAX validation during purchase creation
@@ -500,5 +636,41 @@ class PurchaseController extends Controller
             'total_checked' => count($serialNumbers),
             'duplicates_found' => count($allDuplicates),
         ]);
+    }
+
+    public function autoStockInCheck(Purchase $purchase): \Illuminate\Http\JsonResponse
+    {
+        $purchase->load(['items.product', 'items.unitType']);
+
+        $pricingItems = [];
+
+        foreach ($purchase->items as $item) {
+            $productId = (int) $item->product_id;
+            $unitTypeId = (int) ($item->unit_type_id ?? 0);
+
+            if ($unitTypeId <= 0) {
+                continue;
+            }
+
+            $existingPrice = DB::table('stock_in_unit_prices')
+                ->join('stock_ins', 'stock_ins.id', '=', 'stock_in_unit_prices.stock_in_id')
+                ->where('stock_ins.product_id', $productId)
+                ->where('stock_in_unit_prices.unit_type_id', $unitTypeId)
+                ->orderByDesc('stock_in_unit_prices.id')
+                ->value('stock_in_unit_prices.price');
+
+            $pricingItems[] = [
+                'purchase_item_id' => $item->id,
+                'product_id' => $productId,
+                'unit_type_id' => $unitTypeId,
+                'product_name' => $item->product->product_name ?? 'Unknown',
+                'unit_name' => $item->unitType->unit_name ?? 'Unknown',
+                'unit_cost' => (float) ($item->unit_cost ?? 0),
+                'existing_price' => $existingPrice !== null ? (float) $existingPrice : null,
+                'is_new' => $existingPrice === null,
+            ];
+        }
+
+        return response()->json(['success' => true, 'pricing_items' => $pricingItems]);
     }
 }

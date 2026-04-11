@@ -72,6 +72,12 @@
                 <span class="sp-badge sp-badge-red">Inactive</span>
             @endif
         </td>
+        <td style="font-weight:700;color:var(--navy);">
+            {{ $product->selling_price ? '₱'.number_format($product->selling_price, 2) : '—' }}
+        </td>
+        <td style="font-weight:700;color:var(--navy);">
+            {{ $product->purchase_price ? '₱'.number_format($product->purchase_price, 2) : '—' }}
+        </td>
         <td>
             <a href="{{ route('superadmin.products.show', $product->id) }}" class="sp-tbl-action sp-tbl-edit" title="View">
                 <i class="fas fa-eye"></i>
@@ -80,7 +86,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="10" class="text-center py-5">
+        <td colspan="12" class="text-center py-5">
             <div class="empty-state">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#95a5a6" stroke-width="1.5">
                     <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>

@@ -102,6 +102,12 @@
             margin-left: 260px;
             padding: 1.5rem;
             min-height: 100vh;
+            animation: contentFadeIn 0.18s ease-out;
+        }
+
+        @keyframes contentFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
         
         .sidebar-fixed {

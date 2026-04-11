@@ -695,9 +695,11 @@
             <p class="text-muted mb-0">Fast sales processing with barcode scanning support</p>
         </div>
         <div class="d-flex gap-2">
+            @if(($branchType ?? 'grocery') !== 'grocery')
             <a href="{{ route('cashier.pos.electronics') }}" class="btn btn-outline-primary">
                 <i class="fas fa-plug me-2"></i>Electronic Devices
             </a>
+            @endif
             <a href="{{ route('cashier.sales.index') }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Sales
             </a>
@@ -964,28 +966,93 @@ function checkout() {
         return;
     }
 
-    // Show loading state
-    const checkoutBtn = document.querySelector('button[onclick="checkout()"]');
-    const originalText = checkoutBtn.innerHTML;
-    checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
-    checkoutBtn.disabled = true;
-
     const selectedPayment = document.querySelector('input[name="payment_method"]:checked').value;
-    
-    // Create form data
+    const subtotal = saleData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = subtotal;
+
+    const pesos = (v) => { const n = Number(v); return Number.isFinite(n) ? `₱${n.toFixed(2)}` : '₱0.00'; };
+
+    // For cash payments, ask for cash tendered BEFORE submitting
+    if (selectedPayment === 'cash') {
+        Swal.fire({
+            title: 'Cash Payment',
+            html: `
+                <div style="text-align:left">
+                    <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                        <div style="font-weight:700">Total</div>
+                        <div style="font-weight:900">${pesos(total)}</div>
+                    </div>
+                    <label for="amountPaid" style="font-weight:700;margin-top:10px;display:block">Cash Tendered</label>
+                    <input id="amountPaid" type="number" min="${total}" step="0.01" class="swal2-input" placeholder="${total.toFixed(2)}" style="margin:8px 0 8px 0;" />
+                    <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px;padding:10px;background:#f0fdf4;border-radius:8px;">
+                        <div style="font-weight:700;color:#059669">Change</div>
+                        <div id="changeAmount" style="font-weight:900;color:#059669">${pesos(0)}</div>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check me-1"></i> Confirm & Process',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669',
+            didOpen: () => {
+                const input = document.getElementById('amountPaid');
+                const changeEl = document.getElementById('changeAmount');
+                if (input) {
+                    input.focus();
+                    input.addEventListener('input', () => {
+                        const paid = Number(input.value || 0);
+                        const change = paid - total;
+                        changeEl.textContent = pesos(change >= 0 ? change : 0);
+                    });
+                }
+            },
+            preConfirm: () => {
+                const input = document.getElementById('amountPaid');
+                const paid = Number(input && input.value ? input.value : 0);
+                if (!Number.isFinite(paid) || paid <= 0) {
+                    Swal.showValidationMessage('Please enter a valid amount.');
+                    return false;
+                }
+                if (paid < total) {
+                    Swal.showValidationMessage(`Amount paid must be at least ${pesos(total)}.`);
+                    return false;
+                }
+                return { paid, change: paid - total };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                submitSale(total, selectedPayment, result.value.paid, result.value.change);
+            }
+        });
+        return;
+    }
+
+    // Non-cash: submit directly
+    submitSale(total, selectedPayment, null, null);
+}
+
+function submitSale(total, selectedPayment, cashTendered, changeDue) {
+    const checkoutBtn = document.querySelector('button[onclick="checkout()"]');
+    if (checkoutBtn) {
+        checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        checkoutBtn.disabled = true;
+    }
+
     const formData = new FormData();
-    
-    // Add payment method
     formData.append('payment_method', selectedPayment);
-    
-    // Add credit details if selected
+
     if (selectedPayment === 'credit') {
         formData.append('customer_name', document.getElementById('customer_name').value);
         formData.append('credit_due_date', document.getElementById('credit_due_date').value);
         formData.append('credit_notes', document.getElementById('credit_notes').value);
     }
 
-    // Add items
+    if (cashTendered !== null) {
+        formData.append('cash_tendered', cashTendered.toFixed(2));
+        formData.append('change_due', changeDue.toFixed(2));
+    }
+
     saleData.items.forEach((item, index) => {
         formData.append(`products[${index}][id]`, item.id);
         formData.append(`products[${index}][quantity]`, item.quantity);
@@ -993,17 +1060,7 @@ function checkout() {
         formData.append(`products[${index}][unit_type_id]`, item.unit_type_id);
     });
 
-    // Calculate totals
-    const subtotal = saleData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const total = subtotal; // No VAT added
-    
-    console.log('Checkout calculation:', {
-        subtotal: subtotal,
-        total: total,
-        items: saleData.items
-    });
-    
-    formData.append('subtotal', subtotal);
+    formData.append('subtotal', total);
     formData.append('vat', 0);
     formData.append('total', total);
 
@@ -1018,78 +1075,20 @@ function checkout() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Capture payment details before clearing cart
-            const selectedPayment = document.querySelector('input[name="payment_method"]:checked').value;
             const customerName = document.getElementById('customer_name').value;
             const creditDueDate = document.getElementById('credit_due_date').value;
-            const totalAmount = document.getElementById('total-amount').textContent;
-            
-            // Clear cart
+            const totalDisplay = document.getElementById('total-amount').textContent;
+
             saleData.items = [];
             updateOrderDisplay();
-            
-                    // Show payment modal first, then redirect to receipt (cash flow)
+
             if (data.auto_receipt && data.receipt_url) {
-                const pesos = (v) => {
-                    const n = Number(v);
-                    return Number.isFinite(n) ? `₱${n.toFixed(2)}` : '₱0.00';
-                };
-
-                const totalAmount = Number(total);
-
-                Swal.fire({
-                    title: 'Payment',
-                    html: `
-                        <div style="text-align:left">
-                            <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;">
-                                <div style="font-weight:700">Total</div>
-                                <div style="font-weight:900">${pesos(totalAmount)}</div>
-                            </div>
-                            <label for="amountPaid" style="font-weight:700;margin-top:10px;display:block">Amount Paid</label>
-                            <input id="amountPaid" type="number" min="0" step="0.01" class="swal2-input" placeholder="0.00" style="margin:8px 0 8px 0;" />
-                            <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px;">
-                                <div style="font-weight:700">Change</div>
-                                <div id="changeAmount" style="font-weight:900">${pesos(0)}</div>
-                            </div>
-                        </div>
-                    `,
-                    icon: 'info',
-                    showCancelButton: true,
-                    confirmButtonText: 'Proceed to Receipt',
-                    cancelButtonText: 'Cancel',
-                    confirmButtonColor: 'var(--success-color)',
-                    didOpen: () => {
-                        const input = document.getElementById('amountPaid');
-                        const changeEl = document.getElementById('changeAmount');
-                        if (input) {
-                            input.focus();
-                            input.addEventListener('input', () => {
-                                const paid = Number(input.value || 0);
-                                const change = paid - totalAmount;
-                                changeEl.textContent = pesos(change > 0 ? change : 0);
-                            });
-                        }
-                    },
-                    preConfirm: () => {
-                        const input = document.getElementById('amountPaid');
-                        const paid = Number(input && input.value ? input.value : 0);
-                        if (!Number.isFinite(paid) || paid <= 0) {
-                            Swal.showValidationMessage('Please enter a valid amount paid.');
-                            return false;
-                        }
-                        if (paid < totalAmount) {
-                            Swal.showValidationMessage('Amount paid is not enough.');
-                            return false;
-                        }
-                        return { paid, change: paid - totalAmount };
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = data.receipt_url;
-                    } else {
-                        window.location.reload();
-                    }
-                });
+                window.open(data.receipt_url, '_blank');
+                // Reset the checkout button and keep POS ready for next sale
+                if (checkoutBtn) {
+                    checkoutBtn.innerHTML = '<i class="fas fa-credit-card me-2"></i>Checkout';
+                    checkoutBtn.disabled = false;
+                }
             } else {
                 // For credit payments, show beautiful success message
                 if (selectedPayment === 'credit') {

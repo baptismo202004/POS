@@ -147,18 +147,35 @@
                 width: 9cm;
                 min-height: 13cm;
             }
+            .receipt-actions {
+                display: none !important;
+            }
         }
     </style>
     <script>
-        window.onload = function() {
+        function printReceipt() {
             window.print();
-            window.onafterprint = function() {
+        }
+        function cancelReceipt() {
+            if (window.opener && !window.opener.closed) {
                 window.close();
-            };
-        };
+            } else {
+                window.location.href = '{{ route("cashier.sales.create") }}';
+            }
+        }
     </script>
 </head>
 <body>
+    <div class="receipt-actions" style="display:flex;justify-content:center;gap:10px;padding:14px 0;background:#f8f9fa;border-bottom:1px solid #dee2e6;font-family:Arial,sans-serif;">
+        <button onclick="printReceipt()" style="background:#1976D2;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Receipt
+        </button>
+        <button onclick="cancelReceipt()" style="background:#fff;color:#374151;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Cancel
+        </button>
+    </div>
     <div class="receipt-container">
         <div class="header">
             <img src="{{ asset('/images/BGH LOGO.png') }}" alt="BGH IT Solutions Logo" style="max-width: 60px; margin-bottom: 8px;">

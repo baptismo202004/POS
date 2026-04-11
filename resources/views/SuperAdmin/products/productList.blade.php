@@ -12,19 +12,6 @@
     $isCashierContext = request()->is('cashier/*');
 @endphp
 
-@if($isCashierContext)
-@push('stylesDashboard')
-    <style>
-        .sidebar-fixed {
-            display: none !important;
-        }
-        .main-content {
-            margin-left: 0 !important;
-        }
-    </style>
-@endpush
-@endif
-
 @push('stylesDashboard')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -280,6 +267,16 @@
                                     <div class="col-md-3 electronic-field d-none">
                                         <label class="form-label">Voltage Specs</label>
                                         <input type="text" name="voltage_specs" class="form-control" value="{{ $isEdit ? $product->voltage_specs : '' }}" placeholder="e.g. 110-220V">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label">Selling Price (₱)</label>
+                                        <input type="number" name="selling_price" step="0.01" min="0" class="form-control" placeholder="0.00" value="{{ $isEdit ? $product->selling_price : '' }}">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label">Purchase Price (₱)</label>
+                                        <input type="number" name="purchase_price" step="0.01" min="0" class="form-control" placeholder="0.00" value="{{ $isEdit ? $product->purchase_price : '' }}">
                                     </div>
 
                                     <div class="col-md-3">
@@ -603,7 +600,7 @@
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
-                                window.location.href = '{{ route('superadmin.products.index') }}';
+                                window.location.href = '{{ $isCashierContext ? route('cashier.products.index') : route('superadmin.products.index') }}';
                             });
                         } else if (data.errors) {
                             console.error('Validation errors:', data.errors);

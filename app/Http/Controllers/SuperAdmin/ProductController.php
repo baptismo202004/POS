@@ -183,7 +183,7 @@ class ProductController extends Controller
 
         $products = $productsQuery->orderBy($sortBy, $sortDirection)->paginate(100);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             return view('SuperAdmin.products._product_table', compact('products'))->render();
         }
 
@@ -225,6 +225,8 @@ class ProductController extends Controller
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
+            'selling_price' => 'nullable|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
             'base_unit_type_id' => 'nullable|integer|exists:unit_types,id',
             'conversion_factor' => 'nullable|array',
             'conversion_factor.*' => 'nullable|numeric|gt:0',
@@ -278,6 +280,8 @@ class ProductController extends Controller
                         'warranty_coverage_months' => $validated['warranty_coverage_months'] ?? null,
                         'voltage_specs' => $validated['voltage_specs'] ?? null,
                         'status' => $validated['status'],
+                        'selling_price' => $validated['selling_price'] ?? null,
+                        'purchase_price' => $validated['purchase_price'] ?? null,
                     ];
 
                     if (! empty($validated['brand_id']) && ! is_numeric($validated['brand_id'])) {
@@ -395,6 +399,8 @@ class ProductController extends Controller
             'warranty_coverage_months' => 'nullable|integer|min:0',
             'voltage_specs' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
+            'selling_price' => 'nullable|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
             'base_unit_type_id' => 'nullable|integer|exists:unit_types,id',
             'conversion_factor' => 'nullable|array',
             'conversion_factor.*' => 'nullable|numeric|gt:0',
@@ -805,6 +811,35 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        // Block deletion only if there is active stock remaining
+        $activeStock = DB::table('branch_stocks')
+            ->where('product_id', $product->id)
+            ->where('quantity_base', '>', 0)
+            ->exists();
+
+        if ($activeStock) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Cannot delete product with existing stock. Remove all stock first.'], 422);
+            }
+
+            return redirect()->back()->with('error', 'Cannot delete product with existing stock. Remove all stock first.');
+        }
+
+        // Cascade-delete related records so FK constraints don't block deletion
+        DB::table('stock_in_unit_prices')
+            ->whereIn('stock_in_id', DB::table('stock_ins')->where('product_id', $product->id)->pluck('id'))
+            ->delete();
+        DB::table('stock_ins')->where('product_id', $product->id)->delete();
+        DB::table('stock_movements')->where('product_id', $product->id)->delete();
+        DB::table('stock_outs')->where('product_id', $product->id)->delete();
+        DB::table('branch_stocks')->where('product_id', $product->id)->delete();
+        DB::table('product_unit_type')->where('product_id', $product->id)->delete();
+        DB::table('product_serials')->where('product_id', $product->id)->delete();
+        DB::table('warranty_records')->where('product_id', $product->id)->delete();
+        DB::table('purchase_items')->where('product_id', $product->id)->delete();
+        DB::table('sale_items')->where('product_id', $product->id)->delete();
+        DB::table('refunds')->where('product_id', $product->id)->delete();
+
         if ($product->image) {
             Storage::disk('public')->delete($product->image);
         }

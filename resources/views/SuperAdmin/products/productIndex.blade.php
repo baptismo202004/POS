@@ -507,6 +507,8 @@
                                     <th style="width:110px;">Product Type</th>
                                     <th style="width:120px;">Unit Type</th>
                                     <th style="width:80px;">Status</th>
+                                    <th style="width:100px;">Price (₱)</th>
+                                    <th style="width:110px;">Purchase (₱)</th>
                                     <th style="width:90px;">Action</th>
                                 </tr>
                             </thead>
@@ -543,6 +545,9 @@
     $(document).ready(function () {
         let searchTimeout;
 
+        // Ensure X-Requested-With header is always sent with jQuery AJAX
+        $.ajaxSetup({ headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
         $('#product-search-input').on('keyup', function () {
             clearTimeout(searchTimeout);
             const query = $(this).val();
@@ -552,6 +557,7 @@
                     url: "{{ route('superadmin.products.index') }}",
                     type: "GET",
                     data: { 'search': query },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     success: function(data) {
                         $('#product-table-body').html(data);
                     }

@@ -277,6 +277,40 @@
         </div>
     </div>
 </div>
+
+<!-- STOCK-IN MODAL -->
+<div class="modal fade purchases-modal" id="stockInModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5><i class="fas fa-boxes-stacked me-2"></i>Stock In Purchase Items</h5>
+                <button class="btn-close btn-close-white" id="stockInSkipBtn"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size:13px;">Purchase saved. Would you like to stock in the items now? Select a branch and confirm selling prices.</p>
+
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Branch</label>
+                    <select id="stockInBranchSelect" class="form-select">
+                        <option value="">-- Select Branch --</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div id="stockInPricingRows"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="stockInSkipBtn2">Skip for now</button>
+                <button type="button" class="btn btn-primary" id="stockInConfirmBtn">
+                    <i class="fas fa-arrow-down me-1"></i> Stock In Now
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -372,7 +406,8 @@ document.addEventListener('DOMContentLoaded', function () {
     @foreach($products as $p)
         productsMeta["{{ $p->id }}"] = {
             category_type: "{{ $p->category?->category_type ?? 'non_electronic' }}",
-            warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }}
+            warranty_coverage_months: {{ (int) ($p->warranty_coverage_months ?? 0) }},
+            purchase_price: {{ (float) ($p->purchase_price ?? 0) }}
         };
     @endforeach
 
@@ -530,6 +565,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const row = e.target.closest('.item-row');
             applyCategoryTypeUI(row, e.target.value);
             loadProductUnits(row, e.target.value);
+
+            // Auto-fill cost from purchase_price
+            const meta = productsMeta[String(e.target.value)];
+            const costInput = row.querySelector('.item-cost');
+            if (costInput && meta && meta.purchase_price > 0) {
+                costInput.value = meta.purchase_price.toFixed(2);
+                updateTotals();
+            }
         }
         if (e.target.classList.contains('unit-type-select')) {
             updateRowConversionFactor(e.target.closest('.item-row'));
@@ -644,10 +687,133 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ── Form submit validation ────────────────────────────────────────────────
+    // ── Form submit validation + AJAX save ───────────────────────────────────
+    let savedPurchaseId = null;
+    let savedPurchaseItems = []; // [{product_id, unit_type_id, product_name, unit_name, unit_cost}]
+
+    function doSubmitPurchase(form) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                const msg = data.message || (data.errors ? Object.values(data.errors).flat().join('<br>') : 'An error occurred.');
+                Swal.fire({ icon: 'error', title: 'Error', html: msg });
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Purchase'; }
+                return;
+            }
+
+            savedPurchaseId = data.purchase_id;
+            savedPurchaseItems = data.items || [];
+            showStockInModal(data.branch_id || null);
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to save purchase. Please try again.' });
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Purchase'; }
+        });
+    }
+
+    function showStockInModal(preselectedBranchId) {
+        const rows = document.getElementById('stockInPricingRows');
+        rows.innerHTML = '';
+
+        if (savedPurchaseItems.length === 0) {
+            // No items info — skip straight to redirect
+            redirectToPurchase();
+            return;
+        }
+
+        // Pre-select branch from the purchase
+        if (preselectedBranchId) {
+            const branchSelect = document.getElementById('stockInBranchSelect');
+            if (branchSelect) { branchSelect.value = preselectedBranchId; }
+        }
+
+        savedPurchaseItems.forEach(item => {
+            const key = `${item.product_id}_${item.unit_type_id}`;
+            const div = document.createElement('div');
+            div.className = 'row g-2 align-items-center mb-2 p-2 rounded';
+            div.style.background = 'rgba(240,246,255,0.6)';
+            div.innerHTML = `
+                <div class="col-md-5" style="font-size:13px;font-weight:600;">${item.product_name}</div>
+                <div class="col-md-3" style="font-size:12px;color:var(--muted);">${item.unit_name} · Cost: ₱${parseFloat(item.unit_cost).toFixed(2)}</div>
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text" style="font-size:11px;">Sell ₱</span>
+                        <input type="number" step="0.01" min="0" class="form-control stockin-sell-price"
+                               data-key="${key}" placeholder="Selling price"
+                               value="${item.selling_price > 0 ? parseFloat(item.selling_price).toFixed(2) : ''}">
+                    </div>
+                </div>
+            `;
+            rows.appendChild(div);
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('stockInModal'));
+        modal.show();
+    }
+
+    function redirectToPurchase() {
+        if (savedPurchaseId) {
+            window.location.href = `/superadmin/purchases/${savedPurchaseId}`;
+        } else {
+            window.location.href = '{{ route("superadmin.purchases.index") }}';
+        }
+    }
+
+    document.getElementById('stockInSkipBtn')?.addEventListener('click', redirectToPurchase);
+    document.getElementById('stockInSkipBtn2')?.addEventListener('click', redirectToPurchase);
+
+    document.getElementById('stockInConfirmBtn')?.addEventListener('click', function () {
+        const branchId = document.getElementById('stockInBranchSelect').value;
+        if (!branchId) {
+            Swal.fire({ icon: 'warning', title: 'Branch Required', text: 'Please select a branch to stock in.', confirmButtonColor: 'var(--navy)' });
+            return;
+        }
+
+        const sellingPrices = {};
+        document.querySelectorAll('.stockin-sell-price').forEach(inp => {
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val > 0) { sellingPrices[inp.dataset.key] = val; }
+        });
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stocking in...';
+
+        fetch(`/superadmin/purchases/${savedPurchaseId}/auto-stockin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            body: JSON.stringify({ branch_id: branchId, selling_prices: sellingPrices })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Stocked In!', text: data.message, confirmButtonColor: 'var(--navy)' })
+                    .then(() => redirectToPurchase());
+            } else {
+                Swal.fire({ icon: 'error', title: 'Stock-In Failed', text: data.message });
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Stock In Now';
+            }
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to stock in. Please try again.' });
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Stock In Now';
+        });
+    });
+
     const purchaseForm = document.querySelector('form[method="POST"][action*="purchases"]');
     if (purchaseForm) {
         purchaseForm.addEventListener('submit', function (e) {
+            e.preventDefault();
             let firstError = null;
             const allSerials = [];
 
@@ -690,13 +856,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (firstError) {
-                e.preventDefault();
                 Swal.fire({ icon: 'error', title: 'Validation Error', text: firstError, confirmButtonText: 'Got it' });
                 return;
             }
 
+            const proceed = () => doSubmitPurchase(purchaseForm);
+
             if (allSerials.length > 0) {
-                e.preventDefault();
                 fetch('{{ route("superadmin.purchases.check-serials") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -712,10 +878,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             confirmButtonText: 'Got it'
                         });
                     } else {
-                        purchaseForm.submit();
+                        proceed();
                     }
                 })
                 .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to verify serial numbers. Please try again.' }));
+            } else {
+                proceed();
             }
         });
     }
