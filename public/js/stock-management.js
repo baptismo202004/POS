@@ -533,11 +533,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let addedOptions = 0;
 
         branches.forEach(branch => {
-            // Skip current branch as a source
-            if (String(branch.branch_id) === String(currentBranchId)) {
-                return;
-            }
-
             const available = parseInt(branch.current_stock ?? 0, 10);
             if (available <= 0) {
                 return; // Only show branches with available stock

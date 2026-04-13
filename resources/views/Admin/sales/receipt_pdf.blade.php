@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Receipt - {{ $sale->reference_number ?? $sale->id }}</title>
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #111; }
         .container { width: 100%; }
         .header { text-align: center; margin-bottom: 16px; }
         .header img { max-width: 90px; margin-bottom: 8px; }
@@ -122,8 +122,8 @@
                             @endif
                         </td>
                         <td class="right">{{ rtrim(rtrim(number_format((float) ($item->quantity ?? 0), 6, '.', ''), '0'), '.') }}</td>
-                        <td class="right">₱{{ number_format((float) ($item->unit_price ?? 0), 2) }}</td>
-                        <td class="right">₱{{ number_format((float) ($item->subtotal ?? 0), 2) }}</td>
+                        <td class="right">&#8369;{{ number_format((float) ($item->unit_price ?? 0), 2) }}</td>
+                        <td class="right">&#8369;{{ number_format((float) ($item->subtotal ?? 0), 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -132,7 +132,7 @@
         <div class="totals">
             <div class="line grand">
                 <div>TOTAL AMOUNT</div>
-                <div>₱{{ number_format((float) ($sale->total_amount ?? 0), 2) }}</div>
+                <div>&#8369;{{ number_format((float) ($sale->total_amount ?? 0), 2) }}</div>
             </div>
         </div>
     </div>

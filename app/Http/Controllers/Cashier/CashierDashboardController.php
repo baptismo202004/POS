@@ -479,6 +479,45 @@ class CashierDashboardController extends Controller
         return view('cashier.sales.show', compact('sale', 'serialsBySaleItemId'));
     }
 
+    public function salesItems(\App\Models\Sale $sale): \Illuminate\Http\JsonResponse
+    {
+        $user = Auth::user();
+
+        // Cashiers can only see their own branch's sales; admins/superadmins can see all
+        if ($user->branch_id && (int) $sale->branch_id !== (int) $user->branch_id) {
+            abort(403);
+        }
+
+        $items = $sale->saleItems()->with(['product', 'refunds'])->get();
+
+        $itemsData = $items->map(function ($item) {
+            $refundedQuantity = $item->refunds()->where('status', 'approved')->sum('quantity_refunded');
+
+            return [
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'product_name' => $item->product->product_name ?? 'N/A',
+                'quantity' => (float) $item->quantity,
+                'refunded' => (int) $refundedQuantity,
+                'unit_price' => (float) $item->unit_price,
+                'available_for_refund' => (float) $item->quantity - (int) $refundedQuantity,
+            ];
+        });
+
+        $sale->loadMissing('cashier');
+
+        return response()->json([
+            'items' => $itemsData,
+            'sale' => [
+                'id' => $sale->id,
+                'reference_number' => $sale->reference_number,
+                'total_amount' => (float) $sale->total_amount,
+                'payment_method' => $sale->payment_method,
+                'cashier_name' => optional($sale->cashier)->name,
+            ],
+        ]);
+    }
+
     public function salesMarkCompleted(Request $request, \App\Models\Sale $sale): \Illuminate\Http\RedirectResponse
     {
         if ($sale->branch_id !== Auth::user()->branch_id) {
@@ -979,8 +1018,6 @@ class CashierDashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'An error occurred: '.$e->getMessage()], 500);
         }
     }
-
-
 
     public function editProduct($id)
     {
@@ -2587,26 +2624,6 @@ class CashierDashboardController extends Controller
         try {
             $user = Auth::user();
 
-            if (! Access::can($user, 'refund_return', 'create')) {
-                if ($request->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-                }
-
-                abort(403);
-            }
-            $branchId = $user->branch_id;
-
-            if (! $branchId) {
-                if ($request->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => 'No branch assigned to this cashier'], 403);
-                }
-
-                return back()->with('error', 'No branch assigned to this cashier.');
-            }
-
-            // Debug: Log incoming request data
-            Log::info('Cashier refund request data: '.json_encode($request->all()));
-
             $validator = Validator::make($request->all(), [
                 'sale_id' => 'required|exists:sales,id',
                 'sale_item_id' => 'required|exists:sale_items,id',
@@ -2618,7 +2635,6 @@ class CashierDashboardController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::error('Cashier refund validation failed: '.json_encode($validator->errors()->toArray()));
                 if ($request->expectsJson()) {
                     return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
                 }
@@ -2626,9 +2642,9 @@ class CashierDashboardController extends Controller
                 return back()->withErrors($validator)->withInput();
             }
 
-            // Verify the sale belongs to the cashier's branch
+            // Verify the sale belongs to the cashier's branch (skip for users without a fixed branch)
             $sale = \App\Models\Sale::find($request->sale_id);
-            if (! $sale || $sale->branch_id != $branchId) {
+            if (! $sale || ($user->branch_id && (int) $sale->branch_id !== (int) $user->branch_id)) {
                 if ($request->expectsJson()) {
                     return response()->json(['success' => false, 'message' => 'Sale not found or not authorized for this branch'], 403);
                 }
@@ -2636,108 +2652,76 @@ class CashierDashboardController extends Controller
                 return back()->with('error', 'Sale not found or not authorized for this branch.');
             }
 
-            Log::info('Validation passed, starting transaction');
+            // Resolve effective branch — cashier uses their own, admin uses the sale's branch
+            $effectiveBranchId = (int) ($user->branch_id ?: $sale->branch_id);
+            $isReplacement = $request->input('refund_type') === 'replacement';
 
-            DB::transaction(function () use ($request) {
-                Log::info('Finding sale item: '.$request->sale_item_id);
-                $saleItem = \App\Models\SaleItem::find($request->sale_item_id);
+            DB::transaction(function () use ($request, $user, $effectiveBranchId, $isReplacement) {
+                $saleItem = \App\Models\SaleItem::findOrFail($request->sale_item_id);
 
-                if (! $saleItem) {
-                    Log::error('Sale item not found: '.$request->sale_item_id);
-                    throw new \Exception('Sale item not found');
-                }
-
-                Log::info('Sale item found, checking existing refunds');
-                // Validate that refund quantity doesn't exceed sold quantity
                 $totalRefunded = Refund::where('sale_item_id', $request->sale_item_id)
                     ->where('status', 'approved')
                     ->sum('quantity_refunded');
 
-                Log::info('Total refunded: '.$totalRefunded.', requested: '.$request->quantity_refunded.', sold: '.$saleItem->quantity);
-
                 if ($totalRefunded + $request->quantity_refunded > $saleItem->quantity) {
-                    throw new \Exception('Cannot refund more items than were sold');
+                    throw new \Exception('Cannot refund more items than were sold.');
                 }
 
-                Log::info('Creating refund record');
-                // Create refund record
-                $refund = Refund::create([
+                Refund::create([
                     'sale_id' => $request->sale_id,
                     'sale_item_id' => $request->sale_item_id,
                     'product_id' => $request->product_id,
-                    'cashier_id' => Auth::id(),
+                    'cashier_id' => $user->id,
                     'quantity_refunded' => $request->quantity_refunded,
                     'refund_amount' => $request->refund_amount,
                     'reason' => $request->reason,
-                    'status' => 'approved', // Auto-approve for cashier refunds
+                    'status' => 'approved',
                     'notes' => $request->notes,
                 ]);
 
-                Log::info('Refund created with ID: '.$refund->id);
-
-                // Update sale total amount by deducting refund amount
-                /** @var \App\Models\Sale|null $sale */
-                $sale = \App\Models\Sale::find($request->sale_id);
-                if ($sale) {
-                    // Do not allow refunds for credit sales (defensive check)
-                    if (strtolower($sale->payment_method) === 'credit') {
-                        throw new \Exception('Refunds are not allowed for credit sales.');
+                // Deduct from sale total for cash refunds only
+                if (! $isReplacement) {
+                    $sale = \App\Models\Sale::find($request->sale_id);
+                    if ($sale) {
+                        if (strtolower($sale->payment_method) === 'credit') {
+                            throw new \Exception('Refunds are not allowed for credit sales.');
+                        }
+                        $sale->total_amount = max(0, $sale->total_amount - $request->refund_amount);
+                        $sale->save();
                     }
-
-                    $currentTotal = $sale->total_amount;
-                    $newTotal = $currentTotal - $request->refund_amount;
-
-                    $sale->total_amount = max(0, $newTotal);
-                    $sale->status = 'refunded';
-                    $sale->save();
-
-                    Log::info('Sale total updated: '.$currentTotal.' -> '.$sale->total_amount.' (Refund: '.$request->refund_amount.')');
                 }
 
-                // Update inventory - add back refunded items
+                // Restore stock
                 $product = Product::find($request->product_id);
                 if ($product) {
-                    Log::info('Updating inventory for product: '.$product->id);
-
-                    $branchId = (int) (Auth::user()?->branch_id ?? 1);
                     $service = app(\App\Services\InventoryService::class);
-
-                    $saleItem = \App\Models\SaleItem::query()
-                        ->where('sale_id', (int) $request->sale_id)
+                    $unitSaleItem = \App\Models\SaleItem::where('sale_id', (int) $request->sale_id)
                         ->where('product_id', (int) $request->product_id)
                         ->first(['unit_type_id']);
 
-                    $unitTypeId = (int) ($saleItem?->unit_type_id ?? 0);
+                    $unitTypeId = (int) ($unitSaleItem?->unit_type_id ?? 0);
                     if ($unitTypeId <= 0) {
                         throw new \RuntimeException('Cannot restore inventory: sale item unit not found.');
                     }
 
                     $baseQty = $service->convertToBaseQuantity((int) $product->id, $unitTypeId, (float) $request->quantity_refunded);
-                    $service->increaseStock($branchId, (int) $product->id, $baseQty, 'adjustment', 'refunds', (int) $request->sale_id, now());
-                } else {
-                    Log::warning('Product not found: '.$request->product_id);
+                    $service->increaseStock($effectiveBranchId, (int) $product->id, $baseQty, 'adjustment', 'refunds', (int) $request->sale_id, now());
                 }
-
-                Log::info('Cashier refund transaction completed successfully');
             });
 
-            Log::info('Returning success response');
             if ($request->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'Refund processed successfully']);
+                return response()->json(['success' => true, 'message' => 'Refund processed successfully.']);
             }
 
-            return redirect()
-                ->route('cashier.refunds.index')
-                ->with('success', 'Refund processed successfully.');
+            return redirect()->route('cashier.refunds.index')->with('success', 'Refund processed successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Cashier refund processing error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
-            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('Cashier refund error: '.$e->getMessage());
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Error processing refund: '.$e->getMessage()], 500);
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
 
-            return back()->with('error', 'Error processing refund: '.$e->getMessage())->withInput();
+            return back()->with('error', $e->getMessage())->withInput();
         }
     }
 
@@ -3914,6 +3898,13 @@ class CashierDashboardController extends Controller
             $changeDue = $request->filled('change_due') ? (float) $request->input('change_due') : null;
             $items = $request->input('products');
 
+            // Require customer name for credit payments
+            if ($paymentMethod === 'credit' && empty(trim((string) $customerName))) {
+                DB::rollBack();
+
+                return response()->json(['success' => false, 'message' => 'Customer name is required for credit payments.'], 422);
+            }
+
             if (empty($items) || ! is_array($items)) {
                 return response()->json(['success' => false, 'message' => 'No items provided for sale']);
             }
@@ -3939,9 +3930,14 @@ class CashierDashboardController extends Controller
 
             $sale = Sale::create($salePayload);
 
-            // Set receipt_group_id to the sale's own id for single-transaction grouping
+            // Generate reference number using the actual sale ID
+            $refNum = 'SA-'.date('Y').'-'.str_pad($sale->id, 6, '0', STR_PAD_LEFT);
+            DB::table('sales')->where('id', $sale->id)->update([
+                'reference_number' => $refNum,
+                'receipt_group_id' => $sale->id,
+            ]);
+            $sale->reference_number = $refNum;
             $sale->receipt_group_id = $sale->id;
-            $sale->save();
 
             $posBranchId = (int) $branchId;
 

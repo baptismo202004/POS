@@ -563,7 +563,6 @@ class PosAdminController extends Controller
             }
 
             // Create sale record with all required fields
-            $referenceNumber = 'SA-'.date('Y').'-'.str_pad(Sale::max('id') + 1, 6, '0', STR_PAD_LEFT);
             $saleData = [
                 'cashier_id' => Auth::id(),
                 'employee_id' => Auth::id(),
@@ -571,7 +570,6 @@ class PosAdminController extends Controller
                 'total_amount' => $total,
                 'tax' => 0,
                 'payment_method' => $paymentMethod,
-                'reference_number' => $referenceNumber,
             ];
 
             if ($paymentMethod === 'cash') {
@@ -587,6 +585,8 @@ class PosAdminController extends Controller
 
             $sale = Sale::create($saleData);
 
+            // Generate reference number using the actual sale ID
+            $sale->reference_number = 'SA-'.date('Y').'-'.str_pad($sale->id, 6, '0', STR_PAD_LEFT);
             // Set receipt_group_id to the sale's own id for single-transaction grouping
             $sale->receipt_group_id = $sale->id;
             $sale->save();
@@ -815,7 +815,6 @@ class PosAdminController extends Controller
                 }
             }
 
-            $referenceNumber = 'SA-'.date('Y').'-'.str_pad(Sale::max('id') + 1, 6, '0', STR_PAD_LEFT);
             $saleData = [
                 'cashier_id' => Auth::id(),
                 'employee_id' => Auth::id(),
@@ -823,7 +822,6 @@ class PosAdminController extends Controller
                 'total_amount' => $total,
                 'tax' => 0,
                 'payment_method' => $paymentMethod,
-                'reference_number' => $referenceNumber,
             ];
 
             if ($notes !== null && $notes !== '' && \Illuminate\Support\Facades\Schema::hasColumn('sales', 'notes')) {
@@ -858,6 +856,8 @@ class PosAdminController extends Controller
 
             $sale = Sale::create($saleData);
 
+            // Generate reference number using the actual sale ID
+            $sale->reference_number = 'SA-'.date('Y').'-'.str_pad($sale->id, 6, '0', STR_PAD_LEFT);
             // Set receipt_group_id to the sale's own id for single-transaction grouping
             $sale->receipt_group_id = $sale->id;
             $sale->save();

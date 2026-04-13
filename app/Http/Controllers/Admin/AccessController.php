@@ -4,17 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\Sale;
 use App\Models\Purchase;
-use App\Models\User;
 use App\Models\RolePermission;
+use App\Models\Sale;
+use App\Models\User;
 use App\Models\UserType;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Database\QueryException;
 
 class AccessController extends Controller
 {
@@ -50,7 +49,9 @@ class AccessController extends Controller
         // Get users with their user types for the dashboard
         $users = \App\Models\User::with('userType')->orderBy('name')->get();
 
-        return view('Admin.access.index', compact('modules', 'roles', 'permissions', 'users'));
+        $branches = \App\Models\Branch::orderBy('branch_name')->get();
+
+        return view('Admin.access.index', compact('modules', 'roles', 'permissions', 'users', 'branches'));
     }
 
     /**
@@ -70,24 +71,24 @@ class AccessController extends Controller
                 foreach ($modules as $moduleKey => $permissions) {
                     foreach ($permissions as $permission => $value) {
                         RolePermission::updateOrCreate(
-                            ['user_type_id' => (int)$roleId, 'module' => $moduleKey, 'ability' => $permission],
+                            ['user_type_id' => (int) $roleId, 'module' => $moduleKey, 'ability' => $permission],
                             ['ability' => $permission] // Simplified: presence means allowed
                         );
                     }
                 }
-                $touchedRoleIds[(int)$roleId] = true;
+                $touchedRoleIds[(int) $roleId] = true;
             }
 
             // Invalidate cached role permissions for affected roles
             foreach (array_keys($touchedRoleIds) as $rid) {
-                Cache::forget("rp:" . $rid);
+                Cache::forget('rp:'.$rid);
             }
         });
 
         return redirect()->route('admin.access.index')->with('success', 'Access configuration saved.');
     }
 
-        public function storeRole(Request $request)
+    public function storeRole(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:user_types,name',
@@ -110,13 +111,13 @@ class AccessController extends Controller
     {
         $role = UserType::find($role);
 
-        if (!$role) {
+        if (! $role) {
             return response()->json(['success' => false, 'message' => 'Role not found.'], 404);
         }
 
         $data = $request->all();
         $validator = Validator::make($data, [
-            'name' => 'required|string|max:255|unique:user_types,name,' . $role->id,
+            'name' => 'required|string|max:255|unique:user_types,name,'.$role->id,
             'description' => 'nullable|string|max:255',
         ]);
 
@@ -147,7 +148,7 @@ class AccessController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role_id' => 'required|exists:user_types,id'
+            'role_id' => 'required|exists:user_types,id',
         ]);
 
         $user = User::create([
@@ -156,7 +157,7 @@ class AccessController extends Controller
             'password' => bcrypt($request->password),
             'user_type_id' => $request->role_id,
             'email_verified_at' => now(),
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $role = UserType::find($request->role_id);
@@ -164,30 +165,30 @@ class AccessController extends Controller
         return response()->json([
             'success' => true,
             'message' => "User '{$user->name}' created with role '{$role->name}'",
-            'user' => $user->load('userType')
+            'user' => $user->load('userType'),
         ]);
     }
 
     public function getUser($id)
     {
         try {
-            $user = User::with('userType')->find($id);
-            
-            if (!$user) {
+            $user = User::with(['userType', 'branch'])->find($id);
+
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found'
+                    'message' => 'User not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'user' => $user
+                'user' => $user,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching user: ' . $e->getMessage()
+                'message' => 'Error fetching user: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -196,21 +197,23 @@ class AccessController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'role_id' => 'nullable|exists:user_types,id'
+            'email' => 'required|email|unique:users,email,'.$id,
+            'role_id' => 'nullable|exists:user_types,id',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
 
         $user->update([
             'name' => $request->name,
-            'email' => $request->email
+            'email' => $request->email,
+            'branch_id' => $request->branch_id ?: null,
         ]);
 
         // Update role if provided
@@ -222,34 +225,34 @@ class AccessController extends Controller
         return response()->json([
             'success' => true,
             'message' => "User '{$user->name}' updated successfully",
-            'user' => $user->load('userType')
+            'user' => $user->load('userType'),
         ]);
     }
 
     public function deleteUser($id)
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
-        
+
         // Prevent deletion of admin user (ID 1)
         if ($user->id === 1) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete the admin user'
+                'message' => 'Cannot delete the admin user',
             ], 403);
         }
-        
+
         $userName = $user->name;
         $user->delete();
 
         return response()->json([
             'success' => true,
-            'message' => "User '{$userName}' deleted successfully"
+            'message' => "User '{$userName}' deleted successfully",
         ]);
     }
 
@@ -259,33 +262,33 @@ class AccessController extends Controller
         $users = \App\Models\User::with('userType')
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
-            
+
         return view('Admin.access.logs_fullscreen', compact('users'));
     }
 
     public function editUser($id)
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
-        
+
         return response()->json([
             'success' => true,
-            'user' => $user
+            'user' => $user,
         ]);
     }
 
     public function userActivity($id)
     {
         $user = User::with('userType')->find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
 
@@ -397,6 +400,7 @@ class AccessController extends Controller
         foreach ($allRoles as $role) {
             $resolved[$role->id] = $this->getInheritedPermissions($role, $existing, $allRoles);
         }
+
         return $resolved;
     }
 

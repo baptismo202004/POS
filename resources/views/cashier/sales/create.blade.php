@@ -794,8 +794,8 @@
                                             <i class="fas fa-exclamation-triangle me-2"></i>Credit Details
                                         </h6>
                                         <div class="mb-2">
-                                            <label class="form-label">Customer Name:</label>
-                                            <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name (optional)">
+                                            <label class="form-label">Customer Name: <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="customer_name" placeholder="Enter customer name">
                                         </div>
                                         <div class="mb-2">
                                             <label class="form-label">Credit Date:</label>
@@ -1043,7 +1043,16 @@ function submitSale(total, selectedPayment, cashTendered, changeDue) {
     formData.append('payment_method', selectedPayment);
 
     if (selectedPayment === 'credit') {
-        formData.append('customer_name', document.getElementById('customer_name').value);
+        const customerNameVal = document.getElementById('customer_name').value.trim();
+        if (!customerNameVal) {
+            Swal.fire({ icon: 'warning', title: 'Customer Name Required', text: 'Please enter the customer name for credit payments.' });
+            if (checkoutBtn) {
+                checkoutBtn.innerHTML = '<i class="fas fa-credit-card me-2"></i>Checkout';
+                checkoutBtn.disabled = false;
+            }
+            return;
+        }
+        formData.append('customer_name', customerNameVal);
         formData.append('credit_due_date', document.getElementById('credit_due_date').value);
         formData.append('credit_notes', document.getElementById('credit_notes').value);
     }
@@ -1104,7 +1113,7 @@ function submitSale(total, selectedPayment, cashTendered, changeDue) {
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="text-muted">Total Amount:</span>
-                                        <strong style="color: #2563eb; font-size: 1.2em;">${totalAmount}</strong>
+                                        <strong style="color: #2563eb; font-size: 1.2em;">${totalDisplay}</strong>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="text-muted">Credit Date:</span>

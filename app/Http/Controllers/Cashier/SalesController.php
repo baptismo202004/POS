@@ -191,37 +191,28 @@ class SalesController extends Controller
                     $branchProportions[$branchId] = $branchData['subtotal'] / $subtotal;
                 }
 
-                // Get current count for reference number generation
-                $currentSaleCount = Sale::whereDate('created_at', today())->count();
-
                 // Create sales for each branch
                 foreach ($itemsByBranch as $branchId => $branchData) {
-                    // Calculate proportional amounts for this branch
                     $branchTotalAmount = $totalAmount * $branchProportions[$branchId];
                     $branchDiscountAmount = $discountAmount * $branchProportions[$branchId];
                     $branchSubtotal = $branchData['subtotal'];
-
-                    // Create unique reference number for each branch sale
-                    $currentSaleCount++;
-                    $referenceNumber = 'REF-'.date('Ymd').'-'.str_pad($currentSaleCount, 4, '0', STR_PAD_LEFT);
-
-                    // Debug logging
-                    Log::info('Creating sale with reference: '.$referenceNumber);
-                    Log::info('Branch ID: '.$branchId);
-                    Log::info('Total Amount: '.$branchTotalAmount);
 
                     $sale = Sale::create([
                         'branch_id' => $branchId,
                         'cashier_id' => $user->id,
                         'customer_id' => $customerId,
                         'total_amount' => $branchTotalAmount,
-                        'subtotal' => $branchSubtotal,
-                        'discount_amount' => $branchDiscountAmount,
                         'payment_method' => $validated['payment_method'],
                         'status' => 'completed',
-                        'reference_number' => $referenceNumber,
                         'receipt_group_id' => $receiptGroupId,
                     ]);
+
+                    // Generate reference number using the actual sale ID
+                    $sale->reference_number = 'SA-'.date('Y').'-'.str_pad($sale->id, 6, '0', STR_PAD_LEFT);
+                    if (! $receiptGroupId) {
+                        $sale->receipt_group_id = $sale->id;
+                    }
+                    $sale->save();
 
                     Log::info('Sale created with ID: '.$sale->id.' and reference: '.$sale->reference_number);
 

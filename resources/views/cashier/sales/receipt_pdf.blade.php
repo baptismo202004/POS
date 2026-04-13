@@ -130,8 +130,8 @@
                             @endif
                         </td>
                         <td class="right">{{ rtrim(rtrim(number_format((float) ($item->quantity ?? 0), 6, '.', ''), '0'), '.') }}</td>
-                        <td class="right">₱{{ number_format((float) ($item->unit_price ?? 0), 2) }}</td>
-                        <td class="right">₱{{ number_format((float) ($item->subtotal ?? 0), 2) }}</td>
+                        <td class="right">&#8369;{{ number_format((float) ($item->unit_price ?? 0), 2) }}</td>
+                        <td class="right">&#8369;{{ number_format((float) ($item->subtotal ?? 0), 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -140,7 +140,7 @@
         <div class="totals">
             <div class="line grand">
                 <div>TOTAL AMOUNT</div>
-                <div>₱{{ number_format((float) ($sale->total_amount ?? 0), 2) }}</div>
+                <div>&#8369;{{ number_format((float) ($sale->total_amount ?? 0), 2) }}</div>
             </div>
         </div>
     </div>

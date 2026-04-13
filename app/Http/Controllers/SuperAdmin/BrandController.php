@@ -10,7 +10,7 @@ class BrandController extends Controller
 {
     public function index()
     {
-        $brands = Brand::latest()->get();
+        $brands = Brand::orderBy('id')->get();
 
         return view('SuperAdmin.brands.index', compact('brands'));
     }

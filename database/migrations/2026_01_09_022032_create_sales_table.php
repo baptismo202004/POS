@@ -40,13 +40,6 @@ return new class extends Migration
             $table->enum('status', ['completed', 'voided', 'pending'])
                 ->default('completed');
 
-            $table->boolean('voided')->default(false);
-
-            $table->foreignId('voided_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
             $table->timestamp('voided_at')->nullable();
 
             $table->timestamps();

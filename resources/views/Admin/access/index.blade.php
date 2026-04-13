@@ -320,6 +320,15 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Branch</label>
+                            <select class="form-select" name="branch_id">
+                                <option value="">No Branch</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -367,6 +376,26 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Force-clean any stuck modal state (backdrop + body classes)
+function forceModalCleanup() {
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+}
+
+// Clean up the static addUserModal on hide
+document.addEventListener('DOMContentLoaded', function () {
+    const addUserModalEl = document.getElementById('addUserModal');
+    if (addUserModalEl) {
+        addUserModalEl.addEventListener('hidden.bs.modal', forceModalCleanup);
+    }
+    const addRoleModalEl = document.getElementById('addRoleModal');
+    if (addRoleModalEl) {
+        addRoleModalEl.addEventListener('hidden.bs.modal', forceModalCleanup);
+    }
+});
+
 // User search functionality
 document.getElementById('userSearch').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
@@ -777,6 +806,13 @@ function editUser(userId) {
                                             ${getRoleOptions(data.user.user_type_id)}
                                         </select>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Branch</label>
+                                        <select class="form-select" name="branch_id">
+                                            <option value="">No Branch</option>
+                                            ${getBranchOptions(data.user.branch_id)}
+                                        </select>
+                                    </div>
                                 </form>
                             </div>
                             <div class="modal-footer">
@@ -787,14 +823,26 @@ function editUser(userId) {
                     </div>
                 </div>
             `;
-            
-            const existingModal = document.getElementById('editUserModal');
-            if (existingModal) {
-                existingModal.remove();
+
+            const existingEl = document.getElementById('editUserModal');
+            if (existingEl) {
+                const existingInstance = bootstrap.Modal.getInstance(existingEl);
+                if (existingInstance) {
+                    existingInstance.dispose();
+                }
+                existingEl.remove();
             }
-            
+
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            const modalEl = document.getElementById('editUserModal');
+            const modal = new bootstrap.Modal(modalEl);
+
+            // Remove from DOM after fully hidden to avoid aria-hidden focus conflict
+            modalEl.addEventListener('hidden.bs.modal', () => {
+                forceModalCleanup();
+                modalEl.remove();
+            }, { once: true });
+
             modal.show();
         } else {
             Swal.fire({
@@ -820,7 +868,7 @@ function updateUser() {
     const userId = formData.get('user_id');
     formData.append('_method', 'PUT');
 
-    fetch(`/superadmin/admin/access/users/${userId}`, {
+    fetch(`/admin/access/users/${userId}`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -878,6 +926,13 @@ function getRoleOptions(selectedRoleId) {
     ).join('');
 }
 
+function getBranchOptions(selectedBranchId) {
+    const branches = @json($branches);
+    return branches.map(branch =>
+        `<option value="${branch.id}" ${branch.id == selectedBranchId ? 'selected' : ''}>${branch.branch_name}</option>`
+    ).join('');
+}
+
 function deleteUser(userId) {
     Swal.fire({
         title: 'Are you sure?',
@@ -889,7 +944,7 @@ function deleteUser(userId) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`/superadmin/admin/access/users/${userId}`, {
+            fetch(`/admin/access/users/${userId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

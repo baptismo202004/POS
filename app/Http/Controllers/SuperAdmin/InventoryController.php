@@ -565,6 +565,7 @@ class InventoryController extends Controller
         $fromBranchId = (int) $request->input('from_branch');
         $toBranchId = (int) $request->input('to_branch');
         $quantity = (int) $request->input('transfer_quantity');
+        $transferPrice = (float) $request->input('transfer_price', 0);
 
         // Source branch must be active
         $fromBranch = Branch::find($fromBranchId);
@@ -600,9 +601,24 @@ class InventoryController extends Controller
             ], 400);
         }
 
-        DB::transaction(function () use ($service, $product, $fromBranchId, $toBranchId, $quantity) {
+        DB::transaction(function () use ($service, $product, $fromBranchId, $toBranchId, $quantity, $transferPrice) {
             $service->decreaseStock($fromBranchId, (int) $product->id, (float) $quantity, 'transfer', 'transfer', null, now());
             $service->increaseStock($toBranchId, (int) $product->id, (float) $quantity, 'transfer', 'transfer', null, now());
+
+            // Record a stock_in entry for the destination branch so unit_price is visible in stock management
+            if ($transferPrice > 0) {
+                DB::table('stock_ins')->insert([
+                    'product_id' => $product->id,
+                    'branch_id' => $toBranchId,
+                    'unit_type_id' => null,
+                    'purchase_id' => null,
+                    'quantity' => $quantity,
+                    'sold' => 0,
+                    'price' => $transferPrice,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         });
 
         // Update out-of-stock count
