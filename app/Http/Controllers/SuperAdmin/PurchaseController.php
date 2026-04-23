@@ -23,13 +23,23 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $purchases = Purchase::with(['items.product'])
-            ->latest('purchase_date')
-            ->paginate(100);
+        $search = $request->get('search');
 
-        return view('SuperAdmin.purchases.index', compact('purchases'));
+        $purchases = Purchase::with(['items.product', 'supplier'])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($query) use ($search) {
+                    $query->where('reference_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', fn ($s) => $s->where('supplier_name', 'like', "%{$search}%"))
+                        ->orWhereHas('items.product', fn ($p) => $p->where('product_name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest('purchase_date')
+            ->paginate(100)
+            ->withQueryString();
+
+        return view('SuperAdmin.purchases.index', compact('purchases', 'search'));
     }
 
     public function create()

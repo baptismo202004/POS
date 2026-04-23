@@ -211,7 +211,23 @@
                     <div class="sp-card-head-title">
                         <i class="fas fa-list"></i> Purchase Orders
                     </div>
-                    <span class="sp-c-badge">{{ $purchases->total() }} records</span>
+                    <div style="display:flex;align-items:center;gap:10px;position:relative;z-index:1;">
+                        <form method="GET" action="{{ route('superadmin.purchases.index') }}" style="display:flex;gap:8px;align-items:center;">
+                            <div style="position:relative;">
+                                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.6);font-size:12px;"></i>
+                                <input type="text" name="search" id="purchaseSearchInput" value="{{ $search ?? '' }}"
+                                    placeholder="Search product, supplier, ref..."
+                                    style="padding:7px 12px 7px 30px;border-radius:9px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.12);color:#fff;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;width:240px;"
+                                    onfocus="this.style.background='rgba(255,255,255,0.2)'"
+                                    onblur="this.style.background='rgba(255,255,255,0.12)'">
+                            </div>
+                            <button type="submit" style="padding:7px 14px;border-radius:9px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Search</button>
+                            @if($search)
+                                <a href="{{ route('superadmin.purchases.index') }}" style="padding:7px 12px;border-radius:9px;border:1.5px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.8);font-size:12px;text-decoration:none;">Clear</a>
+                            @endif
+                        </form>
+                        <span class="sp-c-badge">{{ $purchases->total() }} records</span>
+                    </div>
                 </div>
 
                 {{-- Table --}}
@@ -256,6 +272,11 @@
                                     <td>
                                         <span style="font-weight:600;">{{ $purchase->items->count() }}</span>
                                         <span style="color:var(--muted);font-size:12px;"> item(s)</span>
+                                        @if($search)
+                                            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+                                                {{ $purchase->items->pluck('product.product_name')->filter()->implode(', ') }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         <span class="sp-total">₱{{ number_format($purchase->total_cost, 2) }}</span>
@@ -290,6 +311,13 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    // Auto-submit when search is cleared
+    document.getElementById('purchaseSearchInput')?.addEventListener('input', function () {
+        if (this.value === '') {
+            this.closest('form').submit();
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         @if(session('success'))
             Swal.fire({
