@@ -190,10 +190,14 @@
         <div class="row g-3 align-items-end">
             <div class="col-md-4">
                 <label class="form-label">Product</label>
-                <select name="items[][product_id]" class="form-select product-select" required>
+                <div class="product-search-wrapper position-relative">
+                    <input type="text" class="form-control product-search-input" placeholder="Search by name or barcode..." autocomplete="off">
+                    <div class="product-search-dropdown list-group position-absolute w-100 shadow-sm" style="z-index:1000;display:none;max-height:220px;overflow-y:auto;"></div>
+                </div>
+                <select name="items[][product_id]" class="form-select product-select d-none" required>
                     <option value="">-- Select Product --</option>
                     @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->product_name }}</option>
+                        <option value="{{ $product->id }}" data-name="{{ $product->product_name }}" data-barcode="{{ $product->barcode }}">{{ $product->product_name }}{{ $product->barcode ? ' — ' . $product->barcode : '' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -544,8 +548,65 @@ document.addEventListener('DOMContentLoaded', function () {
             el.setAttribute('name', el.getAttribute('name').replace('[]', `[${itemIndex}]`));
         });
         itemsContainer.appendChild(node);
+        // Init product search on the newly added row
+        const newRow = itemsContainer.lastElementChild;
+        initProductSearch(newRow);
         itemIndex++;
         updateTotals();
+    }
+
+    // ── Product search ───────────────────────────────────────────────────────
+    function initProductSearch(row) {
+        const searchInput = row.querySelector('.product-search-input');
+        const dropdown    = row.querySelector('.product-search-dropdown');
+        const select      = row.querySelector('.product-select');
+        if (!searchInput || !dropdown || !select) return;
+
+        const options = Array.from(select.options).filter(o => o.value);
+
+        function renderDropdown(query) {
+            const q = query.trim().toLowerCase();
+            const matches = q
+                ? options.filter(o =>
+                    o.dataset.name.toLowerCase().includes(q) ||
+                    (o.dataset.barcode || '').toLowerCase().includes(q)
+                  )
+                : options;
+
+            dropdown.innerHTML = '';
+            if (matches.length === 0) {
+                dropdown.innerHTML = '<div class="list-group-item text-muted small">No products found</div>';
+            } else {
+                matches.forEach(o => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action py-2 px-3';
+                    item.style.fontSize = '13px';
+                    const barcode = o.dataset.barcode ? `<span class="text-muted ms-2" style="font-size:11px;">${o.dataset.barcode}</span>` : '';
+                    item.innerHTML = `<span>${o.dataset.name}</span>${barcode}`;
+                    item.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        select.value = o.value;
+                        searchInput.value = o.dataset.name;
+                        dropdown.style.display = 'none';
+                        // Trigger change so unit types / category UI updates
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    dropdown.appendChild(item);
+                });
+            }
+            dropdown.style.display = 'block';
+        }
+
+        searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
+        searchInput.addEventListener('input', () => renderDropdown(searchInput.value));
+        searchInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+
+        // If a value is already selected (e.g. on edit), show its name
+        if (select.value) {
+            const selected = options.find(o => o.value === select.value);
+            if (selected) searchInput.value = selected.dataset.name;
+        }
     }
 
     addItemBtn.addEventListener('click', addRow);
