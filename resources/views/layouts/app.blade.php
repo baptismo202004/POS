@@ -117,7 +117,7 @@
             height: 100vh;
             width: 260px;
             overflow-y: auto;
-            overflow-x: hidden;
+            overflow-x: visible;
             z-index: 1000;
             /* Hide scrollbar visually but keep functionality */
             scrollbar-width: none; /* Firefox */

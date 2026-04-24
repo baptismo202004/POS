@@ -455,8 +455,10 @@
             border-radius: 12px; 
             box-shadow: 0 10px 30px rgba(13, 71, 161, 0.15); 
             background: #FFFFFF;
-            z-index: 1050;
-            position: relative;
+            z-index: 99999 !important;
+            position: fixed !important;
+            padding: 8px;
+            border: 1px solid rgba(0,0,0,0.08);
         }
         
         /* Ensure dropdown button is clickable */
@@ -945,8 +947,8 @@
     </div>
 
     <div class="sidebar-user-panel">
-    <div class="dropdown">
-        <button class="d-flex align-items-center gap-2 w-100 text-start p-2" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.9);">
+    <div class="dropdown dropup">
+        <button class="d-flex align-items-center gap-2 w-100 text-start p-2" type="button" id="sidebarUserDropdown" aria-expanded="false" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.9);">
             @if(!empty($sidebarAvatarUrl))
                 <img src="{{ $sidebarAvatarUrl }}" alt="{{ $sidebarUser->name ?? 'User' }}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover">
             @else
@@ -1036,13 +1038,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Specific initialization for user dropdown
+    // Specific initialization for user dropdown — portal approach so no parent overflow clips it
     const userDropdown = document.getElementById('sidebarUserDropdown');
     if (userDropdown) {
-        new bootstrap.Dropdown(userDropdown, {
-            boundary: 'viewport',
-            reference: 'toggle',
-            display: 'dynamic'
+        const dropdownMenu = userDropdown.closest('.dropdown').querySelector('.user-dropdown-menu');
+
+        // Move the dropdown menu to document.body so it escapes all overflow contexts
+        if (dropdownMenu) {
+            document.body.appendChild(dropdownMenu);
+            dropdownMenu.style.display = 'none';
+        }
+
+        userDropdown.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = dropdownMenu.classList.contains('dropdown-open');
+
+            if (isOpen) {
+                dropdownMenu.classList.remove('dropdown-open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                // Position relative to the button
+                const rect = userDropdown.getBoundingClientRect();
+                dropdownMenu.style.position  = 'fixed';
+                dropdownMenu.style.zIndex    = '99999';
+                dropdownMenu.style.display   = 'block';
+                dropdownMenu.style.left      = rect.left + 'px';
+                // Open upward
+                dropdownMenu.style.bottom    = (window.innerHeight - rect.top + 4) + 'px';
+                dropdownMenu.style.top       = 'auto';
+                dropdownMenu.classList.add('dropdown-open');
+            }
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!userDropdown.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('dropdown-open');
+                dropdownMenu.style.display = 'none';
+            }
+        });
+
+        // Reposition on scroll/resize
+        window.addEventListener('resize', function () {
+            if (dropdownMenu.classList.contains('dropdown-open')) {
+                const rect = userDropdown.getBoundingClientRect();
+                dropdownMenu.style.left   = rect.left + 'px';
+                dropdownMenu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+            }
         });
     }
     

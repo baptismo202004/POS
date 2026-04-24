@@ -98,7 +98,7 @@
             <!-- Quick Stats Cards -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <div class="sp-stat sp-stat-blue hover-card" onclick="showMonthlySalesModal()">
+                    <div class="sp-stat sp-stat-blue" id="card-monthly-sales" style="cursor:pointer;" onclick="filterByPeriod('month', ['sales'])">
                         <div class="sp-stat-meta">
                             <div class="sp-stat-k">Monthly Sales</div>
                             <div class="sp-stat-v" id="stat-card-sales">₱{{ number_format(\App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('total_amount'), 2) }}</div>
@@ -107,33 +107,154 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="sp-stat sp-stat-red hover-card" onclick="showTodaysExpensesModal()">
+                    @php
+                        $todayExpAmt     = \App\Models\Expense::whereDate('expense_date', today())->sum('amount');
+                        $todayExpItems   = \App\Models\SaleItem::whereHas('sale', fn($q) => $q->whereDate('created_at', today())->where('status','!=','voided'))->get(['product_id','quantity']);
+                        $todayPurchAmt   = 0;
+                        foreach ($todayExpItems as $si) { $uc = \Illuminate\Support\Facades\DB::table('purchase_items')->join('purchases','purchase_items.purchase_id','=','purchases.id')->where('purchase_items.product_id',$si->product_id)->orderByDesc('purchases.purchase_date')->value('purchase_items.unit_cost') ?? 0; $todayPurchAmt += (float)$si->quantity * (float)$uc; }
+                        $todayExpTotal   = $todayExpAmt + $todayPurchAmt;
+                    @endphp
+                    <div class="sp-stat sp-stat-red" id="card-today-expenses" style="cursor:pointer;" onclick="filterByPeriod('today', ['expenses'])">
                         <div class="sp-stat-meta">
                             <div class="sp-stat-k">Today's Expenses</div>
-                            <div class="sp-stat-v" id="stat-card-today-expenses">₱{{ number_format(\App\Models\Expense::whereDate('expense_date', today())->sum('amount'), 2) }}</div>
+                            <div class="sp-stat-v" id="stat-card-today-expenses">₱{{ number_format($todayExpAmt, 2) }}</div>
+                            <div id="today-exp-sub" style="font-size:11px;opacity:.8;margin-top:3px;">Operational only</div>
                         </div>
-                        <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="d-flex flex-column align-items-end gap-2" style="position:relative;z-index:2;">
+                            <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                            <button type="button" id="today-exp-toggle"
+                                onclick="event.stopPropagation(); toggleExpenses('today')"
+                                style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;white-space:nowrap;">
+                                + Purchase Cost
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="sp-stat sp-stat-green">
+                    @php
+                        $monthExpAmt   = \App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount');
+                        $monthExpItems = \App\Models\SaleItem::whereHas('sale', fn($q) => $q->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->where('status','!=','voided'))->get(['product_id','quantity']);
+                        $monthPurchAmt = 0;
+                        foreach ($monthExpItems as $si) { $uc = \Illuminate\Support\Facades\DB::table('purchase_items')->join('purchases','purchase_items.purchase_id','=','purchases.id')->where('purchase_items.product_id',$si->product_id)->orderByDesc('purchases.purchase_date')->value('purchase_items.unit_cost') ?? 0; $monthPurchAmt += (float)$si->quantity * (float)$uc; }
+                        $monthExpTotal = $monthExpAmt + $monthPurchAmt;
+                    @endphp
+                    <div class="sp-stat sp-stat-green" id="card-month-expenses" style="cursor:pointer;" onclick="filterByPeriod('month', ['expenses'])">
                         <div class="sp-stat-meta">
                             <div class="sp-stat-k">This Month's Expenses</div>
-                            <div class="sp-stat-v" id="stat-card-month-expenses">₱{{ number_format(\App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount'), 2) }}</div>
+                            <div class="sp-stat-v" id="stat-card-month-expenses">₱{{ number_format($monthExpAmt, 2) }}</div>
+                            <div id="month-exp-sub" style="font-size:11px;opacity:.8;margin-top:3px;">Operational only</div>
                         </div>
-                        <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="d-flex flex-column align-items-end gap-2" style="position:relative;z-index:2;">
+                            <div class="sp-stat-ic"><i class="fas fa-money-bill-wave"></i></div>
+                            <button type="button" id="month-exp-toggle"
+                                onclick="event.stopPropagation(); toggleExpenses('month')"
+                                style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;white-space:nowrap;">
+                                + Purchase Cost
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="sp-stat sp-stat-cyan hover-card" onclick="showTransactionsDetails()">
+                    <div class="sp-stat sp-stat-cyan" id="card-transactions" style="cursor:pointer;" onclick="filterByPeriod('today', ['sales','expenses'])">
                         <div class="sp-stat-meta">
-                            <div class="sp-stat-k">Transactions</div>
+                            <div class="sp-stat-k">Transactions Today</div>
                             <div class="sp-stat-v" id="stat-card-transactions">{{ \App\Models\Sale::whereDate('created_at', today())->count() }}</div>
                         </div>
                         <div class="sp-stat-ic"><i class="fas fa-receipt"></i></div>
                     </div>
                 </div>
             </div>
+
+            <!-- Profit Cards -->
+            <div class="row g-3 mb-4">
+                @php
+                    $todaySales    = \App\Models\Sale::whereDate('created_at', today())->where('status', '!=', 'voided')->sum('total_amount');
+                    $todayExpenses = \App\Models\Expense::whereDate('expense_date', today())->sum('amount');
+                    $todayItems    = \App\Models\SaleItem::whereHas('sale', fn($q) => $q->whereDate('created_at', today())->where('status','!=','voided'))->get(['product_id','quantity']);
+                    $todayPurchaseCost = 0;
+                    foreach ($todayItems as $si) {
+                        $uc = \Illuminate\Support\Facades\DB::table('purchase_items')->join('purchases','purchase_items.purchase_id','=','purchases.id')->where('purchase_items.product_id',$si->product_id)->orderByDesc('purchases.purchase_date')->value('purchase_items.unit_cost') ?? 0;
+                        $todayPurchaseCost += (float)$si->quantity * (float)$uc;
+                    }
+                    $todayProfit   = $todaySales - $todayExpenses;
+                    $todayNetProfit = $todaySales - $todayExpenses - $todayPurchaseCost;
+
+                    $monthlySales    = \App\Models\Sale::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->where('status', '!=', 'voided')->sum('total_amount');
+                    $monthlyExpenses = \App\Models\Expense::whereMonth('expense_date', now()->month)->whereYear('expense_date', now()->year)->sum('amount');
+                    $monthlyItems    = \App\Models\SaleItem::whereHas('sale', fn($q) => $q->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->where('status','!=','voided'))->get(['product_id','quantity']);
+                    $monthlyPurchaseCost = 0;
+                    foreach ($monthlyItems as $si) {
+                        $uc = \Illuminate\Support\Facades\DB::table('purchase_items')->join('purchases','purchase_items.purchase_id','=','purchases.id')->where('purchase_items.product_id',$si->product_id)->orderByDesc('purchases.purchase_date')->value('purchase_items.unit_cost') ?? 0;
+                        $monthlyPurchaseCost += (float)$si->quantity * (float)$uc;
+                    }
+                    $monthlyProfit   = $monthlySales - $monthlyExpenses;
+                    $monthlyNetProfit = $monthlySales - $monthlyExpenses - $monthlyPurchaseCost;
+                @endphp
+
+                <div class="col-md-6">
+                    <div class="sp-stat" id="today-profit-card"
+                         style="background:linear-gradient(135deg,{{ $todayProfit >= 0 ? '#065f46,#10b981' : '#7f1d1d,#ef4444' }});cursor:pointer;"
+                         onclick="filterByPeriod('today', ['sales','expenses'])">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">Today's Profit</div>
+                            <div class="sp-stat-v" id="today-profit-value">{{ $todayProfit >= 0 ? '' : '-' }}₱{{ number_format(abs($todayProfit), 2) }}</div>
+                            <div id="today-profit-sub" style="font-size:11px;opacity:.8;margin-top:4px;">
+                                Sales ₱{{ number_format($todaySales, 2) }} &minus; Expenses ₱{{ number_format($todayExpenses, 2) }}
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-2" style="position:relative;z-index:2;">
+                            <div class="sp-stat-ic"><i class="fas fa-chart-line"></i></div>
+                            <button type="button" id="today-profit-toggle"
+                                onclick="event.stopPropagation(); cycleProfit('today')"
+                                style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;white-space:nowrap;">
+                                − Expenses
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="sp-stat" id="monthly-profit-card"
+                         style="background:linear-gradient(135deg,{{ $monthlyProfit >= 0 ? '#1e3a5f,#1976D2' : '#7f1d1d,#ef4444' }});cursor:pointer;"
+                         onclick="filterByPeriod('month', ['sales','expenses'])">
+                        <div class="sp-stat-meta">
+                            <div class="sp-stat-k">Monthly Profit</div>
+                            <div class="sp-stat-v" id="monthly-profit-value">{{ $monthlyProfit >= 0 ? '' : '-' }}₱{{ number_format(abs($monthlyProfit), 2) }}</div>
+                            <div id="monthly-profit-sub" style="font-size:11px;opacity:.8;margin-top:4px;">
+                                Sales ₱{{ number_format($monthlySales, 2) }} &minus; Expenses ₱{{ number_format($monthlyExpenses, 2) }}
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-2" style="position:relative;z-index:2;">
+                            <div class="sp-stat-ic"><i class="fas fa-chart-bar"></i></div>
+                            <button type="button" id="monthly-profit-toggle"
+                                onclick="event.stopPropagation(); cycleProfit('month')"
+                                style="font-size:10px;padding:3px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;white-space:nowrap;">
+                                − Expenses
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- hidden data for JS --}}
+            <span id="js-profit-data"
+                data-today-profit="{{ $todayProfit }}"
+                data-today-net="{{ $todayNetProfit }}"
+                data-today-sales="{{ $todaySales }}"
+                data-today-expenses="{{ $todayExpenses }}"
+                data-today-purchase="{{ $todayPurchaseCost }}"
+                data-monthly-profit="{{ $monthlyProfit }}"
+                data-monthly-net="{{ $monthlyNetProfit }}"
+                data-monthly-sales="{{ $monthlySales }}"
+                data-monthly-expenses="{{ $monthlyExpenses }}"
+                data-monthly-purchase="{{ $monthlyPurchaseCost }}"
+                data-today-exp-amt="{{ $todayExpAmt }}"
+                data-today-exp-total="{{ $todayExpTotal }}"
+                data-today-purch-amt="{{ $todayPurchAmt }}"
+                data-month-exp-amt="{{ $monthExpAmt }}"
+                data-month-exp-total="{{ $monthExpTotal }}"
+                data-month-purch-amt="{{ $monthPurchAmt }}"
+                style="display:none;"></span>
 
                 <!-- Combined Reports Table -->
                 <div class="sp-card">
@@ -292,6 +413,149 @@
 
     function refreshData() {
         location.reload();
+    }
+
+    // ── Profit card filtering ─────────────────────────────────────────────────
+    const pd = document.getElementById('js-profit-data');
+    const expState = { today: false, month: false };
+
+    function toggleExpenses(period) {
+        expState[period] = !expState[period];
+        const withCost = expState[period];
+
+        if (period === 'today') {
+            const val = withCost ? pd.dataset.todayExpTotal : pd.dataset.todayExpAmt;
+            document.getElementById('stat-card-today-expenses').textContent = fmt(val);
+            document.getElementById('today-exp-sub').textContent = withCost
+                ? `Operational ${fmt(pd.dataset.todayExpAmt)} + Purchase ${fmt(pd.dataset.todayPurchAmt)}`
+                : 'Operational only';
+            document.getElementById('today-exp-toggle').textContent = withCost ? '− Purchase Cost' : '+ Purchase Cost';
+        } else {
+            const val = withCost ? pd.dataset.monthExpTotal : pd.dataset.monthExpAmt;
+            document.getElementById('stat-card-month-expenses').textContent = fmt(val);
+            document.getElementById('month-exp-sub').textContent = withCost
+                ? `Operational ${fmt(pd.dataset.monthExpAmt)} + Purchase ${fmt(pd.dataset.monthPurchAmt)}`
+                : 'Operational only';
+            document.getElementById('month-exp-toggle').textContent = withCost ? '− Purchase Cost' : '+ Purchase Cost';
+        }
+    }
+
+    function fmt(v) {
+        const n = parseFloat(v);
+        return (n < 0 ? '-' : '') + '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // 3-mode cycle: 0 = Sales−Expenses, 1 = Sales−Expenses−Purchase, 2 = Sales−Purchase
+    const profitMode = { today: 0, month: 0 };
+    const profitModes = [
+        { label: '− Expenses',                    key: 'salesMinusExp' },
+        { label: '− Expenses − Purchase Cost',    key: 'salesMinusExpMinusPurchase' },
+        { label: '− Purchase Cost',               key: 'salesMinusPurchase' },
+    ];
+
+    function cycleProfit(period) {
+        profitMode[period] = (profitMode[period] + 1) % 3;
+        renderProfitCard(period);
+        // Table is NOT updated here — only the card display changes
+    }
+
+    function renderProfitCard(period) {
+        const mode = profitMode[period];
+        const isToday = period === 'today';
+
+        const sales   = parseFloat(isToday ? pd.dataset.todaySales    : pd.dataset.monthlySales);
+        const exp     = parseFloat(isToday ? pd.dataset.todayExpenses  : pd.dataset.monthlyExpenses);
+        const cost    = parseFloat(isToday ? pd.dataset.todayPurchase  : pd.dataset.monthlyPurchase);
+
+        let profit, subHtml;
+        if (mode === 0) {
+            profit  = sales - exp;
+            subHtml = `Sales ${fmt(sales)} &minus; Expenses ${fmt(exp)}`;
+        } else if (mode === 1) {
+            profit  = sales - exp - cost;
+            subHtml = `Sales ${fmt(sales)} &minus; Expenses ${fmt(exp)} &minus; Purchase ${fmt(cost)}`;
+        } else {
+            profit  = sales - cost;
+            subHtml = `Sales ${fmt(sales)} &minus; Purchase Cost ${fmt(cost)}`;
+        }
+
+        const valueEl  = document.getElementById(isToday ? 'today-profit-value'  : 'monthly-profit-value');
+        const subEl    = document.getElementById(isToday ? 'today-profit-sub'     : 'monthly-profit-sub');
+        const btnEl    = document.getElementById(isToday ? 'today-profit-toggle'  : 'monthly-profit-toggle');
+        const cardEl   = document.getElementById(isToday ? 'today-profit-card'    : 'monthly-profit-card');
+
+        valueEl.textContent  = fmt(profit);
+        subEl.innerHTML      = subHtml;
+        btnEl.textContent    = profitModes[(profitMode[period] + 1) % 3].label;
+
+        // Update card colour based on profit sign
+        const pos = profit >= 0;
+        const bg  = isToday
+            ? (pos ? '#065f46,#10b981' : '#7f1d1d,#ef4444')
+            : (pos ? '#1e3a5f,#1976D2' : '#7f1d1d,#ef4444');
+        cardEl.style.background = `linear-gradient(135deg,${bg})`;
+    }
+
+    function filterByPeriod(period, types) {
+        types = types || ['sales', 'expenses'];
+        const today = new Date();
+        let from, to;
+
+        if (period === 'today') {
+            from = to = today.toISOString().split('T')[0];
+        } else {
+            from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            to   = today.toISOString().split('T')[0];
+        }
+
+        // Clear all outlines then highlight matching cards
+        ['card-monthly-sales','card-today-expenses','card-month-expenses',
+         'card-transactions','today-profit-card','monthly-profit-card'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.outline = '';
+        });
+        if (period === 'today') {
+            ['card-today-expenses','card-transactions','today-profit-card'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.outline = '3px solid rgba(255,255,255,0.8)';
+            });
+        } else {
+            ['card-monthly-sales','card-month-expenses','monthly-profit-card'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.outline = '3px solid rgba(255,255,255,0.8)';
+            });
+        }
+
+        // Update table header label
+        const tableTitle = document.querySelector('.sp-card-head-title');
+        if (tableTitle) {
+            const periodLabel = period === 'today' ? "Today's" : "This Month's";
+            const typeLabel   = types.length === 2 ? 'Transactions'
+                              : types[0] === 'sales' ? 'Sales' : 'Expenses';
+            tableTitle.innerHTML = `<i class="fas fa-list"></i> ${periodLabel} ${typeLabel}`;
+        }
+
+        const tbody = document.querySelector('table tbody');
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Loading...</p></td></tr>`;
+
+        fetch('{{ route("admin.reports.filter") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            body: JSON.stringify({ from_date: from, to_date: to, types }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${data.error}</td></tr>`; return; }
+            updateTable(data.transactions);
+            if (data.summaries) {
+                document.getElementById('summary-row-sales').textContent    = fmt(data.summaries.total_sales);
+                document.getElementById('summary-row-expenses').textContent = fmt(data.summaries.total_expenses);
+                document.getElementById('summary-row-net').textContent      = fmt(data.summaries.net_total);
+            }
+        })
+        .catch(() => {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Failed to load data.</td></tr>`;
+        });
     }
 
     
