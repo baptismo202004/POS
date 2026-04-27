@@ -7,33 +7,30 @@ use App\Http\Requests\Admin\StoreExpenseRequest;
 use App\Http\Requests\Admin\UpdateExpenseRequest;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Traits\ScopesByBranch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ExpenseController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    use ScopesByBranch;
+
     public function index(Request $request)
     {
-        $query = Expense::with('category', 'supplier');
+        $branchIds = $this->accessibleBranchIds();
+        $query = Expense::with('category', 'supplier')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds));
 
-        // Date range filter
         if ($request->filled('from_date')) {
             $query->where('expense_date', '>=', $request->from_date);
         }
         if ($request->filled('to_date')) {
             $query->where('expense_date', '<=', $request->to_date);
         }
-
-        // Category filter
         if ($request->filled('category_filter')) {
             $query->where('expense_category_id', $request->category_filter);
         }
-
-        // Search filter
         if ($request->filled('search_input')) {
             $search = $request->search_input;
             $query->where(function ($q) use ($search) {
@@ -45,12 +42,15 @@ class ExpenseController extends Controller
         $expenses = $query->latest()->paginate(15);
         $categories = ExpenseCategory::all();
 
-        // Calculate summary data
-        $todayExpenses = Expense::whereDate('expense_date', now()->today())->sum('amount');
+        $todayExpenses = Expense::whereDate('expense_date', now()->today())
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
+            ->sum('amount');
         $monthlyExpenses = Expense::whereMonth('expense_date', now()->month)
             ->whereYear('expense_date', now()->year)
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->sum('amount');
-        $totalExpenses = Expense::sum('amount');
+        $totalExpenses = Expense::when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
+            ->sum('amount');
 
         return view('Admin.expenses.index', compact('expenses', 'categories', 'todayExpenses', 'monthlyExpenses', 'totalExpenses'));
     }

@@ -8,32 +8,36 @@ use App\Models\Refund;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockOut;
+use App\Traits\ScopesByBranch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class RefundController extends Controller
 {
+    use ScopesByBranch;
+
     public function index()
     {
-        // Get today's refunds data
+        $branchIds = $this->accessibleBranchIds();
         $today = \Carbon\Carbon::today();
 
         $todayRefunds = \App\Models\Refund::whereDate('created_at', $today)
             ->where('status', 'approved')
+            ->when(! empty($branchIds), fn ($q) => $q->whereHas('sale', fn ($s) => $s->whereIn('branch_id', $branchIds)))
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
 
-        // Get this month's refunds
         $thisMonth = \Carbon\Carbon::now()->startOfMonth();
         $monthlyRefunds = \App\Models\Refund::whereDate('created_at', '>=', $thisMonth)
             ->where('status', 'approved')
+            ->when(! empty($branchIds), fn ($q) => $q->whereHas('sale', fn ($s) => $s->whereIn('branch_id', $branchIds)))
             ->selectRaw('COUNT(*) as total_refunds, COALESCE(SUM(refund_amount), 0) as total_refund_amount, COALESCE(SUM(quantity_refunded), 0) as total_items')
             ->first();
 
-        // Get today's refunds for the table (to match the dashboard "refunds today" alert)
         $refunds = Refund::with(['sale', 'saleItem.product', 'product', 'cashier'])
             ->whereDate('created_at', $today)
+            ->when(! empty($branchIds), fn ($q) => $q->whereHas('sale', fn ($s) => $s->whereIn('branch_id', $branchIds)))
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 

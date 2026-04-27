@@ -1707,6 +1707,30 @@
             </div>
         </div>
 
+        <!-- Branch Profit Overview (Superadmin only) -->
+        <div class="dashboard-row" style="margin-bottom:20px;">
+            <div class="widget-card" style="grid-column:1/-1;">
+                <div class="widget-header">
+                    <h3 class="widget-title"><i class="fas fa-chart-line me-2" style="color:#00E5FF;"></i>Branch Profit Overview</h3>
+                    <div class="d-flex gap-2 align-items-center" style="position:relative;z-index:1;">
+                        <button onclick="loadBranchProfit('today')" id="bpTodayBtn"
+                            style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:700;">
+                            Today
+                        </button>
+                        <button onclick="loadBranchProfit('month')" id="bpMonthBtn"
+                            style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;">
+                            This Month
+                        </button>
+                    </div>
+                </div>
+                <div class="widget-content">
+                    <div id="branchProfitList" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:4px 0;">
+                        <div class="loading-spinner"><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Row 3: Bottom Row -->
         <div class="dashboard-row bottom-row">
             <div class="widget-card trend-chart-card">
@@ -2384,6 +2408,7 @@ function updateCashierPerformance(cashiers) {
 
   document.addEventListener('DOMContentLoaded', function() {
     initDashboard();
+    loadBranchProfit('today');
     
     let resizeTimeout;
     window.addEventListener('resize', function() {
@@ -3238,6 +3263,64 @@ function updateCashierPerformance(cashiers) {
           }
         }
       }
+    });
+  }
+
+  // ── Per-Branch Profit ────────────────────────────────────────────────────
+  let bpPeriod = 'today';
+
+  function loadBranchProfit(period) {
+    bpPeriod = period;
+    const todayBtn = document.getElementById('bpTodayBtn');
+    const monthBtn = document.getElementById('bpMonthBtn');
+    if (todayBtn && monthBtn) {
+      todayBtn.style.background  = period === 'today' ? 'rgba(255,255,255,0.2)' : 'transparent';
+      todayBtn.style.fontWeight  = period === 'today' ? '700' : '400';
+      todayBtn.style.color       = period === 'today' ? '#fff' : 'rgba(255,255,255,0.7)';
+      monthBtn.style.background  = period === 'month' ? 'rgba(255,255,255,0.2)' : 'transparent';
+      monthBtn.style.fontWeight  = period === 'month' ? '700' : '400';
+      monthBtn.style.color       = period === 'month' ? '#fff' : 'rgba(255,255,255,0.7)';
+    }
+
+    const container = document.getElementById('branchProfitList');
+    if (!container) return;
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+    fetch('/dashboard/branch-profit-today', {
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        container.innerHTML = `<div class="text-center text-danger py-4">${data.error}</div>`;
+        return;
+      }
+      const branches = data.branches || [];
+      if (!branches.length) {
+        container.innerHTML = '<div class="text-center text-muted py-4">No branch data available.</div>';
+        return;
+      }
+      container.innerHTML = branches.map(b => {
+        const profit = period === 'today' ? b.today_profit : b.monthly_profit;
+        const sales  = period === 'today' ? b.today_sales  : b.monthly_sales;
+        const cogs   = period === 'today' ? b.today_cogs   : b.monthly_cogs;
+        const pos    = profit >= 0;
+        const color  = pos ? '#43A047' : '#E53935';
+        const bg     = pos ? 'rgba(67,160,71,0.08)' : 'rgba(229,57,53,0.08)';
+        const border = pos ? 'rgba(67,160,71,0.25)' : 'rgba(229,57,53,0.25)';
+        return `
+          <div style="background:${bg};border:1px solid ${border};border-radius:14px;padding:16px;">
+            <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#546E7A;margin-bottom:8px;">${b.branch_name}</div>
+            <div style="font-size:22px;font-weight:900;color:${color};margin-bottom:6px;">${profit < 0 ? '-' : ''}₱${Math.abs(profit).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style="font-size:11px;color:#78909C;line-height:1.7;">
+              Sales: ₱${sales.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}<br>
+              Purchase Cost: ₱${cogs.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}
+            </div>
+          </div>`;
+      }).join('');
+    })
+    .catch(() => {
+      container.innerHTML = '<div class="text-center text-danger py-4">Failed to load branch profit data.</div>';
     });
   }
 </script>

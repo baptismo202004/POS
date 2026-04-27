@@ -601,6 +601,28 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
         searchInput.addEventListener('input', () => renderDropdown(searchInput.value));
         searchInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) return;
+
+            // Prefer exact barcode match, then exact name, then first result
+            const exactBarcode = options.find(o => (o.dataset.barcode || '').toLowerCase() === q);
+            const exactName    = options.find(o => o.dataset.name.toLowerCase() === q);
+            const firstMatch   = options.find(o =>
+                o.dataset.name.toLowerCase().includes(q) ||
+                (o.dataset.barcode || '').toLowerCase().includes(q)
+            );
+            const match = exactBarcode || exactName || firstMatch;
+
+            if (match) {
+                select.value = match.value;
+                searchInput.value = match.dataset.name;
+                dropdown.style.display = 'none';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
 
         // If a value is already selected (e.g. on edit), show its name
         if (select.value) {

@@ -13,12 +13,6 @@ return [
             'label' => 'Root',
             'permissions' => ['full'],
         ],
-        'dashboard' => [
-            'label' => 'Dashboard',
-            'icon' => 'tachometer-alt',
-            'description' => 'View sales and branch data',
-            'permissions' => ['view', 'create', 'edit', 'delete'],
-        ],
         'products' => [
             'label' => 'Products',
             'icon' => 'box-open',
@@ -163,9 +157,9 @@ return [
             'description' => 'Manage product units',
             'permissions' => ['view', 'create', 'edit', 'delete'],
         ],
-        
+
     ],
     'super_roles' => [
-        'Admin',
+        'Superadmin',
     ],
 ];

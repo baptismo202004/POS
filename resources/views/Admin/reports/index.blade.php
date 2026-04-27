@@ -236,6 +236,42 @@
                 </div>
             </div>
 
+            <!-- Branch Profit Section -->
+            <div class="sp-card mb-4" id="branchProfitCard">
+                <div class="sp-card-head">
+                    <div class="sp-card-head-title"><i class="fas fa-code-branch"></i> Branch Profit Overview</div>
+                    <div class="d-flex gap-2" style="position:relative;z-index:1;">
+                        <button onclick="loadBranchProfit('daily')" id="bpDailyBtn"
+                            style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-weight:700;">
+                            Today
+                        </button>
+                        <button onclick="loadBranchProfit('monthly')" id="bpMonthlyBtn"
+                            style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;">
+                            This Month
+                        </button>
+                    </div>
+                </div>
+                <div class="sp-card-body">
+                    <div class="sp-table-wrap">
+                        <table class="sp-table" id="branchProfitTable">
+                            <thead>
+                                <tr>
+                                    <th>Branch</th>
+                                    <th>Sales</th>
+                                    <th>Item Cost</th>
+                                    <th>Expenses</th>
+                                    <th>Net Profit</th>
+                                    <th>Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="branchProfitBody">
+                                <tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             {{-- hidden data for JS --}}
             <span id="js-profit-data"
                 data-today-profit="{{ $todayProfit }}"
@@ -414,6 +450,55 @@
     function refreshData() {
         location.reload();
     }
+
+    // ── Branch Profit ─────────────────────────────────────────────────────────
+    let bpPeriod = 'daily';
+
+    function loadBranchProfit(period) {
+        bpPeriod = period;
+        document.getElementById('bpDailyBtn').style.background   = period === 'daily'   ? 'rgba(255,255,255,0.2)' : 'transparent';
+        document.getElementById('bpDailyBtn').style.fontWeight    = period === 'daily'   ? '700' : '400';
+        document.getElementById('bpDailyBtn').style.color         = period === 'daily'   ? '#fff' : 'rgba(255,255,255,0.7)';
+        document.getElementById('bpMonthlyBtn').style.background  = period === 'monthly' ? 'rgba(255,255,255,0.2)' : 'transparent';
+        document.getElementById('bpMonthlyBtn').style.fontWeight  = period === 'monthly' ? '700' : '400';
+        document.getElementById('bpMonthlyBtn').style.color       = period === 'monthly' ? '#fff' : 'rgba(255,255,255,0.7)';
+
+        const tbody = document.getElementById('branchProfitBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>';
+
+        fetch('{{ route("admin.reports.branch-profit") }}', {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const branches = data.branches || [];
+            if (!branches.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No branch data available.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = branches.map(b => {
+                const sales   = period === 'daily' ? b.daily_sales   : b.monthly_sales;
+                const cogs    = period === 'daily' ? b.daily_cogs    : b.monthly_cogs;
+                const exp     = period === 'daily' ? b.daily_expenses : b.monthly_expenses;
+                const profit  = period === 'daily' ? b.daily_profit  : b.monthly_profit;
+                const margin  = sales > 0 ? ((profit / sales) * 100).toFixed(1) : '0.0';
+                const profitClass = profit >= 0 ? 'text-success' : 'text-danger';
+                return `<tr>
+                    <td><strong>${b.branch_name}</strong></td>
+                    <td>₱${parseFloat(sales).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>
+                    <td class="text-muted">₱${parseFloat(cogs).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>
+                    <td class="text-danger">₱${parseFloat(exp).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>
+                    <td class="fw-bold ${profitClass}">₱${parseFloat(profit).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>
+                    <td><span class="sp-badge ${profit >= 0 ? 'sp-badge-done' : 'sp-badge-expense'}">${margin}%</span></td>
+                </tr>`;
+            }).join('');
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Failed to load branch data.</td></tr>';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => loadBranchProfit('daily'));
 
     // ── Profit card filtering ─────────────────────────────────────────────────
     const pd = document.getElementById('js-profit-data');

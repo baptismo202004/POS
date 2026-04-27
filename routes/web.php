@@ -222,6 +222,7 @@ Route::get('/dashboard/monthly-profit-breakdown', [DashboardController::class, '
 Route::get('/dashboard/monthly-returns', [DashboardController::class, 'monthlyReturns'])->middleware('auth')->name('dashboard.monthly-returns');
 Route::get('/dashboard/monthly-returns-breakdown', [DashboardController::class, 'monthlyReturnsBreakdown'])->middleware('auth')->name('dashboard.monthly-returns-breakdown');
 Route::get('/dashboard/branch-sales-today', [DashboardController::class, 'branchSalesToday'])->middleware('auth')->name('dashboard.branch-sales-today');
+Route::get('/dashboard/branch-profit-today', [DashboardController::class, 'branchProfitToday'])->middleware('auth')->name('dashboard.branch-profit-today');
 Route::get('/dashboard/expenses-today', [DashboardController::class, 'expensesToday'])->middleware('auth')->name('dashboard.expenses-today');
 Route::get('/debug/expenses-table', function () {
     try {
@@ -597,20 +598,28 @@ Route::get('/dashboard/widgets', function (Request $request) {
         $yesterday = Carbon::yesterday();
         $startOfMonth = Carbon::now()->startOfMonth();
 
+        // Resolve branch scope for the current user
+        $currentUser = Auth::user();
+        $currentUser->loadMissing('userType');
+        $accessibleBranchIds = $currentUser->accessibleBranchIds();
+
         // ROW 1: TODAY'S KPIs
 
         // 1. Today's Sales
         try {
             $todaySales = DB::table('sales')
                 ->whereDate('created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->sum('total_amount') ?? 0;
 
             $yesterdaySales = DB::table('sales')
                 ->whereDate('created_at', $yesterday)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->sum('total_amount') ?? 0;
 
             $todayTransactions = DB::table('sales')
                 ->whereDate('created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->count() ?? 0;
 
             $salesChange = $yesterdaySales > 0 ? round((($todaySales - $yesterdaySales) / $yesterdaySales) * 100, 1) : 0;
@@ -633,11 +642,13 @@ Route::get('/dashboard/widgets', function (Request $request) {
                         ->on('sales.branch_id', '=', 'stock_ins.branch_id');
                 })
                 ->whereDate('sales.created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('sales.branch_id', $accessibleBranchIds))
                 ->selectRaw('SUM(sale_items.quantity * stock_ins.price) as cost')
                 ->value('cost') ?? 0;
 
             $todayExpenses = DB::table('expenses')
                 ->whereDate('expense_date', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->sum('amount') ?? 0;
 
             $todayProfit = $todaySales - $todayCostOfGoods - $todayExpenses;
@@ -768,6 +779,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
             $topBranches = DB::table('sales')
                 ->join('branches', 'sales.branch_id', '=', 'branches.id')
                 ->whereBetween('sales.created_at', [Carbon::now()->subDays(30), $today->copy()->endOfDay()])
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('sales.branch_id', $accessibleBranchIds))
                 ->select(
                     'branches.branch_name',
                     'branches.id as branch_id',
@@ -903,6 +915,7 @@ Route::get('/dashboard/widgets', function (Request $request) {
             $cashierPerformance = DB::table('sales')
                 ->join('users', 'sales.cashier_id', '=', 'users.id')
                 ->whereDate('sales.created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('sales.branch_id', $accessibleBranchIds))
                 ->select(
                     'users.id',
                     'users.name',
@@ -925,14 +938,17 @@ Route::get('/dashboard/widgets', function (Request $request) {
         try {
             $totalTransactions = DB::table('sales')
                 ->whereDate('created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->count();
 
             $avgTransactionValue = DB::table('sales')
                 ->whereDate('created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->avg('total_amount') ?? 0;
 
             $highestSaleToday = DB::table('sales')
                 ->whereDate('created_at', $today)
+                ->when(! empty($accessibleBranchIds), fn ($q) => $q->whereIn('branch_id', $accessibleBranchIds))
                 ->max('total_amount') ?? 0;
 
             Log::info('Transaction summary calculated', ['total' => $totalTransactions, 'avg' => $avgTransactionValue]);
@@ -1187,6 +1203,7 @@ Route::middleware('auth')->group(function () {
         Route::get('reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
         Route::post('reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
         Route::post('reports/export', [\App\Http\Controllers\Admin\ReportsController::class, 'export'])->name('reports.export');
+        Route::get('reports/branch-profit', [\App\Http\Controllers\Admin\ReportsController::class, 'branchProfit'])->name('reports.branch-profit');
     });
 
     // Stock Transfer routes
@@ -1299,8 +1316,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports', [\App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports.index');
         Route::post('/reports/filter', [\App\Http\Controllers\Admin\ReportsController::class, 'filter'])->name('reports.filter');
         Route::post('/reports/export', [\App\Http\Controllers\Admin\ReportsController::class, 'export'])->name('reports.export');
-
-        // Routes for Select2 expense category search and creation
+        Route::get('/reports/branch-profit', [\App\Http\Controllers\Admin\ReportsController::class, 'branchProfit'])->name('reports.branch-profit');
         Route::get('expense-categories-search', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'index'])->name('expense-categories.search');
         Route::post('expense-categories', [\App\Http\Controllers\Admin\ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
 

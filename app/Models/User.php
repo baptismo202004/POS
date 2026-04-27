@@ -52,16 +52,44 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
     public function userType()
     {
         return $this->belongsTo(UserType::class);
     }
-    
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
     }
-    
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'user_branch');
+    }
+
+    /**
+     * Returns the branch IDs this user can access.
+     * Superadmin → all branches. Admin with assigned branches → those branches.
+     * Otherwise → just their own branch_id.
+     */
+    public function accessibleBranchIds(): array
+    {
+        $superRoles = config('rbac.super_roles', []);
+        $roleName = optional($this->userType)->name ?? '';
+
+        if (in_array($roleName, $superRoles)) {
+            return []; // empty = no filter = all branches
+        }
+
+        $assigned = $this->branches()->pluck('branches.id')->toArray();
+        if (! empty($assigned)) {
+            return $assigned;
+        }
+
+        return $this->branch_id ? [$this->branch_id] : [];
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class, 'cashier_id');

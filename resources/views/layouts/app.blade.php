@@ -117,7 +117,7 @@
             height: 100vh;
             width: 260px;
             overflow-y: auto;
-            overflow-x: visible;
+            overflow-x: hidden;
             z-index: 1000;
             /* Hide scrollbar visually but keep functionality */
             scrollbar-width: none; /* Firefox */
@@ -127,6 +127,13 @@
         .sidebar-fixed::-webkit-scrollbar {
             display: none; /* Chrome, Safari, Opera */
         }
+
+        /* Ensure Bootstrap modals and backdrops always render above the sidebar */
+        .modal-backdrop { z-index: 1040 !important; }
+        .modal         { z-index: 1050 !important; }
+
+        /* Prevent sp-wrap stacking context from trapping modal backdrops */
+        .sp-wrap { z-index: auto !important; }
         
         /* Add padding to main content to account for fixed sidebar */
         /* Note: margin-left is already set in .main-content */

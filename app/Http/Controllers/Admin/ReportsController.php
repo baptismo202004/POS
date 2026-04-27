@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Sale;
+use App\Traits\ScopesByBranch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
+    use ScopesByBranch;
+
     public function __construct()
     {
         $this->middleware(['auth', 'admin']);
@@ -18,6 +23,73 @@ class ReportsController extends Controller
     public function index()
     {
         return view('Admin.reports.index');
+    }
+
+    public function branchProfit(): \Illuminate\Http\JsonResponse
+    {
+        $branchIds = $this->accessibleBranchIds();
+        $today = Carbon::today();
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+
+        $latestCostSub = DB::table('purchase_items')
+            ->selectRaw('product_id, MAX(id) as last_id')
+            ->groupBy('product_id');
+
+        $branches = Branch::where('status', 'active')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('id', $branchIds))
+            ->orderBy('branch_name')
+            ->get(['id', 'branch_name']);
+
+        $rows = $branches->map(function (Branch $branch) use ($today, $monthStart, $monthEnd, $latestCostSub): array {
+            // Daily
+            $dailySales = (float) DB::table('sales')
+                ->where('branch_id', $branch->id)->where('status', '!=', 'voided')
+                ->whereDate('created_at', $today)->sum('total_amount');
+
+            $dailyCogs = (float) DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->leftJoinSub($latestCostSub, 'lp', fn ($j) => $j->on('sale_items.product_id', '=', 'lp.product_id'))
+                ->leftJoin('purchase_items as pi', 'pi.id', '=', 'lp.last_id')
+                ->where('sales.branch_id', $branch->id)->where('sales.status', '!=', 'voided')
+                ->whereDate('sales.created_at', $today)
+                ->sum(DB::raw('COALESCE(pi.unit_cost, 0) * sale_items.quantity'));
+
+            $dailyExpenses = (float) DB::table('expenses')
+                ->where('branch_id', $branch->id)->whereDate('expense_date', $today)->sum('amount');
+
+            // Monthly
+            $monthlySales = (float) DB::table('sales')
+                ->where('branch_id', $branch->id)->where('status', '!=', 'voided')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])->sum('total_amount');
+
+            $monthlyCogs = (float) DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->leftJoinSub($latestCostSub, 'lp', fn ($j) => $j->on('sale_items.product_id', '=', 'lp.product_id'))
+                ->leftJoin('purchase_items as pi', 'pi.id', '=', 'lp.last_id')
+                ->where('sales.branch_id', $branch->id)->where('sales.status', '!=', 'voided')
+                ->whereBetween('sales.created_at', [$monthStart, $monthEnd])
+                ->sum(DB::raw('COALESCE(pi.unit_cost, 0) * sale_items.quantity'));
+
+            $monthlyExpenses = (float) DB::table('expenses')
+                ->where('branch_id', $branch->id)
+                ->whereBetween('expense_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->sum('amount');
+
+            return [
+                'branch_name' => $branch->branch_name,
+                'daily_sales' => $dailySales,
+                'daily_cogs' => $dailyCogs,
+                'daily_expenses' => $dailyExpenses,
+                'daily_profit' => $dailySales - $dailyCogs - $dailyExpenses,
+                'monthly_sales' => $monthlySales,
+                'monthly_cogs' => $monthlyCogs,
+                'monthly_expenses' => $monthlyExpenses,
+                'monthly_profit' => $monthlySales - $monthlyCogs - $monthlyExpenses,
+            ];
+        });
+
+        return response()->json(['branches' => $rows, 'month' => $today->format('F Y'), 'today' => $today->toDateString()]);
     }
 
     public function filter(Request $request)
