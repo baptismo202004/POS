@@ -20,6 +20,6 @@
 /storage/*.key
 /storage/pail
 /vendor
-Homestead.json
+bootstrap/cache/*.phpHomestead.json
 Homestead.yaml
 Thumbs.db
