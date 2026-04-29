@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\ProductSerial;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Traits\ScopesByBranch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SalesController extends Controller
 {
+    use ScopesByBranch;
+
     public function getSaleItems(Sale $sale)
     {
         $sale->load(['cashier', 'branch', 'customer']);
@@ -75,8 +78,10 @@ class SalesController extends Controller
         $selectedDate = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
         $filter = $request->get('filter', 'all');
         $excludeVoided = $filter !== 'voided';
+        $branchIds = $this->accessibleBranchIds();
 
-        $todaySalesQuery = Sale::whereDate('created_at', $selectedDate);
+        $todaySalesQuery = Sale::whereDate('created_at', $selectedDate)
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds));
         if ($excludeVoided) {
             $todaySalesQuery->where('status', '!=', 'voided');
         }
@@ -84,15 +89,17 @@ class SalesController extends Controller
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
 
-        $todayItems = SaleItem::whereHas('sale', function ($query) use ($selectedDate, $excludeVoided) {
-            $query->whereDate('created_at', $selectedDate);
+        $todayItems = SaleItem::whereHas('sale', function ($query) use ($selectedDate, $excludeVoided, $branchIds) {
+            $query->whereDate('created_at', $selectedDate)
+                ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds));
             if ($excludeVoided) {
                 $query->where('status', '!=', 'voided');
             }
         })->sum('quantity');
 
         $thisMonth = Carbon::now()->startOfMonth();
-        $monthlySalesQuery = Sale::whereDate('created_at', '>=', $thisMonth);
+        $monthlySalesQuery = Sale::whereDate('created_at', '>=', $thisMonth)
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds));
         if ($excludeVoided) {
             $monthlySalesQuery->where('status', '!=', 'voided');
         }
@@ -101,6 +108,7 @@ class SalesController extends Controller
             ->first();
 
         $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->orderBy('created_at', 'desc');
 
         if ($excludeVoided) {
@@ -282,25 +290,38 @@ class SalesController extends Controller
     {
         $selectedDate = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
 
+        $user = auth()->user();
+        $branchIds = $user->accessibleBranchIds();
+
+        $branchScope = function ($q) use ($branchIds) {
+            if (! empty($branchIds)) {
+                $q->whereIn('branch_id', $branchIds);
+            }
+        };
+
         $todaySales = Sale::whereDate('created_at', $selectedDate)
             ->where('payment_method', '!=', 'credit')
             ->where('status', '!=', 'voided')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
 
-        $todayItems = SaleItem::whereHas('sale', function ($query) use ($selectedDate) {
+        $todayItems = SaleItem::whereHas('sale', function ($query) use ($selectedDate, $branchIds) {
             $query->whereDate('created_at', $selectedDate)
-                ->where('status', '!=', 'voided');
+                ->where('status', '!=', 'voided')
+                ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds));
         })->sum('quantity');
 
         $thisMonth = Carbon::now()->startOfMonth();
         $monthlySales = Sale::whereDate('created_at', '>=', $thisMonth)
             ->where('status', '!=', 'voided')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
 
         $recentSalesQuery = Sale::with(['saleItems.product', 'cashier'])
             ->where('status', '!=', 'voided')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->orderBy('created_at', 'desc');
 
         $startDate = Carbon::yesterday()->startOfDay();
@@ -328,6 +349,7 @@ class SalesController extends Controller
         $allBranchesTodaySales = Sale::whereDate('created_at', Carbon::today())
             ->where('payment_method', '!=', 'credit')
             ->where('status', '!=', 'voided')
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->selectRaw('COUNT(*) as total_sales, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
 

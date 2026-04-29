@@ -20,6 +20,15 @@ class AccessController extends Controller
     public function __construct()
     {
         $this->middleware(['auth', 'admin']);
+        $this->middleware(function ($request, $next) {
+            $user = $request->user();
+            $roleName = optional(optional($user)->userType)->name ?? '';
+            if (! in_array($roleName, config('rbac.super_roles', []))) {
+                abort(403, 'Only Superadmin can access this section.');
+            }
+
+            return $next($request);
+        });
     }
 
     /**
@@ -31,7 +40,9 @@ class AccessController extends Controller
         // Define manageable modules via config
         $modules = config('rbac.modules', []);
 
-        $roles = UserType::orderBy('name')->get();
+        $roles = UserType::orderBy('name')
+            ->whereNotIn('name', config('rbac.super_roles', []))
+            ->get();
 
         // Load existing permissions keyed by role and module
         $existing = RolePermission::query()
@@ -222,6 +233,9 @@ class AccessController extends Controller
             $user->save();
         }
 
+        // Sync multi-branch assignments for Admin role
+        $user->branches()->sync($request->input('branch_ids', []));
+
         return response()->json([
             'success' => true,
             'message' => "User '{$user->name}' updated successfully",
@@ -268,7 +282,7 @@ class AccessController extends Controller
 
     public function editUser($id)
     {
-        $user = User::find($id);
+        $user = User::with('branches')->find($id);
         if (! $user) {
             return response()->json([
                 'success' => false,
@@ -279,6 +293,7 @@ class AccessController extends Controller
         return response()->json([
             'success' => true,
             'user' => $user,
+            'branch_ids' => $user->branches->pluck('id')->toArray(),
         ]);
     }
 

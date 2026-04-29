@@ -20,7 +20,7 @@
     .sp-blob-2{width:300px;height:300px;background:#00B0FF;bottom:-90px;right:-90px;animation:spb2 11s ease-in-out infinite;}
     @keyframes spb1{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,18px)}}
     @keyframes spb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,-22px)}}
-    .sp-wrap{position:relative;z-index:1;padding:18px 10px 42px;}
+    .sp-wrap{position:relative;padding:18px 10px 42px;}
     @media (min-width: 992px){.sp-wrap{padding:24px 18px 54px;}}
 
     .sp-page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
@@ -312,15 +312,21 @@
                             <input type="password" class="form-control" name="password" required>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" name="password_confirmation" required>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Role</label>
-                            <select class="form-select" name="role_id" required>
+                            <select class="form-select" name="user_type_id" id="addUserRoleSelect" required onchange="handleRoleChange(this)">
                                 <option value="">Select Role</option>
                                 @foreach($roles as $role)
-                                    <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                    <option value="{{ $role->id }}" data-name="{{ strtolower($role->name) }}">{{ $role->name }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="mb-3">
+
+                        {{-- Single branch (non-admin roles) --}}
+                        <div class="mb-3" id="singleBranchRow">
                             <label class="form-label">Branch</label>
                             <select class="form-select" name="branch_id">
                                 <option value="">No Branch</option>
@@ -328,6 +334,24 @@
                                     <option value="{{ $branch->id }}">{{ $branch->branch_name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        {{-- Multi-branch (admin role) --}}
+                        <div class="mb-3" id="multiBranchRow" style="display:none;">
+                            <label class="form-label">Assigned Branches <span class="text-muted small">(Admin can view sales for all selected branches)</span></label>
+                            <div id="multiBranchCheckboxes" style="border:1px solid #dee2e6;border-radius:6px;padding:10px;max-height:180px;overflow-y:auto;">
+                                @foreach($branches as $branch)
+                                    <div class="form-check">
+                                        <input class="form-check-input branch-checkbox" type="checkbox"
+                                            name="branch_ids[]"
+                                            value="{{ $branch->id }}"
+                                            id="branch_{{ $branch->id }}">
+                                        <label class="form-check-label" for="branch_{{ $branch->id }}">
+                                            {{ $branch->branch_name }}
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -687,6 +711,16 @@ function updatePermission(roleId, module, action, checked) {
     });
 }
 
+function handleRoleChange(select) {
+    const roleName = select.options[select.selectedIndex]?.dataset.name ?? '';
+    const isAdmin = roleName === 'admin';
+    document.getElementById('singleBranchRow').style.display = isAdmin ? 'none' : '';
+    document.getElementById('multiBranchRow').style.display  = isAdmin ? '' : 'none';
+    // Clear selections when switching
+    document.querySelector('#singleBranchRow select').value = '';
+    document.querySelectorAll('.branch-checkbox').forEach(cb => cb.checked = false);
+}
+
 function saveUser() {
     const form = document.getElementById('addUserForm');
     const formData = new FormData(form);
@@ -701,28 +735,20 @@ function saveUser() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: data.message
-            }).then(() => {
-                location.reload();
-            });
+        if (data.errors) {
+            const msgs = Object.values(data.errors).flat().join('<br>');
+            Swal.fire({ icon: 'error', title: 'Validation Error', html: msgs });
+            return;
+        }
+        if (data.success || data.message === undefined) {
+            Swal.fire({ icon: 'success', title: 'Success', text: data.message || 'User created successfully.' })
+                .then(() => location.reload());
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data.message || 'Something went wrong'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Something went wrong' });
         }
     })
-    .catch(error => {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Network error occurred'
-        });
+    .catch(() => {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred' });
     });
 }
 
@@ -780,6 +806,12 @@ function editUser(userId) {
     })
     .then(data => {
         if (data.success) {
+            const assignedBranchIds = data.branch_ids || [];
+            const selectedRoleId = data.user.user_type_id;
+            const roles = @json($roles);
+            const selectedRole = roles.find(r => r.id == selectedRoleId);
+            const isAdmin = selectedRole && selectedRole.name.toLowerCase() === 'admin';
+
             const modalHtml = `
                 <div class="modal fade" id="editUserModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -801,17 +833,23 @@ function editUser(userId) {
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Role</label>
-                                        <select class="form-select" name="role_id" required>
+                                        <select class="form-select" name="role_id" required onchange="handleEditRoleChange(this)">
                                             <option value="">Select Role</option>
                                             ${getRoleOptions(data.user.user_type_id)}
                                         </select>
                                     </div>
-                                    <div class="mb-3">
+                                    <div class="mb-3" id="editSingleBranchRow" style="display:${isAdmin ? 'none' : ''};">
                                         <label class="form-label">Branch</label>
                                         <select class="form-select" name="branch_id">
                                             <option value="">No Branch</option>
                                             ${getBranchOptions(data.user.branch_id)}
                                         </select>
+                                    </div>
+                                    <div class="mb-3" id="editMultiBranchRow" style="display:${isAdmin ? '' : 'none'};">
+                                        <label class="form-label">Assigned Branches <span class="text-muted small">(Admin can view sales for all selected branches)</span></label>
+                                        <div style="border:1px solid #dee2e6;border-radius:6px;padding:10px;max-height:180px;overflow-y:auto;">
+                                            ${getEditBranchCheckboxes(assignedBranchIds)}
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -917,6 +955,25 @@ function updateUser() {
             html: errorText
         });
     });
+}
+
+function handleEditRoleChange(select) {
+    const roles = @json($roles);
+    const selected = roles.find(r => r.id == select.value);
+    const isAdmin = selected && selected.name.toLowerCase() === 'admin';
+    document.getElementById('editSingleBranchRow').style.display = isAdmin ? 'none' : '';
+    document.getElementById('editMultiBranchRow').style.display  = isAdmin ? '' : 'none';
+}
+
+function getEditBranchCheckboxes(assignedIds) {
+    const branches = @json($branches);
+    return branches.map(branch => {
+        const checked = assignedIds.includes(branch.id) ? 'checked' : '';
+        return `<div class="form-check">
+            <input class="form-check-input" type="checkbox" name="branch_ids[]" value="${branch.id}" id="edit_branch_${branch.id}" ${checked}>
+            <label class="form-check-label" for="edit_branch_${branch.id}">${branch.branch_name}</label>
+        </div>`;
+    }).join('');
 }
 
 function getRoleOptions(selectedRoleId) {

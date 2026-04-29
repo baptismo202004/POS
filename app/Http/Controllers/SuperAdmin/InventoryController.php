@@ -14,15 +14,19 @@ use App\Models\StockIn;
 use App\Models\StockMovement;
 use App\Models\StockOut;
 use App\Services\InventoryService;
+use App\Traits\ScopesByBranch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InventoryController extends Controller
 {
+    use ScopesByBranch;
+
     public function index(Request $request)
     {
-        $branches = Branch::all();
+        $branchIds = $this->accessibleBranchIds();
+        $branches = Branch::when(! empty($branchIds), fn ($q) => $q->whereIn('id', $branchIds))->get();
         $tab = $request->query('tab', 'overview');
         $search = $request->query('search');
         $perPage = 25;
@@ -135,6 +139,7 @@ class InventoryController extends Controller
 
         // ── Branch comparison ──────────────────────────────────────────────────
         $branchStats = Branch::query()
+            ->when(! empty($branchIds), fn ($q) => $q->whereIn('branches.id', $branchIds))
             ->leftJoin('sales', fn ($j) => $j->on('branches.id', '=', 'sales.branch_id')->where('sales.status', 'completed'))
             ->leftJoin('expenses', 'branches.id', '=', 'expenses.branch_id')
             ->selectRaw('branches.id, branches.branch_name,

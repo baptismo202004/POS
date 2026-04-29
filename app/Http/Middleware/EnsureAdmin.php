@@ -11,11 +11,17 @@ class EnsureAdmin
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        // Allow only authenticated users with userType name 'Admin'
-        if (!$user || !optional($user->userType)->name || strcasecmp($user->userType->name, 'Admin') !== 0) {
-            // Redirect unauthorized users
+        $roleName = optional(optional($user)->userType)->name ?? '';
+        $superRoles = config('rbac.super_roles', []);
+
+        // Allow Admin or any super_role (e.g. Superadmin)
+        $allowed = strcasecmp($roleName, 'Admin') === 0
+            || in_array($roleName, $superRoles);
+
+        if (! $user || ! $allowed) {
             return redirect()->route('dashboard')->with('error', 'Unauthorized: Admin access required.');
         }
+
         return $next($request);
     }
 }

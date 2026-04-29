@@ -657,7 +657,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Could not delete the selected product(s). You may not have permission.',
+                    text: 'Could not delete the selected product(s). Cause it has a stock.',
                     confirmButtonColor: '#2196F3'
                 });
             }

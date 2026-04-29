@@ -15,12 +15,14 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'unique:users,name'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'employee_id' => ['nullable', 'string', 'max:50', 'unique:users,employee_id'],
             'user_type_id' => ['required', 'integer', 'exists:user_types,id'],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'branch_ids' => ['nullable', 'array'],
+            'branch_ids.*' => ['integer', 'exists:branches,id'],
             'status' => ['nullable', 'in:active,inactive'],
             'profile_picture' => ['nullable', 'image', 'max:2048'],
         ];
@@ -29,6 +31,7 @@ class StoreUserRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.unique' => 'A user with that name already exists.',
             'user_type_id.required' => 'Please select a role.',
             'user_type_id.exists' => 'Selected role does not exist.',
             'branch_id.exists' => 'Selected branch does not exist.',

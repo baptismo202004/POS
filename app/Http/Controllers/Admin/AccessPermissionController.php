@@ -3,25 +3,42 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\RolePermission;
 use App\Models\User;
 use App\Models\UserType;
-use App\Models\RolePermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class AccessPermissionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth']);
+        $this->middleware(function ($request, $next) {
+            $user = $request->user();
+            $roleName = optional(optional($user)->userType)->name ?? '';
+            if (! in_array($roleName, config('rbac.super_roles', []))) {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+                }
+                abort(403, 'Only Superadmin can access this section.');
+            }
+
+            return $next($request);
+        });
+    }
+
     public function index()
     {
         // Get users with user types - fallback to empty collection if no users exist
         $users = User::with('userType')->orderBy('name')->get();
-        
+
         // Get user types (roles) - fallback to empty collection if no roles exist
         $roles = UserType::with('users', 'rolePermissions')->orderBy('name')->get();
-        
+
         // Get role permissions - fallback to empty collection if no permissions exist
         $permissions = RolePermission::with('userType')->orderBy('module')->get();
-        
+
         return view('Admin.access.index', compact('users', 'roles', 'permissions'));
     }
 
@@ -31,7 +48,7 @@ class AccessPermissionController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role_id' => 'required|exists:user_types,id'
+            'role_id' => 'required|exists:user_types,id',
         ]);
 
         $user = User::create([
@@ -40,7 +57,7 @@ class AccessPermissionController extends Controller
             'password' => bcrypt($request->password),
             'user_type_id' => $request->role_id,
             'email_verified_at' => now(),
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $role = UserType::find($request->role_id);
@@ -48,7 +65,7 @@ class AccessPermissionController extends Controller
         return response()->json([
             'success' => true,
             'message' => "User '{$user->name}' created with role '{$role->name}'",
-            'user' => $user->load('userType')
+            'user' => $user->load('userType'),
         ]);
     }
 
@@ -56,45 +73,45 @@ class AccessPermissionController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
+            'email' => 'required|email|unique:users,email,'.$id,
         ]);
 
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
 
         $user->update([
             'name' => $request->name,
-            'email' => $request->email
+            'email' => $request->email,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => "User '{$user->name}' updated successfully",
-            'user' => $user->load('userType')
+            'user' => $user->load('userType'),
         ]);
     }
 
     public function deleteUser($id)
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User not found',
             ], 404);
         }
-        
+
         $userName = $user->name;
         $user->delete();
 
         return response()->json([
             'success' => true,
-            'message' => "User '{$userName}' deleted successfully"
+            'message' => "User '{$userName}' deleted successfully",
         ]);
     }
 
@@ -102,18 +119,18 @@ class AccessPermissionController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:user_types,name',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
 
         $role = UserType::create([
             'name' => $request->name,
-            'description' => $request->description
+            'description' => $request->description,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => "Role '{$role->name}' created successfully",
-            'role' => $role
+            'role' => $role,
         ]);
     }
 
@@ -121,18 +138,18 @@ class AccessPermissionController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role_id' => 'required|exists:user_types,id'
+            'role_id' => 'required|exists:user_types,id',
         ]);
 
         $user = User::find($request->user_id);
         $role = UserType::find($request->role_id);
-        
+
         $user->user_type_id = $role->id;
         $user->save();
-        
+
         return response()->json([
             'success' => true,
-            'message' => "Role '{$role->name}' assigned to {$user->name}"
+            'message' => "Role '{$role->name}' assigned to {$user->name}",
         ]);
     }
 
@@ -140,20 +157,20 @@ class AccessPermissionController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role_id' => 'required|exists:user_types,id'
+            'role_id' => 'required|exists:user_types,id',
         ]);
 
         $user = User::find($request->user_id);
         $role = UserType::find($request->role_id);
-        
+
         // Set to default role or null
         $defaultRole = UserType::first();
         $user->user_type_id = $defaultRole ? $defaultRole->id : null;
         $user->save();
-        
+
         return response()->json([
             'success' => true,
-            'message' => "Role '{$role->name}' removed from {$user->name}"
+            'message' => "Role '{$role->name}' removed from {$user->name}",
         ]);
     }
 
@@ -163,18 +180,18 @@ class AccessPermissionController extends Controller
             'role_id' => 'required|exists:user_types,id',
             'module' => 'required|string',
             'action' => 'required|string|in:view,create,edit,delete',
-            'checked' => 'required|boolean'
+            'checked' => 'required|boolean',
         ]);
 
         $role = UserType::find($request->role_id);
-        
+
         if ($request->checked) {
             // Add permission
             RolePermission::updateOrCreate(
                 [
                     'user_type_id' => $role->id,
                     'module' => $request->module,
-                    'ability' => $request->action
+                    'ability' => $request->action,
                 ]
             );
             $action = 'granted';
@@ -186,24 +203,24 @@ class AccessPermissionController extends Controller
                 ->delete();
             $action = 'revoked';
         }
-        
+
         // Clear cache for this role to ensure permissions are updated immediately
         $cacheKey = "rp:{$role->id}";
         Cache::forget($cacheKey);
-        
+
         return response()->json([
             'success' => true,
-            'message' => "Permission '{$request->action}' for '{$request->module}' {$action} for role '{$role->name}'"
+            'message' => "Permission '{$request->action}' for '{$request->module}' {$action} for role '{$role->name}'",
         ]);
     }
 
     public function getPermissions($roleId)
     {
         $role = UserType::find($roleId);
-        if (!$role) {
+        if (! $role) {
             return response()->json([
                 'success' => false,
-                'message' => 'Role not found'
+                'message' => 'Role not found',
             ], 404);
         }
 
@@ -228,19 +245,19 @@ class AccessPermissionController extends Controller
                 'view' => in_array('view', $existingPermissions[$module] ?? []),
                 'create' => in_array('create', $existingPermissions[$module] ?? []),
                 'edit' => in_array('edit', $existingPermissions[$module] ?? []),
-                'delete' => in_array('delete', $existingPermissions[$module] ?? [])
+                'delete' => in_array('delete', $existingPermissions[$module] ?? []),
             ];
         }
 
         return response()->json([
             'success' => true,
-            'permissions' => $permissions
+            'permissions' => $permissions,
         ]);
     }
 
-    private function getDefaultPermissions() {
+    private function getDefaultPermissions()
+    {
         return [
-            ['module' => 'dashboard', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'products', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'product_category', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'purchases', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
@@ -263,7 +280,7 @@ class AccessPermissionController extends Controller
             ['module' => 'settings', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'branch', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
             ['module' => 'brands', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
-            ['module' => 'unit_types', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false]
+            ['module' => 'unit_types', 'view' => false, 'create' => false, 'edit' => false, 'delete' => false],
         ];
     }
 }

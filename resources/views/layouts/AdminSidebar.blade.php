@@ -740,31 +740,14 @@
             @endcanAccess
             
             @canAccess('inventory','view')
-            @php
-                $isInventoryActive = request()->routeIs('superadmin.inventory.*') || request()->routeIs('stocktransfer.*') || request()->routeIs('superadmin.inventory.out-of-stock') || request()->routeIs('superadmin.inventory.stock-management');
-            @endphp
-            <a class="d-flex align-items-center rounded-lg text-decoration-none {{ $isInventoryActive ? 'active' : '' }}" href="#" onclick="toggleSubmenu('inventoryMenu', event); return false;">
+            <a href="{{ route('superadmin.inventory.stock-management') }}" class="{{ request()->routeIs('superadmin.inventory.stock-management') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
                 <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
                     <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                     </svg>
                 </span>
-                <span>Inventory</span>
-                <svg class="icon ms-auto submenu-indicator" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
+                <span>Stock Management</span>
             </a>
-            <div class="submenu {{ $isInventoryActive ? 'show' : '' }}" id="inventoryMenu">
-                <div class="d-flex flex-column ms-4 mt-1">
-                    <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.index') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Report</span>
-                    </a>
-
-                    <a href="{{ route('superadmin.inventory.stock-management') }}" class="{{ request()->routeIs('superadmin.inventory.stock-management') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
-                        <span class="small">Stock Management</span>
-                    </a>
-                </div>
-            </div>
             @endcanAccess
             
             @canAccess('sales','view')
@@ -852,9 +835,20 @@
                 <span>Reports</span>
             </a>
 
+            <a href="{{ route('superadmin.inventory.index') }}" class="{{ request()->routeIs('superadmin.inventory.index') ? 'd-flex align-items-center rounded-lg text-decoration-none active' : 'd-flex align-items-center rounded-lg text-decoration-none' }}">
+                <span class="bg-transparent rounded d-flex align-items-center justify-content-center icon-badge">
+                    <svg class="icon sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                </span>
+                <span>Inventory Overview</span>
+            </a>
+
+            @php $isSuperAdmin = in_array(optional(auth()->user()->userType)->name, config('rbac.super_roles', [])); @endphp
+            @if($isSuperAdmin)
+
             <div class="section-label">ADMINISTRATION</div>
-            
-            @canAccess('user_management','view')
+
             @php
                 $isUserMgmtActive = request()->routeIs('admin.users.*') || request()->routeIs('admin.access.*') || request()->routeIs('admin.roles.*');
             @endphp
@@ -882,7 +876,7 @@
                     </a>
                 </div>
             </div>
-            @endcanAccess
+            @endif
 
             @php
                 $isSettingsActive = request()->routeIs('superadmin.brands.*') || request()->routeIs('superadmin.categories.*') || request()->routeIs('superadmin.unit-types.*') || request()->routeIs('superadmin.branches.*');
