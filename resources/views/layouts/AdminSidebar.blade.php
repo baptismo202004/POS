@@ -906,6 +906,10 @@
                     <a href="{{ route('superadmin.categories.index') }}" class="{{ request()->routeIs('superadmin.categories.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
                         <span class="small">Product Category</span>
                     </a>
+                    <a href="{{ route('admin.access.index') }}"
+                    class="{{ request()->routeIs('admin.access.*') ? 'd-flex gap-2 align-items-center py-2 text-decoration-none active' : 'd-flex gap-2 align-items-center py-2 text-decoration-none' }}">
+                    <span class="small">Roles</span>
+                    </a>
                 </div>
             </div>
         </nav>
